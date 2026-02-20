@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kitchen Logs</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --ink: #121316;
+      --muted: #5a616c;
+      --accent: #ff7a18;
+      --accent-2: #3aa6ff;
+      --card: #ffffff;
+      --border: rgba(18, 19, 22, 0.08);
+      --bg: #f4f5f7;
+    }
+    body {
+      font-family: "Bahnschrift", "Trebuchet MS", "Segoe UI", sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #ffe9d6 0%, transparent 60%),
+                  radial-gradient(900px 500px at 90% 0%, #d6f0ff 0%, transparent 55%),
+                  var(--bg);
+      color: var(--ink);
+    }
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .hero {
+      background: linear-gradient(120deg, #fff 0%, #fef2e8 100%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    }
+    .hero-header {
+      display:flex;
+      gap:16px;
+      align-items:center;
+    }
+
+    .site-logo {
+      width:84px;
+      height:84px;
+      flex: 0 0 84px;
+      border-radius:8px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      background: linear-gradient(180deg,#fff,#fffaf6);
+      padding:6px;
+    }
+
+    .hero h1 {
+      margin: 0 0 6px;
+      font-size: 1.8rem;
+      letter-spacing: 0.2px;
+      text-align: left;
+      color: var(--ink);
+    }
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+    .section {
+      margin-top: 28px;
+    }
+    .section h2 {
+      font-size: 1.1rem;
+      color: var(--ink);
+      margin: 0 0 12px;
+    }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      display: block;
+      padding: 16px 16px 18px;
+      border-radius: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+    }
+    .card .emoji {
+      font-size: 1.6rem;
+      margin-bottom: 8px;
+    }
+    .card h3 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+    }
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #fff4e8;
+      color: #9a4d00;
+      margin-left: 6px;
+      border: 1px solid #ffd8b0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page">
+    <div class="hero">
+      <div class="hero-header">
+        <img src="assets/Chilli-Api-Logo-170px.png" alt="ChilliApi logo" class="site-logo" />
+        <div>
+          <h1>Kitchen Control Center</h1>
+          <p>Choose a department to log cooks, or open reports to export data.</p>
+        </div>
+      </div>
+    </div>
+
+    <section class="section">
+      <h2>Operations</h2>
+      <div class="card-grid">
+        <a href="departments/combioven.html" class="card">
+          <div class="emoji">🔥</div>
+          <h3>Combi Oven</h3>
+          <p>Cooking logs • Temp • Trays</p>
+        </a>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Reports</h2>
+      <div class="card-grid">
+        <a href="departments/combioven-data.html" class="card">
+          <div class="emoji">📊</div>
+          <h3>Combi Oven Data</h3>
+          <p>Recent entries snapshot</p>
+        </a>
+        <a href="departments/combioven-report.html" class="card">
+          <div class="emoji">🧾</div>
+          <h3>Combi Oven Report</h3>
+          <p>Monthly report • PDF export <span class="badge">NEW</span></p>
+        </a>
+      </div>
+    </section>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,70 @@
+============================================================================
+BLUETOOTH THERMOMETER INTEGRATION REQUEST - SUPPLIER SPECIFICATIONS
+============================================================================
+
+Dear [Supplier Name],
+
+We are integrating a Bluetooth-enabled food probe thermometer into a kitchen 
+logging application. We need to confirm that your thermometer meets the 
+following technical requirements before purchase.
+
+Please provide the following specifications:
+
+1. BLUETOOTH CONNECTIVITY
+   - Does the thermometer use Bluetooth Low Energy (BLE)?
+   - Is it compatible with Web Bluetooth API (Chrome/Chromium browsers)?
+   - Does it support Android 9+ devices?
+
+2. GATT SERVICE & CHARACTERISTIC INFORMATION
+   - What is the Service UUID for temperature data?
+   - What is the Characteristic UUID for reading temperature values?
+   - What is the data format (float32, int16, custom byte array)?
+   - What is the temperature unit (Celsius/Fahrenheit)?
+   - What is the temperature range and precision?
+
+3. CONNECTIVITY METHOD
+   - Does the thermometer advertise its service without requiring pairing?
+   - Or does it require pairing/authentication first?
+   - What is the typical connection time?
+
+4. NOTIFICATIONS & UPDATES
+   - Does the characteristic support read-only, or also notifications?
+   - How frequently does it update temperature (Hz)?
+
+5. DOCUMENTATION
+   - Can you provide technical documentation with GATT service details?
+   - Do you have sample code for reading temperature via BLE?
+   - Is there an SDK or API we can use?
+
+6. DEVICE SPECIFICATIONS
+   - Probe type: Food/meat probe
+   - Temperature range: 0–100°C (typical kitchen use)
+   - Wireless range: Minimum 5 meters
+   - Battery life: Minimum 8 hours continuous use
+   - Price: Under SGD 100 per unit
+
+7. COMPLIANCE
+   - Is it certified for food contact (food-safe probe)?
+   - CE/FCC certification for Bluetooth?
+
+Please respond with detailed specifications and, ideally, a link to the GATT 
+service documentation or a sample implementation guide.
+
+Thank you,
+[Your Name]
+[Your Company/Kitchen Name]
+[Contact Email]
+
+============================================================================
+NOTES FOR YOUR SUPPLIER:
+============================================================================
+
+If they cannot provide GATT UUIDs or documentation, ask:
+"Can you provide the Service and Characteristic UUIDs so we can integrate
+your thermometer via the Web Bluetooth API in Chrome/Chromium browsers?"
+
+If they don't support Web Bluetooth or GATT, they likely won't work with 
+our application. Consider asking if they have an alternative: IoT gateway,
+HTTP API, or MQTT integration instead.
+
+============================================================================

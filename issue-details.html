@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Issue Details | Central Kitchen Maintenance</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* ── Issue hero card ─────────────────────────────── */
+        .issue-hero {
+            background: linear-gradient(180deg, var(--card), #fffbf9);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 8px 24px var(--shadow);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .hero-bar {
+            padding: 16px 22px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: linear-gradient(90deg, #fff 0%, #fef5f1 100%);
+            border-left: 6px solid var(--accent);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .hero-bar.priority-Critical { border-left-color: #7f1d1d; background: linear-gradient(90deg, #fff, #fff5f5); }
+        .hero-bar.priority-High     { border-left-color: #e74c3c; }
+        .hero-bar.priority-Medium   { border-left-color: var(--accent-2); }
+        .hero-bar.priority-Low      { border-left-color: #9ca3af; }
+
+        .hero-icon {
+            font-size: 2rem;
+            width: 54px;
+            height: 54px;
+            background: linear-gradient(135deg, #fff5f5, #fef2f1);
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .hero-text { flex: 1; min-width: 0; }
+
+        .hero-id {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+
+        .hero-title {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--ink);
+            line-height: 1.3;
+        }
+
+        .hero-badges {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            border-radius: 20px;
+            padding: 3px 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .badge-critical  { background: #7f1d1d; color: #fff; }
+        .badge-high      { background: #e74c3c; color: #fff; }
+        .badge-medium    { background: var(--accent-2); color: #fff; }
+        .badge-low       { background: #9ca3af; color: #fff; }
+        .badge-open        { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .badge-inprogress  { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+        .badge-resolved    { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+        .badge-closed      { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+        /* ── Detail grid ─────────────────────────────────── */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0;
+            padding: 0 22px 4px;
+        }
+
+        .detail-item {
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-item:last-child { border-bottom: none; }
+
+        .detail-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            font-size: 0.95rem;
+            color: var(--ink);
+            font-weight: 500;
+        }
+
+        /* ── Description section ─────────────────────────── */
+        .desc-block {
+            margin: 0 22px 20px;
+            padding: 16px;
+            background: #fafafa;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            color: var(--ink);
+            line-height: 1.65;
+        }
+
+        /* ── Action panel ────────────────────────────────── */
+        .panel {
+            background: linear-gradient(180deg, var(--card), #fffbf9);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 8px 24px var(--shadow);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .panel-header {
+            padding: 13px 20px;
+            font-size: 1rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #fff, #fef5f1);
+            border-left: 5px solid var(--accent);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-header.orange { border-left-color: var(--accent-2); }
+        .panel-header.green  { border-left-color: var(--success); }
+        .panel-header.grey   { border-left-color: #9ca3af; }
+
+        .panel-body { padding: 18px 20px; }
+
+        /* Status progression buttons */
+        .status-flow {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .status-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            background: var(--card);
+            font-size: 0.86rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: var(--muted);
+        }
+
+        .status-btn:hover   { border-color: var(--accent); color: var(--accent); }
+        .status-btn.current { background: var(--accent); border-color: var(--accent); color: white; cursor: default; }
+        .status-btn.s-inprogress.current { background: var(--accent-2); border-color: var(--accent-2); }
+        .status-btn.s-resolved.current   { background: var(--success);  border-color: var(--success); }
+        .status-btn.s-closed.current     { background: #7f8c8d; border-color: #7f8c8d; }
+
+        /* Form fields in panel */
+        .field { margin-bottom: 14px; }
+        .field:last-child { margin-bottom: 0; }
+
+        .field label {
+            display: block;
+            font-size: 0.83rem;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 6px;
+        }
+
+        .field input,
+        .field textarea,
+        .field select {
+            width: 100%;
+            padding: 10px 13px;
+            border: 1.5px solid var(--border);
+            border-radius: 9px;
+            font-size: 0.92rem;
+            font-family: inherit;
+            color: var(--ink);
+            background: #fafafa;
+        }
+
+        .field input:focus,
+        .field textarea:focus,
+        .field select:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(192,57,43,0.08);
+        }
+
+        .field textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+
+        .btn-save {
+            background: linear-gradient(135deg, var(--accent-2), #e67e22);
+            color: white;
+            border: none;
+            border-radius: 9px;
+            padding: 11px 24px;
+            font-size: 0.92rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            transition: transform 0.15s;
+        }
+
+        .btn-save:hover { transform: translateY(-1px); }
+
+        /* Danger zone */
+        .danger-zone {
+            border: 1.5px solid #fecaca;
+            border-radius: 12px;
+            padding: 16px 18px;
+            background: #fff5f5;
+        }
+
+        .danger-zone p {
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+
+        .btn-delete {
+            background: linear-gradient(135deg, var(--accent), #e74c3c);
+            color: white;
+            border: none;
+            border-radius: 9px;
+            padding: 10px 22px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(192,57,43,0.2);
+            transition: transform 0.15s;
+        }
+
+        .btn-delete:hover { transform: translateY(-1px); }
+
+        /* Loading / error */
+        #loadingState {
+            text-align: center;
+            color: var(--muted);
+            padding: 80px 20px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #1a1a2e;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: transform 0.3s ease;
+            z-index: 999;
+            pointer-events: none;
+        }
+
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        @media (max-width: 600px) {
+            .detail-grid { grid-template-columns: 1fr 1fr; }
+            .hero-title { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-content">
+        <a href="index.html" style="display:inline-flex;text-decoration:none;">
+            <img src="assets/Chilli-Api-Logo-170px.png" alt="Logo" class="site-logo">
+        </a>
+        <div class="header-text">
+            <h1>Issue Details</h1>
+            <p>View and manage a reported area issue</p>
+        </div>
+    </div>
+    <button onclick="window.location.href='all-issues.html#area'">← All Issues</button>
+</header>
+
+<main>
+    <div id="loadingState">Loading issue…</div>
+
+    <div id="contentArea" style="display:none;">
+
+        <!-- Hero card -->
+        <div class="issue-hero" id="issueHero">
+            <div class="hero-bar" id="heroBar">
+                <div class="hero-icon" id="heroIcon">📋</div>
+                <div class="hero-text">
+                    <div class="hero-id" id="heroId">—</div>
+                    <div class="hero-title" id="heroTitle">—</div>
+                    <div class="hero-badges" id="heroBadges"></div>
+                </div>
+            </div>
+
+            <!-- Quick details grid -->
+            <div class="detail-grid" id="detailGrid"></div>
+
+            <!-- Description -->
+            <div style="padding:0 22px 6px;">
+                <div class="detail-label" style="padding-top:14px;">Description</div>
+            </div>
+            <div class="desc-block" id="descBlock">—</div>
+        </div>
+
+        <!-- Status management -->
+        <div class="panel">
+            <div class="panel-header">🔄 Update Status</div>
+            <div class="panel-body">
+                <div class="status-flow" id="statusFlow"></div>
+                <div style="font-size:0.8rem;color:var(--muted);">Click a status to update this issue.</div>
+            </div>
+        </div>
+
+        <!-- Assign + resolution -->
+        <div class="panel">
+            <div class="panel-header orange">🛠️ Assignment & Resolution</div>
+            <div class="panel-body">
+                <div class="field">
+                    <label>Assigned To (Technician)</label>
+                    <input type="text" id="assignedTo" placeholder="Enter technician name">
+                </div>
+                <div class="field">
+                    <label>Resolution Notes</label>
+                    <textarea id="resolutionNotes" placeholder="What was done to resolve or progress this issue?"></textarea>
+                </div>
+                <button class="btn-save" onclick="saveAssignment()">💾 Save Changes</button>
+            </div>
+        </div>
+
+        <!-- Danger zone -->
+        <div class="panel">
+            <div class="panel-header grey">⚠️ Danger Zone</div>
+            <div class="panel-body">
+                <div class="danger-zone">
+                    <p>Permanently delete this issue report. This cannot be undone.</p>
+                    <button class="btn-delete" onclick="deleteIssue()">🗑 Delete Issue</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/api.js"></script>
+<script src="js/area-issues.js"></script>
+<script>
+    const params  = new URLSearchParams(window.location.search);
+    const issueId = params.get('id');
+    let issue = null;
+
+    function showToast(msg, duration = 2500) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), duration);
+    }
+
+    function priorityBadgeClass(p) {
+        const m = { 'Critical':'badge-critical', 'High':'badge-high', 'Medium':'badge-medium', 'Low':'badge-low' };
+        return m[p] || 'badge-low';
+    }
+
+    function statusBadgeClass(s) {
+        const m = { 'Open':'badge-open', 'In Progress':'badge-inprogress', 'Resolved':'badge-resolved', 'Closed':'badge-closed' };
+        return m[s] || 'badge-open';
+    }
+
+    function formatDate(ds) {
+        if (!ds) return '—';
+        return new Date(ds).toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
+    }
+
+    function renderIssue(i) {
+        issue = i;
+
+        // Hero bar
+        const bar = document.getElementById('heroBar');
+        bar.className = `hero-bar priority-${i.priority}`;
+        document.getElementById('heroIcon').textContent = categoryIcon(i.category);
+        document.getElementById('heroId').textContent   = i.issueId;
+        document.getElementById('heroTitle').textContent = i.title;
+        document.getElementById('heroBadges').innerHTML =
+            `<span class="badge ${priorityBadgeClass(i.priority)}">${i.priority}</span>
+             <span class="badge ${statusBadgeClass(i.status)}">${i.status}</span>
+             <span class="badge" style="background:#f1f5f9;color:#475569;border:1px solid var(--border);">${esc(i.category)}</span>`;
+
+        // Details grid
+        const days = i.reportedDate ? Math.floor((Date.now() - new Date(i.reportedDate)) / 86400000) : null;
+        const daysOpen = days === null ? '—' : days === 0 ? 'Today' : `${days} day${days !== 1 ? 's' : ''} ago`;
+
+        document.getElementById('detailGrid').innerHTML = `
+            <div class="detail-item"><div class="detail-label">Area</div><div class="detail-value">📍 ${esc(i.area)}</div></div>
+            <div class="detail-item"><div class="detail-label">Specific Location</div><div class="detail-value">${esc(i.specificLocation) || '—'}</div></div>
+            <div class="detail-item"><div class="detail-label">Reported By</div><div class="detail-value">👤 ${esc(i.reportedBy)}</div></div>
+            <div class="detail-item"><div class="detail-label">Contact</div><div class="detail-value">${esc(i.contactNumber) || '—'}</div></div>
+            <div class="detail-item"><div class="detail-label">Reported</div><div class="detail-value">🗓 ${formatDate(i.reportedDate)}</div></div>
+            <div class="detail-item"><div class="detail-label">Time Open</div><div class="detail-value">⏱ ${daysOpen}</div></div>
+            <div class="detail-item"><div class="detail-label">Assigned To</div><div class="detail-value">${esc(i.assignedTo) || '— Unassigned'}</div></div>
+            <div class="detail-item"><div class="detail-label">Resolved</div><div class="detail-value">${i.resolvedDate ? formatDate(i.resolvedDate) : '—'}</div></div>
+        `;
+
+        document.getElementById('descBlock').textContent = i.description || '—';
+
+        // Status flow
+        const statuses = ['Open', 'In Progress', 'Resolved', 'Closed'];
+        const classMap = { 'Open':'s-open','In Progress':'s-inprogress','Resolved':'s-resolved','Closed':'s-closed' };
+        document.getElementById('statusFlow').innerHTML = statuses.map(s => {
+            const isCurrent = s === i.status;
+            return `<button class="status-btn ${classMap[s]} ${isCurrent ? 'current' : ''}"
+                        onclick="${isCurrent ? '' : `updateStatus('${s}')`}"
+                        ${isCurrent ? 'disabled' : ''}>${s}</button>`;
+        }).join('');
+
+        // Pre-fill assignment fields
+        document.getElementById('assignedTo').value      = i.assignedTo || '';
+        document.getElementById('resolutionNotes').value = i.resolutionNotes || '';
+    }
+
+    async function loadIssue() {
+        if (!issueId) {
+            document.getElementById('loadingState').innerHTML =
+                '<p style="color:var(--accent);text-align:center;">No issue ID provided.</p>';
+            return;
+        }
+        try {
+            const res = await fetch(`${API_BASE}/issues/${issueId}`);
+            if (!res.ok) throw new Error('Not found');
+            const data = await res.json();
+            document.getElementById('loadingState').style.display  = 'none';
+            document.getElementById('contentArea').style.display   = 'block';
+            renderIssue(data);
+        } catch (e) {
+            document.getElementById('loadingState').innerHTML =
+                '<p style="color:var(--accent);text-align:center;">⚠️ Failed to load issue. Is the server running?</p>';
+        }
+    }
+
+    async function updateStatus(newStatus) {
+        try {
+            const body = { status: newStatus };
+            if (newStatus === 'Resolved') body.resolvedDate = new Date().toISOString();
+            const res = await fetch(`${API_BASE}/issues/${issueId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) throw new Error();
+            const updated = await res.json();
+            renderIssue(updated);
+            showToast(`✅ Status updated to "${newStatus}"`);
+        } catch {
+            showToast('❌ Failed to update status');
+        }
+    }
+
+    async function saveAssignment() {
+        try {
+            const res = await fetch(`${API_BASE}/issues/${issueId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    assignedTo:      document.getElementById('assignedTo').value.trim(),
+                    resolutionNotes: document.getElementById('resolutionNotes').value.trim()
+                })
+            });
+            if (!res.ok) throw new Error();
+            const updated = await res.json();
+            renderIssue(updated);
+            showToast('✅ Assignment saved');
+        } catch {
+            showToast('❌ Failed to save');
+        }
+    }
+
+    async function deleteIssue() {
+        if (!confirm(`Delete issue ${issue?.issueId || ''}? This cannot be undone.`)) return;
+        try {
+            const res = await fetch(`${API_BASE}/issues/${issueId}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error();
+            window.location.href = 'all-issues.html#area';
+        } catch {
+            showToast('❌ Failed to delete');
+        }
+    }
+
+    loadIssue();
+</script>
+</body>
+</html>

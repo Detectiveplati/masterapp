@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Issues | Central Kitchen Maintenance</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* ── Category tab bar ───────────────────────────── */
+        .cat-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .cat-tab {
+            padding: 12px 28px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: var(--muted);
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.15s;
+            font-family: inherit;
+        }
+
+        .cat-tab:hover { color: var(--ink); }
+        .cat-tab.active        { color: var(--accent);   border-bottom-color: var(--accent); }
+        .cat-tab.active.orange { color: var(--accent-2); border-bottom-color: var(--accent-2); }
+
+        .tab-count {
+            background: #f1f5f9;
+            color: #475569;
+            border-radius: 20px;
+            padding: 2px 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .cat-tab.active        .tab-count { background: linear-gradient(135deg, var(--accent),   #e74c3c); color: #fff; }
+        .cat-tab.active.orange .tab-count { background: linear-gradient(135deg, var(--accent-2), #e67e22); color: #fff; }
+
+        /* ── Tab panels ──────────────────────────────────── */
+        .tab-panel         { display: none; }
+        .tab-panel.active  { display: block; }
+
+        /* ══════════════════════════════════════════════════
+           AREA & FACILITIES TAB
+        ══════════════════════════════════════════════════ */
+
+        .stats-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .stat-pill {
+            background: linear-gradient(180deg, var(--card), #fffbf9);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            box-shadow: 0 3px 10px var(--shadow);
+            min-width: 80px;
+        }
+
+        .stat-pill-label { font-size: 0.72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-pill-value { font-size: 1.4rem; font-weight: 800; color: var(--ink); }
+
+        .toolbar {
+            background: linear-gradient(180deg, var(--card), #fffbf9);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 3px 10px var(--shadow);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .toolbar input[type="text"] {
+            flex: 1;
+            min-width: 180px;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+
+        .toolbar input:focus  { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(192,57,43,0.08); }
+
+        .toolbar select {
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            font-size: 0.86rem;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .toolbar select:focus { outline: none; border-color: var(--accent); }
+
+        .status-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .tab-btn {
+            padding: 7px 16px;
+            border-radius: 20px;
+            border: 1.5px solid var(--border);
+            background: var(--card);
+            font-size: 0.83rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: var(--muted);
+            font-family: inherit;
+        }
+
+        .tab-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .tab-btn.active               { background: linear-gradient(135deg, var(--accent),   #e74c3c); border-color: transparent; color: white; box-shadow: 0 3px 10px rgba(192,57,43,0.2); }
+        .tab-btn.tab-inprogress.active { background: linear-gradient(135deg, var(--accent-2), #e67e22); }
+        .tab-btn.tab-resolved.active   { background: linear-gradient(135deg, var(--success),  #2ecc71); }
+        .tab-btn.tab-closed.active     { background: linear-gradient(135deg, #7f8c8d, #95a5a6); }
+
+        .issues-grid { display: flex; flex-direction: column; gap: 10px; }
+
+        .issue-row {
+            background: linear-gradient(180deg, var(--card), #fffbf9);
+            border: 1px solid var(--border);
+            border-left: 5px solid var(--accent);
+            border-radius: 12px;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 14px;
+            align-items: start;
+            box-shadow: 0 3px 10px var(--shadow);
+        }
+
+        .issue-row:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.1); }
+
+        .issue-row.priority-Critical { border-left-color: #7f1d1d; background: linear-gradient(180deg, #fff5f5, #fff); }
+        .issue-row.priority-High     { border-left-color: #e74c3c; }
+        .issue-row.priority-Medium   { border-left-color: var(--accent-2); }
+        .issue-row.priority-Low      { border-left-color: #9ca3af; }
+        .issue-row.status-Resolved,
+        .issue-row.status-Closed     { opacity: 0.72; }
+
+        .cat-icon {
+            font-size: 1.6rem;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #fff5f5, #fef2f1);
+            border: 1px solid #fecaca;
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+
+        .issue-body { min-width: 0; }
+
+        .issue-title-row  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 3px; }
+        .issue-title      { font-size: 0.96rem; font-weight: 700; color: var(--ink); }
+
+        .issue-desc-preview {
+            font-size: 0.84rem;
+            color: #666;
+            margin-top: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .issue-meta-row  { font-size: 0.78rem; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px; }
+        .issue-badges    { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
+
+        .badge            { display: inline-block; border-radius: 20px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+        .badge-critical   { background: #7f1d1d; color: #fff; }
+        .badge-high       { background: #e74c3c; color: #fff; }
+        .badge-medium     { background: var(--accent-2); color: #fff; }
+        .badge-low        { background: #9ca3af; color: #fff; }
+        .badge-open       { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .badge-inprogress { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+        .badge-resolved   { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+        .badge-closed     { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+        /* ══════════════════════════════════════════════════
+           EQUIPMENT TAB
+        ══════════════════════════════════════════════════ */
+
+        .panel {
+            background: linear-gradient(180deg, var(--card), #fffbf9);
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 20px;
+            background: linear-gradient(90deg, #fff 0%, #fef5f1 100%);
+            border-left: 5px solid var(--accent);
+            border-bottom: 1px solid var(--border);
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .panel-header.orange { border-left-color: var(--accent-2); }
+
+        .panel-count {
+            margin-left: auto;
+            background: linear-gradient(135deg, var(--accent), #e74c3c);
+            color: #fff;
+            border-radius: 20px;
+            padding: 2px 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .panel-count.orange { background: linear-gradient(135deg, var(--accent-2), #e67e22); }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 12px;
+            padding: 16px 18px 18px;
+        }
+
+        .i-card {
+            background: linear-gradient(180deg, #fff, #fff9f9);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--accent);
+            border-radius: 12px;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            box-shadow: 0 3px 10px var(--shadow);
+        }
+
+        .i-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(192,57,43,0.12); }
+
+        .i-card-icon {
+            font-size: 1.8rem;
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #fff5f5, #fef2f1);
+            border: 1px solid #fecaca;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .i-card-body  { flex: 1; min-width: 0; }
+        .i-card-equip { font-size: 0.78rem; color: var(--muted); font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+        .i-card-equip .tag { background: #f1f5f9; color: #475569; border-radius: 6px; padding: 1px 6px; font-size: 0.7rem; font-weight: 700; }
+        .i-card-desc  { font-size: 0.93rem; color: var(--ink); line-height: 1.45; margin-bottom: 6px; word-break: break-word; }
+        .i-card-meta  { font-size: 0.76rem; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+        .i-card-arrow { font-size: 1.2rem; color: var(--steel); flex-shrink: 0; align-self: center; }
+
+        .e-card {
+            background: linear-gradient(180deg, #fff, #fffaf5);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--accent-2);
+            border-radius: 12px;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            box-shadow: 0 3px 10px var(--shadow);
+        }
+
+        .e-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(211,84,0,0.1); }
+
+        .e-card-icon {
+            font-size: 1.8rem;
+            width: 46px;
+            height: 46px;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #fff7ed, #fef3e2);
+            border: 1px solid #fed7aa;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .e-card-body  { flex: 1; min-width: 0; }
+        .e-card-name  { font-size: 0.97rem; font-weight: 700; color: var(--ink); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .e-card-meta  { font-size: 0.8rem; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .needs-badge  { background: linear-gradient(135deg, var(--accent-2), #e67e22); color: #fff; border-radius: 20px; padding: 2px 9px; font-size: 0.7rem; font-weight: 700; }
+
+        /* ── Shared ──────────────────────────────────────── */
+        .empty-msg   { grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 28px 0; font-size: 0.93rem; }
+        .empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
+        .empty-state .empty-icon { font-size: 2.8rem; margin-bottom: 10px; }
+        .empty-state p { font-size: 0.93rem; }
+
+        #loadingState { text-align: center; padding: 70px 20px; color: var(--muted); font-size: 1rem; }
+
+        @media (max-width: 650px) {
+            .cards-grid   { grid-template-columns: 1fr; padding: 12px 12px 14px; }
+            .issue-row    { grid-template-columns: auto 1fr; }
+            .issue-badges { flex-direction: row; align-items: center; grid-column: 1 / -1; }
+            .cat-tab      { padding: 10px 14px; font-size: 0.84rem; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-content">
+        <a href="index.html" style="display:inline-flex;text-decoration:none;">
+            <img src="assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo" class="site-logo">
+        </a>
+        <div class="header-text">
+            <h1>⚠️ All Issues</h1>
+            <p>Area &amp; facilities reports · Equipment issues &amp; needing action</p>
+        </div>
+    </div>
+    <button onclick="window.location.href='area-maintenance.html'">➕ Report Issue</button>
+</header>
+
+<main>
+    <div id="loadingState">Loading…</div>
+
+    <div id="contentArea" style="display:none;">
+
+        <!-- ── Category tabs ────────────────────────────── -->
+        <div class="cat-tabs" role="tablist">
+            <button class="cat-tab active" data-tab="area" role="tab" aria-selected="true">
+                📍 Area &amp; Facilities
+                <span class="tab-count" id="areaTabCount">0</span>
+            </button>
+            <button class="cat-tab orange" data-tab="equipment" role="tab" aria-selected="false">
+                🔧 Equipment
+                <span class="tab-count" id="equipTabCount">0</span>
+            </button>
+        </div>
+
+        <!-- ══════════════════════════════════════════════
+             AREA & FACILITIES PANEL
+        ══════════════════════════════════════════════ -->
+        <div class="tab-panel active" id="tab-area">
+
+            <div class="stats-bar">
+                <div class="stat-pill">
+                    <span class="stat-pill-label">Total</span>
+                    <span class="stat-pill-value" id="statTotal">—</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-pill-label">Open</span>
+                    <span class="stat-pill-value" id="statOpen" style="color:#dc2626;">—</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-pill-label">In Progress</span>
+                    <span class="stat-pill-value" id="statInProgress" style="color:var(--accent-2);">—</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-pill-label">Resolved</span>
+                    <span class="stat-pill-value" id="statResolved" style="color:var(--success);">—</span>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <input type="text" id="searchInput" placeholder="🔍 Search title, description, area…">
+                <select id="filterArea">
+                    <option value="">All Areas</option>
+                    <option>Combi Oven Area</option>
+                    <option>Deep Frying Area</option>
+                    <option>Stir Frying Area</option>
+                    <option>Packing Area</option>
+                    <option>Salad Room</option>
+                    <option>Fruit Room</option>
+                    <option>Cold Room</option>
+                    <option>Pan Fry Area</option>
+                </select>
+                <select id="filterCategory">
+                    <option value="">All Categories</option>
+                    <option>Plumbing</option>
+                    <option>Electrical</option>
+                    <option>HVAC</option>
+                    <option>Structural</option>
+                    <option>Cleaning</option>
+                    <option>Safety Hazard</option>
+                    <option>Pest Control</option>
+                    <option>Other</option>
+                </select>
+                <select id="filterPriority">
+                    <option value="">All Priorities</option>
+                    <option>Critical</option>
+                    <option>High</option>
+                    <option>Medium</option>
+                    <option>Low</option>
+                </select>
+            </div>
+
+            <div class="status-tabs">
+                <button class="tab-btn active"       data-status="">All</button>
+                <button class="tab-btn tab-open"       data-status="Open">Open</button>
+                <button class="tab-btn tab-inprogress" data-status="In Progress">In Progress</button>
+                <button class="tab-btn tab-resolved"   data-status="Resolved">Resolved</button>
+                <button class="tab-btn tab-closed"     data-status="Closed">Closed</button>
+            </div>
+
+            <div class="issues-grid" id="areaIssuesList"></div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════
+             EQUIPMENT PANEL
+        ══════════════════════════════════════════════ -->
+        <div class="tab-panel" id="tab-equipment">
+
+            <div class="panel">
+                <div class="panel-header">
+                    🗣️ Staff-Reported Equipment Issues
+                    <span class="panel-count" id="eqIssueCount">0</span>
+                </div>
+                <div class="cards-grid" id="eqIssuesList"></div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header orange">
+                    🔧 Equipment Needing Action
+                    <span class="panel-count orange" id="needsActionCount">0</span>
+                </div>
+                <div class="cards-grid" id="needsActionList"></div>
+            </div>
+
+        </div>
+
+    </div><!-- /contentArea -->
+</main>
+
+<script src="js/api.js"></script>
+<script src="js/area-issues.js"></script>
+<script>
+    /* ── Helpers ───────────────────────────────────────── */
+    const typeIcons = {
+        'Walk-In Freezer': '🧊', 'Standing Freezer': '🧊',
+        'Walk-In Chiller': '❄️', 'Standing Chiller': '❄️',
+        'Warmer': '🔥'
+    };
+
+    function esc(s) {
+        if (!s) return '';
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function fmtDate(ds) {
+        if (!ds) return '—';
+        return new Date(ds).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    }
+
+    function daysSince(ds) {
+        return ds ? Math.floor((Date.now() - new Date(ds)) / 86400000) : null;
+    }
+
+    function priorityBadgeClass(p) {
+        return { Critical:'badge-critical', High:'badge-high', Medium:'badge-medium', Low:'badge-low' }[p] || 'badge-low';
+    }
+
+    function statusBadgeClass(s) {
+        return { Open:'badge-open', 'In Progress':'badge-inprogress', Resolved:'badge-resolved', Closed:'badge-closed' }[s] || 'badge-open';
+    }
+
+    /* ── Main category tab switching ──────────────────── */
+    let activeTab = location.hash === '#equipment' ? 'equipment' : 'area';
+
+    function switchTab(tab) {
+        activeTab = tab;
+        document.querySelectorAll('.cat-tab').forEach(b => {
+            const on = b.dataset.tab === tab;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-selected', on);
+        });
+        document.querySelectorAll('.tab-panel').forEach(p => {
+            p.classList.toggle('active', p.id === `tab-${tab}`);
+        });
+        history.replaceState(null, '', `#${tab}`);
+    }
+
+    document.querySelectorAll('.cat-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    /* ── Area & Facilities logic ───────────────────────── */
+    let allAreaIssues = [];
+    let activeStatus  = '';
+
+    function updateAreaStats(issues) {
+        document.getElementById('statTotal').textContent      = issues.length;
+        document.getElementById('statOpen').textContent       = issues.filter(i => i.status === 'Open').length;
+        document.getElementById('statInProgress').textContent = issues.filter(i => i.status === 'In Progress').length;
+        document.getElementById('statResolved').textContent   = issues.filter(i => i.status === 'Resolved').length;
+    }
+
+    function applyAreaFilters() {
+        const search   = document.getElementById('searchInput').value.toLowerCase().trim();
+        const area     = document.getElementById('filterArea').value;
+        const category = document.getElementById('filterCategory').value;
+        const priority = document.getElementById('filterPriority').value;
+
+        return allAreaIssues.filter(i => {
+            if (activeStatus && i.status !== activeStatus)   return false;
+            if (area     && i.area !== area)                 return false;
+            if (category && i.category !== category)         return false;
+            if (priority && i.priority !== priority)         return false;
+            if (search) {
+                const hay = `${i.title} ${i.description} ${i.area} ${i.issueId} ${i.reportedBy}`.toLowerCase();
+                if (!hay.includes(search)) return false;
+            }
+            return true;
+        });
+    }
+
+    function renderAreaIssues(issues) {
+        const container = document.getElementById('areaIssuesList');
+        if (!issues.length) {
+            container.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><p>No issues match your filters.</p></div>`;
+            return;
+        }
+        container.innerHTML = issues.map(issue => {
+            const d      = daysSince(issue.reportedDate);
+            const dLabel = d === 0 ? 'Today' : d === 1 ? '1 day ago' : `${d} days ago`;
+            return `
+                <div class="issue-row priority-${issue.priority} status-${(issue.status||'').replace(' ','-')}"
+                     onclick="window.location.href='issue-details.html?id=${issue._id}'">
+                    <div class="cat-icon">${categoryIcon(issue.category)}</div>
+                    <div class="issue-body">
+                        <div class="issue-title-row">
+                            <span class="issue-title">${esc(issue.title)}</span>
+                        </div>
+                        <div class="issue-desc-preview">${esc(issue.description)}</div>
+                        <div class="issue-meta-row">
+                            <span>📍 ${esc(issue.area)}</span>
+                            <span>🔖 ${esc(issue.category)}</span>
+                            <span>👤 ${esc(issue.reportedBy)}</span>
+                            <span>🗓 ${dLabel}</span>
+                            <span style="font-size:0.7rem;opacity:0.6">${esc(issue.issueId)}</span>
+                        </div>
+                    </div>
+                    <div class="issue-badges">
+                        <span class="badge ${priorityBadgeClass(issue.priority)}">${issue.priority}</span>
+                        <span class="badge ${statusBadgeClass(issue.status)}">${issue.status}</span>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    function refreshAreaIssues() { renderAreaIssues(applyAreaFilters()); }
+
+    /* ── Equipment logic ───────────────────────────────── */
+    function renderEquipmentSection(allEquipment, openIssues) {
+        const eqMap = {};
+        allEquipment.forEach(e => { eqMap[e.equipmentId] = e; });
+        const needsAction = allEquipment.filter(e => e.status !== 'operational');
+
+        document.getElementById('equipTabCount').textContent = openIssues.length + needsAction.length;
+
+        // Staff-reported equipment issues
+        document.getElementById('eqIssueCount').textContent = openIssues.length;
+        const issuesCtnr = document.getElementById('eqIssuesList');
+        if (!openIssues.length) {
+            issuesCtnr.innerHTML = '<p class="empty-msg">✅ No open staff-reported equipment issues.</p>';
+        } else {
+            issuesCtnr.innerHTML = openIssues.map(issue => {
+                const eq   = eqMap[issue.equipmentId];
+                const icon = eq ? (typeIcons[eq.type] || '⚙️') : '⚙️';
+                const loc  = eq ? `· ${esc(eq.location)}` : '';
+                return `
+                    <div class="i-card" onclick="window.location.href='equipment-details.html?id=${encodeURIComponent(issue.equipmentId)}'">
+                        <div class="i-card-icon">${icon}</div>
+                        <div class="i-card-body">
+                            <div class="i-card-equip">
+                                ${eq ? esc(eq.name) : esc(issue.equipmentId)}
+                                <span class="tag">${esc(issue.equipmentId)}</span>
+                                ${loc}
+                            </div>
+                            <div class="i-card-desc">${esc(issue.description)}</div>
+                            <div class="i-card-meta">
+                                <span>👤 ${esc(issue.reportedBy || 'Anonymous')}</span>
+                                <span>🗓 ${fmtDate(issue.reportedDate)}</span>
+                            </div>
+                        </div>
+                        <div class="i-card-arrow">›</div>
+                    </div>`;
+            }).join('');
+        }
+
+        // Needs-action equipment
+        document.getElementById('needsActionCount').textContent = needsAction.length;
+        const naCtnr = document.getElementById('needsActionList');
+        if (!needsAction.length) {
+            naCtnr.innerHTML = '<p class="empty-msg">✅ All equipment is operational.</p>';
+        } else {
+            naCtnr.innerHTML = needsAction.map(eq => {
+                const icon = typeIcons[eq.type] || '⚙️';
+                return `
+                    <div class="e-card" onclick="window.location.href='equipment-details.html?id=${encodeURIComponent(eq.equipmentId)}'">
+                        <div class="e-card-icon">${icon}</div>
+                        <div class="e-card-body">
+                            <div class="e-card-name">${esc(eq.name)}</div>
+                            <div class="e-card-meta">
+                                <span>${esc(eq.type)}</span>
+                                <span>· ${esc(eq.location)}</span>
+                                <span class="needs-badge">Needs Action</span>
+                            </div>
+                        </div>
+                        <div class="i-card-arrow">›</div>
+                    </div>`;
+            }).join('');
+        }
+    }
+
+    /* ── Load all data ─────────────────────────────────── */
+    async function loadAll() {
+        try {
+            const [areaRes, eqRes, openEqRes] = await Promise.all([
+                fetch(`${API_BASE}/issues`),
+                fetch(`${API_BASE}/equipment`),
+                fetch(`${API_BASE}/equipment-issues/all-open`)
+            ]);
+
+            allAreaIssues             = areaRes.ok   ? await areaRes.json()   : [];
+            const allEquipment        = eqRes.ok     ? await eqRes.json()     : [];
+            const openEquipmentIssues = openEqRes.ok ? await openEqRes.json() : [];
+
+            // Sort: critical → high → medium → low, then newest first
+            const pOrder = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+            allAreaIssues.sort((a, b) => {
+                const pd = (pOrder[a.priority] ?? 3) - (pOrder[b.priority] ?? 3);
+                return pd !== 0 ? pd : new Date(b.reportedDate) - new Date(a.reportedDate);
+            });
+
+            updateAreaStats(allAreaIssues);
+            document.getElementById('areaTabCount').textContent =
+                allAreaIssues.filter(i => i.status === 'Open' || i.status === 'In Progress').length;
+
+            renderEquipmentSection(allEquipment, openEquipmentIssues);
+            refreshAreaIssues();
+
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('contentArea').style.display  = 'block';
+            switchTab(activeTab);
+        } catch (err) {
+            console.error(err);
+            document.getElementById('loadingState').innerHTML =
+                '<p style="color:var(--accent);text-align:center;padding:60px 20px;">⚠️ Failed to load data. Is the server running?</p>';
+        }
+    }
+
+    /* ── Area filter event listeners ───────────────────── */
+    document.querySelectorAll('.status-tabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.status-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeStatus = btn.dataset.status;
+            refreshAreaIssues();
+        });
+    });
+
+    ['searchInput','filterArea','filterCategory','filterPriority'].forEach(id => {
+        document.getElementById(id)
+            .addEventListener(id === 'searchInput' ? 'input' : 'change', refreshAreaIssues);
+    });
+
+    loadAll();
+</script>
+</body>
+</html>

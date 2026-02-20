@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Equipment Issue | 报告设备问题</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 24px 16px 40px;
+        }
+
+        .logo-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .logo-header h1 {
+            font-size: 1.1rem;
+            color: #64748b;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+            padding: 28px 24px;
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .equipment-banner {
+            background: #f1f5f9;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .equipment-banner .icon {
+            font-size: 2rem;
+            line-height: 1;
+        }
+
+        .equipment-banner .info h2 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .equipment-banner .info p {
+            font-size: 0.82rem;
+            color: #64748b;
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            color: #1e293b;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            font-size: 0.88rem;
+            color: #64748b;
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+
+        label .optional {
+            font-weight: 400;
+            color: #94a3b8;
+            font-size: 0.82rem;
+        }
+
+        textarea, input[type="text"] {
+            width: 100%;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 1rem;
+            font-family: inherit;
+            color: #1e293b;
+            background: #f8fafc;
+            transition: border-color 0.2s;
+            resize: vertical;
+        }
+
+        textarea:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: #fff;
+        }
+
+        textarea {
+            min-height: 130px;
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: background 0.2s, transform 0.1s;
+            letter-spacing: 0.3px;
+        }
+
+        .submit-btn:hover { background: #dc2626; }
+        .submit-btn:active { transform: scale(0.98); }
+        .submit-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+        .success-state {
+            text-align: center;
+            padding: 16px 0;
+            display: none;
+        }
+
+        .success-state .tick {
+            font-size: 3.5rem;
+            margin-bottom: 12px;
+        }
+
+        .success-state h2 {
+            font-size: 1.3rem;
+            color: #16a34a;
+            margin-bottom: 8px;
+        }
+
+        .success-state p {
+            color: #64748b;
+            font-size: 0.92rem;
+            margin-bottom: 24px;
+        }
+
+        .report-another-btn {
+            background: #f1f5f9;
+            color: #374151;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .error-msg {
+            background: #fef2f2;
+            color: #b91c1c;
+            border-radius: 8px;
+            padding: 11px 14px;
+            font-size: 0.88rem;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .loading-banner {
+            text-align: center;
+            color: #94a3b8;
+            padding: 18px 0;
+            font-size: 0.95rem;
+        }
+
+        .not-found-banner {
+            text-align: center;
+            padding: 18px 0;
+            display: none;
+        }
+
+        .not-found-banner .icon { font-size: 2.5rem; margin-bottom: 10px; }
+        .not-found-banner p { color: #64748b; font-size: 0.95rem; }
+
+        .lang-toggle {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .lang-btn {
+            background: #fff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 20px;
+            padding: 5px 4px;
+            display: flex;
+            gap: 2px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+        }
+
+        .lang-btn button {
+            background: transparent;
+            border: none;
+            padding: 5px 14px;
+            border-radius: 16px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: #64748b;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .lang-btn button.active {
+            background: #3b82f6;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="logo-header">
+        <h1>🍽️ Central Kitchen Maintenance</h1>
+    </div>
+
+    <!-- Language toggle -->
+    <div class="lang-toggle">
+        <div class="lang-btn">
+            <button id="btnEN" class="active" onclick="setLang('en')">EN</button>
+            <button id="btnZH" onclick="setLang('zh')">中文</button>
+        </div>
+    </div>
+
+    <div class="card">
+
+        <!-- Equipment info banner -->
+        <div id="loadingBanner" class="loading-banner">Loading equipment info…</div>
+
+        <div id="notFoundBanner" class="not-found-banner">
+            <div class="icon">❓</div>
+            <p id="notFoundText">Equipment not found. Please scan the QR code again.</p>
+        </div>
+
+        <!-- Report form -->
+        <div id="formArea" style="display:none;">
+            <div class="equipment-banner" id="equipmentBanner">
+                <div class="icon" id="equipmentIcon">⚙️</div>
+                <div class="info">
+                    <h2 id="equipmentName">—</h2>
+                    <p id="equipmentMeta">—</p>
+                </div>
+            </div>
+
+            <h3 id="formTitle">⚠️ Report an Issue</h3>
+            <p class="subtitle" id="formSubtitle">Describe the problem with this equipment clearly.</p>
+
+            <div id="errorMsg" class="error-msg"></div>
+
+            <div id="reportForm">
+                <div class="field">
+                    <label for="description" id="labelDescription">What is the issue? *</label>
+                    <textarea id="description" required></textarea>
+                </div>
+                <div class="field">
+                    <label for="reportedBy">
+                        <span id="labelName">Your name</span>
+                        <span class="optional" id="labelOptional"> (optional)</span>
+                    </label>
+                    <input type="text" id="reportedBy">
+                </div>
+                <button class="submit-btn" id="submitBtn" onclick="submitReport()">Submit Report</button>
+            </div>
+
+            <div class="success-state" id="successState">
+                <div class="tick">✅</div>
+                <h2 id="successTitle">Issue Reported!</h2>
+                <p id="successMsg">Thank you. The maintenance team has been notified and will address the issue.</p>
+                <button class="report-another-btn" onclick="resetForm()" id="reportAnotherBtn">Report Another Issue</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        const typeIcons = {
+            'Walk-In Freezer': '🧊',
+            'Standing Freezer': '🧊',
+            'Walk-In Chiller': '❄️',
+            'Standing Chiller': '❄️',
+            'Warmer': '🔥'
+        };
+
+        const translations = {
+            en: {
+                loading:        'Loading equipment info…',
+                notFound:       'Equipment not found. Please scan the QR code again.',
+                formTitle:      '⚠️ Report an Issue',
+                formSubtitle:   'Describe the problem with this equipment clearly.',
+                labelDesc:      'What is the issue? *',
+                descPlaceholder:'e.g. The door seal is broken and the freezer is not maintaining temperature…',
+                labelName:      'Your name',
+                labelOptional:  ' (optional)',
+                namePlaceholder:'e.g. John',
+                submitBtn:      'Submit Report',
+                submitting:     'Submitting…',
+                successTitle:   'Issue Reported!',
+                successMsg:     'Thank you. The maintenance team has been notified and will address the issue.',
+                reportAnother:  'Report Another Issue',
+                errorEmpty:     'Please describe the issue before submitting.',
+                errorFail:      'Failed to submit. Please try again.',
+            },
+            zh: {
+                loading:        '正在加载设备信息…',
+                notFound:       '未找到设备，请重新扫描二维码。',
+                formTitle:      '⚠️ 报告问题',
+                formSubtitle:   '请清楚描述此设备的问题。',
+                labelDesc:      '问题是什么？*',
+                descPlaceholder:'例如：门封条损坏，冰箱无法保持温度…',
+                labelName:      '您的姓名',
+                labelOptional:  '（可选）',
+                namePlaceholder:'例如：小明',
+                submitBtn:      '提交报告',
+                submitting:     '提交中…',
+                successTitle:   '问题已报告！',
+                successMsg:     '谢谢您。维修团队已收到通知，将尽快处理。',
+                reportAnother:  '报告另一个问题',
+                errorEmpty:     '请在提交前描述问题。',
+                errorFail:      '提交失败，请重试。',
+            }
+        };
+
+        let lang = 'en';
+        let equipmentId = null;
+
+        function setLang(l) {
+            lang = l;
+            document.getElementById('btnEN').classList.toggle('active', l === 'en');
+            document.getElementById('btnZH').classList.toggle('active', l === 'zh');
+            applyTranslations();
+        }
+
+        function applyTranslations() {
+            const t = translations[lang];
+            document.getElementById('loadingBanner').textContent     = t.loading;
+            document.getElementById('notFoundText').textContent      = t.notFound;
+            document.getElementById('formTitle').textContent         = t.formTitle;
+            document.getElementById('formSubtitle').textContent      = t.formSubtitle;
+            document.getElementById('labelDescription').textContent  = t.labelDesc;
+            document.getElementById('description').placeholder       = t.descPlaceholder;
+            document.getElementById('labelName').textContent         = t.labelName;
+            document.getElementById('labelOptional').textContent     = t.labelOptional;
+            document.getElementById('reportedBy').placeholder        = t.namePlaceholder;
+            document.getElementById('successTitle').textContent      = t.successTitle;
+            document.getElementById('successMsg').textContent        = t.successMsg;
+            document.getElementById('reportAnotherBtn').textContent  = t.reportAnother;
+            const btn = document.getElementById('submitBtn');
+            if (!btn.disabled) btn.textContent = t.submitBtn;
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Auto-detect browser language
+            const browserLang = (navigator.language || navigator.userLanguage || '').toLowerCase();
+            if (browserLang.startsWith('zh')) setLang('zh');
+            else applyTranslations();
+
+            const params = new URLSearchParams(window.location.search);
+            equipmentId = params.get('id');
+
+            if (!equipmentId) {
+                document.getElementById('loadingBanner').style.display = 'none';
+                document.getElementById('notFoundBanner').style.display = 'block';
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/equipment/${equipmentId}`);
+                if (!res.ok) throw new Error('Not found');
+                const eq = await res.json();
+
+                document.getElementById('equipmentIcon').textContent = typeIcons[eq.type] || '⚙️';
+                document.getElementById('equipmentName').textContent = eq.name;
+                document.getElementById('equipmentMeta').textContent = `${eq.type} · ${eq.location}`;
+
+                document.getElementById('loadingBanner').style.display = 'none';
+                document.getElementById('formArea').style.display = 'block';
+            } catch (e) {
+                document.getElementById('loadingBanner').style.display = 'none';
+                document.getElementById('notFoundBanner').style.display = 'block';
+            }
+        });
+
+        async function submitReport() {
+            const t = translations[lang];
+            const description = document.getElementById('description').value.trim();
+            const reportedBy  = document.getElementById('reportedBy').value.trim();
+            const errorMsg    = document.getElementById('errorMsg');
+
+            if (!description) {
+                errorMsg.textContent = t.errorEmpty;
+                errorMsg.style.display = 'block';
+                return;
+            }
+            errorMsg.style.display = 'none';
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = t.submitting;
+
+            try {
+                const res = await fetch(`${API_BASE}/equipment-issues`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ equipmentId, description, reportedBy: reportedBy || 'Anonymous' })
+                });
+
+                if (!res.ok) throw new Error('Failed to submit');
+
+                document.getElementById('reportForm').style.display = 'none';
+                document.getElementById('successState').style.display = 'block';
+            } catch (e) {
+                errorMsg.textContent = t.errorFail;
+                errorMsg.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = t.submitBtn;
+            }
+        }
+
+        function resetForm() {
+            const t = translations[lang];
+            document.getElementById('description').value = '';
+            document.getElementById('reportedBy').value = '';
+            document.getElementById('errorMsg').style.display = 'none';
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = false;
+            btn.textContent = t.submitBtn;
+            document.getElementById('reportForm').style.display = 'block';
+            document.getElementById('successState').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

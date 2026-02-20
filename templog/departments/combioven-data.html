@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"/>
+  <title>Combi Oven Data</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+
+  <img src="../assets/Chilli-Api-Logo-170px.png" alt="ChilliApi" style="width:64px;height:64px;float:left;margin-right:12px;border-radius:6px;">
+  <h1>组合烤箱数据 Combi Oven Data</h1>
+
+  <div id="status"></div>
+
+  <div id="log">
+    <h3>Entries by Date Range</h3>
+    <div style="margin: 10px 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+      <label for="start-date">Start:</label>
+      <input id="start-date" type="date" />
+      <label for="end-date">End:</label>
+      <input id="end-date" type="date" />
+      <button id="load-range-btn" class="export-btn">Load Range</button>
+    </div>
+    <table id="recent-table">
+      <thead>
+        <tr>
+          <th class="food-col">Food Item</th>
+          <th class="date-col">Start Date</th>
+          <th class="time-col">Start Time</th>
+          <th class="time-col">End Time</th>
+          <th class="small-col">Duration (min)</th>
+          <th class="small-col">Core Temp (°C)</th>
+          <th class="small-col">Staff</th>
+          <th class="small-col">Trays</th>
+        </tr>
+      </thead>
+      <tbody id="recent-body"></tbody>
+    </table>
+    <button id="refresh-btn" class="export-btn">Refresh (last 100)</button>
+    <a class="export-btn" href="../index.html">Back</a>
+  </div>
+
+  <script>
+    async function loadCombiovenData() {
+      const statusEl = document.getElementById('status');
+      const body = document.getElementById('recent-body');
+      body.innerHTML = ''; // clear previous rows before loading
+      try {
+        const start = document.getElementById('start-date').value;
+        const end = document.getElementById('end-date').value;
+        const qs = [];
+        if (start) qs.push(`startDate=${encodeURIComponent(start)}`);
+        if (end) qs.push(`endDate=${encodeURIComponent(end)}`);
+        qs.push('limit=100');
+        const res = await fetch(`/api/cooks?${qs.join('&')}`);
+        if (!res.ok) throw new Error('Failed to load data');
+        const entries = await res.json();
+
+        if (!entries.length) {
+          body.innerHTML = '<tr><td colspan="9">No entries found</td></tr>';
+          statusEl.textContent = start || end ? 'No data in that range.' : 'No data yet.';
+          return;
+        }
+
+        entries.forEach(entry => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="food-col">${entry.food || ''}</td>
+            <td>${entry.startDate || ''}</td>
+            <td>${entry.startTime || ''}</td>
+            <td>${entry.endTime || ''}</td>
+            <td class="small-col">${entry.duration || ''}</td>
+            <td class="small-col">${entry.temp || ''}</td>
+            <td class="small-col">${entry.staff || ''}</td>
+            <td class="small-col">${entry.trays || ''}</td>
+          `;
+          body.appendChild(row);
+        });
+
+        if (start || end) {
+          statusEl.textContent = `Loaded ${entries.length} entries for ${start || '...'} to ${end || '...'}.`;
+        } else {
+          statusEl.textContent = `Loaded ${entries.length} recent entries.`;
+        }
+      } catch (err) {
+        console.error(err);
+        body.innerHTML = '<tr><td colspan="9">Failed to load data</td></tr>';
+        statusEl.textContent = 'Failed to load data.';
+      }
+    }
+
+    document.getElementById('load-range-btn').addEventListener('click', loadCombiovenData);
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+      document.getElementById('start-date').value = '';
+      document.getElementById('end-date').value = '';
+      loadCombiovenData();
+    });
+    window.addEventListener('load', loadCombiovenData);
+  </script>
+
+</body>
+</html>

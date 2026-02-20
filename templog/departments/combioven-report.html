@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"/>
+  <title>Combi Oven Report</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    .report-controls {
+      margin: 10px 0;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .print-only {
+      display: none;
+    }
+    body.print .report-controls,
+    body.print .no-print {
+      display: none;
+    }
+    body.print .print-only {
+      display: block;
+    }
+    /* PDF optimization */
+    @media print {
+      body {
+        margin: 0;
+        padding: 8px;
+      }
+      h1 {
+        font-size: 1.2rem;
+        margin: 8px 0;
+      }
+      img {
+        width: 40px !important;
+        height: 40px !important;
+      }
+      #recent-table {
+        font-size: 0.7rem;
+      }
+      #recent-table th,
+      #recent-table td {
+        padding: 4px 6px;
+      }
+      #recent-table th {
+        padding: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <img src="../assets/Chilli-Api-Logo-170px.png" alt="ChilliApi" style="width:64px;height:64px;float:left;margin-right:12px;border-radius:6px;">
+  <h1>组合烤箱报表 Combi Oven Report</h1>
+
+  <div id="status" class="no-print"></div>
+
+  <div class="report-controls no-print">
+    <label for="start-date">Start:</label>
+    <input id="start-date" type="date" />
+    <label for="end-date">End:</label>
+    <input id="end-date" type="date" />
+    <!-- Load Range removed: date inputs will auto-load when both selected -->
+    <button id="pdf-btn" class="export-btn">Download PDF</button>
+    <a class="export-btn" href="../index.html">Back</a>
+  </div>
+
+  <div class="print-only">
+    <p id="report-period"></p>
+  </div>
+
+  <div id="log">
+    <table id="recent-table">
+      <thead>
+        <tr>
+          <th class="food-col">Food Item</th>
+          <th class="date-col">Start Date</th>
+          <th class="time-col">Start Time</th>
+          <th class="time-col">End Time</th>
+          <th class="small-col">Duration (min)</th>
+          <th class="small-col">Core Temp (°C)</th>
+          <th class="small-col">Staff</th>
+          <th class="small-col">Trays</th>
+        </tr>
+      </thead>
+      <tbody id="recent-body"></tbody>
+    </table>
+  </div>
+
+  <script>
+    window.__reportReady = false;
+
+    function getQueryParams() {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        startDate: params.get('startDate'),
+        endDate: params.get('endDate'),
+        print: params.get('print') === '1'
+      };
+    }
+
+    function setPrintMode(isPrint) {
+      document.body.classList.toggle('print', isPrint);
+    }
+
+    async function loadReport() {
+      const statusEl = document.getElementById('status');
+      const body = document.getElementById('recent-body');
+      const periodEl = document.getElementById('report-period');
+      const { startDate, endDate, print } = getQueryParams();
+
+      const qs = [];
+      if (startDate) qs.push(`startDate=${encodeURIComponent(startDate)}`);
+      if (endDate) qs.push(`endDate=${encodeURIComponent(endDate)}`);
+      qs.push('limit=1000');
+      const url = `/api/cooks?${qs.join('&')}`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Failed to load data');
+        const entries = await res.json();
+
+        body.innerHTML = '';
+        if (!entries.length) {
+          body.innerHTML = '<tr><td colspan="9">No entries found</td></tr>';
+          statusEl.textContent = 'No data yet.';
+          periodEl.textContent = (startDate || endDate)
+            ? `Report period: ${startDate || '...'} to ${endDate || '...'}`
+            : 'Report period: All';
+          window.__reportReady = true;
+          return;
+        }
+
+        entries.forEach(entry => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="food-col">${entry.food || ''}</td>
+            <td>${entry.startDate || ''}</td>
+            <td>${entry.startTime || ''}</td>
+            <td>${entry.endTime || ''}</td>
+            <td class="small-col">${entry.duration || ''}</td>
+            <td class="small-col">${entry.temp || ''}</td>
+            <td class="small-col">${entry.staff || ''}</td>
+            <td class="small-col">${entry.trays || ''}</td>
+          `;
+          body.appendChild(row);
+        });
+
+        statusEl.textContent = `Loaded ${entries.length} entries.`;
+        periodEl.textContent = (startDate || endDate)
+          ? `Report period: ${startDate || '...'} to ${endDate || '...'}`
+          : 'Report period: All';
+        setPrintMode(print);
+        window.__reportReady = true;
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Failed to load data.';
+        window.__reportReady = true;
+      }
+    }
+
+    // Auto-load when both dates are selected (or clear when both empty)
+    function applyDateFilter(autoOnlyBoth = true) {
+      const start = document.getElementById('start-date').value;
+      const end = document.getElementById('end-date').value;
+
+      // If configured to require both, only apply when both are set
+      if (autoOnlyBoth && !start && !end) {
+        // nothing selected — clear filters
+        const urlClear = new URL(window.location.href);
+        urlClear.searchParams.delete('startDate');
+        urlClear.searchParams.delete('endDate');
+        urlClear.searchParams.delete('print');
+        history.replaceState(null, '', urlClear.toString());
+        loadReport();
+        return;
+      }
+
+      if (autoOnlyBoth && (!start || !end)) return; // wait until both are chosen
+
+      const url = new URL(window.location.href);
+      url.searchParams.delete('print');
+      start ? url.searchParams.set('startDate', start) : url.searchParams.delete('startDate');
+      end ? url.searchParams.set('endDate', end) : url.searchParams.delete('endDate');
+      history.replaceState(null, '', url.toString());
+      loadReport();
+    }
+
+    document.getElementById('start-date').addEventListener('change', () => applyDateFilter(true));
+    document.getElementById('end-date').addEventListener('change', () => applyDateFilter(true));
+
+    document.getElementById('pdf-btn').addEventListener('click', () => {
+      const start = document.getElementById('start-date').value;
+      const end = document.getElementById('end-date').value;
+      // Open in a new tab so browsers that block "download on navigation" still work.
+      const qs = [];
+      if (start) qs.push(`startDate=${encodeURIComponent(start)}`);
+      if (end) qs.push(`endDate=${encodeURIComponent(end)}`);
+      if (!qs.length) {
+        alert('Please choose a start and/or end date first.');
+        return;
+      }
+      window.open(`/api/cooks/report.pdf?${qs.join('&')}`, '_blank');
+    });
+
+    window.addEventListener('load', () => {
+      const { startDate, endDate } = getQueryParams();
+      if (startDate) document.getElementById('start-date').value = startDate;
+      if (endDate) document.getElementById('end-date').value = endDate;
+      loadReport();
+    });
+  </script>
+
+</body>
+</html>

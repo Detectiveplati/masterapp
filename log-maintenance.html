@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Maintenance - Central Kitchen Maintenance</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .form-container {
+            max-width: 920px;
+            margin: 0 auto;
+            background: linear-gradient(180deg, var(--card), #fffbf9);
+            padding: 32px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 6px 18px var(--shadow);
+        }
+
+        .form-header {
+            margin-bottom: 26px;
+            padding-bottom: 18px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .form-header h2 {
+            color: var(--accent);
+            margin: 0 0 8px 0;
+            font-size: 1.8rem;
+        }
+
+        .form-header p {
+            color: var(--muted);
+            margin: 0;
+        }
+
+        .equipment-summary {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-bottom: 22px;
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .equipment-summary h3 {
+            margin: 0 0 8px 0;
+            color: #2c3e50;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px 18px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-row.single {
+            grid-template-columns: 1fr;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            color: var(--ink);
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .form-group label .required {
+            color: var(--accent);
+            margin-left: 4px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: inherit;
+            background: white;
+            transition: all 0.2s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.1);
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .helper-text {
+            color: var(--muted);
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 26px;
+            padding-top: 20px;
+            border-top: 2px solid var(--border);
+        }
+
+        .form-actions button {
+            padding: 12px 26px;
+            font-size: 1rem;
+        }
+
+        .status-line {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .status-pill {
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .pill-operational { background: linear-gradient(135deg, var(--success), #2ecc71); }
+        .pill-maintenance { background: linear-gradient(135deg, var(--accent-2), #e67e22); }
+        .pill-broken { background: linear-gradient(135deg, var(--accent), #e74c3c); }
+        .pill-offline { background: linear-gradient(135deg, #7f8c8d, #95a5a6); }
+
+        .notice {
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: #fff;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .notice.success {
+            border-color: rgba(39, 174, 96, 0.4);
+            background: rgba(39, 174, 96, 0.08);
+            color: #1f7a4a;
+        }
+
+        .notice.error {
+            border-color: rgba(192, 57, 43, 0.4);
+            background: rgba(192, 57, 43, 0.08);
+            color: #b03224;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-2), #e67e22);
+            color: var(--btn-text);
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #7f8c8d, #95a5a6);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="index.html" style="display: inline-flex; text-decoration: none;">
+                <img src="assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo" class="site-logo">
+            </a>
+            <div class="header-text">
+                <h1>Log Maintenance</h1>
+                <p>Record completed maintenance and update equipment status</p>
+            </div>
+        </div>
+        <a href="index.html" class="btn-secondary" style="text-decoration: none;">← Back to Dashboard</a>
+    </header>
+
+    <main>
+        <div class="form-container">
+            <div class="form-header">
+                <h2>Maintenance Record</h2>
+                <p>Track work completed and notes from a maintenance session.</p>
+            </div>
+
+            <div id="notice" class="notice"></div>
+
+            <div id="equipment-summary" class="equipment-summary" style="display: none;">
+                <h3 id="summary-name">Equipment</h3>
+                <div class="summary-grid">
+                    <div><strong>ID:</strong> <span id="summary-id">-</span></div>
+                    <div><strong>Type:</strong> <span id="summary-type">-</span></div>
+                    <div><strong>Location:</strong> <span id="summary-location">-</span></div>
+                </div>
+                <div class="status-line">
+                    <span>Current Status:</span>
+                    <span id="summary-status" class="status-pill">-</span>
+                </div>
+            </div>
+
+            <form id="maintenance-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="equipmentId">Equipment<span class="required">*</span></label>
+                        <select id="equipmentId" required></select>
+                        <div class="helper-text">Select the equipment serviced.</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="maintenanceType">Maintenance Type<span class="required">*</span></label>
+                        <select id="maintenanceType" required>
+                            <option value="Routine Check">Routine Check</option>
+                            <option value="Preventive">Preventive</option>
+                            <option value="Repair">Repair</option>
+                            <option value="Emergency">Emergency</option>
+                            <option value="Cleaning">Cleaning</option>
+                            <option value="Part Replacement">Part Replacement</option>
+                            <option value="Calibration">Calibration</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="date">Date Performed<span class="required">*</span></label>
+                        <input type="date" id="date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="performedBy">Performed By</label>
+                        <input type="text" id="performedBy" placeholder="Technician name">
+                    </div>
+                </div>
+
+                <div class="form-row single">
+                    <div class="form-group">
+                        <label for="activityDescription">Work Description</label>
+                        <textarea id="activityDescription" placeholder="Describe the maintenance performed..."></textarea>
+                    </div>
+                </div>
+
+                <div class="form-row single">
+                    <div class="form-group">
+                        <label for="actionsTaken">Actions Taken</label>
+                        <textarea id="actionsTaken" placeholder="List actions taken and outcomes"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-row single">
+                    <div class="form-group">
+                        <label for="issuesFound">Issues Found</label>
+                        <textarea id="issuesFound" placeholder="Any issues discovered during maintenance?"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-row single">
+                    <div class="form-group">
+                        <label for="notes">Additional Notes</label>
+                        <textarea id="notes" placeholder="Any additional notes or follow-up actions"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancel-btn">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Maintenance Record</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Central Kitchen Maintenance System | 
+        <a href="index.html">Dashboard</a> | 
+        <a href="equipment-list.html">All Equipment</a> | 
+        <a href="api-test.html">API Test</a></p>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/maintenance-logger.js"></script>
+</body>
+</html>

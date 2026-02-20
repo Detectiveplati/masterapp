@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"/>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="../manifest.json">
+  <title>Combi Oven Kitchen Log (Bluetooth)</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    .bt-panel {
+      margin: 10px 0 20px;
+      padding: 10px 12px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .bt-status {
+      color: #555;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+
+  <img src="../assets/Chilli-Api-Logo-170px.png" alt="ChilliApi" style="width:64px;height:64px;float:left;margin-right:12px;border-radius:6px;">
+  <h1>组合烤箱部门 Combi Oven Kitchen Log (Bluetooth)</h1>
+
+  <div class="bt-panel">
+    <button id="bt-connect" class="export-btn">Connect Thermometer</button>
+    <button id="bt-read" class="export-btn" disabled>Read Temperature</button>
+    <span id="bt-status" class="bt-status">Not connected</span>
+  </div>
+
+  <div id="staff-selector">
+    <strong>厨师名字 Chef Name</strong>
+    <button class="staff-btn" id="staff-AhDong" onclick="setGlobalStaff('Ah Dong')">啊东Ah Dong</button>
+    <button class="staff-btn" id="staff-HuaYun" onclick="setGlobalStaff('Hua Yun')">华云Hua Yun</button>
+    <button class="staff-btn" id="staff-Siva" onclick="setGlobalStaff('Siva')">Siva</button>
+  </div>
+
+  <div id="active-cooks">
+    <h2>现煮的食品 Active / Running Cooks</h2>
+    <div class="active-grid" id="active-grid"></div>
+  </div>
+
+  <div id="menu">
+    <h2>选择要开始烹饪的食物 Select Food to Start Cooking</h2>
+    <div class="food-grid">
+      <div class="food-card" onclick="addNewCook('Grilled Honey Chicken Wings 烤蜜汁鸡翅膀')">
+        <span>Grilled Honey Chicken Wings 烤蜜汁鸡翅膀</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Roasted Chicken W Pandan Asian Spices 泰式香兰叶鸡')">
+        <span>Roasted Chicken W Pandan Asian Spices 泰式香兰叶鸡</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Honey Glazed Chicken 蜜汁鸡')">
+        <span>Honey Glazed Chicken 蜜汁鸡</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Teriyaki Chicken 烤日式鸡')">
+        <span>Grilled Teriyaki Chicken 烤日式鸡</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Chicken Roulade with Butter Berry Raisin Sauce 鸡肉卷,牛油挞子酱')">
+        <span>Chicken Roulade with Butter Berry Raisin Sauce 鸡肉卷,牛油挞子酱</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Chicken w Pineapple Salsa 烤无骨鸡肉与BBQ酱和黄梨番茄莎莎')">
+        <span>Grilled Chicken w Pineapple Salsa 烤无骨鸡肉与BBQ酱和黄梨番茄莎莎</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Jumbo Chicken Satay 鸡肉沙爹(大)')">
+        <span>Jumbo Chicken Satay 鸡肉沙爹(大)</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Cajun Chicken Breast 烤印第安鸡与小番茄')">
+        <span>Grilled Cajun Chicken Breast 烤印第安鸡与小番茄</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Ayam Panggang Kunyit 黄姜娘惹烤鸡')">
+        <span>Ayam Panggang Kunyit 黄姜娘惹烤鸡</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Chicken with Rosemary 烤鸡与迷迭香草药')">
+        <span>Grilled Chicken with Rosemary 烤鸡与迷迭香草药</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Baked Herbal Chicken 药材鸡')">
+        <span>Baked Herbal Chicken 药材鸡</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Roasted Root Vegetable 烤根茎类蔬菜')">
+        <span>Roasted Root Vegetable 烤根茎类蔬菜</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Black Pepper Capsicum Skewer (Kebab) 黑胡椒鸡肉与灯笼椒串')">
+        <span>Black Pepper Capsicum Skewer (Kebab) 黑胡椒鸡肉与灯笼椒串</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Black Pepper Chicken 黑胡椒烤鸡')">
+        <span>Grilled Black Pepper Chicken 黑胡椒烤鸡</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Japanese Chicken Wings 日式鸡翅膀')">
+        <span>Japanese Chicken Wings 日式鸡翅膀</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Cajun Chicken Winglets 印第安小鸡翅')">
+        <span>Cajun Chicken Winglets 印第安小鸡翅</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Roasted Pumpkin 烤金瓜')">
+        <span>Roasted Pumpkin 烤金瓜</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Oven Baked Potato w Garlic & Rosemary烤土豆与蒜茸和迷迭香')">
+        <span>Oven Baked Potato w Garlic & Rosemary烤土豆与蒜茸和迷迭香</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Roasted Potato with Herbs & Sweet Onions 烤土豆与香草和甜洋葱')">
+        <span>Roasted Potato with Herbs & Sweet Onions 烤土豆与香草和甜洋葱</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('HK Style Baked Fish w Garlic Soya Sauce 港式蒸鱼与炸蒜，酱青和姜丝')">
+        <span>HK Style Baked Fish w Garlic Soya Sauce 港式蒸鱼与炸蒜，酱青和姜丝</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Fish Fillet w Chef Sambal Belachan & Sweet Onion 烤鱼片与参巴辣椒，烤洋葱')">
+        <span>Grilled Fish Fillet w Chef Sambal Belachan & Sweet Onion 烤鱼片与参巴辣椒，烤洋葱</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Nonya Curry Assam Ikan 咖喱亚参鱼头')">
+        <span>Nonya Curry Assam Ikan 咖喱亚参鱼头</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Curry Assam Fish Fillet 咖喱亚参鱼片')">
+        <span>Curry Assam Fish Fillet 咖喱亚参鱼片</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Fish Fillet with Nonya Spices 烤鱼片与娘惹香料')">
+        <span>Grilled Fish Fillet with Nonya Spices 烤鱼片与娘惹香料</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Fish Fillet w Teriyaki Sauce 烤鱼片与日式酱')">
+        <span>Grilled Fish Fillet w Teriyaki Sauce 烤鱼片与日式酱</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Whole Barramundi Fillet Balado 烤辣椒澳洲肺鱼片')">
+        <span>Grilled Whole Barramundi Fillet Balado 烤辣椒澳洲肺鱼片</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Salmon Fillet w Teriyaki Sauce 烤三文鱼片，日式酱')">
+        <span>Grilled Salmon Fillet w Teriyaki Sauce 烤三文鱼片，日式酱</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Fish Fillet w Italian Herbs & White Sauce 意式香草烤鱼')">
+        <span>Grilled Fish Fillet w Italian Herbs & White Sauce 意式香草烤鱼</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Fish w Creamy White Sauce 烤鱼片与白酱')">
+        <span>Grilled Fish w Creamy White Sauce 烤鱼片与白酱</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Whole Seabass w Homemade Sambal 烤鲈鱼全鱼自制辣椒(整只)')">
+        <span>Grilled Whole Seabass w Homemade Sambal 烤鲈鱼全鱼自制辣椒(整只)</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Ikan Goreng Sambal Tumis 参巴鱼片与灯笼椒和红葱头')">
+        <span>Ikan Goreng Sambal Tumis 参巴鱼片与灯笼椒和红葱头</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Thai Style Baked Fish w Lime Garlic & Cilantro泰式烤鱼与酸橙蒜茸和香菜')">
+        <span>Thai Style Baked Fish w Lime Garlic & Cilantro泰式烤鱼与酸橙蒜茸和香菜</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Fish Fillet w Creamy Tom Yum Sauce 烤白酱东炎鱼片')">
+        <span>Grilled Fish Fillet w Creamy Tom Yum Sauce 烤白酱东炎鱼片</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Baked Fish Fillet Topped w Sarawak Pineapple & Red Onions 烤鱼片与黄梨和红葱头')">
+        <span>Baked Fish Fillet Topped w Sarawak Pineapple & Red Onions 烤鱼片与黄梨和红葱头</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Curry Assam Fish head 咖喱亚参鱼头')">
+        <span>Curry Assam Fish head 咖喱亚参鱼头</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Assam Fish Fillet w Tomato, Lady's finger and Brinjal 烤亚参鱼与番茄，茄子和羊角豆')">
+        <span>Assam Fish Fillet w Tomato, Lady's finger and Brinjal 烤亚参鱼与番茄，茄子和羊角豆</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Barramundi Fish Head with Chef Sambal Topped With Lady's Finger烤澳洲肺鱼头片与参巴酱')">
+        <span>Grilled Barramundi Fish Head with Chef Sambal Topped With Lady's Finger烤澳洲肺鱼头片与参巴酱</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Barramundi Fillet w Chef's Sambal 烤澳洲肺鱼片与参巴酱')">
+        <span>Grilled Barramundi Fillet w Chef's Sambal 烤澳洲肺鱼片与参巴酱</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Barramundi Fillet w Creamy Italian Herbs & Tomato Confit 烤澳洲肺鱼片与参巴酱')">
+        <span>Grilled Barramundi Fillet w Creamy Italian Herbs & Tomato Confit 烤澳洲肺鱼片与参巴酱</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Barramundi Fillet w Creamy Tom Yum Sauce 烤澳洲肺鱼片与白酱东炎')">
+        <span>Grilled Barramundi Fillet w Creamy Tom Yum Sauce 烤澳洲肺鱼片与白酱东炎</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Curry Assam Barramundi Fish Fillet 咖喱亚参澳洲肺鱼片')">
+        <span>Curry Assam Barramundi Fish Fillet 咖喱亚参澳洲肺鱼片</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Thai Style Grilled Fish 泰式烤鱼')">
+        <span>Thai Style Grilled Fish 泰式烤鱼</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('n Assam Pedas 亚参鱼')">
+        <span>n Assam Pedas 亚参鱼</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Potato and Pumpkin 烤土豆与金瓜')">
+        <span>Grilled Potato and Pumpkin 烤土豆与金瓜</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Grilled Prawn w Homemade Sambal 烤参巴虾')">
+        <span>Grilled Prawn w Homemade Sambal 烤参巴虾</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Assam Gravy 亚参汁')">
+        <span>Assam Gravy 亚参汁</span>
+      </div>
+      <div class="food-card" onclick="addNewCook('Others 其他')">
+        <span>Others 其他</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="log">
+    <h3>Recent Entries (last 8)</h3>
+    <table id="recent-table">
+      <thead>
+        <tr>
+          <th class="food-col">Food Item</th>
+          <th class="date-col">Start Date</th>
+          <th class="time-col">Start Time</th>
+          <th class="time-col">End Time</th>
+          <th class="small-col">Duration (min)</th>
+          <th class="small-col">Core Temp (°C)</th>
+          <th class="small-col">Staff</th>
+          <th class="small-col">Trays</th>
+        </tr>
+      </thead>
+      <tbody id="recent-body"></tbody>
+    </table>
+    <button onclick="exportFullCSV()" class="export-btn">
+      Download Full CSV
+    </button>
+    <a class="export-btn" href="../index.html">Back</a>
+  </div>
+
+  <script src="../data.js"></script>
+  <script src="../app.js"></script>
+  <script>
+    // Bluetooth UUIDs — replace with your thermometer's values
+    const BT_SERVICE_UUID = '00001809-0000-1000-8000-00805f9b34fb';
+    const BT_CHARACTERISTIC_UUID = '00002a1c-0000-1000-8000-00805f9b34fb';
+
+    const btStatus = document.getElementById('bt-status');
+    const btConnect = document.getElementById('bt-connect');
+    const btRead = document.getElementById('bt-read');
+
+    let btDevice = null;
+    let btCharacteristic = null;
+
+    function setBtStatus(message) {
+      btStatus.textContent = message;
+    }
+
+    function parseTemperatureFromBLE(dataView) {
+      // Device-specific parsing is required. This example assumes a float32 at offset 1.
+      if (dataView.byteLength < 5) return null;
+      return dataView.getFloat32(1, true);
+    }
+
+    async function connectThermometer() {
+      try {
+        setBtStatus('Requesting device...');
+        btDevice = await navigator.bluetooth.requestDevice({
+          filters: [{ services: [BT_SERVICE_UUID] }]
+        });
+
+        const server = await btDevice.gatt.connect();
+        const service = await server.getPrimaryService(BT_SERVICE_UUID);
+        btCharacteristic = await service.getCharacteristic(BT_CHARACTERISTIC_UUID);
+
+        setBtStatus(`Connected to ${btDevice.name || 'thermometer'}`);
+        btRead.disabled = false;
+
+        // Auto-notify if supported
+        if (btCharacteristic.properties.notify) {
+          await btCharacteristic.startNotifications();
+          btCharacteristic.addEventListener('characteristicvaluechanged', event => {
+            const temp = parseTemperatureFromBLE(event.target.value);
+            if (temp !== null) {
+              setLatestCookTemp(temp.toFixed(1));
+              setBtStatus(`Temp updated: ${temp.toFixed(1)} °C`);
+            }
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        setBtStatus('Connection failed. Check permissions/UUIDs.');
+      }
+    }
+
+    async function readOnce() {
+      if (!btCharacteristic) return;
+      try {
+        const value = await btCharacteristic.readValue();
+        const temp = parseTemperatureFromBLE(value);
+        if (temp === null || Number.isNaN(temp)) {
+          setBtStatus('Read failed: unsupported format');
+          return;
+        }
+        setLatestCookTemp(temp.toFixed(1));
+        setBtStatus(`Temp updated: ${temp.toFixed(1)} °C`);
+      } catch (err) {
+        console.error(err);
+        setBtStatus('Read failed.');
+      }
+    }
+
+    btConnect.addEventListener('click', connectThermometer);
+    btRead.addEventListener('click', readOnce);
+
+    // Auto-select first staff member
+    autoSelectFirstStaff();
+    // Load recent entries on page load
+    loadRecent();
+  </script>
+</body>
+</html>

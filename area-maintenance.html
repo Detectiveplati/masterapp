@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Area Issue | Central Kitchen</title>
+    <style>
+        :root {
+            --accent:   #c0392b;
+            --accent-2: #d35400;
+            --ink:      #121316;
+            --muted:    #5b5b5b;
+            --card:     #ffffff;
+            --border:   rgba(18,19,22,0.10);
+            --shadow:   rgba(0,0,0,0.08);
+            --success:  #27ae60;
+            --bg:       #f6f4ef;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--ink);
+            min-height: 100vh;
+        }
+
+        /* ── Lang toggle ──────────────────────────────── */
+        .lang-bar {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 100;
+            display: flex;
+            background: rgba(255,255,255,0.92);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+            backdrop-filter: blur(6px);
+        }
+
+        .lang-btn {
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: var(--muted);
+            transition: all 0.15s;
+        }
+
+        .lang-btn.active {
+            background: var(--accent);
+            color: white;
+            border-radius: 20px;
+        }
+
+        /* ── Header ─────────────────────────────────────── */
+        header {
+            background: linear-gradient(135deg, #1a252f, #2c3e50);
+            color: white;
+            padding: 20px 20px 16px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            margin: 0 auto 10px;
+            display: block;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+        }
+
+        header h1 { font-size: 1.25rem; font-weight: 800; }
+        header p  { font-size: 0.83rem; opacity: 0.72; margin-top: 4px; }
+
+        /* ── Main ────────────────────────────────────────── */
+        main {
+            max-width: 560px;
+            margin: 0 auto;
+            padding: 24px 16px 60px;
+        }
+
+        /* Pre-selected area banner */
+        .area-banner {
+            display: none;
+            background: linear-gradient(90deg, #fff7ed, #fef3e2);
+            border: 1px solid #fed7aa;
+            border-left: 4px solid var(--accent-2);
+            border-radius: 10px;
+            padding: 11px 14px;
+            margin-bottom: 18px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--ink);
+            align-items: center;
+            gap: 8px;
+        }
+
+        .area-banner.visible { display: flex; }
+
+        /* ── Form card ────────────────────────────── */
+        .form-card {
+            background: var(--card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 24px var(--shadow);
+            padding: 24px 20px 28px;
+        }
+
+        .section-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            margin-bottom: 12px;
+            margin-top: 22px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-label:first-child { margin-top: 0; }
+
+        .field { margin-bottom: 16px; }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 6px;
+        }
+
+        label .req { color: var(--accent); margin-left: 2px; }
+
+        input[type="text"],
+        input[type="tel"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            color: var(--ink);
+            background: #fafafa;
+            -webkit-appearance: none;
+            appearance: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(192,57,43,0.10);
+        }
+
+        textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
+
+        /* Submit */
+        .btn-submit {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--accent), #e74c3c);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 24px;
+            transition: transform 0.15s, box-shadow 0.15s;
+            box-shadow: 0 4px 14px rgba(192,57,43,0.25);
+            letter-spacing: 0.3px;
+        }
+
+        .btn-submit:hover   { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(192,57,43,0.3); }
+        .btn-submit:active  { transform: none; }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* Validation */
+        .field-error { font-size: 0.78rem; color: var(--accent); margin-top: 4px; display: none; }
+        .field.has-error input,
+        .field.has-error select,
+        .field.has-error textarea { border-color: var(--accent); }
+        .field.has-error .field-error { display: block; }
+
+        /* ── Success ─────────────────────────────────────── */
+        #successScreen {
+            display: none;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .success-icon  { font-size: 4rem; margin-bottom: 16px; }
+        .success-title { font-size: 1.4rem; font-weight: 800; color: var(--success); margin-bottom: 8px; }
+        .success-sub   { font-size: 0.92rem; color: var(--muted); margin-bottom: 6px; }
+
+        .issue-ref {
+            display: inline-block;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #15803d;
+            border-radius: 8px;
+            padding: 4px 14px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin: 10px 0 24px;
+        }
+
+        .btn-again {
+            display: inline-block;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, var(--accent-2), #e67e22);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+    </style>
+</head>
+<body>
+
+<!-- Language toggle -->
+<div class="lang-bar">
+    <button class="lang-btn active" id="btnEN" onclick="setLang('en')">EN</button>
+    <button class="lang-btn"        id="btnZH" onclick="setLang('zh')">中文</button>
+</div>
+
+<header>
+    <img src="assets/Chilli-Api-Logo-170px.png" alt="Logo" class="logo">
+    <h1 id="hdrTitle">🏗️ Report Area Issue</h1>
+    <p id="hdrSub">Central Kitchen — Facility Issue Reporting</p>
+</header>
+
+<main>
+    <div class="area-banner" id="areaBanner">
+        <span>📍</span>
+        <span id="areaBannerText"></span>
+    </div>
+
+    <!-- FORM -->
+    <div class="form-card" id="formCard">
+        <form id="issueForm" novalidate>
+
+            <div class="section-label" id="lblSecLocation">📍 LOCATION</div>
+
+            <div class="field" id="fieldArea">
+                <label for="area" id="lblArea">Area <span class="req">*</span></label>
+                <select id="area" name="area">
+                    <option value="" id="optAreaDefault">— Select area —</option>
+                    <option value="Combi Oven Area">Combi Oven Area</option>
+                    <option value="Deep Frying Area">Deep Frying Area</option>
+                    <option value="Stir Frying Area">Stir Frying Area</option>
+                    <option value="Packing Area">Packing Area</option>
+                    <option value="Salad Room">Salad Room</option>
+                    <option value="Fruit Room">Fruit Room</option>
+                    <option value="Cold Room">Cold Room</option>
+                    <option value="Pan Fry Area">Pan Fry Area</option>
+                </select>
+                <div class="field-error" id="errArea">Please select an area.</div>
+            </div>
+
+            <div class="field">
+                <label for="specificLocation" id="lblSpecific">Specific Location <span style="font-weight:400;color:var(--muted)" id="lblOptional">(optional)</span></label>
+                <input type="text" id="specificLocation" name="specificLocation" placeholder="e.g. Near sink #2, left corner" id="phSpecific">
+            </div>
+
+            <div class="section-label" id="lblSecDetails">📋 ISSUE DETAILS</div>
+
+            <div class="field" id="fieldIssue">
+                <label for="issue" id="lblIssue">Issue <span class="req">*</span></label>
+                <textarea id="issue" name="issue" placeholder="Describe the issue — what happened, where exactly..."></textarea>
+                <div class="field-error" id="errIssue">Please describe the issue.</div>
+            </div>
+
+            <div class="section-label" id="lblSecReporter">👤 REPORTER</div>
+
+            <div class="field" id="fieldReportedBy">
+                <label for="reportedBy" id="lblReportedBy">Your Name <span class="req">*</span></label>
+                <input type="text" id="reportedBy" name="reportedBy" placeholder="Enter your name">
+                <div class="field-error" id="errReportedBy">Please enter your name.</div>
+            </div>
+
+            <button type="submit" class="btn-submit" id="submitBtn">📤 Submit Issue Report</button>
+        </form>
+    </div>
+
+    <!-- SUCCESS -->
+    <div id="successScreen">
+        <div class="success-icon">✅</div>
+        <div class="success-title" id="successTitle">Issue Reported!</div>
+        <div class="success-sub" id="successSub1">Thank you. Your report has been logged.</div>
+        <div class="issue-ref" id="issueRef">—</div>
+        <div class="success-sub" id="successSub2" style="margin-bottom:24px;">The maintenance team will review and respond.</div>
+        <button class="btn-again" id="btnAgain" onclick="resetForm()">Report Another Issue</button>
+    </div>
+</main>
+
+<script src="js/api.js"></script>
+<script>
+// ── Translations ─────────────────────────────────────────
+const T = {
+    en: {
+        hdrTitle:     '🏗️ Report Area Issue',
+        hdrSub:       'Central Kitchen — Facility Issue Reporting',
+        lblSecLocation: '📍 LOCATION',
+        lblArea:      'Area',
+        optAreaDefault: '— Select area —',
+        lblSpecific:  'Specific Location',
+        lblOptional:  '(optional)',
+        lblSecDetails:'📋 ISSUE DETAILS',
+        lblIssue:     'Issue',
+        phIssue:      'Describe the issue — what happened, where exactly…',
+        lblSecReporter:'👤 REPORTER',
+        lblReportedBy:'Your Name',
+        phReportedBy: 'Enter your name',
+        submitBtn:    '📤 Submit Issue Report',
+        errArea:      'Please select an area.',
+        errIssue:     'Please describe the issue.',
+        errReportedBy:'Please enter your name.',
+        successTitle: 'Issue Reported!',
+        successSub1:  'Thank you. Your report has been logged.',
+        successSub2:  'The maintenance team will review and respond.',
+        btnAgain:     'Report Another Issue',
+        bannerPrefix: 'Area:',
+        submitting:   'Submitting…',
+        submitFailed: 'Failed to submit: '
+    },
+    zh: {
+        hdrTitle:     '🏗️ 区域问题报告',
+        hdrSub:       '中央厨房 — 设施问题报告',
+        lblSecLocation: '📍 位置',
+        lblArea:      '区域',
+        optAreaDefault: '— 请选择区域 —',
+        lblSpecific:  '具体位置',
+        lblOptional:  '（可选）',
+        lblSecDetails:'📋 问题详情',
+        lblIssue:     '问题描述',
+        phIssue:      '请描述问题 — 发生了什么、具体位置…',
+        lblSecReporter:'👤 报告人',
+        lblReportedBy:'您的姓名',
+        phReportedBy: '请输入您的姓名',
+        submitBtn:    '📤 提交问题报告',
+        errArea:      '请选择区域。',
+        errIssue:     '请描述问题。',
+        errReportedBy:'请输入您的姓名。',
+        successTitle: '报告成功！',
+        successSub1:  '感谢您。您的问题报告已记录。',
+        successSub2:  '维修团队将审核并处理。',
+        btnAgain:     '报告另一个问题',
+        bannerPrefix: '区域：',
+        submitting:   '提交中…',
+        submitFailed: '提交失败：'
+    }
+};
+
+// Area names in Chinese
+const AREA_ZH = {
+    'Combi Oven Area':  '万能烤炉区',
+    'Deep Frying Area': '炸锅区',
+    'Stir Frying Area': '炒锅区',
+    'Packing Area':     '包装区',
+    'Salad Room':       '沙律房',
+    'Fruit Room':       '水果房',
+    'Cold Room':        '冷藏室',
+    'Pan Fry Area':     '煎锅区'
+};
+
+let lang = 'en';
+
+function setLang(l) {
+    lang = l;
+    document.getElementById('btnEN').classList.toggle('active', l === 'en');
+    document.getElementById('btnZH').classList.toggle('active', l === 'zh');
+
+    const t = T[l];
+    const textIds = ['hdrTitle','hdrSub','lblSecLocation','lblSpecific','lblOptional',
+        'lblSecDetails','lblSecReporter',
+        'optAreaDefault',
+        'errArea','errIssue','errReportedBy',
+        'successTitle','successSub1','successSub2','btnAgain'
+    ];
+    textIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && t[id] !== undefined) el.textContent = t[id];
+    });
+
+    // Labels with required star
+    document.getElementById('lblArea').innerHTML       = t.lblArea + ' <span class="req">*</span>';
+    document.getElementById('lblIssue').innerHTML      = t.lblIssue + ' <span class="req">*</span>';
+    document.getElementById('lblReportedBy').innerHTML = t.lblReportedBy + ' <span class="req">*</span>';
+
+    // Placeholders
+    document.getElementById('issue').placeholder      = t.phIssue;
+    document.getElementById('reportedBy').placeholder = t.phReportedBy;
+    document.getElementById('submitBtn').textContent  = t.submitBtn;
+
+    // Update area banner
+    const sel = document.getElementById('area');
+    if (sel.value) {
+        const dispName = l === 'zh' ? (AREA_ZH[sel.value] || sel.value) : sel.value;
+        document.getElementById('areaBannerText').textContent = t.bannerPrefix + ' ' + dispName;
+    }
+}
+
+// ── Init: read ?area= param ──────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+    const browserLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+    if (browserLang.startsWith('zh')) setLang('zh'); else setLang('en');
+
+    const params    = new URLSearchParams(window.location.search);
+    const areaParam = params.get('area');
+    if (areaParam) {
+        const sel = document.getElementById('area');
+        for (const opt of sel.options) {
+            if (opt.value.toLowerCase() === areaParam.toLowerCase() || opt.value === areaParam) {
+                opt.selected = true;
+                break;
+            }
+        }
+        if (!sel.value) {
+            const opt = new Option(areaParam, areaParam, true, true);
+            sel.appendChild(opt);
+        }
+        const t = T[lang];
+        const dispName = lang === 'zh' ? (AREA_ZH[sel.value] || sel.value) : sel.value;
+        document.getElementById('areaBannerText').textContent = t.bannerPrefix + ' ' + dispName;
+        document.getElementById('areaBanner').classList.add('visible');
+    }
+});
+
+// ── Validation ───────────────────────────────────────────
+function validate() {
+    const t = T[lang];
+    const checks = [
+        { fieldId: 'fieldArea',       id: 'area',      errId: 'errArea' },
+        { fieldId: 'fieldIssue',      id: 'issue',     errId: 'errIssue' },
+        { fieldId: 'fieldReportedBy', id: 'reportedBy',errId: 'errReportedBy' }
+    ];
+    let ok = true;
+    checks.forEach(c => {
+        const el   = document.getElementById(c.id);
+        const wrap = document.getElementById(c.fieldId);
+        const err  = document.getElementById(c.errId);
+        if (!el.value.trim()) {
+            wrap.classList.add('has-error');
+            if (err && t[c.errId]) err.textContent = t[c.errId];
+            ok = false;
+        } else {
+            wrap.classList.remove('has-error');
+        }
+    });
+    return ok;
+}
+
+// ── Submit ────────────────────────────────────────────────
+document.getElementById('issueForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = T[lang].submitting;
+
+    const issueText = document.getElementById('issue').value.trim();
+    const titleText = issueText.split(/[.\n]/)[0].trim().slice(0, 80) || issueText.slice(0, 80);
+
+    const payload = {
+        area:             document.getElementById('area').value.trim(),
+        category:         'Other',
+        title:            titleText,
+        description:      issueText,
+        priority:         'Medium',
+        specificLocation: document.getElementById('specificLocation').value.trim(),
+        reportedBy:       document.getElementById('reportedBy').value.trim()
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/issues`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Server error'); }
+        const newIssue = await res.json();
+
+        document.getElementById('formCard').style.display      = 'none';
+        document.getElementById('successScreen').style.display = 'block';
+        document.getElementById('issueRef').textContent        = `Reference: ${newIssue.issueId || 'Logged'}`;
+
+        setLang(lang);
+
+    } catch (err) {
+        btn.disabled = false;
+        btn.textContent = T[lang].submitBtn;
+        alert(T[lang].submitFailed + err.message);
+    }
+});
+
+// ── Reset ─────────────────────────────────────────────────
+function resetForm() {
+    document.getElementById('issueForm').reset();
+    document.getElementById('formCard').style.display      = 'block';
+    document.getElementById('successScreen').style.display = 'none';
+    document.getElementById('submitBtn').disabled          = false;
+    document.getElementById('submitBtn').textContent       = T[lang].submitBtn;
+    document.querySelectorAll('.has-error').forEach(el => el.classList.remove('has-error'));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+{
+  "name": "Kitchen Temperature Log",
+  "short_name": "Kitchen Log",
+  "description": "Kitchen cooking log for Combi Oven department",
+  "start_url": "/departments/combioven-bluetooth.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#ffffff",
+  "theme_color": "#ff4444",
+  "icons": [
+    {
+      "src": "/assets/Chilli-Api-Logo-170px.png",
+      "sizes": "170x170",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/Chilli-Api-Logo-170px.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/Chilli-Api-Logo-170px.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <title>Equipment Details - Central Kitchen Maintenance</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .content-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .info-section {
+            background: linear-gradient(180deg, var(--card), #fffbf9);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 6px 18px var(--shadow);
+        }
+
+        .info-section h2 {
+            color: var(--accent);
+            margin: 0 0 20px 0;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border);
+            font-size: 1.3rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+
+        .info-item {
+            padding: 12px 0;
+        }
+
+        .info-label {
+            color: var(--muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-value {
+            color: var(--ink);
+            font-size: 1.05rem;
+            font-weight: 500;
+        }
+
+        .info-value code {
+            background: #f4f4f4;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .qr-card {
+            background: linear-gradient(180deg, var(--card), #fffbf9);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 6px 18px var(--shadow);
+            text-align: center;
+        }
+
+        .qr-card h3 {
+            margin: 0 0 16px 0;
+            color: var(--accent);
+        }
+
+        .qr-code-container {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            display: inline-block;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 16px;
+        }
+
+        .qr-code-container img {
+            display: block;
+            max-width: 200px;
+            height: auto;
+        }
+
+        .qr-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .qr-actions button {
+            width: 100%;
+            padding: 10px 16px;
+            font-size: 0.9rem;
+        }
+
+        .quick-actions {
+            background: linear-gradient(180deg, var(--card), #fffbf9);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 6px 18px var(--shadow);
+        }
+
+        .quick-actions h3 {
+            margin: 0 0 16px 0;
+            color: var(--accent);
+        }
+
+        .quick-actions button {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 12px 16px;
+            font-size: 0.95rem;
+        }
+
+        .status-large {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .maintenance-alert {
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+        }
+
+        .maintenance-alert.overdue {
+            background: linear-gradient(135deg, #fff5f5, #fef2f1);
+            border-left: 5px solid var(--accent);
+            color: #721c24;
+        }
+
+        .maintenance-alert.due-soon {
+            background: linear-gradient(135deg, #fff9e6, #fef5e6);
+            border-left: 5px solid var(--accent-2);
+            color: #856404;
+        }
+
+        .maintenance-alert.current {
+            background: linear-gradient(135deg, #e6fff0, #f0fff6);
+            border-left: 5px solid var(--success);
+            color: #155724;
+        }
+
+        .history-section {
+            background: linear-gradient(180deg, var(--card), #fffbf9);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 6px 18px var(--shadow);
+            margin-top: 24px;
+        }
+
+        .issues-section {
+            background: linear-gradient(180deg, var(--card), #fff5f5);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid #fecaca;
+            box-shadow: 0 6px 18px var(--shadow);
+            margin-top: 24px;
+        }
+
+        .issues-section h2 {
+            color: #dc2626;
+            margin: 0 0 20px 0;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #fecaca;
+        }
+
+        .issue-item {
+            background: #fff;
+            border: 1.5px solid #fee2e2;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .issue-item.resolved {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+            opacity: 0.75;
+        }
+
+        .issue-description {
+            font-size: 0.97rem;
+            color: #1e293b;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .issue-meta {
+            font-size: 0.78rem;
+            color: #94a3b8;
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .issue-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .issue-badge.open { background: #fee2e2; color: #b91c1c; }
+        .issue-badge.resolved { background: #dcfce7; color: #15803d; }
+
+        .issue-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn-resolve {
+            background: #16a34a;
+            color: #fff;
+            border: none;
+            padding: 5px 14px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-resolve:hover { background: #15803d; }
+
+        .btn-delete-issue {
+            background: transparent;
+            color: #dc2626;
+            border: 1.5px solid #fecaca;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-delete-issue:hover { background: #fee2e2; }
+
+        .issues-empty {
+            color: #94a3b8;
+            font-size: 0.92rem;
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .add-issue-form {
+            background: #fff7ed;
+            border: 1.5px solid #fed7aa;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .add-issue-form h4 {
+            font-size: 0.95rem;
+            color: #c2410c;
+            margin: 0 0 12px 0;
+        }
+
+        .add-issue-form textarea,
+        .add-issue-form input[type="text"] {
+            width: 100%;
+            border: 1.5px solid #fed7aa;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 0.92rem;
+            font-family: inherit;
+            background: #fff;
+            color: #1e293b;
+            margin-bottom: 10px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        .add-issue-form textarea:focus,
+        .add-issue-form input[type="text"]:focus {
+            outline: none;
+            border-color: #f97316;
+        }
+
+        .add-issue-form textarea { min-height: 90px; }
+
+        .add-issue-form-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .add-issue-form-row input {
+            flex: 1;
+            min-width: 140px;
+            margin-bottom: 0 !important;
+        }
+
+        .btn-report-issue {
+            background: #ea580c;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .btn-report-issue:hover { background: #c2410c; }
+        .btn-report-issue:disabled { background: #94a3b8; cursor: not-allowed; }
+
+        .btn-toggle-form {
+            background: transparent;
+            color: #ea580c;
+            border: 1.5px solid #fed7aa;
+            padding: 7px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 16px;
+        }
+
+        .btn-toggle-form:hover { background: #fff7ed; }
+
+        .history-section h2 {
+            color: var(--accent);
+            margin: 0 0 20px 0;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .history-timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .history-timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, var(--accent-2), var(--steel));
+        }
+
+        .history-item {
+            position: relative;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #fff, #fefbf9);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        .history-item::before {
+            content: '';
+            position: absolute;
+            left: -26px;
+            top: 24px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent-2);
+            border: 3px solid white;
+            box-shadow: 0 0 0 2px var(--accent-2);
+        }
+
+        .history-date {
+            color: var(--muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .history-type {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent-2), #f39c12);
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .history-description {
+            color: var(--ink);
+            line-height: 1.6;
+            margin: 8px 0;
+        }
+
+        .history-tech {
+            color: var(--muted);
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+
+        .history-cost {
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-top: 8px;
+        }
+
+        .empty-history {
+            text-align: center;
+            padding: 40px;
+            color: var(--muted);
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #7f8c8d, #95a5a6);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            transition: transform 0.15s ease;
+        }
+
+        .back-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+            font-size: 1.1rem;
+        }
+
+        .error-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--accent);
+        }
+
+        .delete-button {
+            background: linear-gradient(135deg, #7f8c8d, #95a5a6);
+        }
+
+        .delete-button:hover {
+            background: linear-gradient(135deg, var(--accent), #e74c3c);
+        }
+
+        @media (max-width: 968px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="index.html" style="display: inline-flex; text-decoration: none;">
+                <img src="assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo" class="site-logo">
+            </a>
+            <div class="header-text">
+                <h1 id="equipmentName">Equipment Details</h1>
+                <p id="equipmentId">Loading...</p>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <a href="equipment-list.html" class="back-button">← Back to All Equipment</a>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="loading">
+            Loading equipment details...
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="error-state" style="display: none;">
+            <h3>❌ Error Loading Equipment</h3>
+            <p id="errorMessage"></p>
+            <button onclick="window.location.href='equipment-list.html'">Back to Equipment List</button>
+        </div>
+
+        <!-- Content -->
+        <div id="contentArea" style="display: none;">
+            <!-- Maintenance Alert -->
+            <div id="maintenanceAlert"></div>
+
+            <div class="content-grid">
+                <!-- Main Info Section -->
+                <div>
+                    <div class="info-section">
+                        <h2>📋 Equipment Information</h2>
+                        <div id="equipmentStatusBadge"></div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Equipment ID</div>
+                                <div class="info-value"><code id="infoEquipmentId">-</code></div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Type</div>
+                                <div class="info-value" id="infoType">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Brand</div>
+                                <div class="info-value" id="infoBrand">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Model Number</div>
+                                <div class="info-value" id="infoModel">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Serial Number</div>
+                                <div class="info-value"><code id="infoSerial">-</code></div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Location</div>
+                                <div class="info-value" id="infoLocation">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reported Issues (inline, right below equipment info) -->
+                    <div class="issues-section" style="margin-top: 24px;">
+                        <h2>⚠️ Issues Reported by Staff</h2>
+
+                        <button class="btn-toggle-form" id="toggleIssueFormBtn" onclick="toggleIssueForm()">+ Report an Issue</button>
+
+                        <div class="add-issue-form" id="addIssueForm" style="display:none;">
+                            <h4>📝 Report a New Issue</h4>
+                            <textarea id="newIssueDescription" placeholder="Describe the issue clearly… e.g. Door seal is broken, temperature not holding"></textarea>
+                            <div class="add-issue-form-row">
+                                <input type="text" id="newIssueReporter" placeholder="Your name (optional)">
+                                <button class="btn-report-issue" id="submitIssueBtn" onclick="submitInlineIssue()">Submit Issue</button>
+                            </div>
+                        </div>
+
+                        <div id="reportedIssues">
+                            <div class="loading">Loading issues...</div>
+                        </div>
+                    </div>
+
+                    <!-- Service History -->
+                    <div class="history-section" style="margin-top: 24px;">
+                        <h2>🕒 Service History</h2>
+                        <div id="serviceHistory">
+                            <div class="loading">Loading service history...</div>
+                        </div>
+                    </div>
+
+                    <div class="info-section" style="margin-top: 24px;">
+                        <h2>📅 Maintenance Schedule</h2>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Maintenance Frequency</div>
+                                <div class="info-value" id="infoFrequency">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Last Service Date</div>
+                                <div class="info-value" id="infoLastService">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Next Service Date</div>
+                                <div class="info-value" id="infoNextService">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Installation Date</div>
+                                <div class="info-value" id="infoInstallation">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section" style="margin-top: 24px;">
+                        <h2>💰 Purchase & Warranty</h2>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Purchase Date</div>
+                                <div class="info-value" id="infoPurchase">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Warranty Expiry</div>
+                                <div class="info-value" id="infoWarranty">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Expected Lifespan</div>
+                                <div class="info-value" id="infoLifespan">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="sidebar">
+                    <!-- QR Code Card -->
+                    <div class="qr-card">
+                        <h3>QR Code</h3>
+                        <div class="qr-code-container">
+                            <img id="qrCodeImage" src="" alt="QR Code" style="display: none;">
+                            <div id="qrPlaceholder">No QR Code</div>
+                        </div>
+                        <div class="qr-actions">
+                            <button onclick="downloadQRCode()">📥 Download QR</button>
+                            <button class="btn-secondary" onclick="regenerateQRCode()">🔄 Regenerate</button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="quick-actions">
+                        <h3>Quick Actions</h3>
+                        <button onclick="logMaintenance()">🔧 Log Maintenance</button>
+                        <button onclick="editEquipment()">✏️ Edit Equipment</button>
+                        <button class="delete-button" onclick="deleteEquipment()">🗑️ Delete Equipment</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Central Kitchen Maintenance System | 
+        <a href="index.html">Dashboard</a> | 
+        <a href="equipment-list.html">All Equipment</a></p>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script>
+        let currentEquipment = null;
+        let equipmentId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            equipmentId = urlParams.get('id');
+
+            if (!equipmentId) {
+                showError('No equipment ID provided');
+                return;
+            }
+
+            loadEquipmentDetails();
+        });
+
+        async function loadEquipmentDetails() {
+            try {
+                const response = await fetch(`${API_BASE}/equipment/${equipmentId}`);
+                if (!response.ok) throw new Error('Equipment not found');
+
+                currentEquipment = await response.json();
+                displayEquipmentDetails(currentEquipment);
+                loadServiceHistory();
+                loadReportedIssues();
+
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('contentArea').style.display = 'block';
+            } catch (error) {
+                console.error('Error loading equipment:', error);
+                showError('Failed to load equipment details. Please try again.');
+            }
+        }
+
+        function displayEquipmentDetails(equipment) {
+            // Header
+            document.getElementById('equipmentName').textContent = equipment.name;
+            document.getElementById('equipmentId').textContent = equipment.equipmentId;
+
+            // Status badge
+            const statusKey = normalizeStatus(equipment.status);
+            const statusBadge = `<span class="status-large status-${statusKey}">${formatStatus(statusKey)}</span>`;
+            document.getElementById('equipmentStatusBadge').innerHTML = statusBadge;
+
+            // Maintenance alert
+            const maintenanceAlert = document.getElementById('maintenanceAlert');
+            const alertHtml = getMaintenanceAlert(equipment);
+            if (alertHtml) {
+                maintenanceAlert.innerHTML = alertHtml;
+            }
+
+            // Equipment Information
+            document.getElementById('infoEquipmentId').textContent = equipment.equipmentId;
+            document.getElementById('infoType').textContent = equipment.type;
+            document.getElementById('infoBrand').textContent = equipment.brand || 'N/A';
+            document.getElementById('infoModel').textContent = equipment.modelNumber || 'N/A';
+            document.getElementById('infoSerial').textContent = equipment.serialNumber || 'N/A';
+            document.getElementById('infoLocation').textContent = equipment.location || 'Not specified';
+
+            // Maintenance Schedule
+            document.getElementById('infoFrequency').textContent = equipment.maintenanceFrequency ? `Every ${equipment.maintenanceFrequency} days` : 'Not set';
+            document.getElementById('infoLastService').textContent = formatDate(equipment.lastServiceDate);
+            document.getElementById('infoNextService').textContent = formatDate(equipment.nextServiceDate);
+            document.getElementById('infoInstallation').textContent = formatDate(equipment.installationDate);
+
+            // Purchase & Warranty
+            document.getElementById('infoPurchase').textContent = formatDate(equipment.purchaseDate);
+            document.getElementById('infoWarranty').textContent = formatDate(equipment.warrantyExpiry);
+            document.getElementById('infoLifespan').textContent = equipment.expectedLifespan ? `${equipment.expectedLifespan} years` : 'N/A';
+
+            // QR Code
+            if (equipment.qrCode) {
+                document.getElementById('qrCodeImage').src = equipment.qrCode;
+                document.getElementById('qrCodeImage').style.display = 'block';
+                document.getElementById('qrPlaceholder').style.display = 'none';
+            }
+        }
+
+        function getMaintenanceAlert(equipment) {
+            if (!equipment.nextServiceDate) return '';
+
+            const today = new Date();
+            const nextService = new Date(equipment.nextServiceDate);
+            const daysUntil = Math.ceil((nextService - today) / (1000 * 60 * 60 * 24));
+
+            if (daysUntil < 0) {
+                return `<div class="maintenance-alert overdue">
+                    ⚠️ OVERDUE: Maintenance was due ${Math.abs(daysUntil)} days ago!
+                </div>`;
+            } else if (daysUntil <= 7) {
+                return `<div class="maintenance-alert due-soon">
+                    ⏰ ATTENTION: Maintenance due in ${daysUntil} days
+                </div>`;
+            } else if (daysUntil <= 30) {
+                return `<div class="maintenance-alert current">
+                    ✅ Maintenance scheduled in ${daysUntil} days
+                </div>`;
+            }
+
+            return '';
+        }
+
+        async function loadServiceHistory() {
+            const historyContainer = document.getElementById('serviceHistory');
+
+            try {
+                const response = await fetch(`${API_BASE}/maintenance/equipment/${equipmentId}`);
+                if (!response.ok) throw new Error('Failed to load history');
+
+                const history = await response.json();
+
+                if (history.length === 0) {
+                    historyContainer.innerHTML = `
+                        <div class="empty-history">
+                            <p>📋 No maintenance records yet</p>
+                            <button onclick="logMaintenance()">Log First Maintenance</button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const historyHtml = history.map(record => `
+                    <div class="history-item">
+                        <div class="history-date">${formatDateTime(record.date)}</div>
+                        <span class="history-type">${record.maintenanceType}</span>
+                        <div class="history-description">${record.activityDescription || record.activity || 'No description'}</div>
+                        ${record.actionsTaken ? `<div class="history-description"><strong>Actions:</strong> ${record.actionsTaken}</div>` : ''}
+                        ${record.performedBy ? `<div class="history-tech">Performed by: ${record.performedBy}</div>` : ''}
+                        ${record.totalCost ? `<div class="history-cost">Cost: $${record.totalCost.toFixed(2)}</div>` : ''}
+                    </div>
+                `).join('');
+
+                historyContainer.innerHTML = `<div class="history-timeline">${historyHtml}</div>`;
+            } catch (error) {
+                console.error('Error loading service history:', error);
+                historyContainer.innerHTML = '<p style="color: var(--accent);">Failed to load service history</p>';
+            }
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Not set';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        function formatDateTime(dateString) {
+            if (!dateString) return 'Unknown date';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function showError(message) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorState').style.display = 'block';
+            document.getElementById('errorMessage').textContent = message;
+        }
+
+        function downloadQRCode() {
+            if (!currentEquipment || !currentEquipment.qrCode) {
+                alert('No QR code available');
+                return;
+            }
+
+            const link = document.createElement('a');
+            link.href = currentEquipment.qrCode;
+            link.download = `QR-${currentEquipment.equipmentId}.png`;
+            link.click();
+        }
+
+        async function regenerateQRCode() {
+            if (!confirm('Regenerate QR code for this equipment?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/equipment/${equipmentId}/generate-qr`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) throw new Error('Failed to regenerate QR code');
+
+                const result = await response.json();
+                currentEquipment.qrCode = result.qrCode;
+                
+                document.getElementById('qrCodeImage').src = result.qrCode;
+                document.getElementById('qrCodeImage').style.display = 'block';
+                document.getElementById('qrPlaceholder').style.display = 'none';
+
+                alert('✅ QR code regenerated successfully!');
+            } catch (error) {
+                console.error('Error regenerating QR:', error);
+                alert('❌ Failed to regenerate QR code');
+            }
+        }
+
+        function logMaintenance() {
+            window.location.href = `log-maintenance.html?equipmentId=${equipmentId}`;
+        }
+
+        function editEquipment() {
+            window.location.href = `add-equipment.html?id=${equipmentId}`;
+        }
+
+        async function deleteEquipment() {
+            if (!confirm(`Are you sure you want to delete "${currentEquipment.name}"?\n\nThis action cannot be undone and will also delete all associated maintenance records.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/equipment/${equipmentId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Failed to delete equipment');
+
+                alert('✅ Equipment deleted successfully');
+                window.location.href = 'equipment-list.html';
+            } catch (error) {
+                console.error('Error deleting equipment:', error);
+                alert('❌ Failed to delete equipment');
+            }
+        }
+
+        function normalizeStatus(status) {
+            if (!status) return 'operational';
+            return status === 'operational' ? 'operational' : 'needs_action';
+        }
+
+        function formatStatus(status) {
+            const statusMap = {
+                'operational': 'Operational',
+                'needs_action': 'Needs Action'
+            };
+            return statusMap[status] || status;
+        }
+
+        async function loadReportedIssues() {
+            const container = document.getElementById('reportedIssues');
+            try {
+                const res = await fetch(`${API_BASE}/equipment-issues/equipment/${equipmentId}`);
+                const issues = await res.json();
+                if (!issues.length) {
+                    container.innerHTML = '<p class="issues-empty">✅ No issues reported for this equipment.</p>';
+                    return;
+                }
+                container.innerHTML = issues.map(issue => `
+                    <div class="issue-item ${issue.status}" id="issue-${issue._id}">
+                        <p class="issue-description">${escapeHtml(issue.description)}</p>
+                        <div class="issue-meta">
+                            <span class="issue-badge ${issue.status}">${issue.status === 'open' ? 'Open' : 'Resolved'}</span>
+                            <span>Reported by: ${escapeHtml(issue.reportedBy || 'Anonymous')}</span>
+                            <span>${formatDate(issue.reportedDate)}</span>
+                            ${issue.status === 'resolved' && issue.resolvedDate ? `<span>Resolved: ${formatDate(issue.resolvedDate)}</span>` : ''}
+                        </div>
+                        <div class="issue-actions">
+                            ${issue.status === 'open' ? `<button class="btn-resolve" onclick="resolveIssue('${issue._id}')">✔ Mark Resolved</button>` : ''}
+                            <button class="btn-delete-issue" onclick="deleteIssue('${issue._id}')">🗑 Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                container.innerHTML = '<p style="color:var(--accent);">Failed to load issues.</p>';
+            }
+        }
+
+        async function resolveIssue(id) {
+            try {
+                await fetch(`${API_BASE}/equipment-issues/${id}/resolve`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+                loadReportedIssues();
+            } catch (e) { alert('Failed to resolve issue.'); }
+        }
+
+        async function deleteIssue(id) {
+            if (!confirm('Delete this issue report?')) return;
+            try {
+                await fetch(`${API_BASE}/equipment-issues/${id}`, { method: 'DELETE' });
+                loadReportedIssues();
+            } catch (e) { alert('Failed to delete issue.'); }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function toggleIssueForm() {
+            const form = document.getElementById('addIssueForm');
+            const btn = document.getElementById('toggleIssueFormBtn');
+            const visible = form.style.display !== 'none';
+            form.style.display = visible ? 'none' : 'block';
+            btn.textContent = visible ? '+ Report an Issue' : '✕ Cancel';
+        }
+
+        async function submitInlineIssue() {
+            const description = document.getElementById('newIssueDescription').value.trim();
+            const reportedBy = document.getElementById('newIssueReporter').value.trim() || 'Dashboard';
+
+            if (!description) {
+                document.getElementById('newIssueDescription').style.borderColor = '#ef4444';
+                document.getElementById('newIssueDescription').focus();
+                return;
+            }
+            document.getElementById('newIssueDescription').style.borderColor = '';
+
+            const btn = document.getElementById('submitIssueBtn');
+            btn.disabled = true;
+            btn.textContent = 'Submitting…';
+
+            try {
+                const res = await fetch(`${API_BASE}/equipment-issues`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ equipmentId, description, reportedBy })
+                });
+                if (!res.ok) throw new Error();
+
+                // Reset and hide form
+                document.getElementById('newIssueDescription').value = '';
+                document.getElementById('newIssueReporter').value = '';
+                document.getElementById('addIssueForm').style.display = 'none';
+                document.getElementById('toggleIssueFormBtn').textContent = '+ Report an Issue';
+
+                // Reload issues list
+                loadReportedIssues();
+            } catch (e) {
+                alert('Failed to submit issue. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Submit Issue';
+            }
+        }
+    </script>
+</body>
+</html>

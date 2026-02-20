@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="0; url=all-issues.html#area">
+    <title>Redirecting… | Central Kitchen Maintenance</title>
+    <script>window.location.replace('all-issues.html#area');</script>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* ── Stats bar ───────────────────────────────────── */
+        .stats-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .stat-pill {
+            background: linear-gradient(180deg, var(--card), #fffbf9);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            box-shadow: 0 3px 10px var(--shadow);
+            min-width: 80px;
+        }
+
+        .stat-pill-label { font-size: 0.72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-pill-value { font-size: 1.4rem; font-weight: 800; color: var(--ink); }
+
+        /* ── Toolbar ─────────────────────────────────────── */
+        .toolbar {
+            background: linear-gradient(180deg, var(--card), #fffbf9);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 18px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 10px var(--shadow);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .toolbar input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.92rem;
+            font-family: inherit;
+        }
+
+        .toolbar input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(192,57,43,0.08);
+        }
+
+        .toolbar select {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            font-size: 0.88rem;
+            font-family: inherit;
+            cursor: pointer;
+            min-width: 140px;
+        }
+
+        .toolbar select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* ── Status tabs ─────────────────────────────────── */
+        .status-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 8px 18px;
+            border-radius: 20px;
+            border: 1.5px solid var(--border);
+            background: var(--card);
+            font-size: 0.84rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: var(--muted);
+        }
+
+        .tab-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--accent), #e74c3c);
+            border-color: transparent;
+            color: white;
+            box-shadow: 0 3px 10px rgba(192,57,43,0.2);
+        }
+
+        .tab-btn.tab-inprogress.active  { background: linear-gradient(135deg, var(--accent-2), #e67e22); }
+        .tab-btn.tab-resolved.active    { background: linear-gradient(135deg, var(--success), #2ecc71); }
+        .tab-btn.tab-closed.active      { background: linear-gradient(135deg, #7f8c8d, #95a5a6); }
+
+        /* ── Issue cards ─────────────────────────────────── */
+        .issues-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .issue-row {
+            background: linear-gradient(180deg, var(--card), #fffbf9);
+            border: 1px solid var(--border);
+            border-left: 5px solid var(--accent);
+            border-radius: 12px;
+            padding: 16px 18px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 14px;
+            align-items: start;
+            box-shadow: 0 3px 10px var(--shadow);
+        }
+
+        .issue-row:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(0,0,0,0.1);
+        }
+
+        .issue-row.priority-Critical { border-left-color: #7f1d1d; background: linear-gradient(180deg, #fff5f5, #fff); }
+        .issue-row.priority-High     { border-left-color: #e74c3c; }
+        .issue-row.priority-Medium   { border-left-color: var(--accent-2); }
+        .issue-row.priority-Low      { border-left-color: #9ca3af; }
+
+        .issue-row.status-Resolved,
+        .issue-row.status-Closed {
+            opacity: 0.72;
+        }
+
+        .cat-icon {
+            font-size: 1.7rem;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #fff5f5, #fef2f1);
+            border: 1px solid #fecaca;
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+
+        .issue-body { min-width: 0; }
+
+        .issue-title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 4px;
+        }
+
+        .issue-title {
+            font-size: 0.98rem;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .issue-meta-row {
+            font-size: 0.8rem;
+            color: var(--muted);
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .issue-desc-preview {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .issue-badges {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        /* Priority & status badges */
+        .badge {
+            display: inline-block;
+            border-radius: 20px;
+            padding: 3px 10px;
+            font-size: 0.73rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .badge-critical  { background: #7f1d1d; color: #fff; }
+        .badge-high      { background: #e74c3c; color: #fff; }
+        .badge-medium    { background: var(--accent-2); color: #fff; }
+        .badge-low       { background: #9ca3af; color: #fff; }
+
+        .badge-open        { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .badge-inprogress  { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+        .badge-resolved    { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+        .badge-closed      { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+        /* ── Empty / loading ─────────────────────────────── */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+        }
+
+        .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+        .empty-state p { font-size: 0.95rem; }
+
+        #loadingState {
+            text-align: center;
+            padding: 60px;
+            color: var(--muted);
+            font-size: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .issue-row { grid-template-columns: auto 1fr; }
+            .issue-badges { flex-direction: row; align-items: center; grid-column: 1 / -1; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-content">
+        <a href="index.html" style="display:inline-flex;text-decoration:none;">
+            <img src="assets/Chilli-Api-Logo-170px.png" alt="Logo" class="site-logo">
+        </a>
+        <div class="header-text">
+            <h1>🏗️ Area Issues</h1>
+            <p>Facility & general area issue reports</p>
+        </div>
+    </div>
+    <button onclick="window.location.href='area-maintenance.html'">➕ Report Issue</button>
+</header>
+
+<main>
+
+    <!-- Stats -->
+    <div class="stats-bar" id="statsBar">
+        <div class="stat-pill">
+            <span class="stat-pill-label">Total</span>
+            <span class="stat-pill-value" id="statTotal">—</span>
+        </div>
+        <div class="stat-pill">
+            <span class="stat-pill-label">Open</span>
+            <span class="stat-pill-value" id="statOpen" style="color:#dc2626;">—</span>
+        </div>
+        <div class="stat-pill">
+            <span class="stat-pill-label">In Progress</span>
+            <span class="stat-pill-value" id="statInProgress" style="color:var(--accent-2);">—</span>
+        </div>
+        <div class="stat-pill">
+            <span class="stat-pill-label">Resolved</span>
+            <span class="stat-pill-value" id="statResolved" style="color:var(--success);">—</span>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <input type="text" id="searchInput" placeholder="🔍 Search title, description, area…">
+        <select id="filterArea">
+            <option value="">All Areas</option>
+            <option>Combi Oven Area</option>
+            <option>Deep Frying Area</option>
+            <option>Stir Frying Area</option>
+            <option>Packing Area</option>
+            <option>Salad Room</option>
+            <option>Fruit Room</option>
+            <option>Cold Room</option>
+            <option>Pan Fry Area</option>
+        </select>
+        <select id="filterCategory">
+            <option value="">All Categories</option>
+            <option>Plumbing</option>
+            <option>Electrical</option>
+            <option>HVAC</option>
+            <option>Structural</option>
+            <option>Cleaning</option>
+            <option>Safety Hazard</option>
+            <option>Pest Control</option>
+            <option>Other</option>
+        </select>
+        <select id="filterPriority">
+            <option value="">All Priorities</option>
+            <option>Critical</option>
+            <option>High</option>
+            <option>Medium</option>
+            <option>Low</option>
+        </select>
+    </div>
+
+    <!-- Status tabs -->
+    <div class="status-tabs">
+        <button class="tab-btn active" data-status="">All</button>
+        <button class="tab-btn tab-open" data-status="Open">Open</button>
+        <button class="tab-btn tab-inprogress" data-status="In Progress">In Progress</button>
+        <button class="tab-btn tab-resolved" data-status="Resolved">Resolved</button>
+        <button class="tab-btn tab-closed" data-status="Closed">Closed</button>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingState">Loading…</div>
+
+    <!-- Issues list -->
+    <div class="issues-grid" id="issuesList" style="display:none;"></div>
+
+</main>
+
+<script src="js/api.js"></script>
+<script src="js/area-issues.js"></script>
+<script>
+    let allIssues = [];
+    let activeStatus = '';
+
+    function fmtDateShort(ds) {
+        if (!ds) return '—';
+        return new Date(ds).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function statusBadgeClass(s) {
+        const map = { 'Open': 'badge-open', 'In Progress': 'badge-inprogress', 'Resolved': 'badge-resolved', 'Closed': 'badge-closed' };
+        return map[s] || 'badge-open';
+    }
+
+    function priorityBadgeClass(p) {
+        const map = { 'Critical': 'badge-critical', 'High': 'badge-high', 'Medium': 'badge-medium', 'Low': 'badge-low' };
+        return map[p] || 'badge-low';
+    }
+
+    function updateStats(issues) {
+        document.getElementById('statTotal').textContent     = issues.length;
+        document.getElementById('statOpen').textContent      = issues.filter(i => i.status === 'Open').length;
+        document.getElementById('statInProgress').textContent = issues.filter(i => i.status === 'In Progress').length;
+        document.getElementById('statResolved').textContent  = issues.filter(i => i.status === 'Resolved').length;
+    }
+
+    function applyFilters() {
+        const search   = document.getElementById('searchInput').value.toLowerCase().trim();
+        const area     = document.getElementById('filterArea').value;
+        const category = document.getElementById('filterCategory').value;
+        const priority = document.getElementById('filterPriority').value;
+
+        return allIssues.filter(i => {
+            if (activeStatus && i.status !== activeStatus) return false;
+            if (area && i.area !== area) return false;
+            if (category && i.category !== category) return false;
+            if (priority && i.priority !== priority) return false;
+            if (search) {
+                const haystack = `${i.title} ${i.description} ${i.area} ${i.issueId} ${i.reportedBy}`.toLowerCase();
+                if (!haystack.includes(search)) return false;
+            }
+            return true;
+        });
+    }
+
+    function renderIssues(issues) {
+        const container = document.getElementById('issuesList');
+        if (!issues.length) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">✅</div>
+                    <p>No issues found matching your filters.</p>
+                </div>`;
+            return;
+        }
+
+        const daysSince = ds => ds ? Math.floor((Date.now() - new Date(ds)) / 86400000) : null;
+
+        container.innerHTML = issues.map(issue => {
+            const days = daysSince(issue.reportedDate);
+            const daysLabel = days === 0 ? 'Today' : days === 1 ? '1 day ago' : `${days} days ago`;
+            return `
+                <div class="issue-row priority-${issue.priority} status-${issue.status.replace(' ','-')}"
+                     onclick="window.location.href='issue-details.html?id=${issue._id}'">
+                    <div class="cat-icon">${categoryIcon(issue.category)}</div>
+                    <div class="issue-body">
+                        <div class="issue-title-row">
+                            <span class="issue-title">${esc(issue.title)}</span>
+                        </div>
+                        <div class="issue-desc-preview">${esc(issue.description)}</div>
+                        <div class="issue-meta-row">
+                            <span>📍 ${esc(issue.area)}</span>
+                            <span>🔖 ${esc(issue.category)}</span>
+                            <span>👤 ${esc(issue.reportedBy)}</span>
+                            <span>🗓 ${daysLabel}</span>
+                            <span style="font-size:0.72rem;opacity:0.7">${esc(issue.issueId)}</span>
+                        </div>
+                    </div>
+                    <div class="issue-badges">
+                        <span class="badge ${priorityBadgeClass(issue.priority)}">${issue.priority}</span>
+                        <span class="badge ${statusBadgeClass(issue.status)}">${issue.status}</span>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    function refresh() {
+        const filtered = applyFilters();
+        renderIssues(filtered);
+    }
+
+    async function loadIssues() {
+        try {
+            const res = await fetch(`${API_BASE}/issues`);
+            allIssues = await res.json();
+
+            // Sort: critical first, then by date
+            const priorityOrder = { 'Critical': 0, 'High': 1, 'Medium': 2, 'Low': 3 };
+            allIssues.sort((a, b) => {
+                const pd = (priorityOrder[a.priority] ?? 3) - (priorityOrder[b.priority] ?? 3);
+                if (pd !== 0) return pd;
+                return new Date(b.reportedDate) - new Date(a.reportedDate);
+            });
+
+            updateStats(allIssues);
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('issuesList').style.display = 'flex';
+            refresh();
+        } catch (e) {
+            document.getElementById('loadingState').innerHTML =
+                '<p style="color:var(--accent);text-align:center;">⚠️ Failed to load. Is the server running?</p>';
+        }
+    }
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeStatus = btn.dataset.status;
+            refresh();
+        });
+    });
+
+    // Filter controls
+    ['searchInput', 'filterArea', 'filterCategory', 'filterPriority'].forEach(id => {
+        const el = document.getElementById(id);
+        el.addEventListener(id === 'searchInput' ? 'input' : 'change', refresh);
+    });
+
+    loadIssues();
+</script>
+</body>
+</html>
