@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const AreaIssue = require('../models/AreaIssue');
 const { createIssueReportedNotification } = require('../services/notification-service');
-const { createUpload } = require('../services/cloudinary-upload');
-const upload = createUpload('maintenance/area-issues');
+const { memUpload, uploadBufferToCloudinary } = require('../services/cloudinary-upload');
 
 // Get all issues with optional filters
 router.get('/', async (req, res) => {
@@ -78,32 +77,36 @@ router.get('/:id', async (req, res) => {
 
 // Create new issue (report issue)
 router.post('/', (req, res, next) => {
-    upload.single('image')(req, res, (err) => {
-        if (err) console.error('[Area Issues] Image upload error (continuing without photo):', err.message);
-        next(); // always continue — save issue even if upload fails
+    memUpload('image')(req, res, (err) => {
+        if (err) console.error('[Area Issues] Multipart parse error:', err.message);
+        next();
     });
 }, async (req, res) => {
-    const issue = new AreaIssue({
-        area: req.body.area,
-        category: req.body.category,
-        title: req.body.title,
-        description: req.body.description,
-        priority: req.body.priority || 'Medium',
-        status: req.body.status || 'Open',
-        photos: req.file ? [req.file.path] : (req.body.photos || []),
-        reportedBy: req.body.reportedBy,
-        contactNumber: req.body.contactNumber,
-        reportedDate: req.body.reportedDate || Date.now(),
-        specificLocation: req.body.specificLocation,
-        assignedTo: req.body.assignedTo
-    });
-
     try {
+        // Upload image first (with timeout) so it's included from the start
+        const photos = req.body.photos ? (Array.isArray(req.body.photos) ? req.body.photos : [req.body.photos]) : [];
+        if (req.file) {
+            const url = await uploadBufferToCloudinary(req.file.buffer, req.file.mimetype, 'maintenance/area-issues');
+            if (url) photos.push(url);
+        }
+
+        const issue = new AreaIssue({
+            area: req.body.area,
+            category: req.body.category,
+            title: req.body.title,
+            description: req.body.description,
+            priority: req.body.priority || 'Medium',
+            status: req.body.status || 'Open',
+            photos,
+            reportedBy: req.body.reportedBy,
+            contactNumber: req.body.contactNumber,
+            reportedDate: req.body.reportedDate || Date.now(),
+            specificLocation: req.body.specificLocation,
+            assignedTo: req.body.assignedTo
+        });
+
         const newIssue = await issue.save();
-        
-        // Create notification for new issue
         await createIssueReportedNotification(newIssue);
-        
         res.status(201).json(newIssue);
     } catch (error) {
         res.status(400).json({ message: error.message });

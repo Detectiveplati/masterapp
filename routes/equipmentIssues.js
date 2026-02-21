@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const EquipmentIssue = require('../models/EquipmentIssue');
-const { createUpload } = require('../services/cloudinary-upload');
-const upload = createUpload('maintenance/equipment-issues');
+const { memUpload, uploadBufferToCloudinary } = require('../services/cloudinary-upload');
 
 // Get all issues for a specific equipment
 router.get('/equipment/:equipmentId', async (req, res) => {
@@ -44,17 +43,24 @@ router.get('/all-open', async (req, res) => {
 
 // Report a new issue
 router.post('/', (req, res, next) => {
-    upload.single('image')(req, res, (err) => {
-        if (err) console.error('[Equipment Issues] Image upload error (continuing without photo):', err.message);
+    memUpload('image')(req, res, (err) => {
+        if (err) console.error('[Equipment Issues] Multipart parse error:', err.message);
         next();
     });
 }, async (req, res) => {
     try {
+        // Upload image first (with timeout) so imagePath is set from the start
+        let imagePath = '';
+        if (req.file) {
+            const url = await uploadBufferToCloudinary(req.file.buffer, req.file.mimetype, 'maintenance/equipment-issues');
+            if (url) imagePath = url;
+        }
+
         const issue = new EquipmentIssue({
             equipmentId:  req.body.equipmentId,
             description:  req.body.description,
             reportedBy:   req.body.reportedBy || 'Anonymous',
-            imagePath:    req.file ? req.file.path : ''
+            imagePath,
         });
         const saved = await issue.save();
         res.status(201).json(saved);

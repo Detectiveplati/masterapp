@@ -3,8 +3,7 @@ const router = express.Router();
 const MaintenanceRecord = require('../models/MaintenanceRecord');
 const Equipment = require('../models/Equipment');
 const { calculateNextMaintenanceDate } = require('../services/maintenance-calculator');
-const { createUpload } = require('../services/cloudinary-upload');
-const upload = createUpload('maintenance/records');
+const { memUpload, uploadBufferToCloudinary } = require('../services/cloudinary-upload');
 
 // Get all maintenance records with optional filters
 router.get('/', async (req, res) => {
@@ -64,8 +63,8 @@ router.get('/equipment/:equipmentId', async (req, res) => {
 
 // Create new maintenance record
 router.post('/', (req, res, next) => {
-    upload.single('image')(req, res, (err) => {
-        if (err) console.error('[Maintenance] Image upload error (continuing without photo):', err.message);
+    memUpload('image')(req, res, (err) => {
+        if (err) console.error('[Maintenance] Multipart parse error:', err.message);
         next();
     });
 }, async (req, res) => {
@@ -76,6 +75,13 @@ router.post('/', (req, res, next) => {
 
     if (!equipment) {
         return res.status(400).json({ message: 'Valid equipment ID is required' });
+    }
+
+    // Upload image first (with timeout) so it's included in the record from the start
+    let beforePhotos = req.body.beforePhotos || [];
+    if (req.file) {
+        const url = await uploadBufferToCloudinary(req.file.buffer, req.file.mimetype, 'maintenance/records');
+        if (url) beforePhotos = Array.isArray(beforePhotos) ? [url, ...beforePhotos] : [url];
     }
 
     const record = new MaintenanceRecord({
@@ -90,7 +96,7 @@ router.post('/', (req, res, next) => {
         laborHours: req.body.laborHours || 0,
         laborCost: req.body.laborCost || 0,
         performedBy: req.body.performedBy || '',
-        beforePhotos: req.file ? [req.file.path] : (req.body.beforePhotos || []),
+        beforePhotos,
         afterPhotos: req.body.afterPhotos || [],
         notes: req.body.notes || '',
         nextScheduledDate: req.body.nextScheduledDate || null,

@@ -1,58 +1,93 @@
 /**
- * Shared Cloudinary / Multer upload factory
- * Falls back to memory storage (file ignored) if Cloudinary is not configured.
+ * Shared Cloudinary upload service.
+ *
+ * Strategy: always use multer memoryStorage to parse the multipart form
+ * INSTANTLY (no network call). Then upload the buffer to Cloudinary in the
+ * BACKGROUND after the HTTP response has already been sent.
+ *
+ * This eliminates "Load failed" / request timeout issues caused by waiting
+ * for the Cloudinary API before responding to the client.
  */
 const multer = require('multer');
 
-const isCloudinaryConfigured =
+const isCloudinaryConfigured = !!(
     process.env.CLOUDINARY_CLOUD_NAME &&
     process.env.CLOUDINARY_API_KEY &&
-    process.env.CLOUDINARY_API_SECRET;
+    process.env.CLOUDINARY_API_SECRET
+);
 
-let cloudinary;
-let CloudinaryStorage;
+let cloudinary = null;
 
 if (isCloudinaryConfigured) {
     cloudinary = require('cloudinary').v2;
-    CloudinaryStorage = require('multer-storage-cloudinary').CloudinaryStorage;
     cloudinary.config({
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
         api_key:    process.env.CLOUDINARY_API_KEY,
         api_secret: process.env.CLOUDINARY_API_SECRET,
     });
-    console.log('✓ [Cloudinary] Configured — photo uploads enabled');
+    console.log('✓ [Cloudinary] Configured — background photo uploads enabled');
 } else {
     console.warn('⚠️  [Cloudinary] Not configured — photo uploads will be skipped');
 }
 
 /**
- * Create a multer upload middleware.
- * Uses Cloudinary when configured, otherwise memory storage (file discarded).
- * @param {string} folder  e.g. 'maintenance/equipment-issues'
+ * Multer middleware that buffers the uploaded file in RAM — no network call,
+ * always completes immediately regardless of Cloudinary availability.
+ * @param {string} fieldName  e.g. 'image'
  */
-function createUpload(folder) {
-    if (!isCloudinaryConfigured) {
-        // No Cloudinary — accept the field but don't store anything
-        return multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-    }
-
-    const storage = new CloudinaryStorage({
-        cloudinary,
-        params: {
-            folder,
-            allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
-            transformation: [{ width: 1200, crop: 'limit', quality: 'auto:good', fetch_format: 'webp' }],
-        },
-    });
-
+function memUpload(fieldName) {
     return multer({
-        storage,
-        limits: { fileSize: 10 * 1024 * 1024 },
+        storage: multer.memoryStorage(),
+        limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
         fileFilter: (_req, file, cb) => {
             if (file.mimetype.startsWith('image/')) cb(null, true);
             else cb(new Error('Only image files are allowed'));
         },
+    }).single(fieldName);
+}
+
+/**
+ * Upload a buffer to Cloudinary, with an optional timeout (default 20s).
+ * Returns the secure HTTPS URL, or null if Cloudinary is not configured,
+ * the buffer is empty, the upload fails, or it times out.
+ *
+ * @param {Buffer} buffer       File buffer from multer memoryStorage
+ * @param {string} mimetype     e.g. 'image/jpeg'
+ * @param {string} folder       Cloudinary folder e.g. 'procurement'
+ * @param {number} [timeoutMs]  Max ms to wait (default 20000)
+ * @returns {Promise<string|null>}
+ */
+async function uploadBufferToCloudinary(buffer, mimetype, folder, timeoutMs = 20000) {
+    if (!isCloudinaryConfigured || !buffer) return null;
+
+    const uploadPromise = new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder,
+                allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+                transformation: [{ width: 1200, crop: 'limit', quality: 'auto:good', fetch_format: 'webp' }],
+            },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result.secure_url);
+            }
+        );
+        uploadStream.end(buffer);
+    });
+
+    const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Cloudinary upload timed out')), timeoutMs)
+    );
+
+    return Promise.race([uploadPromise, timeoutPromise]).catch(err => {
+        console.error(`[Cloudinary] Upload failed (${folder}):`, err.message);
+        return null; // always resolve — never block the route
     });
 }
 
-module.exports = { createUpload, cloudinary };
+// Legacy factory — kept for compatibility (now uses memoryStorage internally)
+function createUpload(folder) {
+    return { single: (fieldName) => memUpload(fieldName) };
+}
+
+module.exports = { memUpload, uploadBufferToCloudinary, createUpload, isCloudinaryConfigured, cloudinary };

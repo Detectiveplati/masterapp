@@ -2,28 +2,32 @@ const express  = require('express');
 const router   = express.Router();
 const path     = require('path');
 const fs       = require('fs');
-const { createUpload } = require('../services/cloudinary-upload');
+const { memUpload, uploadBufferToCloudinary } = require('../services/cloudinary-upload');
 const ProcurementRequest = require('../models/ProcurementRequest');
-
-const upload = createUpload('procurement');
 
 /**
  * POST /api/requests
- * Create a new procurement request (multipart/form-data for image)
+ * Parses multipart instantly (memoryStorage), responds 201 immediately,
+ * then uploads photo to Cloudinary in the background.
  */
 router.post('/', (req, res, next) => {
-    upload.single('image')(req, res, (err) => {
-        if (err) console.error('[Procurement] Image upload error (continuing without photo):', err.message);
-        next(); // always continue — save request even if image upload fails
+    memUpload('image')(req, res, (err) => {
+        if (err) console.error('[Procurement] Multipart parse error:', err.message);
+        next();
     });
 }, async (req, res) => {
     try {
         const data = { ...req.body };
-        if (req.file) data.imagePath = req.file.path; // Cloudinary HTTPS URL
 
         // Parse checklist if sent as JSON string
         if (typeof data.checklist === 'string') {
             try { data.checklist = JSON.parse(data.checklist); } catch (_) {}
+        }
+
+        // Upload image first (with timeout) so imagePath is set from the start
+        if (req.file) {
+            const url = await uploadBufferToCloudinary(req.file.buffer, req.file.mimetype, 'procurement');
+            if (url) data.imagePath = url;
         }
 
         const request = new ProcurementRequest(data);
