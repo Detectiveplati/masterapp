@@ -1,3 +1,16 @@
+/**
+ * Master Kitchen Management Application Server
+ * 
+ * Integrates three applications:
+ * 1. Maintenance Dashboard - Equipment and maintenance tracking (root)
+ * 2. Kitchen Temp Log - Cooking temperature logs (/templog/)
+ * 3. Procurement - Purchase request management (/procurement/)
+ * 
+ * @requires express - Web server framework
+ * @requires mongoose - MongoDB ODM for maintenance app
+ * @requires mongodb - Native driver for temp log app
+ */
+
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
@@ -5,8 +18,13 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 const path = require('path');
 const cors = require('cors');
 
+// Try to load puppeteer (optional - for PDF generation)
 let puppeteer = null;
-try { puppeteer = require('puppeteer'); } catch (_) {}
+try { 
+  puppeteer = require('puppeteer'); 
+} catch (_) {
+  console.warn('⚠️  Puppeteer not installed - PDF export unavailable');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,8 +34,8 @@ const PORT = process.env.PORT || 3000;
 // 1. Mongoose — Maintenance Dashboard
 const MAINTENANCE_MONGO_URI = process.env.MAINTENANCE_MONGODB_URI || 'mongodb://localhost:27017/central_kitchen_maintenance';
 mongoose.connect(MAINTENANCE_MONGO_URI)
-    .then(() => console.log('[Maintenance] MongoDB (Mongoose) connected'))
-    .catch(err => console.error('[Maintenance] MongoDB connection error:', err));
+    .then(() => console.log('✓ [Maintenance] MongoDB (Mongoose) connected'))
+    .catch(err => console.error('✗ [Maintenance] MongoDB connection error:', err));
 
 // 2. Native driver — Kitchen Temp Log
 const TEMPLOG_MONGO_URI = process.env.TEMPLOG_MONGODB_URI || 'mongodb://localhost:27017';
@@ -26,10 +44,16 @@ let templogDb;
 MongoClient.connect(TEMPLOG_MONGO_URI)
     .then(client => {
         templogDb = client.db(TEMPLOG_DB_NAME);
-        console.log('[TempLog] MongoDB (native) connected');
+        console.log('✓ [TempLog] MongoDB (native) connected');
     })
-    .catch(err => console.error('[TempLog] MongoDB connection error:', err));
+    .catch(err => console.error('✗ [TempLog] MongoDB connection error:', err));
 
+/**
+ * Middleware to ensure TempLog database is ready
+ * @param {Object} req - Express request
+ * @param {Object} res - Express response
+ * @param {Function} next - Next middleware
+ */
 function requireTemplogDb(req, res, next) {
     if (!templogDb) return res.status(503).json({ error: 'TempLog database not ready' });
     req.templogDb = templogDb;
@@ -42,15 +66,31 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ─── Maintenance static files (root) ────────────────────────────────────────
-const noCacheHtml = { setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
-}};
-app.use(express.static(path.join(__dirname), noCacheHtml));
+// ─── Static file serving ────────────────────────────────────────────────────
 
-// ─── TempLog static files (/templog/) ───────────────────────────────────────
+// Prevent caching of HTML files (always get fresh version)
+const noCacheHtml = { 
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-store');
+    }
+  }
+};
+
+// Maintenance Dashboard - Serve from maintenance/ folder
+app.use('/maintenance', express.static(path.join(__dirname, 'maintenance'), noCacheHtml));
+app.use(express.static(path.join(__dirname, 'maintenance'), noCacheHtml)); // root also resolves to maintenance
+
+// TempLog - Serve from templog/ folder (legacy embedded app)
 app.use('/templog', express.static(path.join(__dirname, 'templog'), noCacheHtml));
 app.get('/templog', (req, res) => res.sendFile(path.join(__dirname, 'templog', 'index.html')));
+
+// Procurement - Serve from procurement/ folder
+app.use('/procurement', express.static(path.join(__dirname, 'procurement'), noCacheHtml));
+app.get('/procurement',             (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'index.html')));
+app.get('/procurement/request',     (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'request-form.html')));
+app.get('/procurement/requests',    (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'requests.html')));
+app.get('/procurement/request/:id', (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'request-detail.html')));
 
 // ─── Maintenance API Routes ──────────────────────────────────────────────────
 
@@ -72,6 +112,10 @@ app.use('/api/areas',            areasRoutes);
 app.use('/api/reports',          reportsRoutes);
 app.use('/api/notifications',    notificationsRoutes);
 app.use('/api/seed',             seedRoutes);
+
+// ─── Procurement API Routes ──────────────────────────────────────────────────
+const procurementRequestsRoutes = require('./routes/procurementRequests');
+app.use('/api/requests', procurementRequestsRoutes);
 
 // Public URL (ngrok support)
 app.get('/api/public-url', async (req, res) => {
@@ -98,13 +142,19 @@ app.get('/api/health', (req, res) => {
     res.json({
         status: 'OK',
         timestamp: new Date().toISOString(),
-        maintenance_db: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
-        templog_db: templogDb ? 'Connected' : 'Disconnected',
+        maintenance_db:  mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
+        templog_db:      templogDb ? 'Connected' : 'Disconnected',
+        procurement_db:  mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
     });
 });
 
 // ─── TempLog API Routes (/templog/api/) ─────────────────────────────────────
 
+/**
+ * Validate cook data before saving
+ * @param {Object} cook - Cook data object
+ * @returns {string|null} Error message or null if valid
+ */
 function validateCook(cook) {
     if (!cook || !cook.food || !cook.staff) return 'Missing required fields';
     if (cook.temp !== undefined && cook.temp !== '' && isNaN(parseFloat(cook.temp))) return 'Invalid temp';
@@ -113,6 +163,11 @@ function validateCook(cook) {
     return null;
 }
 
+/**
+ * Build MongoDB date filter from query parameters
+ * @param {Object} query - Express request query object
+ * @returns {Object} MongoDB filter object
+ */
 function buildDateFilter(query) {
     const { year, month, startDate, endDate } = query;
     if (startDate || endDate) {
@@ -129,7 +184,10 @@ function buildDateFilter(query) {
     return {};
 }
 
-// Save cook
+/**
+ * POST /templog/api/cooks
+ * Save a new cook record to the database
+ */
 app.post('/templog/api/cooks', requireTemplogDb, async (req, res) => {
     try {
         const cook = req.body;
@@ -143,7 +201,10 @@ app.post('/templog/api/cooks', requireTemplogDb, async (req, res) => {
     }
 });
 
-// Load recent cooks
+/**
+ * GET /templog/api/cooks
+ * Retrieve cook records with optional filtering
+ */
 app.get('/templog/api/cooks', requireTemplogDb, async (req, res) => {
     try {
         const limit  = parseInt(req.query.limit || '8', 10);
@@ -157,7 +218,10 @@ app.get('/templog/api/cooks', requireTemplogDb, async (req, res) => {
     }
 });
 
-// Export CSV
+/**
+ * GET /templog/api/cooks/export
+ * Export cook records as CSV file
+ */
 app.get('/templog/api/cooks/export', requireTemplogDb, async (req, res) => {
     try {
         const { year, month } = req.query;
@@ -181,7 +245,10 @@ app.get('/templog/api/cooks/export', requireTemplogDb, async (req, res) => {
     }
 });
 
-// Export PDF
+/**
+ * GET /templog/api/cooks/report.pdf
+ * Generate PDF report of cook records (requires Puppeteer)
+ */
 app.get('/templog/api/cooks/report.pdf', requireTemplogDb, async (req, res) => {
     try {
         if (!puppeteer) return res.status(500).json({ error: 'PDF export requires puppeteer. Run: npm install puppeteer' });
@@ -217,7 +284,12 @@ app.get('/templog/api/cooks/report.pdf', requireTemplogDb, async (req, res) => {
 
 // ─── Root route ──────────────────────────────────────────────────────────────
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+/**
+ * GET /
+ * Serve the main maintenance dashboard landing page
+ */
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'maintenance', 'index.html')));
+app.get('/maintenance', (req, res) => res.sendFile(path.join(__dirname, 'maintenance', 'index.html')));
 
 // ─── Error handler ───────────────────────────────────────────────────────────
 
@@ -229,8 +301,12 @@ app.use((err, req, res, next) => {
 // ─── Start ───────────────────────────────────────────────────────────────────
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🍽  Master App running on http://localhost:${PORT}`);
-    console.log(`   Maintenance Dashboard → http://localhost:${PORT}/`);
-    console.log(`   Kitchen Temp Log      → http://localhost:${PORT}/templog/`);
-    console.log(`   Health check          → http://localhost:${PORT}/api/health\n`);
+    console.log(`\n🍽  Master Kitchen Management App`);
+    console.log(`   Server running on http://localhost:${PORT}`);
+    console.log(`   `);
+    console.log(`   📋 Maintenance Dashboard → http://localhost:${PORT}/maintenance/`);
+    console.log(`   🌡️  Kitchen Temp Log      → http://localhost:${PORT}/templog/`);
+    console.log(`   � Procurement           → http://localhost:${PORT}/procurement/`);
+    console.log(`   �💚 Health Check          → http://localhost:${PORT}/api/health`);
+    console.log(`\n   Access from tablet: http://<your-ip>:${PORT}\n`);
 });

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Procurement Request 采购申请</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+
+<header>
+  <div class="header-content">
+    <a href="/" style="line-height:0;flex-shrink:0;"><img class="site-logo" src="assets/logo.png" alt="Chilli API" style="cursor:pointer;"/></a>
+    <div class="header-text">
+      <h1 id="hdr-title">Procurement Request</h1>
+      <p id="hdr-sub">Central Kitchen · Submit a new item request</p>
+    </div>
+  </div>
+  <nav class="nav-links">
+    <button class="lang-toggle" id="langToggle" onclick="toggleLang()">中文</button>
+    <a href="/procurement">🏠 <span class="t" data-en="Home" data-zh="主页">Home</span></a>
+    <a href="/procurement/requests">📊 <span class="t" data-en="All Requests" data-zh="所有申请">All Requests</span></a>
+  </nav>
+</header>
+
+<main>
+  <div id="msgSuccess" class="msg success">✅ <span class="t" data-en="Request submitted successfully!" data-zh="申请提交成功！">Request submitted successfully!</span></div>
+  <div id="msgError"   class="msg error">❌ <span id="errText">Failed to submit. Please try again.</span></div>
+
+  <form id="requestForm" enctype="multipart/form-data" style="max-width:680px;margin:0 auto;">
+
+    <div class="card">
+      <h2>📦 <span class="t" data-en="Item Request" data-zh="采购申请">Item Request</span></h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label><span class="t" data-en="Item Requested" data-zh="采购物品">Item Requested</span> <span style="color:var(--accent)">*</span></label>
+          <input type="text" name="itemNameEn" id="itemNameInput"
+            placeholder="e.g. Commercial Blender / 商用搅拌机" required/>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="t" data-en="Quantity" data-zh="数量">Quantity</label>
+          <input type="text" name="quantity" id="qtyInput" placeholder="e.g. 2"/>
+        </div>
+        <div class="form-group">
+          <label class="t" data-en="Department" data-zh="部门">Department</label>
+          <input type="text" name="department" id="deptInput" placeholder="e.g. Pastry, Wok Station"/>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label><span class="t" data-en="Your Name" data-zh="姓名">Your Name</span> <span style="color:var(--accent)">*</span></label>
+          <input type="text" name="requestorName" id="nameInput" placeholder="Full name / 全名" required/>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="t" data-en="Comments / Reason" data-zh="备注 / 原因">Comments / Reason</label>
+          <textarea name="comments" id="commentsInput"
+            placeholder="Why is this item needed? / 为什么需要此物品？"></textarea>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="t" data-en="Photo (optional, max 5MB)" data-zh="照片（可选，最大 5MB）">Photo (optional, max 5MB)</label>
+          <input type="file" name="image" id="imageInput" accept="image/*"/>
+          <img id="imagePreview" style="max-width:220px;max-height:170px;border-radius:10px;margin-top:10px;display:none;border:1px solid var(--border);" alt="Preview"/>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;">
+        <button type="submit" class="btn btn-primary">
+          ✅ <span class="t" data-en="Submit Request" data-zh="提交申请">Submit Request</span>
+        </button>
+        <a href="/procurement" class="btn btn-outline">
+          <span class="t" data-en="Cancel" data-zh="取消">Cancel</span>
+        </a>
+      </div>
+    </div>
+
+  </form>
+</main>
+
+<style>
+  .lang-toggle {
+    background: transparent;
+    border: 2px solid rgba(192,57,43,0.35);
+    color: var(--accent);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+    box-shadow: none;
+  }
+  .lang-toggle:hover {
+    background: rgba(192,57,43,0.08);
+    transform: none;
+    box-shadow: none;
+  }
+</style>
+
+<script>
+  // ── Language ─────────────────────────────────────────────────────────────
+  const LABELS = {
+    en: { title: 'Procurement Request', sub: 'Central Kitchen · Submit a new item request', toggle: '中文' },
+    zh: { title: '采购申请', sub: '中央厨房 · 提交新的物品申请', toggle: 'EN' }
+  };
+  const PLACEHOLDERS = {
+    en: { item: 'e.g. Commercial Blender / 商用搅拌机', qty: 'e.g. 2', dept: 'e.g. Pastry, Wok Station', name: 'Full name / 全名', comments: 'Why is this item needed? Any special notes?' },
+    zh: { item: '例：商用搅拌机 / Commercial Blender', qty: '例：2件', dept: '例：烤焗部', name: '全名 / Full Name', comments: '为什么需要此物品？有特别说明吗？' }
+  };
+
+  let lang = navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en';
+
+  function applyLang() {
+    document.querySelectorAll('.t').forEach(el => {
+      const val = el.dataset[lang];
+      if (val) el.textContent = val;
+    });
+    document.getElementById('hdr-title').textContent  = LABELS[lang].title;
+    document.getElementById('hdr-sub').textContent    = LABELS[lang].sub;
+    document.getElementById('langToggle').textContent = LABELS[lang].toggle;
+    document.getElementById('itemNameInput').placeholder = PLACEHOLDERS[lang].item;
+    document.getElementById('qtyInput').placeholder      = PLACEHOLDERS[lang].qty;
+    document.getElementById('deptInput').placeholder     = PLACEHOLDERS[lang].dept;
+    document.getElementById('nameInput').placeholder     = PLACEHOLDERS[lang].name;
+    document.getElementById('commentsInput').placeholder = PLACEHOLDERS[lang].comments;
+  }
+
+  function toggleLang() {
+    lang = lang === 'en' ? 'zh' : 'en';
+    applyLang();
+  }
+
+  applyLang();
+
+  // ── Image preview ────────────────────────────────────────────────────────
+  document.getElementById('imageInput').addEventListener('change', function () {
+    const file = this.files[0];
+    const preview = document.getElementById('imagePreview');
+    if (file) { preview.src = URL.createObjectURL(file); preview.style.display = 'block'; }
+    else       { preview.style.display = 'none'; }
+  });
+
+  // ── Form submit ──────────────────────────────────────────────────────────
+  document.getElementById('requestForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const msgOk  = document.getElementById('msgSuccess');
+    const msgErr = document.getElementById('msgError');
+    msgOk.style.display = 'none';
+    msgErr.style.display = 'none';
+    try {
+      const res = await fetch('/api/requests', { method: 'POST', body: new FormData(this) });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Server error'); }
+      msgOk.style.display = 'block';
+      this.reset();
+      document.getElementById('imagePreview').style.display = 'none';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      document.getElementById('errText').textContent = lang === 'zh' ? `提交失败：${err.message}` : `Failed: ${err.message}`;
+      msgErr.style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+</script>
+</body>
+</html>

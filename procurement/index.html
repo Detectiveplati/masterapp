@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Central Kitchen Procurement</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+
+<header>
+  <div class="header-content">
+    <a href="/" style="line-height:0;flex-shrink:0;"><img class="site-logo" src="assets/logo.png" alt="Chilli API" style="cursor:pointer;"/></a>
+    <div class="header-text">
+      <h1>Central Kitchen Procurement</h1>
+      <p>中央厨房采购管理 · Scan the QR code to submit a request</p>
+    </div>
+  </div>
+  <nav class="nav-links">
+    <a href="/procurement/requests">📊 All Requests</a>
+    <a href="/procurement/request" class="accent">+ New Request</a>
+  </nav>
+</header>
+
+<main>
+  <div class="card" style="max-width:700px;margin:0 auto 20px;">
+    <h2>📊 Quick Stats</h2>
+    <div class="stats-bar" id="statsBar">
+      <div class="stat-box"><div class="num" id="statTotal">—</div><div class="lbl">Total</div></div>
+      <div class="stat-box"><div class="num" id="statPending">—</div><div class="lbl">Pending</div></div>
+      <div class="stat-box"><div class="num" id="statDone">—</div><div class="lbl">Done</div></div>
+    </div>
+  </div>
+
+  <div class="card" style="max-width:700px;margin:0 auto 20px;">
+    <div class="qr-container">
+      <h2>📱 Scan to Submit a Request</h2>
+      <p>Staff can scan this QR code with any phone or tablet to submit a procurement request.</p>
+      <img class="qr-code" src="/api/qr" alt="QR Code"/>
+      <p class="qr-url" id="formUrl"></p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:8px;">
+        <a href="/procurement/request" class="btn btn-primary">📋 Open Request Form</a>
+        <a href="/procurement/requests" class="btn btn-outline">📊 View All Requests</a>
+        <a href="/api/qr" download="procurement-qr.png" class="btn btn-outline">⬇ Download QR</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  document.getElementById('formUrl').textContent = `${window.location.origin}/request`;
+
+  async function loadStats() {
+    try {
+      const all = await fetch('/api/requests').then(r => r.json());
+      document.getElementById('statTotal').textContent   = all.length;
+      document.getElementById('statPending').textContent = all.filter(r => r.status === 'Pending').length;
+      document.getElementById('statDone').textContent    = all.filter(r => r.status === 'Done').length;
+    } catch(_) {}
+  }
+  loadStats();
+</script>
+</body>
+</html>

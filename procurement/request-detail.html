@@ -1,0 +1,320 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Request Detail · Central Kitchen Procurement</title>
+  <link rel="stylesheet" href="/procurement/css/styles.css"/>
+  <style>
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.82rem; color: var(--muted); text-decoration: none;
+      margin-bottom: 14px; transition: color 0.15s;
+    }
+    .back-link:hover { color: var(--accent); }
+
+    .item-name   { font-size: 1.5rem; font-weight: 800; color: var(--ink); margin-bottom: 2px; }
+    .item-zh     { font-size: 0.95rem; color: var(--muted); margin-bottom: 12px; }
+    .item-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+
+    .field-list  { display: flex; flex-direction: column; margin-top: 14px; }
+    .field-row   {
+      display: flex; align-items: baseline; gap: 14px;
+      padding: 9px 0; border-bottom: 1px solid var(--border);
+    }
+    .field-row:last-child { border-bottom: none; }
+    .field-lbl {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted);
+      min-width: 130px; flex-shrink: 0;
+    }
+    .field-val { font-size: 0.93rem; font-weight: 600; color: var(--ink); }
+    .field-val.empty { color: var(--muted); font-weight: 400; font-style: italic; }
+
+    .timestamps {
+      font-size: 0.75rem; color: var(--muted);
+      display: flex; gap: 20px; flex-wrap: wrap; margin-top: 14px;
+    }
+    .timestamps strong { color: var(--ink); }
+
+    .req-photo {
+      width: 100%; max-height: 360px; object-fit: contain;
+      border-radius: 10px; border: 1px solid var(--border);
+      background: #f6f4f0; cursor: zoom-in; display: block;
+    }
+
+    .comment-block {
+      background: #fdf8f5; border-left: 3px solid var(--accent-2);
+      border-radius: 0 8px 8px 0; padding: 11px 14px;
+      font-size: 0.92rem; color: var(--ink); line-height: 1.55;
+      margin-top: 14px;
+    }
+
+    .status-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    .status-sel {
+      flex: 1; min-width: 140px; padding: 9px 12px;
+      border-radius: 8px; border: 1px solid var(--border);
+      font-family: inherit; font-size: 0.9rem;
+      background: var(--card); color: var(--ink); outline: none;
+      transition: border-color 0.2s; cursor: pointer;
+    }
+    .status-sel:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(192,57,43,0.08); }
+
+    .notes-area {
+      width: 100%; min-height: 110px; margin-top: 10px;
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; font-family: inherit; font-size: 0.9rem;
+      color: var(--ink); background: var(--card);
+      resize: vertical; box-sizing: border-box; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s; line-height: 1.5;
+    }
+    .notes-area:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(192,57,43,0.08); }
+
+    .sub-lbl {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0;
+    }
+
+    .save-row { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
+    .save-msg  { font-size: 0.8rem; color: var(--success); opacity: 0; transition: opacity 0.4s; }
+    .save-msg.show { opacity: 1; }
+
+    #errorMsg { color: var(--accent); text-align: center; padding: 40px; font-weight: 600; }
+
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.78);
+      display: none; align-items: center; justify-content: center;
+      z-index: 9999; cursor: zoom-out;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-overlay img { max-width: 92vw; max-height: 90vh; border-radius: 10px; box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-content">
+    <a href="/" style="line-height:0;flex-shrink:0;"><img class="site-logo" src="/procurement/assets/logo.png" alt="Chilli API" style="cursor:pointer;"/></a>
+    <div class="header-text">
+      <h1 id="pageTitle">Request Detail</h1>
+      <p>Central Kitchen Procurement · 采购申请详情</p>
+    </div>
+  </div>
+  <nav class="nav-links">
+    <a href="/procurement">🏠 Home</a>
+    <a href="/procurement/requests">📋 All Requests</a>
+    <a href="/procurement/request" class="accent">+ New Request</a>
+  </nav>
+</header>
+
+<main>
+  <a class="back-link" href="/procurement/requests">← Back to All Requests</a>
+
+  <div id="errorMsg" style="display:none;"></div>
+
+  <div id="pageBody" style="display:none;">
+
+    <!-- Item Details -->
+    <div class="card" style="max-width:700px;margin:0 auto 20px;">
+      <h2>📦 Item Details</h2>
+      <div class="item-name" id="dItemEn"></div>
+      <div class="item-zh"   id="dItemZh"></div>
+      <div class="item-badges">
+        <span id="dStatusBadge"></span>
+        <span id="dCategoryBadge"></span>
+      </div>
+      <div class="field-list">
+        <div class="field-row">
+          <span class="field-lbl">Quantity</span>
+          <span class="field-val" id="dQuantity">—</span>
+        </div>
+        <div class="field-row">
+          <span class="field-lbl">Department</span>
+          <span class="field-val" id="dDepartment">—</span>
+        </div>
+      </div>
+      <div class="timestamps">
+        <span>Submitted: <strong id="dCreated">—</strong></span>
+        <span>Updated: <strong id="dUpdated">—</strong></span>
+      </div>
+      <div id="dCompletedWrap" style="display:none;margin-top:8px;">
+        <span style="font-size:0.82rem;">✅ Done: <strong id="dCompleted" style="color:var(--success);">—</strong></span>
+      </div>
+    </div>
+
+    <!-- Photo -->
+    <div class="card" id="cardPhoto" style="max-width:700px;margin:0 auto 20px;display:none;">
+      <h2>🖼 Photo</h2>
+      <img class="req-photo" id="dImage" src="" alt="Item photo"
+           title="Click to enlarge" onclick="openModal(this.src)"/>
+    </div>
+
+    <!-- Requestor -->
+    <div class="card" style="max-width:700px;margin:0 auto 20px;">
+      <h2>👤 Requestor</h2>
+      <div class="field-list" style="margin-top:0;">
+        <div class="field-row">
+          <span class="field-lbl">Name</span>
+          <span class="field-val" id="dName">—</span>
+        </div>
+      </div>
+      <div id="commentWrap" style="display:none;">
+        <div class="comment-block" id="dComments"></div>
+      </div>
+    </div>
+
+    <!-- Purchaser -->
+    <div class="card" style="max-width:700px;margin:0 auto 20px;">
+      <h2>⚙️ Purchaser</h2>
+
+      <div class="sub-lbl">Status</div>
+      <div class="status-row" style="margin-bottom:20px;">
+        <select class="status-sel" id="statusSelect">
+          <option value="Pending">Pending</option>
+          <option value="Done">Done</option>
+        </select>
+        <button class="btn btn-sm btn-primary" onclick="saveStatus()">Save</button>
+        <span class="save-msg" id="statusMsg">✓ Saved</span>
+      </div>
+
+      <div class="sub-lbl">Purchaser Notes</div>
+      <textarea class="notes-area" id="purchaserNotes" placeholder="Add internal notes, supplier contact, price quotes…"></textarea>
+
+      <div class="save-row">
+        <button class="btn btn-sm btn-success" onclick="saveNotes()">💾 Save Notes</button>
+        <span class="save-msg" id="notesMsg">✓ Saved</span>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="modal-overlay" id="imgModal" onclick="this.classList.remove('open')">
+  <img id="modalImg" src="" alt=""/>
+</div>
+
+<script>
+  const id = location.pathname.split('/').pop();
+
+  const STATUS_CLS = {
+    Pending: 'badge-pending', Done: 'badge-received',
+    Approved: 'badge-approved', Ordered: 'badge-ordered',
+    Received: 'badge-received', Cancelled: 'badge-cancelled',
+  };
+  async function loadRequest() {
+    try {
+      const r = await fetch(`/api/requests/${id}`).then(res => {
+        if (!res.ok) throw new Error('Not found');
+        return res.json();
+      });
+
+      document.title = `${r.itemNameEn} · Procurement`;
+      document.getElementById('pageTitle').textContent = r.itemNameEn;
+
+      document.getElementById('dItemEn').textContent = r.itemNameEn;
+      if (r.itemNameZh) document.getElementById('dItemZh').textContent = r.itemNameZh;
+
+      document.getElementById('dStatusBadge').innerHTML =
+        `<span class="badge ${STATUS_CLS[r.status] || 'badge-pending'}">${r.status || 'Pending'}</span>`;
+      document.getElementById('dCategoryBadge').innerHTML =
+        r.category ? `<span class="badge badge-low" style="background:#efe8e5;color:var(--muted);">${r.category}</span>` : '';
+
+      document.getElementById('dQuantity').textContent =
+        r.quantity ? r.quantity + (r.unit ? ' ' + r.unit : '') : '—';
+      document.getElementById('dCreated').textContent = fmt(r.createdAt);
+      document.getElementById('dUpdated').textContent = fmt(r.updatedAt);
+
+      if (r.completedAt) {
+        document.getElementById('dCompleted').textContent = fmt(r.completedAt);
+        document.getElementById('dCompletedWrap').style.display = '';
+      } else {
+        document.getElementById('dCompletedWrap').style.display = 'none';
+      }
+
+      if (r.imagePath) {
+        document.getElementById('dImage').src = r.imagePath;
+        document.getElementById('cardPhoto').style.display = '';
+      }
+
+      setField('dDepartment', r.department);
+      setField('dName',       r.requestorName);
+      if (r.comments) {
+        document.getElementById('dComments').textContent = r.comments;
+        document.getElementById('commentWrap').style.display = '';
+      }
+
+      document.getElementById('statusSelect').value   = r.status || 'Pending';
+      document.getElementById('purchaserNotes').value = r.purchaserNotes || '';
+
+      document.getElementById('pageBody').style.display = '';
+
+    } catch (err) {
+      const el = document.getElementById('errorMsg');
+      el.style.display = '';
+      el.textContent = 'Failed to load: ' + err.message;
+    }
+  }
+
+  function setField(elId, val) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (val) { el.textContent = val; el.classList.remove('empty'); }
+    else      { el.textContent = '—'; el.classList.add('empty'); }
+  }
+
+  async function saveStatus() {
+    const status = document.getElementById('statusSelect').value;
+    try {
+      const updated = await fetch(`/api/requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      }).then(r => r.json());
+      document.getElementById('dStatusBadge').innerHTML =
+        `<span class="badge ${STATUS_CLS[status] || 'badge-pending'}">${status}</span>`;
+      if (updated.completedAt) {
+        document.getElementById('dCompleted').textContent = fmt(updated.completedAt);
+        document.getElementById('dCompletedWrap').style.display = '';
+      } else {
+        document.getElementById('dCompletedWrap').style.display = 'none';
+      }
+      flash('statusMsg');
+    } catch (err) { alert('Save failed: ' + err.message); }
+  }
+
+  async function saveNotes() {
+    const purchaserNotes = document.getElementById('purchaserNotes').value;
+    try {
+      await fetch(`/api/requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purchaserNotes })
+      });
+      flash('notesMsg');
+    } catch (err) { alert('Save failed: ' + err.message); }
+  }
+
+  function flash(msgId) {
+    const el = document.getElementById(msgId);
+    if (!el) return;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2000);
+  }
+
+  function fmt(dateStr) {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  }
+
+  function openModal(src) {
+    document.getElementById('modalImg').src = src;
+    document.getElementById('imgModal').classList.add('open');
+  }
+
+  loadRequest();
+</script>
+</body>
+</html>

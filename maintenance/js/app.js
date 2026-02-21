@@ -1,7 +1,10 @@
 // This file serves as the main JavaScript entry point for the maintenance dashboard.
 // It initializes the application, sets up event listeners, and manages the overall functionality of the dashboard.
 
-const API_BASE = 'http://localhost:3000/api';
+// Auto-detect API base URL: uses current origin for both local and production
+// Local: http://localhost:3000/api
+// Production: https://your-app.railway.app/api
+const API_BASE = `${window.location.origin}/api`;
 
 // Store chart instances
 let statusChart = null;

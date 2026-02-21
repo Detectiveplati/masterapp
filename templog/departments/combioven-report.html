@@ -115,7 +115,7 @@
       if (startDate) qs.push(`startDate=${encodeURIComponent(startDate)}`);
       if (endDate) qs.push(`endDate=${encodeURIComponent(endDate)}`);
       qs.push('limit=1000');
-      const url = `/api/cooks?${qs.join('&')}`;
+      const url = `/templog/api/cooks?${qs.join('&')}`;
 
       try {
         const res = await fetch(url);
@@ -124,7 +124,7 @@
 
         body.innerHTML = '';
         if (!entries.length) {
-          body.innerHTML = '<tr><td colspan="9">No entries found</td></tr>';
+          body.innerHTML = '<tr><td colspan="8">No entries found</td></tr>';
           statusEl.textContent = 'No data yet.';
           periodEl.textContent = (startDate || endDate)
             ? `Report period: ${startDate || '...'} to ${endDate || '...'}`
@@ -137,9 +137,9 @@
           const row = document.createElement('tr');
           row.innerHTML = `
             <td class="food-col">${entry.food || ''}</td>
-            <td>${entry.startDate || ''}</td>
-            <td>${entry.startTime || ''}</td>
-            <td>${entry.endTime || ''}</td>
+            <td class="date-col">${entry.startDate || ''}</td>
+            <td class="time-col">${entry.startTime || ''}</td>
+            <td class="time-col">${entry.endTime || ''}</td>
             <td class="small-col">${entry.duration || ''}</td>
             <td class="small-col">${entry.temp || ''}</td>
             <td class="small-col">${entry.staff || ''}</td>
@@ -202,7 +202,7 @@
         alert('Please choose a start and/or end date first.');
         return;
       }
-      window.open(`/api/cooks/report.pdf?${qs.join('&')}`, '_blank');
+      window.open(`/templog/api/cooks/report.pdf?${qs.join('&')}`, '_blank');
     });
 
     window.addEventListener('load', () => {

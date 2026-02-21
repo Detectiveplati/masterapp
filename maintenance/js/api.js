@@ -1,3 +1,10 @@
+/**
+ * API Client for Maintenance Dashboard
+ * Handles all communication with the backend MongoDB database
+ * Provides methods for managing equipment, maintenance records, issues, and areas
+ * @file api.js
+ */
+
 // API client for communicating with the backend MongoDB database
 
 const API_BASE_URL = '';
@@ -10,6 +17,11 @@ const API_BASE = `${_base}/api`;
 
 // ========== EQUIPMENT API ==========
 
+/**
+ * Fetch all equipment from the database
+ * @returns {Promise<Array>} Array of equipment objects
+ * @throws {Error} If the fetch fails
+ */
 async function getAllEquipment() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/equipment`);
