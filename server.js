@@ -311,12 +311,7 @@ app.get('/templog/api/cooks/report.pdf', requireTemplogDb, async (req, res) => {
 
 // ─── Root route ──────────────────────────────────────────────────────────────
 
-/**
- * GET /
- * Serve the main maintenance dashboard landing page
- */
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'maintenance', 'index.html')));
-app.get('/maintenance', (req, res) => res.sendFile(path.join(__dirname, 'maintenance', 'index.html')));
+app.get('/maintenance', (req, res) => res.sendFile(path.join(__dirname, 'maintenance', 'maintenance.html')));
 
 // ─── Error handler ───────────────────────────────────────────────────────────
 

@@ -1,22 +1,41 @@
 /**
  * Shared Cloudinary / Multer upload factory
- * Used by both maintenance and procurement modules.
+ * Falls back to memory storage (file ignored) if Cloudinary is not configured.
  */
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
 
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key:    process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+const isCloudinaryConfigured =
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET;
+
+let cloudinary;
+let CloudinaryStorage;
+
+if (isCloudinaryConfigured) {
+    cloudinary = require('cloudinary').v2;
+    CloudinaryStorage = require('multer-storage-cloudinary').CloudinaryStorage;
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key:    process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+    console.log('✓ [Cloudinary] Configured — photo uploads enabled');
+} else {
+    console.warn('⚠️  [Cloudinary] Not configured — photo uploads will be skipped');
+}
 
 /**
- * Create a multer upload middleware that saves to a given Cloudinary folder.
+ * Create a multer upload middleware.
+ * Uses Cloudinary when configured, otherwise memory storage (file discarded).
  * @param {string} folder  e.g. 'maintenance/equipment-issues'
  */
 function createUpload(folder) {
+    if (!isCloudinaryConfigured) {
+        // No Cloudinary — accept the field but don't store anything
+        return multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+    }
+
     const storage = new CloudinaryStorage({
         cloudinary,
         params: {
