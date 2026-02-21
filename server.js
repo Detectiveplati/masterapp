@@ -165,6 +165,7 @@ app.get('/api/public-url', async (req, res) => {
 });
 
 // Health check
+const { isCloudinaryConfigured } = require('./services/cloudinary-upload');
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'OK',
@@ -172,6 +173,7 @@ app.get('/api/health', (req, res) => {
         maintenance_db:  mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
         templog_db:      templogDb ? 'Connected' : 'Disconnected',
         procurement_db:  mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
+        cloudinary:      isCloudinaryConfigured ? 'Configured' : 'NOT CONFIGURED — photo uploads disabled',
     });
 });
 

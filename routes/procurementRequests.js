@@ -26,8 +26,14 @@ router.post('/', (req, res, next) => {
 
         // Upload image first (with timeout) so imagePath is set from the start
         if (req.file) {
+            console.log(`[Procurement] Image received: ${req.file.originalname} (${req.file.size} bytes), uploading to Cloudinary...`);
             const url = await uploadBufferToCloudinary(req.file.buffer, req.file.mimetype, 'procurement');
-            if (url) data.imagePath = url;
+            if (url) {
+                data.imagePath = url;
+                console.log(`[Procurement] Image uploaded: ${url}`);
+            } else {
+                console.warn('[Procurement] Cloudinary upload returned null — check CLOUDINARY_* env vars in Railway dashboard');
+            }
         }
 
         const request = new ProcurementRequest(data);
