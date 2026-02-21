@@ -3,6 +3,8 @@ const router = express.Router();
 const MaintenanceRecord = require('../models/MaintenanceRecord');
 const Equipment = require('../models/Equipment');
 const { calculateNextMaintenanceDate } = require('../services/maintenance-calculator');
+const { createUpload } = require('../services/cloudinary-upload');
+const upload = createUpload('maintenance/records');
 
 // Get all maintenance records with optional filters
 router.get('/', async (req, res) => {
@@ -61,7 +63,7 @@ router.get('/equipment/:equipmentId', async (req, res) => {
 });
 
 // Create new maintenance record
-router.post('/', async (req, res) => {
+router.post('/', upload.single('image'), async (req, res) => {
     let equipment = null;
     if (req.body.equipmentId) {
         equipment = await Equipment.findOne({ equipmentId: req.body.equipmentId });
@@ -83,7 +85,7 @@ router.post('/', async (req, res) => {
         laborHours: req.body.laborHours || 0,
         laborCost: req.body.laborCost || 0,
         performedBy: req.body.performedBy || '',
-        beforePhotos: req.body.beforePhotos || [],
+        beforePhotos: req.file ? [req.file.path] : (req.body.beforePhotos || []),
         afterPhotos: req.body.afterPhotos || [],
         notes: req.body.notes || '',
         nextScheduledDate: req.body.nextScheduledDate || null,

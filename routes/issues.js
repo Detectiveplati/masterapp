@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const AreaIssue = require('../models/AreaIssue');
 const { createIssueReportedNotification } = require('../services/notification-service');
+const { createUpload } = require('../services/cloudinary-upload');
+const upload = createUpload('maintenance/area-issues');
 
 // Get all issues with optional filters
 router.get('/', async (req, res) => {
@@ -75,7 +77,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new issue (report issue)
-router.post('/', async (req, res) => {
+router.post('/', upload.single('image'), async (req, res) => {
     const issue = new AreaIssue({
         area: req.body.area,
         category: req.body.category,
@@ -83,7 +85,7 @@ router.post('/', async (req, res) => {
         description: req.body.description,
         priority: req.body.priority || 'Medium',
         status: req.body.status || 'Open',
-        photos: req.body.photos || [],
+        photos: req.file ? [req.file.path] : (req.body.photos || []),
         reportedBy: req.body.reportedBy,
         contactNumber: req.body.contactNumber,
         reportedDate: req.body.reportedDate || Date.now(),

@@ -232,6 +232,27 @@
             background: #3b82f6;
             color: #fff;
         }
+
+        /* Photo upload */
+        .photo-upload-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 13px 14px;
+            border: 1.5px dashed #e2e8f0;
+            border-radius: 10px;
+            background: #f8fafc;
+            cursor: pointer;
+            font-size: 0.88rem;
+            color: #64748b;
+            font-weight: 500;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .photo-upload-label:hover { border-color: #3b82f6; background: #eff6ff; color: #2563eb; }
+        .photo-upload-label input { display: none; }
+        .photo-preview { margin-top: 8px; display: none; }
+        .photo-preview img { max-width: 100%; max-height: 180px; border-radius: 8px; border: 1px solid #e2e8f0; object-fit: cover; }
+        .photo-name { font-size: 0.78rem; color: #94a3b8; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -284,6 +305,21 @@
                         <span class="optional" id="labelOptional"> (optional)</span>
                     </label>
                     <input type="text" id="reportedBy">
+                </div>
+                <div class="field">
+                    <label>
+                        <span id="labelPhoto">Photo</span>
+                        <span class="optional"> (optional)</span>
+                    </label>
+                    <label class="photo-upload-label" for="issuePhoto">
+                        <span>📸</span>
+                        <span id="photoLabelText">Tap to attach a photo</span>
+                        <input type="file" id="issuePhoto" accept="image/*" capture="environment" onchange="handlePhotoSelect(this)">
+                    </label>
+                    <div class="photo-preview" id="photoPreview">
+                        <img id="photoPreviewImg" src="" alt="Preview">
+                        <div class="photo-name" id="photoFileName"></div>
+                    </div>
                 </div>
                 <button class="submit-btn" id="submitBtn" onclick="submitReport()">Submit Report</button>
             </div>
@@ -425,10 +461,16 @@
             btn.textContent = t.submitting;
 
             try {
+                const fd = new FormData();
+                fd.append('equipmentId', equipmentId);
+                fd.append('description', description);
+                fd.append('reportedBy',  reportedBy || 'Anonymous');
+                const photoFile = document.getElementById('issuePhoto').files[0];
+                if (photoFile) fd.append('image', photoFile);
+
                 const res = await fetch(`${API_BASE}/equipment-issues`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ equipmentId, description, reportedBy: reportedBy || 'Anonymous' })
+                    body: fd
                 });
 
                 if (!res.ok) throw new Error('Failed to submit');
@@ -443,10 +485,30 @@
             }
         }
 
+        function handlePhotoSelect(input) {
+            const file = input.files[0];
+            const preview = document.getElementById('photoPreview');
+            const previewImg = document.getElementById('photoPreviewImg');
+            const nameEl = document.getElementById('photoFileName');
+            const labelEl = document.getElementById('photoLabelText');
+            if (file) {
+                previewImg.src = URL.createObjectURL(file);
+                nameEl.textContent = file.name;
+                preview.style.display = 'block';
+                labelEl.textContent = '✅ Photo selected — tap to change';
+            } else {
+                preview.style.display = 'none';
+                labelEl.textContent = 'Tap to attach a photo';
+            }
+        }
+
         function resetForm() {
             const t = translations[lang];
             document.getElementById('description').value = '';
             document.getElementById('reportedBy').value = '';
+            document.getElementById('issuePhoto').value = '';
+            document.getElementById('photoPreview').style.display = 'none';
+            document.getElementById('photoLabelText').textContent = 'Tap to attach a photo';
             document.getElementById('errorMsg').style.display = 'none';
             const btn = document.getElementById('submitBtn');
             btn.disabled = false;

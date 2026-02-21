@@ -228,6 +228,44 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.12);
         }
 
+        /* ── Photo upload ─────────────────────────────────── */
+        .photo-upload-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 16px;
+            border: 1.5px dashed var(--border);
+            border-radius: 10px;
+            background: #fafaf8;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--muted);
+            font-weight: 500;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .photo-upload-label:hover {
+            border-color: var(--accent);
+            background: #fff8f6;
+            color: var(--accent);
+        }
+        .photo-upload-label input { display: none; }
+        .photo-preview {
+            margin-top: 10px;
+            display: none;
+        }
+        .photo-preview img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            object-fit: cover;
+        }
+        .photo-name {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-top: 5px;
+        }
+
     </style>
 </head>
 <body>
@@ -291,6 +329,20 @@
                 <label for="reportedBy" id="lblReportedBy">Your Name <span class="req">*</span></label>
                 <input type="text" id="reportedBy" name="reportedBy" placeholder="Enter your name">
                 <div class="field-error" id="errReportedBy">Please enter your name.</div>
+            </div>
+
+            <div class="section-label">📷 PHOTO <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:0.78rem;color:var(--muted)">(optional)</span></div>
+
+            <div class="field">
+                <label class="photo-upload-label" for="issuePhoto">
+                    <span>📸</span>
+                    <span id="photoLabelText">Tap to attach a photo</span>
+                    <input type="file" id="issuePhoto" name="image" accept="image/*" capture="environment" onchange="handlePhotoSelect(this)">
+                </label>
+                <div class="photo-preview" id="photoPreview">
+                    <img id="photoPreviewImg" src="" alt="Preview">
+                    <div class="photo-name" id="photoFileName"></div>
+                </div>
             </div>
 
             <button type="submit" class="btn-submit" id="submitBtn">📤 Submit Issue Report</button>
@@ -477,21 +529,21 @@ document.getElementById('issueForm').addEventListener('submit', async (e) => {
     const issueText = document.getElementById('issue').value.trim();
     const titleText = issueText.split(/[.\n]/)[0].trim().slice(0, 80) || issueText.slice(0, 80);
 
-    const payload = {
-        area:             document.getElementById('area').value.trim(),
-        category:         'Other',
-        title:            titleText,
-        description:      issueText,
-        priority:         'Medium',
-        specificLocation: document.getElementById('specificLocation').value.trim(),
-        reportedBy:       document.getElementById('reportedBy').value.trim()
-    };
+    const fd = new FormData();
+    fd.append('area',             document.getElementById('area').value.trim());
+    fd.append('category',         'Other');
+    fd.append('title',            titleText);
+    fd.append('description',      issueText);
+    fd.append('priority',         'Medium');
+    fd.append('specificLocation', document.getElementById('specificLocation').value.trim());
+    fd.append('reportedBy',       document.getElementById('reportedBy').value.trim());
+    const photoFile = document.getElementById('issuePhoto').files[0];
+    if (photoFile) fd.append('image', photoFile);
 
     try {
         const res = await fetch(`${API_BASE}/issues`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: fd
         });
         if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Server error'); }
         const newIssue = await res.json();
@@ -509,9 +561,29 @@ document.getElementById('issueForm').addEventListener('submit', async (e) => {
     }
 });
 
+// ── Photo preview ─────────────────────────────────────────
+function handlePhotoSelect(input) {
+    const file = input.files[0];
+    const preview  = document.getElementById('photoPreview');
+    const previewImg = document.getElementById('photoPreviewImg');
+    const nameEl   = document.getElementById('photoFileName');
+    const labelEl  = document.getElementById('photoLabelText');
+    if (file) {
+        previewImg.src = URL.createObjectURL(file);
+        nameEl.textContent = file.name;
+        preview.style.display = 'block';
+        labelEl.textContent = '✅ Photo selected — tap to change';
+    } else {
+        preview.style.display = 'none';
+        labelEl.textContent = 'Tap to attach a photo';
+    }
+}
+
 // ── Reset ─────────────────────────────────────────────────
 function resetForm() {
     document.getElementById('issueForm').reset();
+    document.getElementById('photoPreview').style.display = 'none';
+    document.getElementById('photoLabelText').textContent = 'Tap to attach a photo';
     document.getElementById('formCard').style.display      = 'block';
     document.getElementById('successScreen').style.display = 'none';
     document.getElementById('submitBtn').disabled          = false;

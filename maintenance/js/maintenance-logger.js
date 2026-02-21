@@ -99,29 +99,29 @@ async function handleSubmit(event) {
     event.preventDefault();
     hideNotice();
 
-    const payload = {
-        equipmentId: equipmentSelect.value,
-        maintenanceType: document.getElementById('maintenanceType').value,
-        date: document.getElementById('date').value,
-        performedBy: document.getElementById('performedBy').value.trim(),
-        activityDescription: document.getElementById('activityDescription').value.trim(),
-        actionsTaken: document.getElementById('actionsTaken').value.trim(),
-        issuesFound: document.getElementById('issuesFound').value.trim(),
-        notes: document.getElementById('notes').value.trim()
-    };
+    const equipmentId = equipmentSelect.value;
 
-    if (!payload.equipmentId) {
+    if (!equipmentId) {
         showNotice('Please select equipment before saving.', 'error');
         return;
     }
 
+    const fd = new FormData();
+    fd.append('equipmentId',         equipmentId);
+    fd.append('maintenanceType',     document.getElementById('maintenanceType').value);
+    fd.append('date',                document.getElementById('date').value);
+    fd.append('performedBy',         document.getElementById('performedBy').value.trim());
+    fd.append('activityDescription', document.getElementById('activityDescription').value.trim());
+    fd.append('actionsTaken',        document.getElementById('actionsTaken').value.trim());
+    fd.append('issuesFound',         document.getElementById('issuesFound').value.trim());
+    fd.append('notes',               document.getElementById('notes').value.trim());
+    const photoFile = document.getElementById('maintenancePhoto')?.files?.[0];
+    if (photoFile) fd.append('image', photoFile);
+
     try {
         const response = await fetch(`${API_BASE}/maintenance`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
+            body: fd
         });
 
         if (!response.ok) {
@@ -131,7 +131,7 @@ async function handleSubmit(event) {
 
         showNotice('Maintenance record saved successfully.', 'success');
 
-        const redirectId = payload.equipmentId;
+        const redirectId = equipmentId;
         setTimeout(() => {
             window.location.href = `equipment-details.html?id=${redirectId}`;
         }, 1200);

@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const EquipmentIssue = require('../models/EquipmentIssue');
+const { createUpload } = require('../services/cloudinary-upload');
+const upload = createUpload('maintenance/equipment-issues');
 
 // Get all issues for a specific equipment
 router.get('/equipment/:equipmentId', async (req, res) => {
@@ -41,12 +43,13 @@ router.get('/all-open', async (req, res) => {
 });
 
 // Report a new issue
-router.post('/', async (req, res) => {
+router.post('/', upload.single('image'), async (req, res) => {
     try {
         const issue = new EquipmentIssue({
-            equipmentId: req.body.equipmentId,
-            description: req.body.description,
-            reportedBy: req.body.reportedBy || 'Anonymous'
+            equipmentId:  req.body.equipmentId,
+            description:  req.body.description,
+            reportedBy:   req.body.reportedBy || 'Anonymous',
+            imagePath:    req.file ? req.file.path : ''
         });
         const saved = await issue.save();
         res.status(201).json(saved);

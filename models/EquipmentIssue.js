@@ -33,6 +33,10 @@ const equipmentIssueSchema = new mongoose.Schema({
         type: String,
         trim: true,
         default: ''
+    },
+    imagePath: {
+        type: String,
+        default: ''
     }
 }, {
     timestamps: true
