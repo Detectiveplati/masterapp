@@ -43,7 +43,7 @@
       <div class="form-row">
         <div class="form-group">
           <label class="t" data-en="Quantity" data-zh="数量">Quantity</label>
-          <input type="text" name="quantity" id="qtyInput" placeholder="e.g. 2"/>
+          <input type="number" name="quantity" id="qtyInput" placeholder="e.g. 2" min="1" step="1" inputmode="numeric"/>
         </div>
         <div class="form-group">
           <label class="t" data-en="Department" data-zh="部门">Department</label>
@@ -116,7 +116,7 @@
   };
   const PLACEHOLDERS = {
     en: { item: 'e.g. Commercial Blender / 商用搅拌机', qty: 'e.g. 2', dept: 'e.g. Pastry, Wok Station', name: 'Full name / 全名', comments: 'Why is this item needed? Any special notes?' },
-    zh: { item: '例：商用搅拌机 / Commercial Blender', qty: '例：2件', dept: '例：烤焗部', name: '全名 / Full Name', comments: '为什么需要此物品？有特别说明吗？' }
+    zh: { item: '例：商用搅拌机 / Commercial Blender', qty: '例：2', dept: '例：烤焗部', name: '全名 / Full Name', comments: '为什么需要此物品？有特别说明吗？' }
   };
 
   let lang = navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en';
