@@ -99,6 +99,10 @@ async function handleSubmit(event) {
     event.preventDefault();
     hideNotice();
 
+    const submitBtn = event.target.querySelector('[type="submit"]');
+    const origBtnText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '⏳ Saving…'; }
+
     const equipmentId = equipmentSelect.value;
 
     if (!equipmentId) {
@@ -118,10 +122,14 @@ async function handleSubmit(event) {
     const photoFile = document.getElementById('maintenancePhoto')?.files?.[0];
     if (photoFile) fd.append('image', photoFile);
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
     try {
         const response = await fetch(`${API_BASE}/maintenance`, {
             method: 'POST',
-            body: fd
+            body: fd,
+            signal: controller.signal
         });
 
         if (!response.ok) {
@@ -136,7 +144,15 @@ async function handleSubmit(event) {
             window.location.href = `equipment-details.html?id=${redirectId}`;
         }, 1200);
     } catch (error) {
-        showNotice(error.message, 'error');
+        showNotice(
+            error.name === 'AbortError'
+                ? 'Request timed out. Please check your connection and try again.'
+                : error.message,
+            'error'
+        );
+    } finally {
+        clearTimeout(timeout);
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origBtnText; }
     }
 }
 

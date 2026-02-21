@@ -541,10 +541,14 @@ document.getElementById('issueForm').addEventListener('submit', async (e) => {
     if (photoFile) fd.append('image', photoFile);
 
     try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
         const res = await fetch(`${API_BASE}/issues`, {
             method: 'POST',
-            body: fd
+            body: fd,
+            signal: controller.signal
         });
+        clearTimeout(timeout);
         if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Server error'); }
         const newIssue = await res.json();
 
@@ -557,7 +561,8 @@ document.getElementById('issueForm').addEventListener('submit', async (e) => {
     } catch (err) {
         btn.disabled = false;
         btn.textContent = T[lang].submitBtn;
-        alert(T[lang].submitFailed + err.message);
+        const msg = err.name === 'AbortError' ? 'Request timed out. Please try again.' : err.message;
+        alert(T[lang].submitFailed + msg);
     }
 });
 

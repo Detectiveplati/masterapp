@@ -158,17 +158,31 @@
     const msgErr = document.getElementById('msgError');
     msgOk.style.display = 'none';
     msgErr.style.display = 'none';
+
+    const submitBtn = this.querySelector('[type="submit"]');
+    const origHtml  = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = lang === 'zh' ? '⏳ 提交中…' : '⏳ Submitting…';
+
     try {
-      const res = await fetch('/api/requests', { method: 'POST', body: new FormData(this) });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+      const res = await fetch('/api/requests', { method: 'POST', body: new FormData(this), signal: controller.signal });
+      clearTimeout(timeout);
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Server error'); }
       msgOk.style.display = 'block';
       this.reset();
       document.getElementById('imagePreview').style.display = 'none';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
-      document.getElementById('errText').textContent = lang === 'zh' ? `提交失败：${err.message}` : `Failed: ${err.message}`;
+      document.getElementById('errText').textContent = lang === 'zh'
+        ? `提交失败：${err.name === 'AbortError' ? '请求超时，请重试' : err.message}`
+        : `Failed: ${err.name === 'AbortError' ? 'Request timed out, please try again' : err.message}`;
       msgErr.style.display = 'block';
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = origHtml;
     }
   });
 </script>

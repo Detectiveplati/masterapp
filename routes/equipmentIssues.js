@@ -43,7 +43,12 @@ router.get('/all-open', async (req, res) => {
 });
 
 // Report a new issue
-router.post('/', upload.single('image'), async (req, res) => {
+router.post('/', (req, res, next) => {
+    upload.single('image')(req, res, (err) => {
+        if (err) console.error('[Equipment Issues] Image upload error (continuing without photo):', err.message);
+        next();
+    });
+}, async (req, res) => {
     try {
         const issue = new EquipmentIssue({
             equipmentId:  req.body.equipmentId,

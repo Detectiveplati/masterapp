@@ -460,6 +460,9 @@
             btn.disabled = true;
             btn.textContent = t.submitting;
 
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 30000);
+
             try {
                 const fd = new FormData();
                 fd.append('equipmentId', equipmentId);
@@ -470,7 +473,8 @@
 
                 const res = await fetch(`${API_BASE}/equipment-issues`, {
                     method: 'POST',
-                    body: fd
+                    body: fd,
+                    signal: controller.signal
                 });
 
                 if (!res.ok) throw new Error('Failed to submit');
@@ -478,8 +482,12 @@
                 document.getElementById('reportForm').style.display = 'none';
                 document.getElementById('successState').style.display = 'block';
             } catch (e) {
-                errorMsg.textContent = t.errorFail;
+                errorMsg.textContent = e.name === 'AbortError'
+                    ? 'Request timed out. Please check your connection and try again.'
+                    : t.errorFail;
                 errorMsg.style.display = 'block';
+            } finally {
+                clearTimeout(timeout);
                 btn.disabled = false;
                 btn.textContent = t.submitBtn;
             }

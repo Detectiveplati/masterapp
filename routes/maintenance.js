@@ -63,7 +63,12 @@ router.get('/equipment/:equipmentId', async (req, res) => {
 });
 
 // Create new maintenance record
-router.post('/', upload.single('image'), async (req, res) => {
+router.post('/', (req, res, next) => {
+    upload.single('image')(req, res, (err) => {
+        if (err) console.error('[Maintenance] Image upload error (continuing without photo):', err.message);
+        next();
+    });
+}, async (req, res) => {
     let equipment = null;
     if (req.body.equipmentId) {
         equipment = await Equipment.findOne({ equipmentId: req.body.equipmentId });

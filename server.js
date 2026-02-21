@@ -80,9 +80,12 @@ const noCacheHtml = {
   }
 };
 
+// Hub page — root index.html
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+
 // Maintenance Dashboard - Serve from maintenance/ folder
 app.use('/maintenance', express.static(path.join(__dirname, 'maintenance'), noCacheHtml));
-app.use(express.static(path.join(__dirname, 'maintenance'), noCacheHtml)); // root also resolves to maintenance
+app.use(express.static(path.join(__dirname, 'maintenance'), noCacheHtml)); // legacy: root-relative asset paths in maintenance pages
 
 // TempLog - Serve from templog/ folder (legacy embedded app)
 app.use('/templog', express.static(path.join(__dirname, 'templog'), noCacheHtml));

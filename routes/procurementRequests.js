@@ -9,7 +9,12 @@ const upload = createUpload('procurement');
  * POST /api/requests
  * Create a new procurement request (multipart/form-data for image)
  */
-router.post('/', upload.single('image'), async (req, res) => {
+router.post('/', (req, res, next) => {
+    upload.single('image')(req, res, (err) => {
+        if (err) console.error('[Procurement] Image upload error (continuing without photo):', err.message);
+        next(); // always continue — save request even if image upload fails
+    });
+}, async (req, res) => {
     try {
         const data = { ...req.body };
         if (req.file) data.imagePath = req.file.path; // Cloudinary HTTPS URL

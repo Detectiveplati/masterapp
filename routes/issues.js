@@ -77,7 +77,12 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new issue (report issue)
-router.post('/', upload.single('image'), async (req, res) => {
+router.post('/', (req, res, next) => {
+    upload.single('image')(req, res, (err) => {
+        if (err) console.error('[Area Issues] Image upload error (continuing without photo):', err.message);
+        next(); // always continue — save issue even if upload fails
+    });
+}, async (req, res) => {
     const issue = new AreaIssue({
         area: req.body.area,
         category: req.body.category,

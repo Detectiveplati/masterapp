@@ -1,15 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=/">
-    <title>Redirecting…</title>
-</head>
-<body>
-    <p>Redirecting to <a href="/">hub</a>…</p>
-    <script>window.location.replace('/');</script>
-</body>
-</html>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store">
+    <title>Central Kitchen  Master App</title>
     <style>
         :root {
             --ink: #121316; --muted: #5a616c; --accent: #ff7a18;
@@ -91,7 +86,7 @@
 </head>
 <body>
     <header>
-        <img src="assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo">
+        <img src="/maintenance/assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo">
         <div>
             <h1>Central Kitchen</h1>
             <p>Master Application Hub</p>
@@ -101,7 +96,7 @@
         <div class="hub-title">Where would you like to go?</div>
         <div class="hub-subtitle">Select an app below to get started.</div>
         <div class="hub-grid">
-            <a href="maintenance.html" class="hub-card maintenance">
+            <a href="/maintenance/maintenance.html" class="hub-card maintenance">
                 <div class="icon"></div>
                 <h2>Maintenance Dashboard</h2>
                 <p>Track equipment status, log service records, report issues, and manage maintenance schedules across all kitchen equipment.</p>
@@ -112,11 +107,13 @@
                 <h2>Kitchen Temp Log</h2>
                 <p>Record cooking activities, monitor temperatures, track cook times, and export logs to CSV or PDF for compliance reporting.</p>
                 <div class="go-btn">Open Temp Log</div>
-            </a>            <a href="/procurement/requests" class="hub-card procurement">
+            </a>
+            <a href="/procurement/requests" class="hub-card procurement">
                 <h2>Kitchen Equipment Procurement</h2>
                 <p>Submit and track purchase requests, attach photos, manage approvals, and keep a full history of all procurement activity.</p>
                 <div class="go-btn">Open Kitchen Equipment Procurement</div>
-            </a>        </div>
+            </a>
+        </div>
         <div class="status-bar">
             <span class="status-dot"></span>
             <span id="statusText">Checking server</span>
@@ -140,7 +137,7 @@
                     el.textContent = 'Partial: Maintenance ' + d.maintenance_db + ' | TempLog ' + d.templog_db;
                     dot.style.background = '#f39c12';
                 } else {
-                    el.textContent = 'Databases offline  check MongoDB';
+                    el.textContent = 'Databases offline — check MongoDB';
                     dot.style.background = '#e74c3c';
                 }
             })
