@@ -29,6 +29,9 @@ try {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust Railway/Heroku reverse proxy so req.protocol is 'https' in production
+app.set('trust proxy', 1);
+
 // ─── Database connections ────────────────────────────────────────────────────
 
 // 1. Mongoose — Maintenance Dashboard
