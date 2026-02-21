@@ -331,6 +331,14 @@
             <div class="desc-block" id="descBlock">—</div>
         </div>
 
+        <!-- Photos -->
+        <div class="panel" id="photoPanel" style="display:none;">
+            <div class="panel-header">📷 Photos</div>
+            <div class="panel-body">
+                <div id="photoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;"></div>
+            </div>
+        </div>
+
         <!-- Status management -->
         <div class="panel">
             <div class="panel-header">🔄 Update Status</div>
@@ -431,6 +439,21 @@
         `;
 
         document.getElementById('descBlock').textContent = i.description || '—';
+
+        // Photos
+        const photoPanel = document.getElementById('photoPanel');
+        const photoGrid  = document.getElementById('photoGrid');
+        if (i.photos && i.photos.length) {
+            photoPanel.style.display = 'block';
+            photoGrid.innerHTML = i.photos.map(url =>
+                `<a href="${url}" target="_blank" rel="noopener">
+                    <img src="${url}" alt="Issue photo"
+                         style="width:100%;height:160px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:zoom-in;">
+                </a>`
+            ).join('');
+        } else {
+            photoPanel.style.display = 'none';
+        }
 
         // Status flow
         const statuses = ['Open', 'In Progress', 'Resolved', 'Closed'];

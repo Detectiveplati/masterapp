@@ -309,6 +309,7 @@
                                 <span>${_days(i.reportedDate)}</span>
                             </span>
                         </span>
+                        ${i.photos && i.photos.length ? `<img src="${i.photos[0]}" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0;">` : ''}
                         <span class="live-badge ${badgeClass}">${i.priority}</span>
                     </a>`;
                 }).join('');

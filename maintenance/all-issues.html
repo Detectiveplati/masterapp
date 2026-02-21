@@ -577,6 +577,7 @@
                     <div class="issue-badges">
                         <span class="badge ${priorityBadgeClass(issue.priority)}">${issue.priority}</span>
                         <span class="badge ${statusBadgeClass(issue.status)}">${issue.status}</span>
+                        ${issue.photos && issue.photos.length ? `<img src="${issue.photos[0]}" alt="photo" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--border);margin-top:6px;">` : ''}
                     </div>
                 </div>`;
         }).join('');
