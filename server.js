@@ -120,6 +120,27 @@ app.use('/api/seed',             seedRoutes);
 const procurementRequestsRoutes = require('./routes/procurementRequests');
 app.use('/api/requests', procurementRequestsRoutes);
 
+// QR code for procurement request form — auto-detects host (works on Railway)
+app.get('/api/qr', async (req, res) => {
+    try {
+        const QRCode = require('qrcode');
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const targetUrl = `${baseUrl}/procurement/request`;
+        const qrBuffer = await QRCode.toBuffer(targetUrl, {
+            errorCorrectionLevel: 'M',
+            type: 'png',
+            width: 300,
+            margin: 1
+        });
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Cache-Control', 'no-store');
+        res.send(qrBuffer);
+    } catch (e) {
+        console.error('QR generation failed:', e);
+        res.status(500).json({ error: 'QR generation failed' });
+    }
+});
+
 // Public URL (ngrok support)
 app.get('/api/public-url', async (req, res) => {
     try {
