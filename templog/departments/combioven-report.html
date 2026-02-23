@@ -194,15 +194,16 @@
     document.getElementById('pdf-btn').addEventListener('click', () => {
       const start = document.getElementById('start-date').value;
       const end = document.getElementById('end-date').value;
-      // Open in a new tab so browsers that block "download on navigation" still work.
-      const qs = [];
-      if (start) qs.push(`startDate=${encodeURIComponent(start)}`);
-      if (end) qs.push(`endDate=${encodeURIComponent(end)}`);
-      if (!qs.length) {
+      if (!start && !end) {
         alert('Please choose a start and/or end date first.');
         return;
       }
-      window.open(`/templog/api/cooks/report.pdf?${qs.join('&')}`, '_blank');
+      // Use browser print dialog — choose "Save as PDF" to export.
+      // setPrintMode hides controls and shows print-only elements.
+      setPrintMode(true);
+      window.print();
+      // Restore UI after the print dialog closes.
+      window.addEventListener('afterprint', () => setPrintMode(false), { once: true });
     });
 
     window.addEventListener('load', () => {
