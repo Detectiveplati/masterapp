@@ -363,6 +363,39 @@
                 min-width: 100%;
             }
         }
+
+        /* Location grouping */
+        .location-group { margin-bottom: 32px; }
+
+        .location-group-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: linear-gradient(90deg, #fff, #fef5f1);
+            border: 1px solid var(--border);
+            border-left: 5px solid var(--accent);
+            border-radius: 10px;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .location-group-header .loc-name {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--ink);
+            flex: 1;
+        }
+
+        .location-group-header .loc-count {
+            font-size: 0.78rem;
+            font-weight: 700;
+            background: #f1f5f9;
+            color: var(--muted);
+            border-radius: 20px;
+            padding: 2px 10px;
+            border: 1px solid var(--border);
+        }
     </style>
 </head>
 <body>
@@ -378,6 +411,7 @@
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <button onclick="window.location.href='add-equipment.html'">➕ Add Equipment</button>
+            <button onclick="window.location.href='report-issue.html'" style="background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;border:none;">⚠️ Report Issue</button>
             <button onclick="openImportModal()" style="background:linear-gradient(135deg,#0f766e,#0d9488);color:#fff;border:none;">📥 Import CSV</button>
         </div>
     </header>
@@ -405,6 +439,12 @@
 
                 <div id="importPreview" style="display:none;background:#f9fafb;border:1px solid var(--border);border-radius:9px;padding:11px 14px;font-size:0.85rem;color:#374151;margin-bottom:14px;"></div>
                 <div id="importResults" style="display:none;"></div>
+
+                <!-- Replace toggle -->
+                <label style="display:flex;align-items:center;gap:10px;margin-bottom:14px;cursor:pointer;font-size:0.87rem;font-weight:600;color:#374151;">
+                    <input type="checkbox" id="replaceToggle" style="width:16px;height:16px;cursor:pointer;accent-color:#0f766e;">
+                    <span>Update existing records that match by name</span>
+                </label>
 
                 <div style="display:flex;gap:10px;justify-content:flex-end;">
                     <button onclick="closeImportModal()" style="background:#f1f5f9;color:#374151;border:none;border-radius:9px;padding:10px 20px;font-weight:600;cursor:pointer;">Cancel</button>
@@ -440,12 +480,6 @@
             <div class="filter-group">
                 <select id="filterType">
                     <option value="">All Types</option>
-                    <option value="Walk-In Freezer">Walk-In Freezer</option>
-                    <option value="Standing Freezer">Standing Freezer</option>
-                    <option value="Walk-In Chiller">Walk-In Chiller</option>
-                    <option value="Standing Chiller">Standing Chiller</option>
-                    <option value="Warmer">Warmer</option>
-                    <option value="Other">Other</option>
                 </select>
                 
                 <select id="filterStatus">
@@ -474,7 +508,7 @@
         </div>
 
         <!-- Equipment Grid View -->
-        <div id="equipmentGrid" class="equipment-grid active" style="display: none;"></div>
+        <div id="equipmentGrid" style="display: none;"></div>
 
         <!-- Equipment List View -->
         <div id="equipmentList" class="equipment-list"></div>
@@ -500,14 +534,6 @@
         let allEquipment = [];
         let issueCounts = {};
         let currentView = 'grid';
-
-        const allowedTypes = [
-            'Walk-In Freezer',
-            'Standing Freezer',
-            'Walk-In Chiller',
-            'Standing Chiller',
-            'Warmer'
-        ];
 
         // Equipment type icons
         const typeIcons = {
@@ -559,12 +585,21 @@
                 } else {
                     emptyState.style.display = 'none';
                     updateStats();
+                    populateTypeFilter();
                     displayEquipment(allEquipment);
                 }
             } catch (error) {
                 console.error('Error loading equipment:', error);
                 loadingState.innerHTML = '<p style="color: var(--accent);">❌ Failed to load equipment. Please check server connection.</p>';
             }
+        }
+
+        function populateTypeFilter() {
+            const sel = document.getElementById('filterType');
+            const current = sel.value;
+            const types = [...new Set(allEquipment.map(e => e.type).filter(Boolean))].sort();
+            sel.innerHTML = '<option value="">All Types</option>' +
+                types.map(t => `<option value="${t}"${t === current ? ' selected' : ''}>${t}</option>`).join('');
         }
 
         function updateStats() {
@@ -591,10 +626,7 @@
                     equipment.type.toLowerCase().includes(searchTerm) ||
                     (equipment.location && equipment.location.toLowerCase().includes(searchTerm));
                 
-                const matchesType = !typeFilter ||
-                    (typeFilter === 'Other'
-                        ? !allowedTypes.includes(equipment.type)
-                        : equipment.type === typeFilter);
+                const matchesType = !typeFilter || equipment.type === typeFilter;
                 const matchesStatus = !statusFilter ||
                     (statusFilter === 'needs_action'
                         ? equipment.status !== 'operational'
@@ -623,27 +655,59 @@
         }
 
         function displayEquipment(equipment) {
-            const gridView = document.getElementById('equipmentGrid');
-            const listView = document.getElementById('equipmentList');
+            const gridView  = document.getElementById('equipmentGrid');
+            const listView  = document.getElementById('equipmentList');
             const emptyState = document.getElementById('emptyState');
 
             if (equipment.length === 0) {
-                gridView.style.display = 'none';
-                listView.style.display = 'none';
+                gridView.style.display  = 'none';
+                listView.style.display  = 'none';
                 emptyState.style.display = 'block';
                 return;
             }
 
             emptyState.style.display = 'none';
-            
+
+            // Group by location (blank → "No Location")
+            const groups = {};
+            equipment.forEach(eq => {
+                const key = (eq.location && eq.location.trim()) ? eq.location.trim() : 'No Location';
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(eq);
+            });
+
+            // Sort group keys: No Location last, rest alphabetical
+            const sortedKeys = Object.keys(groups).sort((a, b) => {
+                if (a === 'No Location') return 1;
+                if (b === 'No Location') return -1;
+                return a.localeCompare(b);
+            });
+
+            const buildGroups = (renderFn) =>
+                sortedKeys.map(loc => {
+                    const items = groups[loc].map(renderFn).join('');
+                    const count = groups[loc].length;
+                    return `
+                        <div class="location-group">
+                            <div class="location-group-header">
+                                <span>📍</span>
+                                <span class="loc-name">${loc}</span>
+                                <span class="loc-count">${count} item${count !== 1 ? 's' : ''}</span>
+                            </div>
+                            ${currentView === 'grid'
+                                ? `<div class="equipment-grid" style="display:grid;">${items}</div>`
+                                : items}
+                        </div>`;
+                }).join('');
+
             if (currentView === 'grid') {
-                gridView.style.display = 'grid';
-                listView.style.display = 'none';
-                gridView.innerHTML = equipment.map(eq => createEquipmentCard(eq)).join('');
+                gridView.style.display  = 'block';
+                listView.style.display  = 'none';
+                gridView.innerHTML = buildGroups(createEquipmentCard);
             } else {
-                gridView.style.display = 'none';
-                listView.style.display = 'block';
-                listView.innerHTML = equipment.map(eq => createEquipmentListItem(eq)).join('');
+                gridView.style.display  = 'none';
+                listView.style.display  = 'block';
+                listView.innerHTML = buildGroups(createEquipmentListItem);
             }
         }
 
@@ -791,6 +855,7 @@
             document.getElementById('importPreview').style.display = 'none';
             document.getElementById('importResults').style.display = 'none';
             document.getElementById('btnRunImport').disabled = true;
+            document.getElementById('replaceToggle').checked = false;
             parsedRows = [];
         }
 
@@ -837,12 +902,13 @@
         async function runImport() {
             if (!parsedRows.length) return;
             const btn = document.getElementById('btnRunImport');
+            const replace = document.getElementById('replaceToggle').checked;
             btn.disabled = true;
             btn.textContent = 'Importing…';
             const resultsEl = document.getElementById('importResults');
             resultsEl.style.display = 'none';
             try {
-                const res = await fetch(`${API_BASE}/equipment/bulk-import`, {
+                const res = await fetch(`${API_BASE}/equipment/bulk-import?replace=${replace}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(parsedRows)
@@ -851,7 +917,7 @@
                 let html = `<div style="border-radius:9px;overflow:hidden;border:1px solid var(--border);">`;
                 html += `<div style="padding:12px 16px;background:#f0fdfa;border-bottom:1px solid #99f6e4;font-weight:700;color:#0f766e;">Import Complete</div>`;
                 html += `<div style="padding:12px 16px;font-size:0.88rem;line-height:1.8;">`;
-                html += `✅ <strong>${data.imported}</strong> imported &nbsp;|&nbsp; ⏭ <strong>${data.skipped}</strong> skipped`;
+                html += `✅ <strong>${data.imported}</strong> new &nbsp;|&nbsp; ✏️ <strong>${data.updated}</strong> updated &nbsp;|&nbsp; ⏭ <strong>${data.skipped}</strong> skipped`;
                 if (data.errors && data.errors.length) {
                     html += `<div style="margin-top:10px;max-height:140px;overflow-y:auto;">`;
                     data.errors.forEach(e => {
@@ -862,7 +928,7 @@
                 html += `</div></div>`;
                 resultsEl.innerHTML = html;
                 resultsEl.style.display = 'block';
-                if (data.imported > 0) loadEquipment();
+                if (data.imported > 0 || data.updated > 0) loadEquipment();
             } catch (err) {
                 resultsEl.innerHTML = `<div style="color:#b91c1c;font-size:0.88rem;">❌ Import failed: ${err.message}</div>`;
                 resultsEl.style.display = 'block';
