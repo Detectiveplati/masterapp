@@ -3,9 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Food Safety Non-Conformance Dashboard</title>
+  <title>Food Safety NC - Central Kitchen</title>
   <link rel="stylesheet" href="../maintenance/css/styles.css">
-  <script src="js/foodsafety-nc.js" defer></script>
+  <style>
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+    .module-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px 28px;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 6px 20px var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .module-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      border-radius: 16px 16px 0 0;
+    }
+    .module-card.report::before  { background: linear-gradient(90deg, var(--accent), #e74c3c); }
+    .module-card.view::before    { background: linear-gradient(90deg, var(--accent-2), #e67e22); }
+    .module-card:hover { transform: translateY(-5px); box-shadow: 0 14px 36px rgba(0,0,0,0.12); }
+    .module-card .card-icon { font-size: 2.4rem; line-height: 1; }
+    .module-card h2 { font-size: 1.25rem; font-weight: 700; color: var(--ink); margin: 0; }
+    .module-card p  { font-size: 0.9rem; color: var(--muted); line-height: 1.6; margin: 0; }
+    .card-go {
+      margin-top: auto;
+      padding-top: 14px;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+    .module-card.report .card-go { color: var(--accent); }
+    .module-card.view   .card-go { color: var(--accent-2); }
+    .btn-secondary {
+      background: linear-gradient(135deg, #7f8c8d, #95a5a6);
+      color: white; border: none; border-radius: 10px; padding: 11px 22px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer; font-weight: 600;
+      text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.95rem;
+    }
+    @media (max-width: 600px) { .module-grid { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
   <header>
@@ -13,22 +65,31 @@
       <a href="/index.html" style="display:inline-flex;text-decoration:none;"><img src="../maintenance/assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo" class="site-logo"></a>
       <div class="header-text">
         <h1>Food Safety Non-Conformance</h1>
-        <p>Report and resolve food safety issues</p>
+        <p>Report and track food safety issues across all kitchen units</p>
       </div>
     </div>
-    <a href="/index.html" class="test-button" style="margin-left:18px;align-self:center;">← Back to Hub</a>
+    <a href="/index.html" class="btn-secondary">← Hub</a>
   </header>
+
   <main>
-    <div class="dashboard-cards">
-      <a class="card" href="report-nc.html">
-        <h2>➕ Report NC</h2>
-        <p>Submit a new food safety non-conformance</p>
+    <div class="module-grid">
+      <a class="module-card report" href="report-nc.html">
+        <div class="card-icon">➕</div>
+        <h2>Report NC</h2>
+        <p>Submit a new food safety non-conformance report for any kitchen unit.</p>
+        <div class="card-go">New Report →</div>
       </a>
-      <a class="card" href="nc-list.html">
-        <h2>📋 View NC Reports</h2>
-        <p>See all open and resolved NCs</p>
+      <a class="module-card view" href="nc-list.html">
+        <div class="card-icon">📋</div>
+        <h2>View NC Reports</h2>
+        <p>Browse all open and resolved non-conformance reports. Filter by unit or status.</p>
+        <div class="card-go">View All →</div>
       </a>
     </div>
   </main>
+
+  <footer>
+    <p>&copy; 2026 Central Kitchen | <a href="/index.html">Hub</a> | <a href="/maintenance/maintenance.html">Maintenance</a></p>
+  </footer>
 </body>
 </html>
