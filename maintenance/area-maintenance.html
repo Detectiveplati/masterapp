@@ -334,6 +334,7 @@
                     <option value="#06-27/15/16/17 (Main CK Area)" selected>#06-27/15/16/17 (Main CK Area)</option>
                     <option value="#06-24 (Raw Prep)">#06-24 (Raw Prep)</option>
                     <option value="#06-19 (Bakery)">#06-19 (Bakery)</option>
+                    <option value="#06-08 (Dishwashing)">#06-08 (Dishwashing)</option>
                     <option value="#05-26">#05-26</option>
                     <option value="#05-27 (Tay Sauce Kitchen)">#05-27 (Tay Sauce Kitchen)</option>
                     <option value="#04-08 (Confinement)">#04-08 (Confinement)</option>
@@ -353,6 +354,12 @@
                     <option value="Fruit Room">Fruit Room</option>
                     <option value="Cold Room">Cold Room</option>
                     <option value="Pan Fry Area">Pan Fry Area</option>
+                    <option value="Braising Area">Braising Area</option>
+                    <option value="Big Store">Big Store</option>
+                    <option value="Small Store">Small Store</option>
+                    <option value="Old Sauce Area">Old Sauce Area</option>
+                    <option value="Office/Changing Room Area">Office/Changing Room Area</option>
+                    <option value="Vegetable Prep Room">Vegetable Prep Room</option>
                 </select>
                 <div class="field-error" id="errSubArea">Please select an area.</div>
             </div>
@@ -421,7 +428,7 @@
 <script>
 // ── Constants ─────────────────────────────────────────────
 const MAIN_CK   = '#06-27/15/16/17 (Main CK Area)';
-const SUB_AREAS = ['Combi Oven Area','Deep Frying Area','Stir Frying Area','Packing Area','Salad Room','Fruit Room','Cold Room','Pan Fry Area'];
+const SUB_AREAS = ['Combi Oven Area','Deep Frying Area','Stir Frying Area','Packing Area','Salad Room','Fruit Room','Cold Room','Pan Fry Area','Braising Area','Big Store','Small Store','Old Sauce Area','Office/Changing Room Area','Vegetable Prep Room'];
 
 // ── Translations ─────────────────────────────────────────
 const T = {
@@ -495,6 +502,7 @@ const UNIT_ZH = {
     '#06-27/15/16/17 (Main CK Area)': '#06-27/15/16/17（主中央厨房区）',
     '#06-24 (Raw Prep)':             '#06-24（生食准备）',
     '#06-19 (Bakery)':               '#06-19（面包房）',
+    '#06-08 (Dishwashing)':          '#06-08（洗磗间）',
     '#05-26':                        '#05-26',
     '#05-27 (Tay Sauce Kitchen)':    '#05-27（泰酱厨房）',
     '#04-08 (Confinement)':          '#04-08（卵月中心）'
@@ -508,7 +516,13 @@ const SUB_AREA_ZH = {
     'Salad Room':       '沙律房',
     'Fruit Room':       '水果房',
     'Cold Room':        '冷藏室',
-    'Pan Fry Area':     '煎锅区'
+    'Pan Fry Area':     '煎锅区',
+    'Braising Area':    '圆火区',
+    'Big Store':        '大仓库',
+    'Small Store':      '小仓库',
+    'Old Sauce Area':   '旧酱料区',
+    'Office/Changing Room Area': '办公室/报镒室',
+    'Vegetable Prep Room': '蔬菜准备室'
 };
 
 let lang = 'en';

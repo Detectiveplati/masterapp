@@ -261,10 +261,10 @@
         <a href="all-issues.html#area" class="btn-print-all" style="text-decoration:none;">📋 View All Issues →</a>
     </div>
 
-    <div class="areas-section-label">🏢 Units <span class="label-count" id="unitCount">6</span></div>
+    <div class="areas-section-label">🏢 Units <span class="label-count" id="unitCount">7</span></div>
     <div class="areas-grid" id="unitsGrid"></div>
 
-    <div class="areas-section-label">📍 Main CK Area — Kitchen Zones <span class="label-count">8</span></div>
+    <div class="areas-section-label">📍 Main CK Area — Kitchen Zones <span class="label-count">14</span></div>
     <div class="areas-grid" id="areasGrid"></div>
 </main>
 
@@ -275,21 +275,26 @@ const MAIN_CK = '#06-27/15/16/17 (Main CK Area)';
 const UNITS = [
     { en: MAIN_CK,                        zh: '#06-27/15/16/17（主中央厨房区）', icon: '🏭', headerClass: 'unit' },
     { en: '#06-24 (Raw Prep)',             zh: '#06-24（生食准备）',             icon: '🔪', headerClass: 'unit-rawprep' },
-    { en: '#06-19 (Bakery)',               zh: '#06-19（面包房）',               icon: '🥖', headerClass: 'unit-bakery' },
-    { en: '#05-26',                        zh: '#05-26',                         icon: '🏢', headerClass: 'unit-05-26' },
+    { en: '#06-19 (Bakery)',               zh: '#06-19（面包房）',               icon: '🥖', headerClass: 'unit-bakery' },    { en: '#06-08 (Dishwashing)',           zh: '#06-08（洗磗间）',             icon: '🍽️', headerClass: 'unit-05-26' },    { en: '#05-26',                        zh: '#05-26',                         icon: '🏢', headerClass: 'unit-05-26' },
     { en: '#05-27 (Tay Sauce Kitchen)',    zh: '#05-27（泰酱厨房）',             icon: '🍜', headerClass: 'unit-taysauce' },
     { en: '#04-08 (Confinement)',          zh: '#04-08（坐月中心）',             icon: '🏥', headerClass: 'unit-confinement' }
 ];
 
 const SUB_AREAS = [
-    { en: 'Combi Oven Area',  zh: '万能烤炉区', icon: '🔥' },
-    { en: 'Deep Frying Area', zh: '炸锅区',    icon: '🍳' },
-    { en: 'Stir Frying Area', zh: '炒锅区',    icon: '🥢' },
-    { en: 'Packing Area',     zh: '包装区',    icon: '📦' },
-    { en: 'Salad Room',       zh: '沙律房',    icon: '🥗' },
-    { en: 'Fruit Room',       zh: '水果房',    icon: '🍎' },
-    { en: 'Cold Room',        zh: '冷藏室',    icon: '❄️' },
-    { en: 'Pan Fry Area',     zh: '煎锅区',    icon: '🍳' }
+    { en: 'Combi Oven Area',           zh: '万能烤炉区', icon: '🔥' },
+    { en: 'Deep Frying Area',          zh: '炸锅区',    icon: '🍳' },
+    { en: 'Stir Frying Area',          zh: '炒锅区',    icon: '🥢' },
+    { en: 'Packing Area',              zh: '包装区',    icon: '📦' },
+    { en: 'Salad Room',                zh: '沙律房',    icon: '🥗' },
+    { en: 'Fruit Room',                zh: '水果房',    icon: '🍎' },
+    { en: 'Cold Room',                 zh: '冷藏室',    icon: '❄️' },
+    { en: 'Pan Fry Area',              zh: '煎锅区',    icon: '🍳' },
+    { en: 'Braising Area',             zh: '圆火区',    icon: '🍲' },
+    { en: 'Big Store',                 zh: '大仓库',    icon: '🏬' },
+    { en: 'Small Store',               zh: '小仓库',    icon: '🗄️' },
+    { en: 'Old Sauce Area',            zh: '旧酱料区',  icon: '🫙' },
+    { en: 'Office/Changing Room Area', zh: '办公室/报镒室', icon: '🏢' },
+    { en: 'Vegetable Prep Room',        zh: '蔬菜准备室',      icon: '🥦' }
 ];
 
 let _publicBase = null;
