@@ -197,6 +197,7 @@
           </div>
           <div class="form-actions">
             <a href="nc-list.html" class="btn-secondary" style="text-decoration:none;">← Back to List</a>
+            <button type="button" id="deleteBtn" onclick="deleteCurrentNC()" style="background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:1rem;font-weight:700;cursor:pointer;">🗑 Delete Report</button>
             <button type="submit" class="btn-primary">✔ Mark as Resolved</button>
           </div>
         </form>
@@ -205,6 +206,7 @@
       <!-- Already-resolved back button -->
       <div id="resolvedActions" class="form-actions" style="display:none;">
         <a href="nc-list.html" class="btn-secondary" style="text-decoration:none;">← Back to List</a>
+        <button type="button" onclick="deleteCurrentNC()" style="background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:1rem;font-weight:700;cursor:pointer;">🗑 Delete Report</button>
       </div>
     </div>
   </main>
@@ -214,6 +216,17 @@
   </footer>
   <script src="js/foodsafety-nc.js"></script>
   <script>
+    async function deleteCurrentNC() {
+      const id = new URLSearchParams(window.location.search).get('id');
+      if (!id) return;
+      if (!confirm('Delete this NC report? This cannot be undone.')) return;
+      try {
+        const r = await fetch('/api/foodsafety/' + id, { method: 'DELETE' });
+        if (!r.ok) throw new Error('Delete failed');
+        window.location.replace('nc-list.html');
+      } catch (err) { alert('Error: ' + err.message); }
+    }
+
     function handleResPhotoSelect(input) {
       const file = input.files[0];
       const preview = document.getElementById('resPhotoPreview');

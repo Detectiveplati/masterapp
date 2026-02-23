@@ -95,4 +95,15 @@ router.post('/:id/resolve', (req, res, next) => {
   }
 });
 
+// Delete NC report
+router.delete('/:id', async (req, res) => {
+  try {
+    const nc = await FoodSafetyNC.findByIdAndDelete(req.params.id);
+    if (!nc) return res.status(404).json({ error: 'Not found' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

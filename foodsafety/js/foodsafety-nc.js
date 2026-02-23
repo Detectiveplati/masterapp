@@ -14,6 +14,10 @@ function showNotice(id, type, msg) {
 if (document.getElementById('ncForm')) {
   document.getElementById('ncForm').addEventListener('submit', async function(e) {
     e.preventDefault();
+    const submitBtn = this.querySelector('button[type="submit"]');
+    if (submitBtn.disabled) return;        // block double-submit
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting…';
     const form = e.target;
     const fd = new FormData();
     const unitVal    = form.unit.value;
@@ -35,6 +39,8 @@ if (document.getElementById('ncForm')) {
       setTimeout(() => window.location.href = 'nc-list.html', 1500);
     } catch (err) {
       showNotice('notice', 'error', '❌ Error: ' + err.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit NC Report';
     }
   });
 }
@@ -59,16 +65,22 @@ if (document.getElementById('ncList')) {
         const badgeCls = nc.status === 'Resolved' ? 'badge-resolved' : 'badge-open';
         const urgentBadge = nc.priority === 'Urgent' ? `<span class="badge badge-urgent" style="margin-left:6px">Urgent</span>` : '';
         return `
-          <a class="nc-card" href="nc-detail.html?id=${nc._id}" style="text-decoration:none;color:inherit;">
-            <div class="nc-card-header">
-              <span class="nc-card-title">${nc.unit}${nc.specificLocation ? ' — ' + nc.specificLocation : ''}</span>
-              <span>
-                <span class="badge ${badgeCls}">${nc.status}</span>${urgentBadge}
-              </span>
-            </div>
-            <div class="nc-card-meta">${(nc.description || '').slice(0, 140)}</div>
-            <div class="nc-card-meta">Reported by ${nc.reportedBy} · ${new Date(nc.createdAt).toLocaleDateString()}</div>
-          </a>`;
+          <div class="nc-card-wrap" style="position:relative;">
+            <a class="nc-card" href="nc-detail.html?id=${nc._id}" style="text-decoration:none;color:inherit;">
+              <div class="nc-card-header">
+                <span class="nc-card-title">${nc.unit}${nc.specificLocation ? ' — ' + nc.specificLocation : ''}</span>
+                <span>
+                  <span class="badge ${badgeCls}">${nc.status}</span>${urgentBadge}
+                </span>
+              </div>
+              <div class="nc-card-meta">${(nc.description || '').slice(0, 140)}</div>
+              <div class="nc-card-meta">Reported by ${nc.reportedBy} · ${new Date(nc.createdAt).toLocaleDateString()}</div>
+            </a>
+            <button onclick="deleteNC('${nc._id}', event)" title="Delete report"
+              style="position:absolute;top:12px;right:12px;background:rgba(192,57,43,0.1);border:none;
+              color:#b03224;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:0.8rem;font-weight:700;
+              line-height:1;">🗑 Delete</button>
+          </div>`;
       }).join('');
     } catch (err) {
       document.getElementById('ncList').innerHTML = '<div class="empty-state">Error loading reports: ' + err.message + '</div>';
@@ -77,6 +89,16 @@ if (document.getElementById('ncList')) {
   document.getElementById('filterUnit').addEventListener('change', loadNCs);
   document.getElementById('filterStatus').addEventListener('change', loadNCs);
   loadNCs();
+
+  window.deleteNC = async function(id, e) {
+    e.preventDefault(); e.stopPropagation();
+    if (!confirm('Delete this NC report? This cannot be undone.')) return;
+    try {
+      const r = await fetch('/api/foodsafety/' + id, { method: 'DELETE' });
+      if (!r.ok) throw new Error('Delete failed');
+      loadNCs();
+    } catch (err) { alert('Error: ' + err.message); }
+  };
 }
 
 // --- NC Detail & Resolution ---
