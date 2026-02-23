@@ -174,7 +174,6 @@ router.post('/', async (req, res) => {
 router.post('/bulk-import', async (req, res) => {
     try {
         const rows = req.body;
-        const replace = req.query.replace === 'true';
         if (!Array.isArray(rows) || rows.length === 0) {
             return res.status(400).json({ message: 'Request body must be a non-empty array of equipment objects.' });
         }
@@ -212,27 +211,25 @@ router.post('/bulk-import', async (req, res) => {
                     ...(row.operatingInstructions && { operatingInstructions: row.operatingInstructions }),
                 };
 
-                // Try to find existing record
+                // Always update or create
                 let existing = null;
                 if (row.equipmentId) existing = await Equipment.findOne({ equipmentId: row.equipmentId.trim() });
                 if (!existing) existing = await Equipment.findOne({ name: fields.name });
 
+                // Auto-generate equipmentId if missing
+                let equipmentId = row.equipmentId && row.equipmentId.trim();
+                if (!equipmentId) {
+                    // Generate: EQ + timestamp + random
+                    equipmentId = 'EQ' + Date.now().toString().slice(-6) + Math.floor(Math.random()*1000).toString().padStart(3,'0');
+                }
+
                 if (existing) {
-                    if (!replace) {
-                        errors.push({ row: rowNum, reason: `"${fields.name}" already exists — skipped (enable Replace to update)` });
-                        skipped++;
-                        continue;
-                    }
-                    // Update existing
                     Object.assign(existing, fields);
+                    existing.equipmentId = equipmentId;
                     await existing.save();
                     updated++;
                 } else {
-                    // Create new
-                    const equipment = new Equipment({
-                        ...(row.equipmentId && { equipmentId: row.equipmentId.trim() }),
-                        ...fields
-                    });
+                    const equipment = new Equipment({ equipmentId, ...fields });
                     await equipment.save();
                     imported++;
                 }

@@ -198,6 +198,36 @@
         .not-found-banner .icon { font-size: 2.5rem; margin-bottom: 10px; }
         .not-found-banner p { color: #64748b; font-size: 0.95rem; }
 
+        /* Equipment selector */
+        .selector-section { margin-bottom: 4px; }
+        .selector-section h3 { font-size: 1.15rem; color: #1e293b; margin-bottom: 6px; }
+        .selector-section p  { font-size: 0.88rem; color: #64748b; margin-bottom: 18px; }
+        .eq-select {
+            width: 100%;
+            padding: 13px 14px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: inherit;
+            color: #1e293b;
+            background: #f8fafc;
+            cursor: pointer;
+            margin-bottom: 14px;
+        }
+        .eq-select:focus { outline: none; border-color: #3b82f6; background: #fff; }
+        .btn-select-eq {
+            width: 100%;
+            padding: 13px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .btn-select-eq:disabled { background: #94a3b8; cursor: not-allowed; }
+
         .lang-toggle {
             display: flex;
             justify-content: flex-end;
@@ -277,6 +307,18 @@
         <div id="notFoundBanner" class="not-found-banner">
             <div class="icon">❓</div>
             <p id="notFoundText">Equipment not found. Please scan the QR code again.</p>
+        </div>
+
+        <!-- Manual equipment selector (shown when no ?id= in URL) -->
+        <div id="selectorArea" style="display:none;">
+            <div class="selector-section">
+                <h3>⚠️ Report an Equipment Issue</h3>
+                <p>Select the equipment you want to report an issue for.</p>
+                <select class="eq-select" id="eqDropdown">
+                    <option value="">— Select equipment —</option>
+                </select>
+                <button class="btn-select-eq" id="btnSelectEq" onclick="selectEquipment()" disabled>Continue</button>
+            </div>
         </div>
 
         <!-- Report form -->
@@ -385,6 +427,22 @@
 
         let lang = 'en';
         let equipmentId = null;
+        let allEquipmentList = [];
+
+        // Enable Continue button when something is selected
+        document.addEventListener('change', function(e) {
+            if (e.target.id === 'eqDropdown') {
+                document.getElementById('btnSelectEq').disabled = !e.target.value;
+            }
+        });
+
+        async function selectEquipment() {
+            const sel = document.getElementById('eqDropdown');
+            const id  = sel.value;
+            if (!id) return;
+            document.getElementById('selectorArea').style.display = 'none';
+            await loadAndShowForm(id);
+        }
 
         function setLang(l) {
             lang = l;
@@ -421,19 +479,51 @@
             equipmentId = params.get('id');
 
             if (!equipmentId) {
+                // No QR scan — show dropdown selector
                 document.getElementById('loadingBanner').style.display = 'none';
-                document.getElementById('notFoundBanner').style.display = 'block';
+                document.getElementById('selectorArea').style.display = 'block';
+                // Load all equipment for dropdown
+                try {
+                    const res = await fetch(`${API_BASE}/equipment`);
+                    if (res.ok) {
+                        allEquipmentList = await res.json();
+                        const sel = document.getElementById('eqDropdown');
+                        // Group by location
+                        const groups = {};
+                        allEquipmentList.forEach(eq => {
+                            const loc = (eq.location && eq.location.trim()) ? eq.location.trim() : 'No Location';
+                            if (!groups[loc]) groups[loc] = [];
+                            groups[loc].push(eq);
+                        });
+                        Object.keys(groups).sort((a,b) => a === 'No Location' ? 1 : b === 'No Location' ? -1 : a.localeCompare(b)).forEach(loc => {
+                            const grp = document.createElement('optgroup');
+                            grp.label = loc;
+                            groups[loc].forEach(eq => {
+                                const opt = document.createElement('option');
+                                opt.value = eq.equipmentId;
+                                opt.textContent = eq.name + (eq.type ? ` (${eq.type})` : '');
+                                grp.appendChild(opt);
+                            });
+                            sel.appendChild(grp);
+                        });
+                    }
+                } catch (e) { /* non-critical */ }
                 return;
             }
 
+            await loadAndShowForm(equipmentId);
+        });
+
+        async function loadAndShowForm(id) {
+            equipmentId = id;
             try {
-                const res = await fetch(`${API_BASE}/equipment/${equipmentId}`);
+                const res = await fetch(`${API_BASE}/equipment/${id}`);
                 if (!res.ok) throw new Error('Not found');
                 const eq = await res.json();
 
                 document.getElementById('equipmentIcon').textContent = typeIcons[eq.type] || '⚙️';
                 document.getElementById('equipmentName').textContent = eq.name;
-                document.getElementById('equipmentMeta').textContent = `${eq.type} · ${eq.location}`;
+                document.getElementById('equipmentMeta').textContent = [eq.type, eq.location].filter(Boolean).join(' · ');
 
                 document.getElementById('loadingBanner').style.display = 'none';
                 document.getElementById('formArea').style.display = 'block';
@@ -441,7 +531,7 @@
                 document.getElementById('loadingBanner').style.display = 'none';
                 document.getElementById('notFoundBanner').style.display = 'block';
             }
-        });
+        }
 
         async function submitReport() {
             const t = translations[lang];
