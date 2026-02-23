@@ -26,12 +26,8 @@
             border-bottom: 1px solid var(--border);
         }
 
-        .hero-bar.priority-Critical { border-left-color: #7f1d1d; background: linear-gradient(90deg, #fff, #fff5f5); }
-        .hero-bar.priority-High     { border-left-color: #e74c3c; }
         .hero-bar.priority-Urgent   { border-left-color: #e67e22; }
-        .hero-bar.priority-Medium   { border-left-color: var(--accent-2); }
         .hero-bar.priority-Normal   { border-left-color: #9ca3af; }
-        .hero-bar.priority-Low      { border-left-color: #9ca3af; }
 
         .hero-icon {
             font-size: 2rem;
@@ -78,12 +74,8 @@
             font-weight: 700;
         }
 
-        .badge-critical  { background: #7f1d1d; color: #fff; }
-        .badge-high      { background: #e74c3c; color: #fff; }
         .badge-urgent    { background: #e67e22; color: #fff; }
-        .badge-medium    { background: var(--accent-2); color: #fff; }
         .badge-normal    { background: #9ca3af; color: #fff; }
-        .badge-low       { background: #d1d5db; color: #374151; }
         .badge-open        { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
         .badge-inprogress  { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
         .badge-resolved    { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
@@ -350,12 +342,8 @@
                 <div class="field">
                     <label>Priority</label>
                     <select id="prioritySelect" style="width:auto;min-width:180px;">
-                        <option value="Low">Low</option>
                         <option value="Normal">Normal</option>
-                        <option value="Medium">Medium</option>
                         <option value="Urgent">Urgent</option>
-                        <option value="High">High</option>
-                        <option value="Critical">Critical</option>
                     </select>
                 </div>
                 <button class="btn-save" onclick="updatePriority()">Save Priority</button>
@@ -402,7 +390,7 @@
     }
 
     function priorityBadgeClass(p) {
-        const m = { 'Critical':'badge-critical', 'High':'badge-high', 'Urgent':'badge-urgent', 'Medium':'badge-medium', 'Normal':'badge-normal', 'Low':'badge-low' };
+        const m = { 'Urgent':'badge-urgent', 'Normal':'badge-normal' };
         return m[p] || 'badge-normal';
     }
 

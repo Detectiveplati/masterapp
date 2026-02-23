@@ -30,7 +30,7 @@ const areaIssueSchema = new mongoose.Schema({
     priority: {
         type: String,
         required: true,
-        enum: ['Low', 'Normal', 'Medium', 'Urgent', 'High', 'Critical'],
+        enum: ['Normal', 'Urgent'],
         default: 'Normal'
     },
     status: {

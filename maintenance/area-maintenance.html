@@ -713,8 +713,7 @@ document.getElementById('issueForm').addEventListener('submit', async (e) => {
     const issueText = document.getElementById('issue').value.trim();
     const titleText = issueText.split(/[.\n]/)[0].trim().slice(0, 80) || issueText.slice(0, 80);
 
-    const selectedPriority = document.querySelector('input[name="priority"]:checked')?.value || 'Normal';
-    const priorityValue = selectedPriority === 'Urgent' ? 'High' : 'Medium';
+    const priorityValue = document.querySelector('input[name="priority"]:checked')?.value || 'Normal';
 
     const fd = new FormData();
     fd.append('area',             getAreaValue());
