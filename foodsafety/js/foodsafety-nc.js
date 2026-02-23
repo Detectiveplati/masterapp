@@ -1,5 +1,15 @@
 // Food Safety NC Frontend Logic
 
+// --- Utility: show notice ---
+function showNotice(id, type, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'notice ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 // --- Report NC Form Submission ---
 if (document.getElementById('ncForm')) {
   document.getElementById('ncForm').addEventListener('submit', async function(e) {
@@ -20,10 +30,10 @@ if (document.getElementById('ncForm')) {
         body: JSON.stringify(data)
       });
       if (!res.ok) throw new Error('Failed to submit');
-      alert('NC report submitted!');
-      window.location.href = 'nc-list.html';
+      showNotice('notice', 'success', '✅ NC report submitted successfully! Redirecting…');
+      setTimeout(() => window.location.href = 'nc-list.html', 1500);
     } catch (err) {
-      alert('Error: ' + err.message);
+      showNotice('notice', 'error', '❌ Error: ' + err.message);
     }
   });
 }
@@ -36,23 +46,32 @@ if (document.getElementById('ncList')) {
     let url = '/api/foodsafety/list?';
     if (unit) url += 'unit=' + encodeURIComponent(unit) + '&';
     if (status) url += 'status=' + encodeURIComponent(status);
-    const res = await fetch(url);
-    const ncs = await res.json();
-    const list = document.getElementById('ncList');
-    list.innerHTML = ncs.length ? ncs.map(nc => `
-      <a class="card" href="nc-detail.html?id=${nc._id}" style="display:block;margin-bottom:12px;text-decoration:none;color:inherit;">
-        <div style="display:flex;gap:12px;align-items:center;">
-          <div style="flex:1">
-            <div style="font-weight:700">${nc.unit}</div>
-            <div style="color:var(--muted);margin-top:6px">${(nc.description||'').slice(0,140)}</div>
-          </div>
-          <div style="text-align:right;min-width:110px">
-            <div style="font-weight:700">${nc.status}</div>
-            <div style="font-size:0.85rem;color:var(--muted);margin-top:6px">${new Date(nc.createdAt).toLocaleDateString()}</div>
-          </div>
-        </div>
-      </a>
-    `).join('') : '<p>No NC reports found.</p>';
+    try {
+      const res = await fetch(url);
+      const ncs = await res.json();
+      const list = document.getElementById('ncList');
+      if (!ncs.length) {
+        list.innerHTML = '<div class="empty-state">No NC reports found.</div>';
+        return;
+      }
+      list.innerHTML = ncs.map(nc => {
+        const badgeCls = nc.status === 'Resolved' ? 'badge-resolved' : 'badge-open';
+        const urgentBadge = nc.priority === 'Urgent' ? `<span class="badge badge-urgent" style="margin-left:6px">Urgent</span>` : '';
+        return `
+          <a class="nc-card" href="nc-detail.html?id=${nc._id}" style="text-decoration:none;color:inherit;">
+            <div class="nc-card-header">
+              <span class="nc-card-title">${nc.unit}${nc.specificLocation ? ' — ' + nc.specificLocation : ''}</span>
+              <span>
+                <span class="badge ${badgeCls}">${nc.status}</span>${urgentBadge}
+              </span>
+            </div>
+            <div class="nc-card-meta">${(nc.description || '').slice(0, 140)}</div>
+            <div class="nc-card-meta">Reported by ${nc.reportedBy} · ${new Date(nc.createdAt).toLocaleDateString()}</div>
+          </a>`;
+      }).join('');
+    } catch (err) {
+      document.getElementById('ncList').innerHTML = '<div class="empty-state">Error loading reports: ' + err.message + '</div>';
+    }
   }
   document.getElementById('filterUnit').addEventListener('change', loadNCs);
   document.getElementById('filterStatus').addEventListener('change', loadNCs);
@@ -64,29 +83,59 @@ if (document.getElementById('ncDetail')) {
   async function loadDetail() {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id');
-    if (!id) return;
-    const res = await fetch('/api/foodsafety/' + id);
-    const nc = await res.json();
-    document.getElementById('ncDetail').innerHTML = `
-      <div><b>Area:</b> ${nc.unit}</div>
-      <div><b>Location:</b> ${nc.specificLocation || '-'}</div>
-      <div><b>Description:</b> ${nc.description}</div>
-      <div><b>Priority:</b> ${nc.priority}</div>
-      <div><b>Status:</b> ${nc.status}</div>
-      <div><b>Reported By:</b> ${nc.reportedBy}</div>
-      <div><b>Reported At:</b> ${new Date(nc.createdAt).toLocaleString()}</div>
-      ${nc.photo ? `<div><img src="${nc.photo}" style="max-width:200px;"></div>` : ''}
-      ${nc.status === 'Resolved' && nc.resolution ? `
-        <div style="margin-top:18px;"><b>Resolution:</b></div>
-        <div><b>By:</b> ${nc.resolution.resolver || '-'}</div>
-        <div><b>Notes:</b> ${nc.resolution.notes || '-'}</div>
-        <div><b>At:</b> ${nc.resolution.resolvedAt ? new Date(nc.resolution.resolvedAt).toLocaleString() : '-'}</div>
-        ${nc.resolution.photo ? `<div><img src="${nc.resolution.photo}" style="max-width:200px;"></div>` : ''}
-      ` : ''}
-    `;
-    if (nc.status === 'Resolved') document.getElementById('resolutionForm').style.display = 'none';
+    if (!id) { document.getElementById('detailTitle').textContent = 'No NC ID provided'; return; }
+    try {
+      const res = await fetch('/api/foodsafety/' + id);
+      const nc = await res.json();
+
+      const titleEl = document.getElementById('detailTitle');
+      const subEl   = document.getElementById('detailSubtitle');
+      if (titleEl) titleEl.textContent = nc.unit + (nc.specificLocation ? ' — ' + nc.specificLocation : '');
+      const badgeCls = nc.status === 'Resolved' ? 'badge-resolved' : 'badge-open';
+      const urgentBadge = nc.priority === 'Urgent' ? `<span class="badge badge-urgent" style="margin-left:6px">Urgent</span>` : '';
+      if (subEl) subEl.innerHTML = `<span class="badge ${badgeCls}">${nc.status}</span>${urgentBadge} &nbsp; Reported ${new Date(nc.createdAt).toLocaleString()} by ${nc.reportedBy}`;
+
+      const detailEl = document.getElementById('ncDetail');
+      detailEl.innerHTML = `
+        <div class="summary-grid">
+          <div class="summary-item"><div class="summary-label">Unit / Area</div><div class="summary-value">${nc.unit}</div></div>
+          <div class="summary-item"><div class="summary-label">Specific Location</div><div class="summary-value">${nc.specificLocation || '—'}</div></div>
+          <div class="summary-item"><div class="summary-label">Priority</div><div class="summary-value">${nc.priority || 'Normal'}</div></div>
+          <div class="summary-item"><div class="summary-label">Reported By</div><div class="summary-value">${nc.reportedBy}</div></div>
+        </div>
+        <div class="description-block">
+          <div class="summary-label">Non-Conformance Description</div>
+          <p>${nc.description}</p>
+        </div>
+        ${nc.photo ? `<div class="nc-photo"><div class="summary-label">Photo</div><img src="${nc.photo}" alt="NC photo"></div>` : ''}
+        ${nc.status === 'Resolved' && nc.resolution ? `
+        <div class="description-block" style="margin-top:16px;border-color:rgba(39,174,96,0.3);background:rgba(39,174,96,0.05)">
+          <div class="summary-label" style="color:#1f7a4a">Resolution</div>
+          <div class="summary-grid" style="margin-top:10px">
+            <div class="summary-item"><div class="summary-label">Resolved By</div><div class="summary-value">${nc.resolution.resolver || '—'}</div></div>
+            <div class="summary-item"><div class="summary-label">Resolved At</div><div class="summary-value">${nc.resolution.resolvedAt ? new Date(nc.resolution.resolvedAt).toLocaleString() : '—'}</div></div>
+          </div>
+          <p><strong>Notes:</strong> ${nc.resolution.notes || '—'}</p>
+          ${nc.resolution.photo ? `<div class="nc-photo"><img src="${nc.resolution.photo}" alt="Resolution photo"></div>` : ''}
+        </div>` : ''}
+      `;
+
+      const resSection   = document.getElementById('resolutionSection');
+      const resActions   = document.getElementById('resolvedActions');
+      if (nc.status === 'Resolved') {
+        if (resSection) resSection.style.display = 'none';
+        if (resActions) resActions.style.display = 'flex';
+      } else {
+        if (resSection) resSection.style.display = 'block';
+        if (resActions) resActions.style.display = 'none';
+      }
+    } catch (err) {
+      document.getElementById('ncDetail').innerHTML = '<p style="color:var(--accent)">Error loading NC report: ' + err.message + '</p>';
+    }
   }
+
   loadDetail();
+
   // --- Resolution form ---
   document.getElementById('resolutionForm').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -104,10 +153,11 @@ if (document.getElementById('ncDetail')) {
         body: JSON.stringify(data)
       });
       if (!res.ok) throw new Error('Failed to resolve');
-      alert('Marked as resolved!');
-      window.location.reload();
+      showNotice('notice', 'success', '✅ Marked as resolved! Reloading…');
+      setTimeout(() => window.location.reload(), 1500);
     } catch (err) {
-      alert('Error: ' + err.message);
+      showNotice('notice', 'error', '❌ Error: ' + err.message);
     }
   });
 }
+

@@ -3,9 +3,65 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Food Safety NC Reports</title>
+  <title>Food Safety NC Reports - Central Kitchen</title>
   <link rel="stylesheet" href="../maintenance/css/styles.css">
-  <script src="js/foodsafety-nc.js" defer></script>
+  <style>
+    .list-container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .list-header {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 20px;
+    }
+    .list-header h2 { color: var(--accent); margin: 0; font-size: 1.6rem; }
+    .filter-row {
+      display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end;
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px 20px; margin-bottom: 20px;
+      box-shadow: 0 2px 8px var(--shadow);
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
+    .filter-group label { font-weight: 600; font-size: 0.88rem; color: var(--ink); }
+    .filter-group select {
+      padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 14px; font-family: inherit; background: white; cursor: pointer;
+    }
+    .filter-group select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(192,57,43,0.1); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-2), #e67e22);
+      color: #fff; border: none; border-radius: 10px; padding: 12px 22px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer; font-weight: 600;
+      text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 0.95rem;
+    }
+    .btn-secondary {
+      background: linear-gradient(135deg, #7f8c8d, #95a5a6);
+      color: white; border: none; border-radius: 10px; padding: 12px 22px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer; font-weight: 600;
+      text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 0.95rem;
+    }
+    .nc-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 18px 22px; margin-bottom: 14px; cursor: pointer;
+      box-shadow: 0 2px 8px var(--shadow); transition: box-shadow 0.15s, border-color 0.15s;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .nc-card:hover { box-shadow: 0 4px 16px var(--shadow); border-color: var(--accent); }
+    .nc-card-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .nc-card-title { font-weight: 700; color: var(--ink); font-size: 1rem; }
+    .nc-card-meta { font-size: 0.85rem; color: var(--muted); }
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.03em;
+    }
+    .badge-open    { background: rgba(192,57,43,0.12); color: #b03224; }
+    .badge-resolved { background: rgba(39,174,96,0.12); color: #1f7a4a; }
+    .badge-urgent   { background: rgba(231,76,60,0.15);  color: #c0392b; }
+    .empty-state { text-align: center; color: var(--muted); padding: 48px 0; font-size: 1.05rem; }
+    @media (max-width: 600px) { .filter-row { flex-direction: column; } }
+  </style>
 </head>
 <body>
   <header>
@@ -16,30 +72,49 @@
         <p>View and manage all food safety non-conformance reports</p>
       </div>
     </div>
-    <a href="index.html" class="test-button" style="margin-left:18px;align-self:center;">← Back to Food Safety NC</a>
+    <a href="index.html" class="btn-secondary" style="text-decoration:none;">← Back to Food Safety</a>
   </header>
+
   <main>
-    <div class="list-controls">
-      <a href="report-nc.html" class="btn-primary">+ Report New NC</a>
-      <select id="filterUnit">
-        <option value="">All Units</option>
-        <option value="#06-27/15/16/17 (Main CK Area)">#06-27/15/16/17 (Main CK Area)</option>
-        <option value="#06-24 (Raw Prep)">#06-24 (Raw Prep)</option>
-        <option value="#06-19 (Bakery)">#06-19 (Bakery)</option>
-        <option value="#06-08 (Dishwashing)">#06-08 (Dishwashing)</option>
-        <option value="#05-26">#05-26</option>
-        <option value="#05-27 (Tay Sauce Kitchen)">#05-27 (Tay Sauce Kitchen)</option>
-        <option value="#04-08 (Confinement)">#04-08 (Confinement)</option>
-      </select>
-      <select id="filterStatus">
-        <option value="">All Statuses</option>
-        <option value="Open">Open</option>
-        <option value="Resolved">Resolved</option>
-      </select>
-    </div>
-    <div id="ncList" class="nc-list">
-      <!-- NC reports will be listed here -->
+    <div class="list-container">
+      <div class="list-header">
+        <h2>Non-Conformance Reports</h2>
+        <a href="report-nc.html" class="btn-primary">+ Report New NC</a>
+      </div>
+
+      <div class="filter-row">
+        <div class="filter-group">
+          <label for="filterUnit">Filter by Unit</label>
+          <select id="filterUnit">
+            <option value="">All Units</option>
+            <option value="#06-27/15/16/17 (Main CK Area)">#06-27/15/16/17 (Main CK Area)</option>
+            <option value="#06-24 (Raw Prep)">#06-24 (Raw Prep)</option>
+            <option value="#06-19 (Bakery)">#06-19 (Bakery)</option>
+            <option value="#06-08 (Dishwashing)">#06-08 (Dishwashing)</option>
+            <option value="#05-26">#05-26</option>
+            <option value="#05-27 (Tay Sauce Kitchen)">#05-27 (Tay Sauce Kitchen)</option>
+            <option value="#04-08 (Confinement)">#04-08 (Confinement)</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filterStatus">Filter by Status</label>
+          <select id="filterStatus">
+            <option value="">All Statuses</option>
+            <option value="Open">Open</option>
+            <option value="Resolved">Resolved</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="ncList">
+        <!-- NC reports loaded by JS -->
+      </div>
     </div>
   </main>
+
+  <footer>
+    <p>&copy; 2026 Central Kitchen | <a href="index.html">Food Safety NC</a> | <a href="/maintenance/maintenance.html">Maintenance</a></p>
+  </footer>
+  <script src="js/foodsafety-nc.js"></script>
 </body>
 </html>
