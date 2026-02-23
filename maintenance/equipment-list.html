@@ -376,8 +376,43 @@
                 <p>Browse and manage kitchen equipment</p>
             </div>
         </div>
-        <button onclick="window.location.href='add-equipment.html'">➕ Add Equipment</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button onclick="window.location.href='add-equipment.html'">➕ Add Equipment</button>
+            <button onclick="openImportModal()" style="background:linear-gradient(135deg,#0f766e,#0d9488);color:#fff;border:none;">📥 Import CSV</button>
+        </div>
     </header>
+
+    <!-- CSV Import Modal -->
+    <div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1000;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.25);max-width:520px;width:100%;overflow:hidden;">
+            <div style="padding:18px 22px;background:linear-gradient(90deg,#0f766e,#0d9488);color:#fff;display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:1.05rem;font-weight:700;">📥 Bulk Import Equipment (CSV)</span>
+                <button onclick="closeImportModal()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:1.2rem;cursor:pointer;border-radius:8px;padding:2px 10px;line-height:1.4;">✕</button>
+            </div>
+            <div style="padding:20px 22px;">
+                <!-- Download template -->
+                <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:13px 16px;margin-bottom:18px;">
+                    <div style="font-size:0.85rem;font-weight:700;color:#0f766e;margin-bottom:6px;">📄 Required CSV columns:</div>
+                    <div style="font-size:0.78rem;color:#134e4a;line-height:1.7;font-family:monospace;">name*, type*, location*, brand, modelNumber, serialNumber,<br>status (operational / needs_action), purchaseDate (YYYY-MM-DD),<br>warrantyExpiry, installationDate, expectedLifespan (years),<br>maintenanceFrequency (days, default 90), lastServiceDate</div>
+                    <a href="equipment-import-template.csv" download style="display:inline-block;margin-top:10px;background:#0f766e;color:#fff;text-decoration:none;border-radius:8px;padding:7px 16px;font-size:0.83rem;font-weight:700;">⬇ Download Template CSV</a>
+                </div>
+
+                <!-- File picker -->
+                <div style="margin-bottom:14px;">
+                    <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:7px;">Select your CSV file</label>
+                    <input type="file" id="csvFileInput" accept=".csv" style="width:100%;padding:9px;border:1.5px dashed #9ca3af;border-radius:9px;font-size:0.9rem;background:#fafafa;cursor:pointer;">
+                </div>
+
+                <div id="importPreview" style="display:none;background:#f9fafb;border:1px solid var(--border);border-radius:9px;padding:11px 14px;font-size:0.85rem;color:#374151;margin-bottom:14px;"></div>
+                <div id="importResults" style="display:none;"></div>
+
+                <div style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button onclick="closeImportModal()" style="background:#f1f5f9;color:#374151;border:none;border-radius:9px;padding:10px 20px;font-weight:600;cursor:pointer;">Cancel</button>
+                    <button id="btnRunImport" onclick="runImport()" style="background:linear-gradient(135deg,#0f766e,#0d9488);color:#fff;border:none;border-radius:9px;padding:10px 22px;font-weight:700;cursor:pointer;" disabled>Import</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <main>
         <!-- Stats Bar -->
@@ -746,6 +781,95 @@
                 'needs_action': 'Needs Action'
             };
             return statusMap[status] || status;
+        }
+
+        // ── CSV Import ─────────────────────────────────────────
+        let parsedRows = [];
+
+        function openImportModal() {
+            document.getElementById('importModal').style.display = 'flex';
+            document.getElementById('csvFileInput').value = '';
+            document.getElementById('importPreview').style.display = 'none';
+            document.getElementById('importResults').style.display = 'none';
+            document.getElementById('btnRunImport').disabled = true;
+            parsedRows = [];
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').style.display = 'none';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('csvFileInput').addEventListener('change', function () {
+                const file = this.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    try {
+                        parsedRows = parseCSV(e.target.result);
+                        const preview = document.getElementById('importPreview');
+                        preview.style.display = 'block';
+                        preview.innerHTML = `✅ <strong>${parsedRows.length} row(s)</strong> found in file. Click <em>Import</em> to add them.`;
+                        document.getElementById('btnRunImport').disabled = parsedRows.length === 0;
+                        document.getElementById('importResults').style.display = 'none';
+                    } catch (err) {
+                        const preview = document.getElementById('importPreview');
+                        preview.style.display = 'block';
+                        preview.innerHTML = `❌ Failed to parse CSV: ${err.message}`;
+                        document.getElementById('btnRunImport').disabled = true;
+                    }
+                };
+                reader.readAsText(file);
+            });
+        });
+
+        function parseCSV(text) {
+            const lines = text.replace(/\r/g, '').split('\n').filter(l => l.trim());
+            if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row.');
+            const headers = lines[0].split(',').map(h => h.trim());
+            return lines.slice(1).map(line => {
+                const vals = line.split(',').map(v => v.trim());
+                const obj = {};
+                headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
+                return obj;
+            });
+        }
+
+        async function runImport() {
+            if (!parsedRows.length) return;
+            const btn = document.getElementById('btnRunImport');
+            btn.disabled = true;
+            btn.textContent = 'Importing…';
+            const resultsEl = document.getElementById('importResults');
+            resultsEl.style.display = 'none';
+            try {
+                const res = await fetch(`${API_BASE}/equipment/bulk-import`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(parsedRows)
+                });
+                const data = await res.json();
+                let html = `<div style="border-radius:9px;overflow:hidden;border:1px solid var(--border);">`;
+                html += `<div style="padding:12px 16px;background:#f0fdfa;border-bottom:1px solid #99f6e4;font-weight:700;color:#0f766e;">Import Complete</div>`;
+                html += `<div style="padding:12px 16px;font-size:0.88rem;line-height:1.8;">`;
+                html += `✅ <strong>${data.imported}</strong> imported &nbsp;|&nbsp; ⏭ <strong>${data.skipped}</strong> skipped`;
+                if (data.errors && data.errors.length) {
+                    html += `<div style="margin-top:10px;max-height:140px;overflow-y:auto;">`;
+                    data.errors.forEach(e => {
+                        html += `<div style="font-size:0.8rem;color:#b91c1c;">Row ${e.row}: ${e.reason}</div>`;
+                    });
+                    html += `</div>`;
+                }
+                html += `</div></div>`;
+                resultsEl.innerHTML = html;
+                resultsEl.style.display = 'block';
+                if (data.imported > 0) loadEquipment();
+            } catch (err) {
+                resultsEl.innerHTML = `<div style="color:#b91c1c;font-size:0.88rem;">❌ Import failed: ${err.message}</div>`;
+                resultsEl.style.display = 'block';
+            }
+            btn.textContent = 'Import';
+            btn.disabled = false;
         }
     </script>
 </body>

@@ -169,6 +169,72 @@ router.post('/', async (req, res) => {
     }
 });
 
+// Bulk import equipment from CSV (JSON array)
+router.post('/bulk-import', async (req, res) => {
+    try {
+        const rows = req.body;
+        if (!Array.isArray(rows) || rows.length === 0) {
+            return res.status(400).json({ message: 'Request body must be a non-empty array of equipment objects.' });
+        }
+
+        let imported = 0, skipped = 0;
+        const errors = [];
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const rowNum = i + 2; // 1-based, row 1 = header
+            try {
+                if (!row.name || !row.type || !row.location) {
+                    errors.push({ row: rowNum, reason: 'Missing required field(s): name, type, location' });
+                    skipped++;
+                    continue;
+                }
+
+                // Skip duplicate by equipmentId
+                if (row.equipmentId) {
+                    const existing = await Equipment.findOne({ equipmentId: row.equipmentId.trim() });
+                    if (existing) {
+                        errors.push({ row: rowNum, reason: `Equipment ID "${row.equipmentId}" already exists — skipped` });
+                        skipped++;
+                        continue;
+                    }
+                }
+
+                const status = row.status === 'operational' ? 'operational' : (row.status ? 'needs_action' : 'operational');
+
+                const equipment = new Equipment({
+                    equipmentId:        row.equipmentId     ? row.equipmentId.trim()     : undefined,
+                    name:               row.name.trim(),
+                    type:               row.type.trim(),
+                    brand:              row.brand            || undefined,
+                    modelNumber:        row.modelNumber      || undefined,
+                    serialNumber:       row.serialNumber     || undefined,
+                    location:           row.location.trim(),
+                    status,
+                    purchaseDate:       row.purchaseDate     || undefined,
+                    warrantyExpiry:     row.warrantyExpiry   || undefined,
+                    installationDate:   row.installationDate || undefined,
+                    expectedLifespan:   row.expectedLifespan ? Number(row.expectedLifespan) : undefined,
+                    maintenanceFrequency: row.maintenanceFrequency ? Number(row.maintenanceFrequency) : 90,
+                    lastServiceDate:    row.lastServiceDate  || undefined,
+                    nextServiceDate:    row.nextServiceDate  || undefined,
+                    operatingInstructions: row.operatingInstructions || undefined,
+                });
+
+                await equipment.save();
+                imported++;
+            } catch (err) {
+                errors.push({ row: rowNum, reason: err.message });
+                skipped++;
+            }
+        }
+
+        res.json({ imported, skipped, errors });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // Update equipment
 router.put('/:equipmentId', async (req, res) => {
     try {

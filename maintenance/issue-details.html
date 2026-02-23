@@ -348,22 +348,6 @@
             </div>
         </div>
 
-        <!-- Assign + resolution -->
-        <div class="panel">
-            <div class="panel-header orange">🛠️ Assignment & Resolution</div>
-            <div class="panel-body">
-                <div class="field">
-                    <label>Assigned To (Technician)</label>
-                    <input type="text" id="assignedTo" placeholder="Enter technician name">
-                </div>
-                <div class="field">
-                    <label>Resolution Notes</label>
-                    <textarea id="resolutionNotes" placeholder="What was done to resolve or progress this issue?"></textarea>
-                </div>
-                <button class="btn-save" onclick="saveAssignment()">💾 Save Changes</button>
-            </div>
-        </div>
-
         <!-- Danger zone -->
         <div class="panel">
             <div class="panel-header grey">⚠️ Danger Zone</div>
@@ -434,8 +418,6 @@
             <div class="detail-item"><div class="detail-label">Contact</div><div class="detail-value">${esc(i.contactNumber) || '—'}</div></div>
             <div class="detail-item"><div class="detail-label">Reported</div><div class="detail-value">🗓 ${formatDate(i.reportedDate)}</div></div>
             <div class="detail-item"><div class="detail-label">Time Open</div><div class="detail-value">⏱ ${daysOpen}</div></div>
-            <div class="detail-item"><div class="detail-label">Assigned To</div><div class="detail-value">${esc(i.assignedTo) || '— Unassigned'}</div></div>
-            <div class="detail-item"><div class="detail-label">Resolved</div><div class="detail-value">${i.resolvedDate ? formatDate(i.resolvedDate) : '—'}</div></div>
         `;
 
         document.getElementById('descBlock').textContent = i.description || '—';
@@ -465,9 +447,6 @@
                         ${isCurrent ? 'disabled' : ''}>${s}</button>`;
         }).join('');
 
-        // Pre-fill assignment fields
-        document.getElementById('assignedTo').value      = i.assignedTo || '';
-        document.getElementById('resolutionNotes').value = i.resolutionNotes || '';
     }
 
     async function loadIssue() {
@@ -504,25 +483,6 @@
             showToast(`✅ Status updated to "${newStatus}"`);
         } catch {
             showToast('❌ Failed to update status');
-        }
-    }
-
-    async function saveAssignment() {
-        try {
-            const res = await fetch(`${API_BASE}/issues/${issueId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    assignedTo:      document.getElementById('assignedTo').value.trim(),
-                    resolutionNotes: document.getElementById('resolutionNotes').value.trim()
-                })
-            });
-            if (!res.ok) throw new Error();
-            const updated = await res.json();
-            renderIssue(updated);
-            showToast('✅ Assignment saved');
-        } catch {
-            showToast('❌ Failed to save');
         }
     }
 

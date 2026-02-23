@@ -1,0 +1,6 @@
+name,type,brand,modelNumber,serialNumber,location,status,purchaseDate,warrantyExpiry,installationDate,expectedLifespan,maintenanceFrequency,lastServiceDate,operatingInstructions
+Combi Oven 1,Combi Oven,Rational,SCC WE 61,RN-2024-0011,Combi Oven Area,operational,2024-01-15,2027-01-15,2024-01-20,10,90,2025-12-01,Turn dial to desired mode. Preheat for 10 min before use.
+Fryer Unit A,Deep Fryer,Henny Penny,OFE-321,HP-0055-A,Deep Frying Area,operational,2023-06-01,2026-06-01,2023-06-05,8,60,2025-11-15,
+Cold Room Chiller,Walk-In Chiller,Daikin,FHQ35CAWB,DK-CR-001,Cold Room,needs_action,2021-03-10,2024-03-10,2021-03-12,15,180,2025-09-01,Set thermostat to 2-4°C. Check door seals weekly.
+Salad Prep Table,Prep Table,Atosa,ATCS-48,AT-2022-099,Salad Room,operational,2022-08-20,,2022-08-22,,90,,
+Dough Mixer,Mixer,Hobart,N50-60,HB-N50-007,#06-19 (Bakery),operational,2023-02-28,2026-02-28,2023-03-01,12,90,2025-10-20,Do not exceed 60% capacity. Use guard at all times.
