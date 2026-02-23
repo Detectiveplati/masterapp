@@ -184,8 +184,8 @@ router.post('/bulk-import', async (req, res) => {
             const row = rows[i];
             const rowNum = i + 2; // 1-based, row 1 = header
             try {
-                if (!row.name || !row.type || !row.location) {
-                    errors.push({ row: rowNum, reason: 'Missing required field(s): name, type, location' });
+                if (!row.name || !row.type) {
+                    errors.push({ row: rowNum, reason: 'Missing required field(s): name, type' });
                     skipped++;
                     continue;
                 }

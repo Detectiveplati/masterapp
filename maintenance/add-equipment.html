@@ -237,22 +237,7 @@
                         </div>
                         <div class="form-group">
                             <label for="type">Equipment Type<span class="required">*</span></label>
-                            <select id="type" name="type" required>
-                                <option value="">Select Type</option>
-                                <option value="Walk-In Freezer">Walk-In Freezer</option>
-                                <option value="Standing Freezer">Standing Freezer</option>
-                                <option value="Walk-In Chiller">Walk-In Chiller</option>
-                                <option value="Standing Chiller">Standing Chiller</option>
-                                <option value="Warmer">Warmer</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-row" id="otherTypeRow" style="display: none;">
-                        <div class="form-group">
-                            <label for="otherType">Other Type<span class="required">*</span></label>
-                            <input type="text" id="otherType" name="otherType" placeholder="Enter equipment type">
+                            <input type="text" id="type" name="type" required placeholder="e.g., Combi Oven, Deep Fryer, Mixer">
                         </div>
                     </div>
 
@@ -273,8 +258,8 @@
                             <input type="text" id="serialNumber" name="serialNumber" placeholder="e.g., SN123456789">
                         </div>
                         <div class="form-group">
-                            <label for="location">Location/Area<span class="required">*</span></label>
-                            <select id="location" name="location" required>
+                            <label for="location">Location/Area</label>
+                            <select id="location" name="location">
                                 <option value="">— Select location —</option>
                                 <optgroup label="Units">
                                     <option value="#06-27/15/16/17 (Main CK Area)">#06-27/15/16/17 (Main CK Area)</option>
@@ -422,13 +407,6 @@
         let isEditMode = false;
         let equipmentId = null;
         let equipmentIdManuallyEdited = false;
-        const allowedTypes = [
-            'Walk-In Freezer',
-            'Standing Freezer',
-            'Walk-In Chiller',
-            'Standing Chiller',
-            'Warmer'
-        ];
 
         // Initialize date pickers
         document.addEventListener('DOMContentLoaded', () => {
@@ -468,20 +446,7 @@
             document.getElementById('equipmentForm').addEventListener('submit', handleSubmit);
         });
 
-        function handleTypeChange() {
-            const typeSelect = document.getElementById('type');
-            const otherTypeRow = document.getElementById('otherTypeRow');
-            const otherTypeInput = document.getElementById('otherType');
 
-            if (typeSelect.value === 'Other') {
-                otherTypeRow.style.display = 'grid';
-                otherTypeInput.required = true;
-            } else {
-                otherTypeRow.style.display = 'none';
-                otherTypeInput.required = false;
-                otherTypeInput.value = '';
-            }
-        }
 
         async function loadEquipmentData() {
             showLoading();
@@ -506,17 +471,7 @@
 
         function populateForm(equipment) {
             document.getElementById('name').value = equipment.name || '';
-            if (equipment.type && allowedTypes.includes(equipment.type)) {
-                document.getElementById('type').value = equipment.type;
-                document.getElementById('otherType').value = '';
-            } else if (equipment.type) {
-                document.getElementById('type').value = 'Other';
-                document.getElementById('otherType').value = equipment.type;
-            } else {
-                document.getElementById('type').value = '';
-                document.getElementById('otherType').value = '';
-            }
-            handleTypeChange();
+            document.getElementById('type').value = equipment.type || '';
             document.getElementById('brand').value = equipment.brand || '';
             document.getElementById('modelNumber').value = equipment.modelNumber || '';
             document.getElementById('serialNumber').value = equipment.serialNumber || '';
@@ -554,7 +509,7 @@
             // Gather form data
             const formData = {
                 name: document.getElementById('name').value.trim(),
-                type: document.getElementById('type').value,
+                type: document.getElementById('type').value.trim(),
                 brand: document.getElementById('brand').value.trim(),
                 modelNumber: document.getElementById('modelNumber').value.trim(),
                 serialNumber: document.getElementById('serialNumber').value.trim(),
@@ -576,13 +531,8 @@
                 formData.equipmentId = equipmentIdValue;
             }
 
-            if (formData.type === 'Other') {
-                const otherTypeValue = document.getElementById('otherType').value.trim();
-                formData.type = otherTypeValue;
-            }
-
             // Validate required fields
-            if (!formData.name || !formData.type || !formData.location || !formData.maintenanceFrequency) {
+            if (!formData.name || !formData.type || !formData.maintenanceFrequency) {
                 showError('Please fill in all required fields marked with *');
                 return;
             }

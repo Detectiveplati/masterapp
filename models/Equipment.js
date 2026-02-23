@@ -36,7 +36,6 @@ const equipmentSchema = new mongoose.Schema({
     },
     location: {
         type: String,
-        required: true,
         trim: true
     },
     status: {
