@@ -23,8 +23,10 @@ Thumbs.db
 *.swo
 *~
 
-# Uploads (if you add file upload functionality)
+# Uploads — ignore content but keep folder structure via .gitkeep
 uploads/
+!foodsafety/uploads/
+!foodsafety/uploads/.gitkeep
 *.tmp
 
 # Build outputs

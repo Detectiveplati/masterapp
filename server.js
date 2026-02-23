@@ -111,9 +111,9 @@ app.use(express.urlencoded({ extended: true }));
 // Food Safety NC - Serve from foodsafety/ folder
 app.use('/foodsafety', express.static(path.join(__dirname, 'foodsafety'), noCacheHtml));
 app.get('/foodsafety', (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'index.html')));
-// Also support explicit index path and any unmatched foodsafety subpaths (SPA-style)
+// Also support explicit index path and any unmatched foodsafety subpaths (SPA-style, but NOT uploads)
 app.get('/foodsafety/index.html', (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'index.html')));
-app.get(/^\/foodsafety(\/.*)?$/, (req, res) => {
+app.get(/^\/foodsafety(?!\/uploads)(\/.*)?$/, (req, res) => {
     res.sendFile(path.join(__dirname, 'foodsafety', 'index.html'));
 });
 
