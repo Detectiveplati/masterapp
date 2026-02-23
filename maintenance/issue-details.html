@@ -414,7 +414,7 @@
         document.getElementById('heroId').textContent   = i.issueId;
         document.getElementById('heroTitle').textContent = i.title;
         document.getElementById('heroBadges').innerHTML =
-            `<span class="badge ${priorityBadgeClass(i.priority)}">${i.priority}</span>
+            `<span class="badge ${priorityBadgeClass(i.priority)}">${i.priority === 'Urgent' ? '! Urgent' : i.priority}</span>
              <span class="badge ${statusBadgeClass(i.status)}">${i.status}</span>
              <span class="badge" style="background:#f1f5f9;color:#475569;border:1px solid var(--border);">${esc(i.category)}</span>`;
 
