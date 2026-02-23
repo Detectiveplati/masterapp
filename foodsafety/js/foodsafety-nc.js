@@ -10,7 +10,7 @@ function showNotice(id, type, msg) {
   el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-// --- Report NC Form Submission ---
+// --- Log NC Form Submission ---
 if (document.getElementById('ncForm')) {
   document.getElementById('ncForm').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -35,12 +35,12 @@ if (document.getElementById('ncForm')) {
     try {
       const res = await fetch('/api/foodsafety/report', { method: 'POST', body: fd });
       if (!res.ok) throw new Error('Failed to submit');
-      showNotice('notice', 'success', '✅ NC report submitted successfully! Redirecting…');
+      showNotice('notice', 'success', '✅ NC submitted successfully! Redirecting…');
       setTimeout(() => window.location.href = 'nc-list.html', 1500);
     } catch (err) {
       showNotice('notice', 'error', '❌ Error: ' + err.message);
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Submit NC Report';
+      submitBtn.textContent = 'Submit NC';
     }
   });
 }
@@ -58,28 +58,27 @@ if (document.getElementById('ncList')) {
       const ncs = await res.json();
       const list = document.getElementById('ncList');
       if (!ncs.length) {
-        list.innerHTML = '<div class="empty-state">No NC reports found.</div>';
+        list.innerHTML = '<div class="empty-state">No NCs found.</div>';
         return;
       }
       list.innerHTML = ncs.map(nc => {
         const badgeCls = nc.status === 'Resolved' ? 'badge-resolved' : 'badge-open';
         const urgentBadge = nc.priority === 'Urgent' ? `<span class="badge badge-urgent" style="margin-left:6px">Urgent</span>` : '';
         return `
-          <div class="nc-card-wrap" style="position:relative;">
-            <a class="nc-card" href="nc-detail.html?id=${nc._id}" style="text-decoration:none;color:inherit;">
-              <div class="nc-card-header">
-                <span class="nc-card-title">${nc.unit}${nc.specificLocation ? ' — ' + nc.specificLocation : ''}</span>
-                <span>
-                  <span class="badge ${badgeCls}">${nc.status}</span>${urgentBadge}
-                </span>
-              </div>
+          <div class="nc-card" style="display:block;">
+            <div class="nc-card-header">
+              <a class="nc-card-title" href="nc-detail.html?id=${nc._id}" style="text-decoration:none;color:inherit;flex:1;min-width:0;">${nc.unit}${nc.specificLocation ? ' — ' + nc.specificLocation : ''}</a>
+              <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                <span class="badge ${badgeCls}">${nc.status}</span>${urgentBadge}
+                <button onclick="deleteNC('${nc._id}', event)" title="Delete report"
+                  style="background:rgba(192,57,43,0.1);border:none;color:#b03224;border-radius:6px;
+                  padding:4px 10px;cursor:pointer;font-size:0.8rem;font-weight:700;line-height:1.4;white-space:nowrap;">🗑 Delete</button>
+              </span>
+            </div>
+            <a href="nc-detail.html?id=${nc._id}" style="text-decoration:none;color:inherit;">
               <div class="nc-card-meta">${(nc.description || '').slice(0, 140)}</div>
               <div class="nc-card-meta">Reported by ${nc.reportedBy} · ${new Date(nc.createdAt).toLocaleDateString()}</div>
             </a>
-            <button onclick="deleteNC('${nc._id}', event)" title="Delete report"
-              style="position:absolute;top:12px;right:12px;background:rgba(192,57,43,0.1);border:none;
-              color:#b03224;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:0.8rem;font-weight:700;
-              line-height:1;">🗑 Delete</button>
           </div>`;
       }).join('');
     } catch (err) {
@@ -92,7 +91,7 @@ if (document.getElementById('ncList')) {
 
   window.deleteNC = async function(id, e) {
     e.preventDefault(); e.stopPropagation();
-    if (!confirm('Delete this NC report? This cannot be undone.')) return;
+    if (!confirm('Delete this NC? This cannot be undone.')) return;
     try {
       const r = await fetch('/api/foodsafety/' + id, { method: 'DELETE' });
       if (!r.ok) throw new Error('Delete failed');
@@ -196,7 +195,7 @@ if (document.getElementById('ncDetail')) {
         if (resActions) resActions.style.display = 'none';
       }
     } catch (err) {
-      document.getElementById('ncDetail').innerHTML = '<p style="color:var(--accent)">Error loading NC report: ' + err.message + '</p>';
+      document.getElementById('ncDetail').innerHTML = '<p style="color:var(--accent)">Error loading NC: ' + err.message + '</p>';
     }
   }
 

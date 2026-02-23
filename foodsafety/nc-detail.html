@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NC Report Detail - Central Kitchen</title>
+  <title>NC Detail - Central Kitchen</title>
   <link rel="stylesheet" href="../maintenance/css/styles.css">
   <style>
     .form-container {
@@ -145,7 +145,7 @@
     <div class="header-content">
       <a href="/index.html" style="display:inline-flex;text-decoration:none;"><img src="../maintenance/assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo" class="site-logo"></a>
       <div class="header-text">
-        <h1>NC Report Detail</h1>
+        <h1>NC Detail</h1>
         <p>View and resolve this food safety non-conformance</p>
       </div>
     </div>
@@ -155,7 +155,7 @@
   <main>
     <div class="form-container">
       <div class="form-header">
-        <h2 id="detailTitle">Loading NC Report...</h2>
+        <h2 id="detailTitle">Loading NC...</h2>
         <p id="detailSubtitle">&nbsp;</p>
       </div>
 
@@ -219,7 +219,7 @@
     async function deleteCurrentNC() {
       const id = new URLSearchParams(window.location.search).get('id');
       if (!id) return;
-      if (!confirm('Delete this NC report? This cannot be undone.')) return;
+      if (!confirm('Delete this NC? This cannot be undone.')) return;
       try {
         const r = await fetch('/api/foodsafety/' + id, { method: 'DELETE' });
         if (!r.ok) throw new Error('Delete failed');
