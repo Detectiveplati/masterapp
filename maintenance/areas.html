@@ -191,7 +191,38 @@
 
         .btn-report:hover { transform: scale(1.04); }
 
-        /* ── Print styles ─────────────────────────── */
+        /* ── Section label ────────────────────────── */
+        .areas-section-label {
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.9px;
+            color: var(--text-muted, #5b5b5b);
+            margin: 28px 0 14px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid rgba(18,19,22,0.08);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .areas-section-label .label-count {
+            background: rgba(18,19,22,0.08);
+            border-radius: 20px;
+            padding: 1px 9px;
+            font-size: 0.7rem;
+        }
+
+        /* ── Unit card header override ────────────── */
+        .card-header.unit {
+            background: linear-gradient(135deg, #1a252f, #2c3e50);
+        }
+
+        .card-header.unit-bakery   { background: linear-gradient(135deg, #7d3c98, #a569bd); }
+        .card-header.unit-rawprep  { background: linear-gradient(135deg, #1a6b3c, #27ae60); }
+        .card-header.unit-taysauce { background: linear-gradient(135deg, #b7770d, #f0a500); }
+        .card-header.unit-05-26    { background: linear-gradient(135deg, #1a5276, #2980b9); }
+        .card-header.unit-confinement { background: linear-gradient(135deg, #6e2f1a, #c0392b); }
         @media print {
             header button,
             .section-head .btn-print-all,
@@ -224,20 +255,33 @@
 <main>
     <div class="section-head">
         <div>
-            <h2>Kitchen Areas</h2>
-            <p>8 areas — each QR code links directly to the bilingual reporting form</p>
+            <h2>Kitchen Areas &amp; Units</h2>
+            <p>Each QR code links directly to the bilingual reporting form for that unit or area</p>
         </div>
         <a href="all-issues.html#area" class="btn-print-all" style="text-decoration:none;">📋 View All Issues →</a>
     </div>
 
-    <div class="areas-grid" id="areasGrid">
-        <!-- Cards injected by JS -->
-    </div>
+    <div class="areas-section-label">🏢 Units <span class="label-count" id="unitCount">6</span></div>
+    <div class="areas-grid" id="unitsGrid"></div>
+
+    <div class="areas-section-label">📍 Main CK Area — Kitchen Zones <span class="label-count">8</span></div>
+    <div class="areas-grid" id="areasGrid"></div>
 </main>
 
 <script src="js/api.js"></script>
 <script>
-const AREAS = [
+const MAIN_CK = '#06-27/15/16/17 (Main CK Area)';
+
+const UNITS = [
+    { en: MAIN_CK,                        zh: '#06-27/15/16/17（主中央厨房区）', icon: '🏭', headerClass: 'unit' },
+    { en: '#06-24 (Raw Prep)',             zh: '#06-24（生食准备）',             icon: '🔪', headerClass: 'unit-rawprep' },
+    { en: '#06-19 (Bakery)',               zh: '#06-19（面包房）',               icon: '🥖', headerClass: 'unit-bakery' },
+    { en: '#05-26',                        zh: '#05-26',                         icon: '🏢', headerClass: 'unit-05-26' },
+    { en: '#05-27 (Tay Sauce Kitchen)',    zh: '#05-27（泰酱厨房）',             icon: '🍜', headerClass: 'unit-taysauce' },
+    { en: '#04-08 (Confinement)',          zh: '#04-08（坐月中心）',             icon: '🏥', headerClass: 'unit-confinement' }
+];
+
+const SUB_AREAS = [
     { en: 'Combi Oven Area',  zh: '万能烤炉区', icon: '🔥' },
     { en: 'Deep Frying Area', zh: '炸锅区',    icon: '🍳' },
     { en: 'Stir Frying Area', zh: '炒锅区',    icon: '🥢' },
@@ -248,19 +292,13 @@ const AREAS = [
     { en: 'Pan Fry Area',     zh: '煎锅区',    icon: '🍳' }
 ];
 
-// Build QR URL for an area using the server-resolved public URL
 let _publicBase = null;
 async function getPublicBase() {
     if (_publicBase) return _publicBase;
     try {
         const res = await fetch(`${API_BASE}/public-url`);
-        if (res.ok) {
-            const data = await res.json();
-            _publicBase = data.url.replace(/\/$/, '');
-            return _publicBase;
-        }
+        if (res.ok) { const d = await res.json(); _publicBase = d.url.replace(/\/$/, ''); return _publicBase; }
     } catch (_) {}
-    // Fallback: use current window origin
     const port = window.location.port;
     _publicBase = (port && port !== '80' && port !== '443')
         ? `${window.location.protocol}//${window.location.hostname}:${port}`
@@ -268,18 +306,54 @@ async function getPublicBase() {
     return _publicBase;
 }
 
-async function qrUrl(areaName) {
+async function buildUrl(params) {
     const base = await getPublicBase();
-    const url  = `${base}/area-maintenance.html?area=${encodeURIComponent(areaName)}`;
-    // Skip ngrok's browser warning interstitial for free-tier tunnels
+    const qs   = new URLSearchParams(params).toString();
+    const url  = `${base}/area-maintenance.html?${qs}`;
     return base.includes('ngrok') ? `${url}&ngrok-skip-browser-warning=1` : url;
 }
 
-// Render all cards with loading placeholders, then fill QR codes
-async function init() {
-    const grid = document.getElementById('areasGrid');
+function slugify(str) { return str.toLowerCase().replace(/[^a-z0-9]/g, '-'); }
 
-    // Fetch open issue counts
+function generateQR(label, url, containerId, downloadId) {
+    const qrSrc    = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=6&color=1a252f&bgcolor=ffffff&data=${encodeURIComponent(url)}`;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const img = document.createElement('img');
+    img.src = qrSrc; img.width = 180; img.height = 180; img.alt = `QR code for ${label}`;
+    img.style.borderRadius = '8px'; img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.10)';
+    img.onerror = () => { container.innerHTML = `<div class="qr-loading" style="color:#e74c3c">QR failed</div>`; };
+    const urlLabel = document.createElement('div');
+    urlLabel.className = 'qr-url'; urlLabel.textContent = url;
+    container.innerHTML = '';
+    container.appendChild(img);
+    container.appendChild(urlLabel);
+    const dlBtn = document.getElementById(downloadId);
+    if (dlBtn) { dlBtn.href = qrSrc; dlBtn.target = '_blank'; dlBtn.removeAttribute('download'); }
+}
+
+function makeCard(id, item, url, openCount, headerClass) {
+    const card = document.createElement('div');
+    card.className = 'area-card';
+    const slug = slugify(id);
+    card.innerHTML = `
+        <div class="card-header ${headerClass || ''}">
+            <div class="en-name">${item.icon} ${item.en}</div>
+            <div class="zh-name">${item.zh}</div>
+            <div class="issue-badge ${openCount > 0 ? 'has-issues' : ''}">
+                ${openCount > 0 ? '⚠️ ' + openCount + ' open issue' + (openCount > 1 ? 's' : '') : '✅ No open issues'}
+            </div>
+        </div>
+        <div class="qr-area" id="qr-${slug}"><div class="qr-loading">Generating…</div></div>
+        <div class="card-actions">
+            <a href="#" class="btn-download" id="dl-${slug}" download="QR-${item.en.replace(/ /g,'-')}.png">⬇️ Download</a>
+            <a href="${url}" class="btn-report" target="_blank">📝 Report Issue</a>
+        </div>`;
+    return { card, slug };
+}
+
+async function init() {
+    // Fetch issue counts keyed by area value stored in DB
     let issueCounts = {};
     try {
         const res = await fetch(`${API_BASE}/issues?limit=500`);
@@ -287,81 +361,32 @@ async function init() {
             const data = await res.json();
             const list = Array.isArray(data) ? data : (data.issues || data.data || []);
             list.forEach(i => {
-                if (i.status === 'Open' || i.status === 'In Progress') {
+                if (i.status === 'Open' || i.status === 'In Progress')
                     issueCounts[i.area] = (issueCounts[i.area] || 0) + 1;
-                }
             });
         }
-    } catch (_) { /* ignore — counts stay 0 */ }
+    } catch (_) {}
 
-    // Render cards
-    for (const area of AREAS) {
-        const url      = await qrUrl(area.en);
+    const unitsGrid = document.getElementById('unitsGrid');
+    const areasGrid = document.getElementById('areasGrid');
+
+    // ── Unit cards ────────────────────────────────────────
+    for (const unit of UNITS) {
+        const url = await buildUrl({ unit: unit.en });
+        const openCount = issueCounts[unit.en] || 0;
+        const { card, slug } = makeCard(unit.en, unit, url, openCount, unit.headerClass);
+        unitsGrid.appendChild(card);
+        generateQR(unit.en, url, `qr-${slug}`, `dl-${slug}`);
+    }
+
+    // ── Sub-area cards (Main CK zones) ────────────────────
+    for (const area of SUB_AREAS) {
+        const url = await buildUrl({ unit: MAIN_CK, area: area.en });
         const openCount = issueCounts[area.en] || 0;
-
-        const card = document.createElement('div');
-        card.className = 'area-card';
-        card.innerHTML = `
-            <div class="card-header">
-                <div class="en-name">${area.icon} ${area.en}</div>
-                <div class="zh-name">${area.zh}</div>
-                <div class="issue-badge ${openCount > 0 ? 'has-issues' : ''}">
-                    ${openCount > 0 ? '⚠️ ' + openCount + ' open issue' + (openCount > 1 ? 's' : '') : '✅ No open issues'}
-                </div>
-            </div>
-            <div class="qr-area" id="qr-${slugify(area.en)}">
-                <div class="qr-loading">Generating…</div>
-            </div>
-            <div class="card-actions">
-                <a href="#" class="btn-download" id="dl-${slugify(area.en)}" download="QR-${area.en.replace(/ /g,'-')}.png">⬇️ Download</a>
-                <a href="area-maintenance.html?area=${encodeURIComponent(area.en)}" class="btn-report" target="_blank">📝 Report Issue</a>
-            </div>
-        `;
-        grid.appendChild(card);
-
-        // Generate QR asynchronously
-        generateQR(area.en, url, `qr-${slugify(area.en)}`, `dl-${slugify(area.en)}`);
+        const { card, slug } = makeCard(area.en, area, url, openCount, '');
+        areasGrid.appendChild(card);
+        generateQR(area.en, url, `qr-${slug}`, `dl-${slug}`);
     }
-}
-
-function generateQR(areaName, url, containerId, downloadId) {
-    try {
-        // Use qrserver.com API — no JS library needed, works on any network
-        const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=6&color=1a252f&bgcolor=ffffff&data=${encodeURIComponent(url)}`;
-
-        const container = document.getElementById(containerId);
-        const img       = document.createElement('img');
-        img.src         = qrSrc;
-        img.width       = 180;
-        img.height      = 180;
-        img.alt         = `QR code for ${areaName}`;
-        img.style.borderRadius = '8px';
-        img.style.boxShadow    = '0 2px 8px rgba(0,0,0,0.10)';
-        img.onerror = () => { container.innerHTML = `<div class="qr-loading" style="color:#e74c3c">QR failed — check internet</div>`; };
-
-        const urlLabel  = document.createElement('div');
-        urlLabel.className = 'qr-url';
-        urlLabel.textContent = url;
-
-        container.innerHTML = '';
-        container.appendChild(img);
-        container.appendChild(urlLabel);
-
-        // Wire up download button — link directly to the QR image
-        const dlBtn = document.getElementById(downloadId);
-        if (dlBtn) {
-            dlBtn.href   = qrSrc;
-            dlBtn.target = '_blank'; // opens image in new tab for saving
-            dlBtn.removeAttribute('download'); // can't force-download cross-origin
-        }
-    } catch (err) {
-        const container = document.getElementById(containerId);
-        container.innerHTML = `<div class="qr-loading" style="color:#e74c3c">QR Error</div>`;
-    }
-}
-
-function slugify(str) {
-    return str.toLowerCase().replace(/[^a-z0-9]/g, '-');
 }
 
 init();

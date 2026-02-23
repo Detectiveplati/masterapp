@@ -228,7 +228,40 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.12);
         }
 
-        /* ── Photo upload ─────────────────────────────────── */
+        /* ── Priority toggle ─────────────────────────────── */
+        .priority-toggle {
+            display: flex;
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .priority-toggle input[type="radio"] { display: none; }
+        .priority-toggle label.ptoggle {
+            flex: 1;
+            padding: 11px 10px;
+            border-radius: 10px;
+            border: 2px solid var(--border);
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            background: #fafafa;
+            color: var(--muted);
+            transition: all 0.15s;
+            display: block;
+            margin-bottom: 0;
+        }
+        .priority-toggle input[value="Normal"]:checked + label.ptoggle {
+            border-color: var(--success);
+            background: #f0fdf4;
+            color: var(--success);
+            box-shadow: 0 0 0 3px rgba(39,174,96,0.12);
+        }
+        .priority-toggle input[value="Urgent"]:checked + label.ptoggle {
+            border-color: var(--accent);
+            background: #fff5f5;
+            color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(192,57,43,0.12);
+        }
         .photo-upload-label {
             display: flex;
             align-items: center;
@@ -337,6 +370,16 @@
                 <div class="field-error" id="errIssue">Please describe the issue.</div>
             </div>
 
+            <div class="field">
+                <label id="lblPriority">Priority</label>
+                <div class="priority-toggle">
+                    <input type="radio" name="priority" id="prioNormal" value="Normal" checked>
+                    <label class="ptoggle" for="prioNormal" id="lblPrioNormal">✅ Normal</label>
+                    <input type="radio" name="priority" id="prioUrgent" value="Urgent">
+                    <label class="ptoggle" for="prioUrgent" id="lblPrioUrgent">🚨 Urgent</label>
+                </div>
+            </div>
+
             <div class="section-label" id="lblSecReporter">👤 REPORTER</div>
 
             <div class="field" id="fieldReportedBy">
@@ -351,7 +394,7 @@
                 <label class="photo-upload-label" for="issuePhoto">
                     <span>📸</span>
                     <span id="photoLabelText">Tap to attach a photo</span>
-                    <input type="file" id="issuePhoto" name="image" accept="image/*" capture="environment" onchange="handlePhotoSelect(this)">
+                    <input type="file" id="issuePhoto" name="image" accept="image/*" onchange="handlePhotoSelect(this)">
                 </label>
                 <div class="photo-preview" id="photoPreview">
                     <img id="photoPreviewImg" src="" alt="Preview">
@@ -399,6 +442,9 @@ const T = {
         lblReportedBy:   'Your Name',
         phReportedBy:    'Enter your name',
         submitBtn:       '📤 Submit Issue Report',
+        lblPriority:     'Priority',
+        lblPrioNormal:   '✅ Normal',
+        lblPrioUrgent:   '🚨 Urgent',
         errUnit:         'Please select a unit.',
         errSubArea:      'Please select an area.',
         errIssue:        'Please describe the issue.',
@@ -428,6 +474,9 @@ const T = {
         lblReportedBy:   '您的姓名',
         phReportedBy:    '请输入您的姓名',
         submitBtn:       '📤 提交问题报告',
+        lblPriority:     '优先级',
+        lblPrioNormal:   '✅ 一般',
+        lblPrioUrgent:   '🚨 紧急',
         errUnit:         '请选择单位。',
         errSubArea:      '请选择区域。',
         errIssue:        '请描述问题。',
@@ -505,6 +554,9 @@ function setLang(l) {
     document.getElementById('lblSubArea').innerHTML    = t.lblSubArea + ' <span class="req">*</span>';
     document.getElementById('lblIssue').innerHTML      = t.lblIssue   + ' <span class="req">*</span>';
     document.getElementById('lblReportedBy').innerHTML = t.lblReportedBy + ' <span class="req">*</span>';
+    document.getElementById('lblPriority').textContent  = t.lblPriority;
+    document.getElementById('lblPrioNormal').textContent = t.lblPrioNormal;
+    document.getElementById('lblPrioUrgent').textContent = t.lblPrioUrgent;
 
     document.getElementById('issue').placeholder      = t.phIssue;
     document.getElementById('reportedBy').placeholder = t.phReportedBy;
@@ -647,12 +699,15 @@ document.getElementById('issueForm').addEventListener('submit', async (e) => {
     const issueText = document.getElementById('issue').value.trim();
     const titleText = issueText.split(/[.\n]/)[0].trim().slice(0, 80) || issueText.slice(0, 80);
 
+    const selectedPriority = document.querySelector('input[name="priority"]:checked')?.value || 'Normal';
+    const priorityValue = selectedPriority === 'Urgent' ? 'High' : 'Medium';
+
     const fd = new FormData();
     fd.append('area',             getAreaValue());
     fd.append('category',         'Other');
     fd.append('title',            titleText);
     fd.append('description',      issueText);
-    fd.append('priority',         'Medium');
+    fd.append('priority',         priorityValue);
     fd.append('specificLocation', document.getElementById('specificLocation').value.trim());
     fd.append('reportedBy',       document.getElementById('reportedBy').value.trim());
     const photoFile = document.getElementById('issuePhoto').files[0];
@@ -705,6 +760,7 @@ function handlePhotoSelect(input) {
 // ── Reset ─────────────────────────────────────────────────
 function resetForm() {
     document.getElementById('issueForm').reset();
+    document.getElementById('prioNormal').checked          = true;
     document.getElementById('photoPreview').style.display  = 'none';
     document.getElementById('photoLabelText').textContent  = 'Tap to attach a photo';
     document.getElementById('formCard').style.display      = 'block';
