@@ -15,20 +15,16 @@ if (document.getElementById('ncForm')) {
   document.getElementById('ncForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     const form = e.target;
-    const data = {
-      unit: form.unit.value,
-      specificLocation: form.specificLocation.value,
-      description: form.description.value,
-      priority: form.priority.value,
-      reportedBy: form.reportedBy.value
-    };
-    // TODO: handle photo upload
+    const fd = new FormData();
+    fd.append('unit',             form.unit.value);
+    fd.append('specificLocation', form.specificLocation.value);
+    fd.append('description',      form.description.value);
+    fd.append('priority',         form.priority.value);
+    fd.append('reportedBy',       form.reportedBy.value);
+    const photoFile = document.getElementById('photoInput').files[0];
+    if (photoFile) fd.append('photo', photoFile);
     try {
-      const res = await fetch('/api/foodsafety/report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
+      const res = await fetch('/api/foodsafety/report', { method: 'POST', body: fd });
       if (!res.ok) throw new Error('Failed to submit');
       showNotice('notice', 'success', '✅ NC report submitted successfully! Redirecting…');
       setTimeout(() => window.location.href = 'nc-list.html', 1500);
@@ -141,17 +137,13 @@ if (document.getElementById('ncDetail')) {
     e.preventDefault();
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id');
-    const data = {
-      resolver: this.resolver.value,
-      notes: this.resolutionNotes.value
-      // TODO: handle photo upload
-    };
+    const fd = new FormData();
+    fd.append('resolver',       this.resolver.value);
+    fd.append('notes',          this.resolutionNotes.value);
+    const resPhoto = document.getElementById('resolutionPhotoInput').files[0];
+    if (resPhoto) fd.append('resolutionPhoto', resPhoto);
     try {
-      const res = await fetch('/api/foodsafety/' + id + '/resolve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
+      const res = await fetch('/api/foodsafety/' + id + '/resolve', { method: 'POST', body: fd });
       if (!res.ok) throw new Error('Failed to resolve');
       showNotice('notice', 'success', '✅ Marked as resolved! Reloading…');
       setTimeout(() => window.location.reload(), 1500);
