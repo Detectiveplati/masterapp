@@ -82,8 +82,13 @@
   </div>
 
   <script>
-    // If already logged in, redirect to hub
-    fetch('/api/auth/me').then(r => { if (r.ok) window.location.replace('/'); }).catch(() => {});
+    // If already logged in, redirect to the intended destination (or hub)
+    fetch('/api/auth/me').then(r => {
+      if (r.ok) {
+        const dest = new URLSearchParams(window.location.search).get('next') || '/';
+        window.location.replace(dest);
+      }
+    }).catch(() => {});
 
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
