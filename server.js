@@ -17,6 +17,7 @@ const mongoose = require('mongoose');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const path = require('path');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 
 // Try to load puppeteer (optional - for PDF generation)
 let puppeteer = null;
@@ -34,10 +35,36 @@ app.set('trust proxy', 1);
 
 // ─── Database connections ────────────────────────────────────────────────────
 
+// Seed default admin user if none exists
+async function seedAdmin() {
+    try {
+        const User = require('./models/User');
+        const count = await User.countDocuments();
+        if (count === 0) {
+            const admin = new User({
+                username:     'admin',
+                passwordHash: 'admin123',
+                displayName:  'Administrator',
+                role:         'admin',
+                permissions:  { maintenance: true, foodsafety: true, templog: true, procurement: true }
+            });
+            await admin.save();
+            console.log('✓ [Auth] Default admin created — username: admin / password: admin123');
+        } else {
+            console.log(`✓ [Auth] ${count} user(s) found in database`);
+        }
+    } catch (err) {
+        console.error('✗ [Auth] Seed admin error:', err.message);
+    }
+}
+
 // 1. Mongoose — Maintenance Dashboard
 const MAINTENANCE_MONGO_URI = process.env.MAINTENANCE_MONGODB_URI || 'mongodb://localhost:27017/central_kitchen_maintenance';
 mongoose.connect(MAINTENANCE_MONGO_URI)
-    .then(() => console.log('✓ [Maintenance] MongoDB (Mongoose) connected'))
+    .then(async () => {
+        console.log('✓ [Maintenance] MongoDB (Mongoose) connected');
+        await seedAdmin();
+    })
     .catch(err => console.error('✗ [Maintenance] MongoDB connection error:', err));
 
 // 2. Native driver — Kitchen Temp Log
@@ -76,6 +103,7 @@ const noCacheHtml = {
 };
 
 app.use(cors());
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -88,6 +116,12 @@ app.get('/foodsafety/index.html', (req, res) => res.sendFile(path.join(__dirname
 app.get(/^\/foodsafety(\/.*)?$/, (req, res) => {
     res.sendFile(path.join(__dirname, 'foodsafety', 'index.html'));
 });
+
+// Auth pages — login & admin panel (no auth required to serve HTML; JS handles redirect)
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
+app.use('/admin', express.static(path.join(__dirname, 'admin'), noCacheHtml));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin', 'index.html')));
+app.get('/admin/', (req, res) => res.sendFile(path.join(__dirname, 'admin', 'index.html')));
 
 // Hub page — root index.html
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
@@ -106,6 +140,12 @@ app.get('/procurement',             (req, res) => res.sendFile(path.join(__dirna
 app.get('/procurement/request',     (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'request-form.html')));
 app.get('/procurement/requests',    (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'requests.html')));
 app.get('/procurement/request/:id', (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'request-detail.html')));
+
+// ─── Auth & Admin API Routes ──────────────────────────────────────────────────
+const authRoutes  = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
+app.use('/api/auth',  authRoutes);
+app.use('/api/admin', adminRoutes);
 
 // ─── Maintenance API Routes ──────────────────────────────────────────────────
 // Food Safety NC API Routes
@@ -342,7 +382,10 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`   `);
     console.log(`   📋 Maintenance Dashboard → http://localhost:${PORT}/maintenance/`);
     console.log(`   🌡️  Kitchen Temp Log      → http://localhost:${PORT}/templog/`);
-    console.log(`   � Procurement           → http://localhost:${PORT}/procurement/`);
-    console.log(`   �💚 Health Check          → http://localhost:${PORT}/api/health`);
+    console.log(`   🛒 Procurement           → http://localhost:${PORT}/procurement/`);
+    console.log(`   🍽️  Food Safety NC        → http://localhost:${PORT}/foodsafety/`);
+    console.log(`   🔐 Login                 → http://localhost:${PORT}/login`);
+    console.log(`   ⚙️  Admin Panel           → http://localhost:${PORT}/admin/`);
+    console.log(`   💚 Health Check          → http://localhost:${PORT}/api/health`);
     console.log(`\n   Access from tablet: http://<your-ip>:${PORT}\n`);
 });

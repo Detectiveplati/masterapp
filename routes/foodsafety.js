@@ -1,7 +1,26 @@
 const express = require('express');
-const router = express.Router();
+const router  = require('express').Router();
+const path    = require('path');
+const fs      = require('fs');
+const crypto  = require('crypto');
 const FoodSafetyNC = require('../models/FoodSafetyNC');
 const { memUpload, uploadBufferToCloudinary } = require('../services/cloudinary-upload');
+
+// Local uploads folder fallback (used when Cloudinary is not configured)
+const UPLOADS_DIR = path.join(__dirname, '..', 'foodsafety', 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+async function savePhoto(req, folder) {
+  if (!req.file) return null;
+  // Try Cloudinary first
+  const url = await uploadBufferToCloudinary(req.file.buffer, req.file.mimetype, folder);
+  if (url) return url;
+  // Fallback: save to local disk
+  const ext  = req.file.originalname.split('.').pop().toLowerCase() || 'jpg';
+  const name = Date.now() + '-' + crypto.randomBytes(6).toString('hex') + '.' + ext;
+  fs.writeFileSync(path.join(UPLOADS_DIR, name), req.file.buffer);
+  return '/foodsafety/uploads/' + name;
+}
 
 // Create new NC report
 router.post('/report', (req, res, next) => {
@@ -11,10 +30,7 @@ router.post('/report', (req, res, next) => {
   });
 }, async (req, res) => {
   try {
-    let photoUrl = null;
-    if (req.file) {
-      photoUrl = await uploadBufferToCloudinary(req.file.buffer, req.file.mimetype, 'foodsafety/nc');
-    }
+    let photoUrl = await savePhoto(req, 'foodsafety/nc');
     const nc = new FoodSafetyNC({
       unit: req.body.unit,
       specificLocation: req.body.specificLocation,
@@ -64,10 +80,7 @@ router.post('/:id/resolve', (req, res, next) => {
   try {
     const nc = await FoodSafetyNC.findById(req.params.id);
     if (!nc) return res.status(404).json({ error: 'Not found' });
-    let photoUrl = null;
-    if (req.file) {
-      photoUrl = await uploadBufferToCloudinary(req.file.buffer, req.file.mimetype, 'foodsafety/resolution');
-    }
+    let photoUrl = await savePhoto(req, 'foodsafety/resolution');
     nc.status = 'Resolved';
     nc.resolution = {
       resolver: req.body.resolver,
