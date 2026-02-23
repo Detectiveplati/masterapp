@@ -95,7 +95,7 @@ router.post('/', (req, res, next) => {
             category: req.body.category,
             title: req.body.title,
             description: req.body.description,
-            priority: req.body.priority || 'Medium',
+            priority: req.body.priority || 'Normal',
             status: req.body.status || 'Open',
             photos,
             reportedBy: req.body.reportedBy,
