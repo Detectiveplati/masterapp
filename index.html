@@ -51,6 +51,8 @@
         .hub-card.maintenance::before { background: linear-gradient(90deg,var(--accent),#e74c3c); }
         .hub-card.templog::before     { background: linear-gradient(90deg,var(--accent-2),#0e7fd6); }
         .hub-card.procurement::before { background: linear-gradient(90deg,#27ae60,#1e8449); }
+        .hub-card.foodsafety::before  { background: linear-gradient(90deg,#16a085,#1abc9c); }
+        .hub-card.admin::before       { background: linear-gradient(90deg,#7f5af0,#5e3fce); }
         .hub-card:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(18,19,22,0.13); }
         .hub-card .icon { font-size: 2.8rem; line-height: 1; }
         .hub-card h2   { font-size: 1.35rem; font-weight: 700; color: var(--ink); }
@@ -62,7 +64,9 @@
         .hub-card.maintenance .go-btn { color: var(--accent); }
         .hub-card.templog .go-btn     { color: var(--accent-2); }
         .hub-card.procurement .go-btn { color: #27ae60; }
-        .hub-card .go-btn::after { content: ''; transition: transform 0.15s ease; }
+        .hub-card.foodsafety .go-btn  { color: #16a085; }
+        .hub-card.admin .go-btn       { color: #7f5af0; }
+        .hub-card .go-btn::after { content: ' →'; transition: transform 0.15s ease; }
         .hub-card:hover .go-btn::after { transform: translateX(4px); }
         .status-bar {
             margin-top: 48px; display: flex; gap: 12px; align-items: center;
@@ -97,26 +101,34 @@
         <div class="hub-subtitle">Select an app below to get started.</div>
         <div class="hub-grid">
             <a href="/maintenance/maintenance.html" class="hub-card maintenance">
-                <div class="icon"></div>
+                <div class="icon">🔧</div>
                 <h2>Maintenance Dashboard</h2>
                 <p>Track equipment status, log service records, report issues, and manage maintenance schedules across all kitchen equipment.</p>
                 <div class="go-btn">Open Maintenance Dashboard</div>
             </a>
             <a href="/templog/" class="hub-card templog">
-                <div class="icon"></div>
+                <div class="icon">🌡️</div>
                 <h2>Kitchen Temp Log</h2>
                 <p>Record cooking activities, monitor temperatures, track cook times, and export logs to CSV or PDF for compliance reporting.</p>
                 <div class="go-btn">Open Temp Log</div>
             </a>
             <a href="/procurement/requests" class="hub-card procurement">
+                <div class="icon">🛒</div>
                 <h2>Kitchen Equipment Procurement</h2>
                 <p>Submit and track purchase requests, attach photos, manage approvals, and keep a full history of all procurement activity.</p>
-                <div class="go-btn">Open Kitchen Equipment Procurement</div>
+                <div class="go-btn">Open Procurement</div>
             </a>
-            <a href="/foodsafety/index.html" class="hub-card foodsafety">
+            <a href="/foodsafety/" class="hub-card foodsafety">
+                <div class="icon">🍽️</div>
                 <h2>Food Safety NC</h2>
-                <p>Report and resolve food safety non-conformance issues. View, track, and close NCs for compliance and safety.</p>
+                <p>Report and resolve food safety non-conformances across all kitchen units. Track open issues and log resolutions.</p>
                 <div class="go-btn">Open Food Safety NC</div>
+            </a>
+            <a href="/admin/" class="hub-card admin">
+                <div class="icon">🔐</div>
+                <h2>Admin &amp; User Management</h2>
+                <p>Manage user accounts, reset passwords, and control module permissions for all staff members.</p>
+                <div class="go-btn">Open Admin Panel</div>
             </a>
         </div>
         <div class="status-bar">

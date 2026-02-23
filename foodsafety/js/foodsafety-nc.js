@@ -16,8 +16,13 @@ if (document.getElementById('ncForm')) {
     e.preventDefault();
     const form = e.target;
     const fd = new FormData();
-    fd.append('unit',             form.unit.value);
-    fd.append('specificLocation', form.specificLocation.value);
+    const unitVal    = form.unit.value;
+    const subAreaVal = document.getElementById('subArea') ? document.getElementById('subArea').value : '';
+    fd.append('unit',             unitVal);
+    // If Main CK Area, prepend the zone to specificLocation
+    const specBase = form.specificLocation.value;
+    const specFull = subAreaVal ? (subAreaVal + (specBase ? ' — ' + specBase : '')) : specBase;
+    fd.append('specificLocation', specFull);
     fd.append('description',      form.description.value);
     fd.append('priority',         form.priority.value);
     fd.append('reportedBy',       form.reportedBy.value);
