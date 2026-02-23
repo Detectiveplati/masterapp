@@ -164,12 +164,26 @@
         .live-view-all {
             display: inline-block;
             margin-top: 4px;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             font-weight: 700;
-            color: var(--accent);
+            color: #fff;
             text-decoration: none;
+            background: linear-gradient(135deg, var(--accent), #e74c3c);
+            padding: 9px 18px;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(192,57,43,0.2);
+            transition: transform 0.13s, box-shadow 0.13s;
         }
-        .live-view-all:hover { text-decoration: underline; }
+        .live-view-all:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(192,57,43,0.3); text-decoration: none; }
+        .live-view-all.orange {
+            background: linear-gradient(135deg, var(--accent-2), #e67e22);
+            box-shadow: 0 3px 10px rgba(211,84,0,0.2);
+        }
+        .live-view-all.orange:hover { box-shadow: 0 6px 16px rgba(211,84,0,0.3); }
+        .live-view-all.dark {
+            background: linear-gradient(135deg, #1a252f, #2c3e50);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+        }
     </style>
 </head>
 <body>
@@ -190,59 +204,26 @@
         </div>
     </header>
     <main>
-        <section id="immediateIssuesSection">
-            <h2 id="immediateIssuesHeading">⚠️ Immediate Issues <span id="immediateTotalBadge" style="font-size:0.75rem;font-weight:700;background:linear-gradient(135deg,var(--accent),#e74c3c);color:#fff;border-radius:20px;padding:2px 10px;vertical-align:middle;margin-left:6px;">…</span></h2>
-            <p>Live snapshot of open area reports and equipment needing attention right now.</p>
-
-            <div class="issues-live-grid">
-                <!-- Area & Facilities column -->
-                <div class="issues-live-col">
-                    <div class="issues-live-heading">
-                        📍 Area &amp; Facilities
-                        <span class="col-count" id="areaIssueCount">…</span>
-                    </div>
-                    <div id="areaLiveList"><p class="live-empty">Loading…</p></div>
-                    <a href="all-issues.html#area" class="live-view-all">View all area issues →</a>
-                </div>
-
-                <!-- Equipment column -->
-                <div class="issues-live-col">
-                    <div class="issues-live-heading">
-                        🔧 Equipment
-                        <span class="col-count orange" id="equipIssueCount">…</span>
-                    </div>
-                    <div id="equipLiveList"><p class="live-empty">Loading…</p></div>
-                    <a href="all-issues.html#equipment" class="live-view-all">View all equipment issues →</a>
-                </div>
+        <section id="areaIssuesSection">
+            <h2>📍 Area &amp; Facilities Issues <span id="areaIssueBadge" style="font-size:0.75rem;font-weight:700;background:linear-gradient(135deg,var(--accent),#e74c3c);color:#fff;border-radius:20px;padding:2px 10px;vertical-align:middle;margin-left:6px;">…</span></h2>
+            <p>Live snapshot of open area and facility reports.</p>
+            <div id="areaLiveList" style="margin-top:14px;"><p class="live-empty">Loading…</p></div>
+            <div style="margin-top:12px;">
+                <a href="all-issues.html#area" class="live-view-all">View all area issues →</a>
             </div>
         </section>
 
-        <section>
-            <h2>Equipment Overview</h2>
-            <p>Manage statuses and maintenance details on the equipment list page.</p>
-            <a href="equipment-list.html" style="text-decoration: none;">
-                <button class="btn-secondary">View Equipment List →</button>
-            </a>
-        </section>
-
-        <section>
-            <h2>⚠️ All Issues</h2>
-            <p>Combined view of area &amp; facility reports and equipment issues — filterable, searchable, with priority and status tracking.</p>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;">
-                <a href="all-issues.html#area" style="text-decoration:none;">
-                    <button style="background:linear-gradient(135deg,#c0392b,#e74c3c);">📍 Area &amp; Facilities →</button>
-                </a>
-                <a href="all-issues.html#equipment" style="text-decoration:none;">
-                    <button style="background:linear-gradient(135deg,var(--accent-2),#e67e22);">🔧 Equipment Issues →</button>
-                </a>
-                <a href="area-maintenance.html" style="text-decoration:none;">
-                    <button style="background:linear-gradient(135deg,#7f8c8d,#95a5a6);">➕ Report Area Issue</button>
-                </a>
-                <a href="areas.html" style="text-decoration:none;">
-                    <button style="background:linear-gradient(135deg,#1a252f,#2c3e50);">📍 Area QR Codes</button>
-                </a>
+        <section id="equipIssuesSection">
+            <h2>🔧 Equipment Issues <span id="equipIssueBadge" style="font-size:0.75rem;font-weight:700;background:linear-gradient(135deg,var(--accent-2),#e67e22);color:#fff;border-radius:20px;padding:2px 10px;vertical-align:middle;margin-left:6px;">…</span></h2>
+            <p>Live snapshot of equipment needing attention right now.</p>
+            <div id="equipLiveList" style="margin-top:14px;"><p class="live-empty">Loading…</p></div>
+            <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;">
+                <a href="all-issues.html#equipment" class="live-view-all orange">View all equipment issues →</a>
+                <a href="equipment-list.html" class="live-view-all dark">View equipment list →</a>
             </div>
         </section>
+
+
         
     </main>
     <footer>
@@ -290,7 +271,10 @@
                 .filter(i => i.status === 'Open' || i.status === 'In Progress')
                 .sort((a, b) => (_pOrder[a.priority] ?? 3) - (_pOrder[b.priority] ?? 3));
 
-            document.getElementById('areaIssueCount').textContent = openArea.length;
+            document.getElementById('areaIssueBadge').textContent = openArea.length;
+            document.getElementById('areaIssueBadge').style.background = openArea.length > 0
+                ? 'linear-gradient(135deg,var(--accent),#e74c3c)'
+                : 'linear-gradient(135deg,var(--success),#2ecc71)';
 
             const areaList = document.getElementById('areaLiveList');
             if (!openArea.length) {
@@ -323,7 +307,10 @@
             allEq.forEach(e => { eqMap[e.equipmentId] = e; });
 
             const equipTotal = openEq.length + needsAction.length;
-            document.getElementById('equipIssueCount').textContent = equipTotal;
+            document.getElementById('equipIssueBadge').textContent = equipTotal;
+            document.getElementById('equipIssueBadge').style.background = equipTotal > 0
+                ? 'linear-gradient(135deg,var(--accent-2),#e67e22)'
+                : 'linear-gradient(135deg,var(--success),#2ecc71)';
 
             const equipList = document.getElementById('equipLiveList');
             if (!equipTotal) {
@@ -362,21 +349,13 @@
                     </a>`).join('');
             }
 
-            // ── Update section heading total ─────────────
-            const total = openArea.length + equipTotal;
-            const badge = document.getElementById('immediateTotalBadge');
-            badge.textContent = total;
-            badge.style.background = total > 0
-                ? 'linear-gradient(135deg,var(--accent),#e74c3c)'
-                : 'linear-gradient(135deg,var(--success),#2ecc71)';
-            if (!total) {
-                document.getElementById('immediateIssuesHeading').childNodes[0].textContent = '✅ All Clear ';
-            }
 
         } catch (err) {
             console.error('Failed to load immediate issues', err);
             document.getElementById('areaLiveList').innerHTML  = '<p class="live-empty" style="color:var(--accent)">⚠️ Could not load</p>';
             document.getElementById('equipLiveList').innerHTML = '<p class="live-empty" style="color:var(--accent)">⚠️ Could not load</p>';
+            document.getElementById('areaIssueBadge').textContent = '!';
+            document.getElementById('equipIssueBadge').textContent = '!';
         }
     }
 

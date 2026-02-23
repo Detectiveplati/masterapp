@@ -294,10 +294,24 @@
 
             <div class="section-label" id="lblSecLocation">📍 LOCATION</div>
 
-            <div class="field" id="fieldArea">
-                <label for="area" id="lblArea">Area <span class="req">*</span></label>
-                <select id="area" name="area">
-                    <option value="" id="optAreaDefault">— Select area —</option>
+            <div class="field" id="fieldUnit">
+                <label for="unit" id="lblUnit">Unit <span class="req">*</span></label>
+                <select id="unit" name="unit" onchange="onUnitChange()">
+                    <option value="" id="optUnitDefault">— Select unit —</option>
+                    <option value="#06-27/15/16/17 (Main CK Area)" selected>#06-27/15/16/17 (Main CK Area)</option>
+                    <option value="#06-24 (Raw Prep)">#06-24 (Raw Prep)</option>
+                    <option value="#06-19 (Bakery)">#06-19 (Bakery)</option>
+                    <option value="#05-26">#05-26</option>
+                    <option value="#05-27 (Tay Sauce Kitchen)">#05-27 (Tay Sauce Kitchen)</option>
+                    <option value="#04-08 (Confinement)">#04-08 (Confinement)</option>
+                </select>
+                <div class="field-error" id="errUnit">Please select a unit.</div>
+            </div>
+
+            <div class="field" id="fieldSubArea" style="display:none;">
+                <label for="subArea" id="lblSubArea">Area <span class="req">*</span></label>
+                <select id="subArea" name="subArea">
+                    <option value="" id="optSubAreaDefault">— Select area —</option>
                     <option value="Combi Oven Area">Combi Oven Area</option>
                     <option value="Deep Frying Area">Deep Frying Area</option>
                     <option value="Stir Frying Area">Stir Frying Area</option>
@@ -307,7 +321,7 @@
                     <option value="Cold Room">Cold Room</option>
                     <option value="Pan Fry Area">Pan Fry Area</option>
                 </select>
-                <div class="field-error" id="errArea">Please select an area.</div>
+                <div class="field-error" id="errSubArea">Please select an area.</div>
             </div>
 
             <div class="field">
@@ -362,64 +376,82 @@
 
 <script src="js/api.js"></script>
 <script>
+// ── Constants ─────────────────────────────────────────────
+const MAIN_CK   = '#06-27/15/16/17 (Main CK Area)';
+const SUB_AREAS = ['Combi Oven Area','Deep Frying Area','Stir Frying Area','Packing Area','Salad Room','Fruit Room','Cold Room','Pan Fry Area'];
+
 // ── Translations ─────────────────────────────────────────
 const T = {
     en: {
-        hdrTitle:     '🏗️ Report Area Issue',
-        hdrSub:       'Central Kitchen — Facility Issue Reporting',
-        lblSecLocation: '📍 LOCATION',
-        lblArea:      'Area',
-        optAreaDefault: '— Select area —',
-        lblSpecific:  'Specific Location',
-        lblOptional:  '(optional)',
-        lblSecDetails:'📋 ISSUE DETAILS',
-        lblIssue:     'Issue',
-        phIssue:      'Describe the issue — what happened, where exactly…',
-        lblSecReporter:'👤 REPORTER',
-        lblReportedBy:'Your Name',
-        phReportedBy: 'Enter your name',
-        submitBtn:    '📤 Submit Issue Report',
-        errArea:      'Please select an area.',
-        errIssue:     'Please describe the issue.',
-        errReportedBy:'Please enter your name.',
-        successTitle: 'Issue Reported!',
-        successSub1:  'Thank you. Your report has been logged.',
-        successSub2:  'The maintenance team will review and respond.',
-        btnAgain:     'Report Another Issue',
-        bannerPrefix: 'Area:',
-        submitting:   'Submitting…',
-        submitFailed: 'Failed to submit: '
+        hdrTitle:        '🏗️ Report Area Issue',
+        hdrSub:          'Central Kitchen — Facility Issue Reporting',
+        lblSecLocation:  '📍 LOCATION',
+        lblUnit:         'Unit',
+        optUnitDefault:  '— Select unit —',
+        lblSubArea:      'Area',
+        optSubAreaDefault: '— Select area —',
+        lblSpecific:     'Specific Location',
+        lblOptional:     '(optional)',
+        lblSecDetails:   '📋 ISSUE DETAILS',
+        lblIssue:        'Issue',
+        phIssue:         'Describe the issue — what happened, where exactly…',
+        lblSecReporter:  '👤 REPORTER',
+        lblReportedBy:   'Your Name',
+        phReportedBy:    'Enter your name',
+        submitBtn:       '📤 Submit Issue Report',
+        errUnit:         'Please select a unit.',
+        errSubArea:      'Please select an area.',
+        errIssue:        'Please describe the issue.',
+        errReportedBy:   'Please enter your name.',
+        successTitle:    'Issue Reported!',
+        successSub1:     'Thank you. Your report has been logged.',
+        successSub2:     'The maintenance team will review and respond.',
+        btnAgain:        'Report Another Issue',
+        bannerPrefix:    'Location:',
+        submitting:      'Submitting…',
+        submitFailed:    'Failed to submit: '
     },
     zh: {
-        hdrTitle:     '🏗️ 区域问题报告',
-        hdrSub:       '中央厨房 — 设施问题报告',
-        lblSecLocation: '📍 位置',
-        lblArea:      '区域',
-        optAreaDefault: '— 请选择区域 —',
-        lblSpecific:  '具体位置',
-        lblOptional:  '（可选）',
-        lblSecDetails:'📋 问题详情',
-        lblIssue:     '问题描述',
-        phIssue:      '请描述问题 — 发生了什么、具体位置…',
-        lblSecReporter:'👤 报告人',
-        lblReportedBy:'您的姓名',
-        phReportedBy: '请输入您的姓名',
-        submitBtn:    '📤 提交问题报告',
-        errArea:      '请选择区域。',
-        errIssue:     '请描述问题。',
-        errReportedBy:'请输入您的姓名。',
-        successTitle: '报告成功！',
-        successSub1:  '感谢您。您的问题报告已记录。',
-        successSub2:  '维修团队将审核并处理。',
-        btnAgain:     '报告另一个问题',
-        bannerPrefix: '区域：',
-        submitting:   '提交中…',
-        submitFailed: '提交失败：'
+        hdrTitle:        '🏗️ 区域问题报告',
+        hdrSub:          '中央厨房 — 设施问题报告',
+        lblSecLocation:  '📍 位置',
+        lblUnit:         '单位',
+        optUnitDefault:  '— 请选择单位 —',
+        lblSubArea:      '区域',
+        optSubAreaDefault: '— 请选择区域 —',
+        lblSpecific:     '具体位置',
+        lblOptional:     '（可选）',
+        lblSecDetails:   '📋 问题详情',
+        lblIssue:        '问题描述',
+        phIssue:         '请描述问题 — 发生了什么、具体位置…',
+        lblSecReporter:  '👤 报告人',
+        lblReportedBy:   '您的姓名',
+        phReportedBy:    '请输入您的姓名',
+        submitBtn:       '📤 提交问题报告',
+        errUnit:         '请选择单位。',
+        errSubArea:      '请选择区域。',
+        errIssue:        '请描述问题。',
+        errReportedBy:   '请输入您的姓名。',
+        successTitle:    '报告成功！',
+        successSub1:     '感谢您。您的问题报告已记录。',
+        successSub2:     '维修团队将审核并处理。',
+        btnAgain:        '报告另一个问题',
+        bannerPrefix:    '位置：',
+        submitting:      '提交中…',
+        submitFailed:    '提交失败：'
     }
 };
 
-// Area names in Chinese
-const AREA_ZH = {
+const UNIT_ZH = {
+    '#06-27/15/16/17 (Main CK Area)': '#06-27/15/16/17（主中央厨房区）',
+    '#06-24 (Raw Prep)':             '#06-24（生食准备）',
+    '#06-19 (Bakery)':               '#06-19（面包房）',
+    '#05-26':                        '#05-26',
+    '#05-27 (Tay Sauce Kitchen)':    '#05-27（泰酱厨房）',
+    '#04-08 (Confinement)':          '#04-08（卵月中心）'
+};
+
+const SUB_AREA_ZH = {
     'Combi Oven Area':  '万能烤炉区',
     'Deep Frying Area': '炸锅区',
     'Stir Frying Area': '炒锅区',
@@ -432,6 +464,26 @@ const AREA_ZH = {
 
 let lang = 'en';
 
+// ── Unit change handler ───────────────────────────────────
+function onUnitChange() {
+    const unit = document.getElementById('unit').value;
+    const isMainCK = unit === MAIN_CK;
+    document.getElementById('fieldSubArea').style.display = isMainCK ? 'block' : 'none';
+    if (!isMainCK) document.getElementById('subArea').value = '';
+    updateBanner();
+}
+
+function updateBanner() {
+    const unit = document.getElementById('unit').value;
+    if (!unit) { document.getElementById('areaBanner').classList.remove('visible'); return; }
+    const t = T[lang];
+    const unitDisplay = lang === 'zh' ? (UNIT_ZH[unit] || unit) : unit;
+    const subArea     = document.getElementById('subArea').value;
+    const subDisplay  = subArea ? (' › ' + (lang === 'zh' ? (SUB_AREA_ZH[subArea] || subArea) : subArea)) : '';
+    document.getElementById('areaBannerText').textContent = t.bannerPrefix + ' ' + unitDisplay + subDisplay;
+    document.getElementById('areaBanner').classList.add('visible');
+}
+
 function setLang(l) {
     lang = l;
     document.getElementById('btnEN').classList.toggle('active', l === 'en');
@@ -440,8 +492,8 @@ function setLang(l) {
     const t = T[l];
     const textIds = ['hdrTitle','hdrSub','lblSecLocation','lblSpecific','lblOptional',
         'lblSecDetails','lblSecReporter',
-        'optAreaDefault',
-        'errArea','errIssue','errReportedBy',
+        'optUnitDefault','optSubAreaDefault',
+        'errUnit','errSubArea','errIssue','errReportedBy',
         'successTitle','successSub1','successSub2','btnAgain'
     ];
     textIds.forEach(id => {
@@ -449,72 +501,138 @@ function setLang(l) {
         if (el && t[id] !== undefined) el.textContent = t[id];
     });
 
-    // Labels with required star
-    document.getElementById('lblArea').innerHTML       = t.lblArea + ' <span class="req">*</span>';
-    document.getElementById('lblIssue').innerHTML      = t.lblIssue + ' <span class="req">*</span>';
+    document.getElementById('lblUnit').innerHTML       = t.lblUnit    + ' <span class="req">*</span>';
+    document.getElementById('lblSubArea').innerHTML    = t.lblSubArea + ' <span class="req">*</span>';
+    document.getElementById('lblIssue').innerHTML      = t.lblIssue   + ' <span class="req">*</span>';
     document.getElementById('lblReportedBy').innerHTML = t.lblReportedBy + ' <span class="req">*</span>';
 
-    // Placeholders
     document.getElementById('issue').placeholder      = t.phIssue;
     document.getElementById('reportedBy').placeholder = t.phReportedBy;
     document.getElementById('submitBtn').textContent  = t.submitBtn;
 
-    // Update area banner
-    const sel = document.getElementById('area');
-    if (sel.value) {
-        const dispName = l === 'zh' ? (AREA_ZH[sel.value] || sel.value) : sel.value;
-        document.getElementById('areaBannerText').textContent = t.bannerPrefix + ' ' + dispName;
-    }
+    updateBanner();
 }
 
-// ── Init: read ?area= param ──────────────────────────────
+// ── Init: read ?unit= / ?area= params (QR backward-compat) ──
 window.addEventListener('DOMContentLoaded', () => {
     const browserLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
     if (browserLang.startsWith('zh')) setLang('zh'); else setLang('en');
 
-    const params    = new URLSearchParams(window.location.search);
-    const areaParam = params.get('area');
-    if (areaParam) {
-        const sel = document.getElementById('area');
-        for (const opt of sel.options) {
-            if (opt.value.toLowerCase() === areaParam.toLowerCase() || opt.value === areaParam) {
-                opt.selected = true;
-                break;
+    // Show sub-area immediately if a unit is pre-selected (e.g. default)
+    onUnitChange();
+
+    const params     = new URLSearchParams(window.location.search);
+    const unitParam  = params.get('unit');
+    const areaParam  = params.get('area');
+    const unitSel    = document.getElementById('unit');
+    const subAreaSel = document.getElementById('subArea');
+
+    if (unitParam) {
+        // Explicit ?unit= param (new QR codes)
+        for (const opt of unitSel.options) {
+            if (opt.value === unitParam) { opt.selected = true; break; }
+        }
+        onUnitChange();
+        if (areaParam && unitParam === MAIN_CK) {
+            for (const opt of subAreaSel.options) {
+                if (opt.value === areaParam) { opt.selected = true; break; }
             }
         }
-        if (!sel.value) {
-            const opt = new Option(areaParam, areaParam, true, true);
-            sel.appendChild(opt);
+    } else if (areaParam) {
+        // Legacy ?area= param from existing QR codes — auto-detect
+        if (SUB_AREAS.includes(areaParam)) {
+            // It's a Main CK sub-area
+            for (const opt of unitSel.options) {
+                if (opt.value === MAIN_CK) { opt.selected = true; break; }
+            }
+            onUnitChange();
+            for (const opt of subAreaSel.options) {
+                if (opt.value === areaParam) { opt.selected = true; break; }
+            }
+        } else {
+            // It's a unit name
+            let matched = false;
+            for (const opt of unitSel.options) {
+                if (opt.value === areaParam || opt.value.toLowerCase() === areaParam.toLowerCase()) {
+                    opt.selected = true; matched = true; break;
+                }
+            }
+            if (!matched) {
+                const opt = new Option(areaParam, areaParam, true, true);
+                unitSel.appendChild(opt);
+            }
+            onUnitChange();
         }
-        const t = T[lang];
-        const dispName = lang === 'zh' ? (AREA_ZH[sel.value] || sel.value) : sel.value;
-        document.getElementById('areaBannerText').textContent = t.bannerPrefix + ' ' + dispName;
-        document.getElementById('areaBanner').classList.add('visible');
     }
+    updateBanner();
 });
 
 // ── Validation ───────────────────────────────────────────
 function validate() {
     const t = T[lang];
-    const checks = [
-        { fieldId: 'fieldArea',       id: 'area',      errId: 'errArea' },
-        { fieldId: 'fieldIssue',      id: 'issue',     errId: 'errIssue' },
-        { fieldId: 'fieldReportedBy', id: 'reportedBy',errId: 'errReportedBy' }
-    ];
     let ok = true;
-    checks.forEach(c => {
-        const el   = document.getElementById(c.id);
-        const wrap = document.getElementById(c.fieldId);
-        const err  = document.getElementById(c.errId);
-        if (!el.value.trim()) {
-            wrap.classList.add('has-error');
-            if (err && t[c.errId]) err.textContent = t[c.errId];
+
+    // Unit (always required)
+    const unitEl   = document.getElementById('unit');
+    const unitWrap = document.getElementById('fieldUnit');
+    const unitErr  = document.getElementById('errUnit');
+    if (!unitEl.value.trim()) {
+        unitWrap.classList.add('has-error');
+        if (unitErr && t.errUnit) unitErr.textContent = t.errUnit;
+        ok = false;
+    } else {
+        unitWrap.classList.remove('has-error');
+    }
+
+    // Sub-area (required only when Main CK)
+    if (unitEl.value === MAIN_CK) {
+        const subEl   = document.getElementById('subArea');
+        const subWrap = document.getElementById('fieldSubArea');
+        const subErr  = document.getElementById('errSubArea');
+        if (!subEl.value.trim()) {
+            subWrap.classList.add('has-error');
+            if (subErr && t.errSubArea) subErr.textContent = t.errSubArea;
             ok = false;
         } else {
-            wrap.classList.remove('has-error');
+            subWrap.classList.remove('has-error');
         }
-    });
+    }
+
+    // Issue
+    const issueEl   = document.getElementById('issue');
+    const issueWrap = document.getElementById('fieldIssue');
+    const issueErr  = document.getElementById('errIssue');
+    if (!issueEl.value.trim()) {
+        issueWrap.classList.add('has-error');
+        if (issueErr && t.errIssue) issueErr.textContent = t.errIssue;
+        ok = false;
+    } else {
+        issueWrap.classList.remove('has-error');
+    }
+
+    // Reporter
+    const repEl   = document.getElementById('reportedBy');
+    const repWrap = document.getElementById('fieldReportedBy');
+    const repErr  = document.getElementById('errReportedBy');
+    if (!repEl.value.trim()) {
+        repWrap.classList.add('has-error');
+        if (repErr && t.errReportedBy) repErr.textContent = t.errReportedBy;
+        ok = false;
+    } else {
+        repWrap.classList.remove('has-error');
+    }
+
     return ok;
+}
+
+// Build the area value to submit (sub-area for Main CK, unit otherwise)
+function getAreaValue() {
+    const unit = document.getElementById('unit').value.trim();
+    if (unit === MAIN_CK) {
+        const sub = document.getElementById('subArea').value.trim();
+        return sub || unit;
+    }
+    return unit;
 }
 
 // ── Submit ────────────────────────────────────────────────
@@ -530,7 +648,7 @@ document.getElementById('issueForm').addEventListener('submit', async (e) => {
     const titleText = issueText.split(/[.\n]/)[0].trim().slice(0, 80) || issueText.slice(0, 80);
 
     const fd = new FormData();
-    fd.append('area',             document.getElementById('area').value.trim());
+    fd.append('area',             getAreaValue());
     fd.append('category',         'Other');
     fd.append('title',            titleText);
     fd.append('description',      issueText);
@@ -542,7 +660,7 @@ document.getElementById('issueForm').addEventListener('submit', async (e) => {
 
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+        const timeout = setTimeout(() => controller.abort(), 30000);
         const res = await fetch(`${API_BASE}/issues`, {
             method: 'POST',
             body: fd,
@@ -569,10 +687,10 @@ document.getElementById('issueForm').addEventListener('submit', async (e) => {
 // ── Photo preview ─────────────────────────────────────────
 function handlePhotoSelect(input) {
     const file = input.files[0];
-    const preview  = document.getElementById('photoPreview');
+    const preview    = document.getElementById('photoPreview');
     const previewImg = document.getElementById('photoPreviewImg');
-    const nameEl   = document.getElementById('photoFileName');
-    const labelEl  = document.getElementById('photoLabelText');
+    const nameEl     = document.getElementById('photoFileName');
+    const labelEl    = document.getElementById('photoLabelText');
     if (file) {
         previewImg.src = URL.createObjectURL(file);
         nameEl.textContent = file.name;
@@ -587,13 +705,15 @@ function handlePhotoSelect(input) {
 // ── Reset ─────────────────────────────────────────────────
 function resetForm() {
     document.getElementById('issueForm').reset();
-    document.getElementById('photoPreview').style.display = 'none';
-    document.getElementById('photoLabelText').textContent = 'Tap to attach a photo';
+    document.getElementById('photoPreview').style.display  = 'none';
+    document.getElementById('photoLabelText').textContent  = 'Tap to attach a photo';
     document.getElementById('formCard').style.display      = 'block';
     document.getElementById('successScreen').style.display = 'none';
     document.getElementById('submitBtn').disabled          = false;
     document.getElementById('submitBtn').textContent       = T[lang].submitBtn;
     document.querySelectorAll('.has-error').forEach(el => el.classList.remove('has-error'));
+    document.getElementById('fieldSubArea').style.display  = 'none';
+    document.getElementById('areaBanner').classList.remove('visible');
 }
 </script>
 </body>
