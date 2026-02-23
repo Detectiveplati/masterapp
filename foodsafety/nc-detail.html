@@ -93,6 +93,50 @@
     .badge-open     { background: rgba(192,57,43,0.12); color: #b03224; }
     .badge-resolved { background: rgba(39,174,96,0.12); color: #1f7a4a; }
     .badge-urgent   { background: rgba(231,76,60,0.15);  color: #c0392b; }
+
+    /* Photo log */
+    .photo-log {
+      margin-top: 24px; margin-bottom: 8px;
+      border: 1px solid var(--border); border-radius: 10px;
+      overflow: hidden; background: white;
+    }
+    .photo-log-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 13px 18px; background: #fafafa;
+      border-bottom: 1px solid var(--border);
+      font-weight: 700; font-size: 0.95rem; color: var(--ink);
+    }
+    .photo-log-empty {
+      padding: 28px; text-align: center; color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .photo-log-entries { display: flex; flex-wrap: wrap; gap: 0; }
+    .photo-log-entry {
+      flex: 1 1 260px; padding: 18px;
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .photo-log-entry:last-child { border-right: none; }
+    .photo-log-meta {
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .photo-log-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; border-radius: 6px; padding: 3px 9px;
+      width: fit-content;
+    }
+    .photo-log-tag.report   { background: rgba(192,57,43,0.1);  color: #b03224; }
+    .photo-log-tag.resolved { background: rgba(39,174,96,0.1);  color: #1f7a4a; }
+    .photo-log-who  { font-size: 0.82rem; color: var(--muted); }
+    .photo-log-when { font-size: 0.78rem; color: var(--muted); }
+    .photo-log-img {
+      width: 100%; max-height: 240px; object-fit: cover;
+      border-radius: 8px; border: 1px solid var(--border);
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    .photo-log-img:hover { opacity: 0.88; }
+
     @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } .summary-grid { grid-template-columns: 1fr 1fr; } }
   </style>
 </head>
@@ -119,6 +163,9 @@
 
       <!-- NC detail populated by JS -->
       <div id="ncDetail"></div>
+
+      <!-- Photo log populated by JS -->
+      <div id="photoLog"></div>
 
       <!-- Resolution form (shown only when status is Open) -->
       <div id="resolutionSection" class="resolution-section" style="display:none;">

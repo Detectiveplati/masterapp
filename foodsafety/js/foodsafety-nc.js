@@ -108,7 +108,6 @@ if (document.getElementById('ncDetail')) {
           <div class="summary-label">Non-Conformance Description</div>
           <p>${nc.description}</p>
         </div>
-        ${nc.photo ? `<div class="nc-photo"><div class="summary-label">Photo</div><img src="${nc.photo}" alt="NC photo"></div>` : ''}
         ${nc.status === 'Resolved' && nc.resolution ? `
         <div class="description-block" style="margin-top:16px;border-color:rgba(39,174,96,0.3);background:rgba(39,174,96,0.05)">
           <div class="summary-label" style="color:#1f7a4a">Resolution</div>
@@ -117,9 +116,53 @@ if (document.getElementById('ncDetail')) {
             <div class="summary-item"><div class="summary-label">Resolved At</div><div class="summary-value">${nc.resolution.resolvedAt ? new Date(nc.resolution.resolvedAt).toLocaleString() : '—'}</div></div>
           </div>
           <p><strong>Notes:</strong> ${nc.resolution.notes || '—'}</p>
-          ${nc.resolution.photo ? `<div class="nc-photo"><img src="${nc.resolution.photo}" alt="Resolution photo"></div>` : ''}
         </div>` : ''}
       `;
+
+      // ── Photo Log ─────────────────────────────────────────────────────────
+      const photoLogEl = document.getElementById('photoLog');
+      if (photoLogEl) {
+        const entries = [];
+        if (nc.photo) {
+          entries.push({
+            tag: 'report', label: '📷 Report Photo',
+            who:  nc.reportedBy,
+            when: new Date(nc.createdAt).toLocaleString(),
+            src:  nc.photo
+          });
+        }
+        if (nc.resolution && nc.resolution.photo) {
+          entries.push({
+            tag: 'resolved', label: '✅ Resolution Photo',
+            who:  nc.resolution.resolver || '—',
+            when: nc.resolution.resolvedAt ? new Date(nc.resolution.resolvedAt).toLocaleString() : '—',
+            src:  nc.resolution.photo
+          });
+        }
+        if (entries.length === 0) {
+          photoLogEl.innerHTML = `
+            <div class="photo-log">
+              <div class="photo-log-header">📸 Photo Log</div>
+              <div class="photo-log-empty">No photos attached to this report.</div>
+            </div>`;
+        } else {
+          photoLogEl.innerHTML = `
+            <div class="photo-log">
+              <div class="photo-log-header">📸 Photo Log &nbsp;<span style="font-weight:400;font-size:0.85rem;color:var(--muted)">${entries.length} photo${entries.length > 1 ? 's' : ''}</span></div>
+              <div class="photo-log-entries">
+                ${entries.map(e => `
+                  <div class="photo-log-entry">
+                    <div class="photo-log-meta">
+                      <span class="photo-log-tag ${e.tag}">${e.label}</span>
+                      <span class="photo-log-who">By ${e.who}</span>
+                      <span class="photo-log-when">${e.when}</span>
+                    </div>
+                    <img class="photo-log-img" src="${e.src}" alt="${e.label}" onclick="window.open(this.src,'_blank')">
+                  </div>`).join('')}
+              </div>
+            </div>`;
+        }
+      }
 
       const resSection   = document.getElementById('resolutionSection');
       const resActions   = document.getElementById('resolvedActions');
