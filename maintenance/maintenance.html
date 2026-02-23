@@ -148,10 +148,8 @@
             margin-left: auto;
         }
 
-        .lb-critical  { background: #7f1d1d; color: #fff; }
-        .lb-high      { background: #e74c3c; color: #fff; }
-        .lb-medium    { background: var(--accent-2); color: #fff; }
-        .lb-low       { background: #9ca3af; color: #fff; }
+        .lb-urgent    { background: #e74c3c; color: #fff; }
+        .lb-normal    { background: #9ca3af; color: #fff; }
         .lb-action    { background: linear-gradient(135deg,var(--accent-2),#e67e22); color:#fff; }
 
         .live-empty {
@@ -240,7 +238,7 @@
     <script src="js/area-issues.js"></script>
     <script>
     // ── Live immediate issues loader ──────────────────────
-    const _pOrder = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+    const _pOrder = { Urgent: 0, Normal: 1 };
     const _typeIcons = {
         'Walk-In Freezer':'🧊','Standing Freezer':'🧊',
         'Walk-In Chiller':'❄️','Standing Chiller':'❄️','Warmer':'🔥'
@@ -281,9 +279,9 @@
                 areaList.innerHTML = '<p class="live-empty">✅ No open area issues</p>';
             } else {
                 areaList.innerHTML = openArea.slice(0, 6).map(i => {
-                    const isCrit = i.priority === 'Critical';
-                    const badgeClass = { Critical:'lb-critical', High:'lb-high', Medium:'lb-medium', Low:'lb-low' }[i.priority] || 'lb-low';
-                    return `<a class="live-item${isCrit ? ' critical' : ''}" href="issue-details.html?id=${i._id}">
+                    const isUrgent = i.priority === 'Urgent';
+                    const badgeClass = isUrgent ? 'lb-urgent' : 'lb-normal';
+                    return `<a class="live-item${isUrgent ? ' critical' : ''}" href="issue-details.html?id=${i._id}">
                         <span class="live-icon">${categoryIcon(i.category)}</span>
                         <span class="live-body">
                             <span class="live-title">${_esc(i.title)}</span>
@@ -294,7 +292,7 @@
                             </span>
                         </span>
                         ${i.photos && i.photos.length ? `<img src="${i.photos[0]}" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0;">` : ''}
-                        <span class="live-badge ${badgeClass}">${i.priority}</span>
+                        <span class="live-badge ${badgeClass}">${isUrgent ? '! Urgent' : i.priority}</span>
                     </a>`;
                 }).join('');
             }
