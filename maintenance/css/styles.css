@@ -222,20 +222,12 @@ section h2 {
     box-shadow: 0 6px 16px rgba(0,0,0,0.1);
 }
 
-.issue-card.priority-critical {
-    border-left-color: var(--accent);
-    background: linear-gradient(180deg, #fff5f5, #fef2f1);
-}
-
-.issue-card.priority-high {
+.issue-card.priority-Urgent {
     border-left-color: #e74c3c;
+    background: linear-gradient(180deg, #fff5f5, #fff);
 }
 
-.issue-card.priority-medium {
-    border-left-color: var(--accent-2);
-}
-
-.issue-card.priority-low {
+.issue-card.priority-Normal {
     border-left-color: var(--steel);
 }
 
@@ -253,22 +245,12 @@ section h2 {
     text-transform: uppercase;
 }
 
-.priority-critical {
-    background: linear-gradient(135deg, var(--accent), #e74c3c);
+.priority-urgent {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
     color: white;
 }
 
-.priority-high {
-    background: linear-gradient(135deg, #e74c3c, #ff6b6b);
-    color: white;
-}
-
-.priority-medium {
-    background: linear-gradient(135deg, var(--accent-2), #f39c12);
-    color: white;
-}
-
-.priority-low {
+.priority-normal {
     background: linear-gradient(135deg, var(--steel), #9fb4c0);
     color: white;
 }

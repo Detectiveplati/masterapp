@@ -108,7 +108,7 @@
         }
 
         .live-item.orange  { border-left-color: var(--accent-2); }
-        .live-item.critical { border-left-color: #7f1d1d; background: linear-gradient(180deg,#fff5f5,#fff); }
+        .live-item.urgent  { border-left-color: #e74c3c; background: linear-gradient(180deg,#fff5f5,#fff); }
 
         .live-icon {
             font-size: 1.4rem;
@@ -281,7 +281,7 @@
                 areaList.innerHTML = openArea.slice(0, 6).map(i => {
                     const isUrgent = i.priority === 'Urgent';
                     const badgeClass = isUrgent ? 'lb-urgent' : 'lb-normal';
-                    return `<a class="live-item${isUrgent ? ' critical' : ''}" href="issue-details.html?id=${i._id}">
+                    return `<a class="live-item${isUrgent ? ' urgent' : ''}" href="issue-details.html?id=${i._id}">
                         <span class="live-icon">${categoryIcon(i.category)}</span>
                         <span class="live-body">
                             <span class="live-title">${_esc(i.title)}</span>
@@ -323,7 +323,7 @@
                         sub: _esc(issue.description),
                         meta: `👤 ${_esc(issue.reportedBy || 'Anonymous')} · ${_days(issue.reportedDate)}`,
                         href: `equipment-details.html?id=${encodeURIComponent(issue.equipmentId)}`,
-                        badge: 'Open Issue', badgeClass: 'lb-high'
+                        badge: 'Open Issue', badgeClass: 'lb-urgent'
                     })),
                     ...needsAction.map(eq => ({
                         _type: 'equipment',

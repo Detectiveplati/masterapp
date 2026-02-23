@@ -138,10 +138,8 @@
             box-shadow: 0 8px 22px rgba(0,0,0,0.1);
         }
 
-        .issue-row.priority-Critical { border-left-color: #7f1d1d; background: linear-gradient(180deg, #fff5f5, #fff); }
-        .issue-row.priority-High     { border-left-color: #e74c3c; }
-        .issue-row.priority-Medium   { border-left-color: var(--accent-2); }
-        .issue-row.priority-Low      { border-left-color: #9ca3af; }
+        .issue-row.priority-Urgent { border-left-color: #e74c3c; background: linear-gradient(180deg, #fff5f5, #fff); }
+        .issue-row.priority-Normal { border-left-color: #9ca3af; }
 
         .issue-row.status-Resolved,
         .issue-row.status-Closed {
@@ -214,10 +212,8 @@
             white-space: nowrap;
         }
 
-        .badge-critical  { background: #7f1d1d; color: #fff; }
-        .badge-high      { background: #e74c3c; color: #fff; }
-        .badge-medium    { background: var(--accent-2); color: #fff; }
-        .badge-low       { background: #9ca3af; color: #fff; }
+        .badge-urgent { background: #e74c3c; color: #fff; }
+        .badge-normal { background: #9ca3af; color: #fff; }
 
         .badge-open        { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
         .badge-inprogress  { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
@@ -311,10 +307,8 @@
         </select>
         <select id="filterPriority">
             <option value="">All Priorities</option>
-            <option>Critical</option>
-            <option>High</option>
-            <option>Medium</option>
-            <option>Low</option>
+            <option>Urgent</option>
+            <option>Normal</option>
         </select>
     </div>
 
@@ -352,8 +346,7 @@
     }
 
     function priorityBadgeClass(p) {
-        const map = { 'Critical': 'badge-critical', 'High': 'badge-high', 'Medium': 'badge-medium', 'Low': 'badge-low' };
-        return map[p] || 'badge-low';
+        return p === 'Urgent' ? 'badge-urgent' : 'badge-normal';
     }
 
     function updateStats(issues) {
@@ -416,7 +409,7 @@
                         </div>
                     </div>
                     <div class="issue-badges">
-                        <span class="badge ${priorityBadgeClass(issue.priority)}">${issue.priority}</span>
+                        <span class="badge ${priorityBadgeClass(issue.priority)}">${issue.priority === 'Urgent' ? '! Urgent' : issue.priority}</span>
                         <span class="badge ${statusBadgeClass(issue.status)}">${issue.status}</span>
                     </div>
                 </div>`;
@@ -433,10 +426,10 @@
             const res = await fetch(`${API_BASE}/issues`);
             allIssues = await res.json();
 
-            // Sort: critical first, then by date
-            const priorityOrder = { 'Critical': 0, 'High': 1, 'Medium': 2, 'Low': 3 };
+            // Sort: Urgent first, then by date
+            const priorityOrder = { 'Urgent': 0, 'Normal': 1 };
             allIssues.sort((a, b) => {
-                const pd = (priorityOrder[a.priority] ?? 3) - (priorityOrder[b.priority] ?? 3);
+                const pd = (priorityOrder[a.priority] ?? 1) - (priorityOrder[b.priority] ?? 1);
                 if (pd !== 0) return pd;
                 return new Date(b.reportedDate) - new Date(a.reportedDate);
             });
