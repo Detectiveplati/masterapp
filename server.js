@@ -65,20 +65,29 @@ function requireTemplogDb(req, res, next) {
 
 // ─── Middleware ──────────────────────────────────────────────────────────────
 
+
+// Prevent caching of HTML files (always get fresh version)
+const noCacheHtml = { 
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-store');
+        }
+    }
+};
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ─── Static file serving ────────────────────────────────────────────────────
-
-// Prevent caching of HTML files (always get fresh version)
-const noCacheHtml = { 
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.html')) {
-      res.setHeader('Cache-Control', 'no-store');
-    }
-  }
-};
+// Food Safety NC - Serve from foodsafety/ folder
+app.use('/foodsafety', express.static(path.join(__dirname, 'foodsafety'), noCacheHtml));
+app.get('/foodsafety', (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'index.html')));
+// Also support explicit index path and any unmatched foodsafety subpaths (SPA-style)
+app.get('/foodsafety/index.html', (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'index.html')));
+app.get(/^\/foodsafety(\/.*)?$/, (req, res) => {
+    res.sendFile(path.join(__dirname, 'foodsafety', 'index.html'));
+});
 
 // Hub page — root index.html
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
@@ -99,6 +108,9 @@ app.get('/procurement/requests',    (req, res) => res.sendFile(path.join(__dirna
 app.get('/procurement/request/:id', (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'request-detail.html')));
 
 // ─── Maintenance API Routes ──────────────────────────────────────────────────
+// Food Safety NC API Routes
+const foodsafetyRoutes = require('./routes/foodsafety');
+app.use('/api/foodsafety', foodsafetyRoutes);
 
 const equipmentRoutes          = require('./routes/equipment');
 const maintenanceRoutes        = require('./routes/maintenance');

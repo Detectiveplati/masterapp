@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NC Report Detail</title>
+  <link rel="stylesheet" href="../maintenance/css/styles.css">
+  <script src="js/foodsafety-nc.js" defer></script>
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <a href="/index.html" style="display:inline-flex;text-decoration:none;"><img src="../maintenance/assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo" class="site-logo"></a>
+      <div class="header-text">
+        <h1>NC Report Detail</h1>
+        <p>View and resolve this food safety non-conformance</p>
+      </div>
+    </div>
+    <a href="nc-list.html" class="test-button" style="margin-left:18px;align-self:center;">← Back to NC List</a>
+  </header>
+  <main>
+    <div class="nc-detail-container">
+      <div id="ncDetail">
+        <!-- NC details will be loaded here -->
+      </div>
+      <div id="resolutionSection" style="margin-top:32px;">
+        <h2>Resolution</h2>
+        <form id="resolutionForm">
+          <div class="form-row single">
+            <div class="form-group">
+              <label for="resolver">Resolved By</label>
+              <input type="text" id="resolver" name="resolver" placeholder="Enter your name">
+            </div>
+          </div>
+          <div class="form-row single">
+            <div class="form-group">
+              <label for="resolutionNotes">Resolution Notes</label>
+              <textarea id="resolutionNotes" name="resolutionNotes" placeholder="Describe how this NC was resolved..."></textarea>
+            </div>
+          </div>
+          <div class="form-row single">
+            <div class="form-group">
+              <label for="resolutionPhoto">Resolution Photo <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+              <input type="file" id="resolutionPhoto" name="resolutionPhoto" accept="image/*">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Mark as Resolved</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
