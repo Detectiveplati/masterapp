@@ -40,12 +40,18 @@ if (document.getElementById('ncList')) {
     const ncs = await res.json();
     const list = document.getElementById('ncList');
     list.innerHTML = ncs.length ? ncs.map(nc => `
-      <div class="nc-card">
-        <div><b>Area:</b> ${nc.unit}</div>
-        <div><b>Description:</b> ${nc.description}</div>
-        <div><b>Status:</b> ${nc.status}</div>
-        <div><a href="nc-detail.html?id=${nc._id}">View / Resolve</a></div>
-      </div>
+      <a class="card" href="nc-detail.html?id=${nc._id}" style="display:block;margin-bottom:12px;text-decoration:none;color:inherit;">
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div style="flex:1">
+            <div style="font-weight:700">${nc.unit}</div>
+            <div style="color:var(--muted);margin-top:6px">${(nc.description||'').slice(0,140)}</div>
+          </div>
+          <div style="text-align:right;min-width:110px">
+            <div style="font-weight:700">${nc.status}</div>
+            <div style="font-size:0.85rem;color:var(--muted);margin-top:6px">${new Date(nc.createdAt).toLocaleDateString()}</div>
+          </div>
+        </div>
+      </a>
     `).join('') : '<p>No NC reports found.</p>';
   }
   document.getElementById('filterUnit').addEventListener('change', loadNCs);

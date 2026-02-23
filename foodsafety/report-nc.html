@@ -58,8 +58,16 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="photo">Photo <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-          <input type="file" id="photo" name="photo" accept="image/*">
+          <label>Photo <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+          <label class="photo-upload-label" for="photoInput">
+            <span>📸</span>
+            <span id="photoLabelText">Attach a photo of the issue</span>
+            <input type="file" id="photoInput" name="photo" accept="image/*" onchange="handlePhotoSelect(this)">
+          </label>
+          <div class="photo-preview" id="photoPreview">
+            <img id="photoPreviewImg" src="" alt="Preview">
+            <div class="photo-name" id="photoFileName"></div>
+          </div>
         </div>
       </div>
       <div class="form-row single">
@@ -69,10 +77,29 @@
         </div>
       </div>
       <div class="form-actions">
-        <a href="index.html" class="btn-secondary">Cancel</a>
+        <button type="button" class="btn-secondary" id="cancel-btn">Cancel</button>
         <button type="submit" class="btn-primary">Submit NC Report</button>
       </div>
     </form>
   </main>
+  <script>
+    function handlePhotoSelect(input) {
+      const file = input.files[0];
+      const preview = document.getElementById('photoPreview');
+      const previewImg = document.getElementById('photoPreviewImg');
+      const nameEl = document.getElementById('photoFileName');
+      const labelEl = document.getElementById('photoLabelText');
+      if (file) {
+        previewImg.src = URL.createObjectURL(file);
+        nameEl.textContent = file.name;
+        preview.style.display = 'block';
+        labelEl.textContent = '✅ Photo selected — click to change';
+      } else {
+        preview.style.display = 'none';
+        labelEl.textContent = 'Attach a photo of the issue';
+      }
+    }
+    document.getElementById('cancel-btn').addEventListener('click', () => window.location.href = 'index.html');
+  </script>
 </body>
 </html>

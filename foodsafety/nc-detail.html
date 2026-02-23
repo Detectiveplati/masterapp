@@ -19,13 +19,17 @@
     <a href="nc-list.html" class="test-button" style="margin-left:18px;align-self:center;">← Back to NC List</a>
   </header>
   <main>
-    <div class="nc-detail-container">
-      <div id="ncDetail">
+    <div class="form-container">
+      <div class="form-header">
+        <h2>NC Report Detail</h2>
+        <p>View and resolve this food safety non-conformance</p>
+      </div>
+      <div class="card" id="ncDetail">
         <!-- NC details will be loaded here -->
       </div>
       <div id="resolutionSection" style="margin-top:32px;">
         <h2>Resolution</h2>
-        <form id="resolutionForm">
+        <form id="resolutionForm" class="">
           <div class="form-row single">
             <div class="form-group">
               <label for="resolver">Resolved By</label>
@@ -46,6 +50,7 @@
           </div>
           <div class="form-actions">
             <button type="submit" class="btn-primary">Mark as Resolved</button>
+            <a href="nc-list.html" class="btn-secondary" style="text-decoration:none;">← Back to List</a>
           </div>
         </form>
       </div>
