@@ -25,18 +25,14 @@ const CATEGORIES = [
     'Other'
 ];
 
-const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
+const PRIORITIES = ['Normal', 'Urgent'];
 const STATUSES   = ['Open', 'In Progress', 'Resolved', 'Closed'];
 
 /** Priority badge HTML */
 function priorityBadge(priority) {
-    const map = {
-        'Critical': 'badge-critical',
-        'High':     'badge-high',
-        'Medium':   'badge-medium',
-        'Low':      'badge-low'
-    };
-    return `<span class="priority-badge ${map[priority] || 'badge-low'}">${priority || '—'}</span>`;
+    const cls = priority === 'Urgent' ? 'badge-urgent' : 'badge-normal';
+    const label = priority === 'Urgent' ? '! Urgent' : (priority || '—');
+    return `<span class="priority-badge ${cls}">${label}</span>`;
 }
 
 /** Status badge HTML */
