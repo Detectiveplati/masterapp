@@ -158,7 +158,7 @@
     if (status) qs.push(`status=${encodeURIComponent(status)}`);
 
     try {
-      const data = await fetch(`/api/requests${qs.length ? '?' + qs.join('&') : ''}`).then(r => r.json());
+      const data = await fetch(`/api/requests${qs.length ? '?' + qs.join('&') : ''}`, { credentials: 'include' }).then(r => r.json());
       allRequests = data;
       renderRequests(data);
       updateStats(data);
@@ -169,7 +169,7 @@
 
   function updateStats(data) {
     // fetch all for accurate totals regardless of filter
-    fetch('/api/requests').then(r => r.json()).then(all => {
+    fetch('/api/requests', { credentials: 'include' }).then(r => r.json()).then(all => {
       document.getElementById('statTotal').textContent   = all.length;
       document.getElementById('statPending').textContent = all.filter(r => r.status === 'Pending').length;
       document.getElementById('statDone').textContent    = all.filter(r => r.status === 'Done').length;
@@ -231,6 +231,7 @@
     try {
       const updated = await fetch(`/api/requests/${id}`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       }).then(r => r.json());
@@ -254,7 +255,7 @@
   async function deleteRequest(id) {
     if (!confirm('Delete this request?\n确定删除此申请？')) return;
     try {
-      await fetch(`/api/requests/${id}`, { method: 'DELETE' });
+      await fetch(`/api/requests/${id}`, { method: 'DELETE', credentials: 'include' });
       document.getElementById(`card-${id}`)?.remove();
       updateStats(allRequests);
     } catch (err) { alert('Delete failed: ' + err.message); }

@@ -19,6 +19,12 @@ router.post('/', (req, res, next) => {
     try {
         const data = { ...req.body };
 
+        // Strip empty strings for enum fields so Mongoose defaults apply correctly.
+        // Empty string fails enum validation; undefined triggers the default.
+        ['category', 'priority', 'status'].forEach(field => {
+            if (data[field] === '' || data[field] === undefined) delete data[field];
+        });
+
         // Parse checklist if sent as JSON string
         if (typeof data.checklist === 'string') {
             try { data.checklist = JSON.parse(data.checklist); } catch (_) {}
