@@ -429,169 +429,123 @@
   <script src="../app.js"></script>
   <script>
     // ============================================================
-    // BLUETOOTH THERMOMETER INTEGRATION
+    // BLUETOOTH — ETI Thermapen One Blue (ETI GATT Spec v2.0)
+    // Private Service:  45544942-4c55-4554-4845-524db87ad700
+    // Sensor 1 Reading: 45544942-4c55-4554-4845-524db87ad701 (Read & Notify)
+    //   IEEE-754 float32 little-endian, always in °C
+    //   Fault = [0xff,0xff,0xff,0xff]
+    // Commands:         45544942-4c55-4554-4845-524db87ad705 (Read/Write & Notify)
+    //   Write 0x0010 (uint16 LE) to trigger a measurement
+    //   Notification 0x0001 = button pressed (reading incoming)
     // ============================================================
-    // ETI Thermapen One Blue — standard GATT Health Thermometer profile
-    // Using acceptAllDevices so the browser scan dialog shows all BLE devices nearby
-    // (Thermapen One Blue may not advertise its service UUID in scan packets)
-    const BT_SERVICE_UUID        = '00001809-0000-1000-8000-00805f9b34fb'; // Health Thermometer
-    const BT_CHARACTERISTIC_UUID = '00002a1c-0000-1000-8000-00805f9b34fb'; // Temperature Measurement
+    const ETI_SERVICE = '45544942-4c55-4554-4845-524db87ad700';
+    const ETI_SENSOR1 = '45544942-4c55-4554-4845-524db87ad701';
+    const ETI_COMMAND = '45544942-4c55-4554-4845-524db87ad705';
+    const CMD_MEASURE = new Uint8Array([0x10, 0x00]); // 0x0010 LE
 
-    const btStatus = document.getElementById('bt-status');
+    const btStatus  = document.getElementById('bt-status');
     const btConnect = document.getElementById('bt-connect');
-    const btRead = document.getElementById('bt-read');
-    const btTemp = document.getElementById('bt-temp');
+    const btRead    = document.getElementById('bt-read');
+    const btTemp    = document.getElementById('bt-temp');
 
-    let btDevice = null;
-    let btCharacteristic = null;
+    let btDevice      = null;
+    let btSensor1     = null;
+    let btCommandChar = null;
 
-    function setBtStatus(message) {
-      btStatus.textContent = message;
-    }
+    function setBtStatus(msg) { btStatus.textContent = msg; }
 
     function setBtTemp(temp) {
-      if (temp !== null && !isNaN(temp)) {
-        btTemp.textContent = `${temp.toFixed(1)} °C`;
-      } else {
-        btTemp.textContent = '';
-      }
+      btTemp.textContent = (temp !== null && !isNaN(temp)) ? `${temp.toFixed(1)} °C` : '';
     }
 
-    // Parse temperature from BLE data
-    // Standard GATT Temperature Measurement format:
-    // Byte 0: Flags
-    // Bytes 1-4: Temperature (float32 or IEEE-11073)
-    function parseTemperatureFromBLE(dataView) {
-      if (dataView.byteLength < 5) {
-        console.warn('Temperature data too short:', dataView.byteLength, 'bytes');
+    // ETI format: 4 bytes float32 LE in °C; fault = 0xFFFFFFFF
+    function parseEtiTemp(dataView) {
+      if (dataView.byteLength < 4) return null;
+      if (dataView.getUint8(0) === 0xff && dataView.getUint8(1) === 0xff &&
+          dataView.getUint8(2) === 0xff && dataView.getUint8(3) === 0xff) {
+        setBtStatus('⚠️ Sensor fault — check probe connection');
         return null;
       }
-
-      const flags = dataView.getUint8(0);
-      const isFahrenheit = (flags & 0x01) === 0x01;
-
-      // Attempt standard float32 parsing (little-endian)
-      try {
-        let tempValue = dataView.getFloat32(1, true);
-        
-        // Convert Fahrenheit to Celsius if needed
-        if (isFahrenheit) {
-          tempValue = (tempValue - 32) * 5 / 9;
-        }
-
-        // Validate reasonable temperature range for food (-20 to 300°C)
-        if (tempValue < -20 || tempValue > 300) {
-          console.warn('Temperature out of range:', tempValue);
-          return null;
-        }
-
-        return tempValue;
-      } catch (err) {
-        console.error('Failed to parse temperature:', err);
-        return null;
-      }
+      const t = dataView.getFloat32(0, true);
+      if (t < -200 || t > 1372) { console.warn('ETI temp out of range:', t); return null; }
+      return t;
     }
 
     // Connect to Bluetooth thermometer
     async function connectThermometer() {
       try {
-        setBtStatus('Scanning for devices…');
+        setBtStatus('Opening device picker…');
         setBtTemp(null);
 
-        // acceptAllDevices shows ALL nearby BLE devices in the browser picker
-        // Required for ETI Thermapen One Blue which may not advertise its service UUID
         btDevice = await navigator.bluetooth.requestDevice({
-          acceptAllDevices: true,
-          optionalServices: [BT_SERVICE_UUID]
+          filters: [
+            { namePrefix: 'Thermapen' },
+            { manufacturerData: [{ companyIdentifier: 0x0376 }] }
+          ],
+          optionalServices: [ETI_SERVICE]
         });
 
         setBtStatus('Connecting…');
         const server = await btDevice.gatt.connect();
 
-        setBtStatus('Getting service…');
-        let service;
-        try {
-          service = await server.getPrimaryService(BT_SERVICE_UUID);
-        } catch (e) {
-          setBtStatus('❌ Service not found. Try “Read Temp” or check device docs.');
-          btRead.disabled = false;
-          return;
-        }
+        setBtStatus('Getting ETI service…');
+        const service = await server.getPrimaryService(ETI_SERVICE);
 
-        setBtStatus('Getting characteristic…');
-        btCharacteristic = await service.getCharacteristic(BT_CHARACTERISTIC_UUID);
+        setBtStatus('Getting characteristics…');
+        btSensor1     = await service.getCharacteristic(ETI_SENSOR1);
+        btCommandChar = await service.getCharacteristic(ETI_COMMAND);
 
-        setBtStatus(`✓ Connected to ${btDevice.name || 'Thermometer'}`);
+        // Subscribe to Sensor 1 notifications
+        await btSensor1.startNotifications();
+        btSensor1.addEventListener('characteristicvaluechanged', handleTempNotification);
+
+        // Subscribe to command notifications (button press etc.)
+        await btCommandChar.startNotifications();
+        btCommandChar.addEventListener('characteristicvaluechanged', (ev) => {
+          const code = ev.target.value.getUint16(0, true);
+          if (code === 0x0001) setBtStatus('🔴 Button pressed — reading incoming…');
+          if (code === 0x0002) { setBtStatus('⏻ Thermapen shutting down'); setBtTemp(null); btRead.disabled = true; }
+        });
+
+        setBtStatus(`✓ ${btDevice.name || 'Thermapen'} connected — press Read Temp or device button`);
         btRead.disabled = false;
 
-        // Enable auto-notifications if supported
-        if (btCharacteristic.properties.notify) {
-          await btCharacteristic.startNotifications();
-          btCharacteristic.addEventListener('characteristicvaluechanged', handleTemperatureUpdate);
-          setBtStatus(`✓ ${btDevice.name || 'Thermometer'} — auto-reading enabled`);
-        } else if (btCharacteristic.properties.indicate) {
-          await btCharacteristic.startNotifications();
-          btCharacteristic.addEventListener('characteristicvaluechanged', handleTemperatureUpdate);
-          setBtStatus(`✓ ${btDevice.name || 'Thermometer'} — indicate mode`);
-        } else {
-          setBtStatus(`✓ ${btDevice.name || 'Thermometer'} — press Read Temp`);
-        }
-
-        // Handle disconnection
         btDevice.addEventListener('gattserverdisconnected', () => {
           setBtStatus('❌ Disconnected');
           setBtTemp(null);
           btRead.disabled = true;
-          btCharacteristic = null;
+          btSensor1 = null;
+          btCommandChar = null;
         });
 
       } catch (err) {
-        console.error('Bluetooth connection error:', err);
-        if (err.name === 'NotFoundError') {
-          setBtStatus('❌ No device selected.');
-        } else if (err.name === 'SecurityError') {
-          setBtStatus('❌ Bluetooth blocked — needs HTTPS or localhost.');
-        } else {
-          setBtStatus(`❌ ${err.message}`);
-        }
+        console.error('BT connect error:', err);
+        if (err.name === 'NotFoundError') setBtStatus('❌ No device selected.');
+        else if (err.name === 'SecurityError') setBtStatus('❌ Bluetooth blocked — needs HTTPS.');
+        else setBtStatus(`❌ ${err.message}`);
         btRead.disabled = true;
       }
     }
 
-    // Handle temperature notification updates
-    function handleTemperatureUpdate(event) {
-      const temp = parseTemperatureFromBLE(event.target.value);
+    // Sensor 1 notification handler
+    function handleTempNotification(event) {
+      const temp = parseEtiTemp(event.target.value);
       if (temp !== null) {
         setBtTemp(temp);
-        // Auto-fill the most recent cook's temperature field
         setLatestCookTemp(temp.toFixed(1));
+        setBtStatus(`✓ ${btDevice ? btDevice.name || 'Thermapen' : 'Thermapen'} — ${temp.toFixed(1)} °C`);
       }
     }
 
-    // Manual read temperature
+    // Read Temp button: write Measure command (0x0010) → response fires as Sensor 1 notification
     async function readTemperature() {
-      if (!btCharacteristic) {
-        setBtStatus('❌ Not connected');
-        return;
-      }
-      
+      if (!btCommandChar) { setBtStatus('❌ Not connected'); return; }
       try {
-        setBtStatus('Reading...');
-        const value = await btCharacteristic.readValue();
-        const temp = parseTemperatureFromBLE(value);
-        
-        if (temp === null || isNaN(temp)) {
-          setBtStatus('❌ Invalid temperature data');
-          return;
-        }
-        
-        setBtTemp(temp);
-        setLatestCookTemp(temp.toFixed(1));
-        setBtStatus(`✓ Temperature read: ${temp.toFixed(1)} °C`);
-        
+        setBtStatus('Requesting measurement…');
+        await btCommandChar.writeValue(CMD_MEASURE);
       } catch (err) {
         console.error('Read error:', err);
-        setBtStatus(`❌ Read failed: ${err.message}`);
+        setBtStatus(`❌ ${err.message}`);
       }
     }
 
