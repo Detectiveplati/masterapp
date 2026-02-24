@@ -10,6 +10,45 @@ let wakeLock = null;
 window.btTargetCookId = null;
 
 // ============================================================
+// LOCAL STORAGE PERSISTENCE
+// ============================================================
+const STORAGE_KEY = 'templog_cooks_' + window.location.pathname.replace(/[^a-z0-9]/gi, '_');
+const STAFF_KEY   = 'templog_staff_'  + window.location.pathname.replace(/[^a-z0-9]/gi, '_');
+
+function saveCooksToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cooks));
+    if (currentStaff) localStorage.setItem(STAFF_KEY, currentStaff);
+  } catch (e) { console.warn('localStorage save failed:', e); }
+}
+
+function loadCooksFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (!Array.isArray(saved) || saved.length === 0) return;
+    cooks = saved;
+    // Resume running timers: adjust startTime so elapsed time is preserved
+    cooks.forEach(cook => {
+      if (cook.startTime && !cook.endTime) {
+        cook.timerRunning = true;
+      }
+    });
+    renderActiveCooks();
+    if (cooks.some(c => c.startTime && !c.endTime)) startGlobalTimer();
+    // Restore staff
+    const savedStaff = localStorage.getItem(STAFF_KEY);
+    if (savedStaff) {
+      // Defer until DOM is ready for staff buttons
+      setTimeout(() => {
+        try { setGlobalStaff(savedStaff); } catch(e) {}
+      }, 0);
+    }
+  } catch (e) { console.warn('localStorage load failed:', e); }
+}
+
+// ============================================================
 // SCREEN WAKE LOCK - Keep screen on
 // ============================================================
 async function requestWakeLock() {
@@ -50,6 +89,7 @@ function setGlobalStaff(staff) {
   });
   document.getElementById(`staff-${staff.replace(/\s+/g, '')}`).classList.add('staff-selected');
   statusEl.textContent = `当前厨师：${staff} Current staff: ${staff}`;
+  saveCooksToStorage();
 }
 
 // Auto-select the first staff member on page load
@@ -106,7 +146,8 @@ function renderActiveCooks() {
   activeGrid.innerHTML = '';
   cooks.forEach(cook => {
     const card = document.createElement('div');
-    card.className = 'cook-card';
+    const isTarget = cook.endTime && !cook.tempLocked && window.btTargetCookId === cook.id;
+    card.className = 'cook-card' + (isTarget ? ' bt-targeted' : '');
     card.innerHTML = `
       <h3>${cook.food}</h3>
       <div class="timer-display ${cook.endTime ? 'finished' : ''}" id="timer-${cook.id}">
@@ -119,13 +160,14 @@ function renderActiveCooks() {
       ${cook.startTime && !cook.endTime ? `<button class="end-btn" onclick="endCook(${cook.id})">停止烹饪 END COOKING</button>` : ''}
       ${cook.endTime ? `
         <div class="info-row">
-          <div class="temp-display${cook.tempLocked ? ' temp-locked' : cook.temp ? ' temp-unlocked' : ''}" id="temp-input-${cook.id}" title="${cook.tempLocked ? '已锁定 Locked by thermometer button' : '按温度计按键锁定 Press thermometer button to lock'}">  
+          <div class="temp-display${cook.tempLocked ? ' temp-locked' : cook.temp ? ' temp-unlocked' : ''}" id="temp-input-${cook.id}" title="${cook.tempLocked ? '已锁定 Locked by thermometer button' : '按温度计按键锁定 Press thermometer button to lock'}">
             ${cook.temp
               ? (cook.tempLocked
                   ? `<span class="temp-lock-icon">🔒</span><span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span>`
                   : `<span class="temp-lock-icon">🔓</span><span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span><span class="temp-lock-hint">按按键锁定 Press button to lock</span>`)
               : '<span class="temp-waiting">🌡️ 等待温度计 Waiting for thermometer</span>'}
           </div>
+          ${!cook.tempLocked ? `<button class="target-btn${isTarget ? ' target-btn-active' : ''}" onclick="setBtTarget(${cook.id})">${isTarget ? '🎯 已选中 Targeted' : '🎯 选中温度计 Target'}</button>` : ''}
           <input type="number" min="1" step="1" inputmode="numeric" placeholder="盘数 Trays" value="${cook.trays}" oninput="sanitizeNumberInput(this, false)" onchange="updateTrays(${cook.id}, this.value)">
           <button class="save-btn" onclick="saveCook(${cook.id})">保存 SAVE</button>
           <button class="start-btn" onclick="resumeCook(${cook.id})">继续烹饪 RESUME</button>
@@ -135,6 +177,7 @@ function renderActiveCooks() {
     `;
     activeGrid.appendChild(card);
   });
+  saveCooksToStorage();
 }
 
 function formatElapsed(cook) {
@@ -235,14 +278,15 @@ function updateTemp(id, value) {
   if (cook) cook.temp = value.trim();
 }
 
-// Set BT target cook card (still available for manual override)
+// Set BT target cook card — re-renders so button states update
 function setBtTarget(id) {
   window.btTargetCookId = (window.btTargetCookId === id) ? null : id;
+  renderActiveCooks();
   const label = document.getElementById('bt-target-label');
   if (label) {
     if (window.btTargetCookId !== null) {
       const cook = cooks.find(c => c.id === window.btTargetCookId);
-      label.textContent = cook ? `🎯 ${cook.food.split(' ').slice(0,4).join(' ')}…` : '🎯 烹饪已选中 Cook targeted';
+      label.textContent = cook ? `🎯 ${cook.food.split(' ').slice(0,4).join(' ')}` : '🎯 烹饪已选中 Cook targeted';
     } else {
       label.textContent = '自动 — 目标为最后停止的烹饪 Auto — targets last ended cook';
     }
@@ -271,6 +315,7 @@ function setLatestCookTemp(value) {
     el.title = '按温度计按键锁定 Press thermometer button to lock';
     el.innerHTML = `<span class="temp-lock-icon">🔓</span><span class="temp-value">${tempValue}</span><span class="temp-unit">°C</span><span class="temp-lock-hint">按按键锁定 Press button to lock</span>`;
   }
+  saveCooksToStorage();
   return cook.id;
 }
 
@@ -286,6 +331,7 @@ function lockCookTemp(id) {
     el.title = '已锁定 Locked by thermometer button';
     el.innerHTML = `<span class="temp-lock-icon">🔒</span><span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span>`;
   }
+  saveCooksToStorage();
 }
 window.lockCookTemp = lockCookTemp;
 
@@ -392,6 +438,7 @@ function removeCook(id) {
   cooks = cooks.filter(c => c.id !== id);
   renderActiveCooks();
   checkAllTimers();
+  saveCooksToStorage();
 }
 
 function startGlobalTimer() {
@@ -475,6 +522,7 @@ async function exportFullCSV() {
 // initializeData() is called from HTML with the appropriate CSV filename
 
 window.addEventListener('load', () => {
+  loadCooksFromStorage();
   loadRecent();
 });
 

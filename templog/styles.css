@@ -292,6 +292,30 @@ button {
   font-style: italic;
 }
 
+/* BT target button on cook cards */
+.target-btn {
+  background: #e3f2fd;
+  color: #1565c0;
+  border: 2px solid #1565c0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.target-btn:hover { background: #bbdefb; }
+.target-btn.target-btn-active {
+  background: #1565c0;
+  color: #fff;
+  border-color: #0d47a1;
+}
+/* Targeted card gets a blue left accent */
+.cook-card.bt-targeted {
+  border-left: 4px solid #1565c0;
+  box-shadow: 0 0 0 2px rgba(21,101,192,0.2);
+}
+
 #menu h2 {
   text-align: center;
   font-size: 1.2rem;
