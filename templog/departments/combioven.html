@@ -527,13 +527,15 @@
       }
     }
 
-    // Sensor 1 notification handler
     function handleTempNotification(event) {
       const temp = parseEtiTemp(event.target.value);
       if (temp !== null) {
         setBtTemp(temp);
-        setLatestCookTemp(temp.toFixed(1));
-        setBtStatus(`✓ ${btDevice ? btDevice.name || 'Thermapen' : 'Thermapen'} — ${temp.toFixed(1)} °C`);
+        const updated = setLatestCookTemp(temp.toFixed(1));
+        const finishedCount = (typeof cooks !== 'undefined') ? cooks.filter(c => c.endTime).length : 0;
+        setBtStatus(`✓ ${btDevice ? btDevice.name || 'Thermapen' : 'Thermapen'} — ${temp.toFixed(1)} °C${finishedCount > 1 ? ` → 已更新${finishedCount}张卡 Updated ${finishedCount} cards` : ''}`);
+        const label = document.getElementById('bt-target-label');
+        if (label) label.textContent = `✓ 已更新 ${finishedCount} 个烹饪 Updated ${finishedCount} cook(s): ${temp.toFixed(1)} °C`;
       }
     }
 
@@ -556,9 +558,9 @@
     // Called automatically by endCook() in app.js when a cook is stopped.
     // Sends the BT Measure command so the reading arrives in that card.
     window.requestBtReadForCook = function(cookId) {
-      const cook = (typeof cooks !== 'undefined') && cooks.find(c => c.id === cookId);
       const label = document.getElementById('bt-target-label');
-      if (label && cook) label.textContent = `🎯 ${cook.food.split(' ').slice(0, 4).join(' ')}…`;
+      const finishedCount = (typeof cooks !== 'undefined') ? cooks.filter(c => c.endTime).length : 1;
+      if (label) label.textContent = `🌡️ 将更新 ${finishedCount} 个已停止烹饪 Will update ${finishedCount} finished cook(s)`;
       if (btCommandChar) {
         readTemperature();
       }

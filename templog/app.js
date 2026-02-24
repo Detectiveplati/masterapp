@@ -119,8 +119,10 @@ function renderActiveCooks() {
       ${cook.startTime && !cook.endTime ? `<button class="end-btn" onclick="endCook(${cook.id})">停止烹饪 END COOKING</button>` : ''}
       ${cook.endTime ? `
         <div class="info-row">
-          <input type="text" placeholder="🌡️ 蓝牙温度计 BT Thermometer" value="${cook.temp}" id="temp-input-${cook.id}" readonly style="background:#f5f5f5;color:#555;cursor:not-allowed;border:1px dashed #ccc;" title="由蓝牙温度计自动填写 Auto-filled by Bluetooth thermometer">
-          <input type="number" min="1" step="1" inputmode="numeric" placeholder="盘子" value="${cook.trays}" oninput="sanitizeNumberInput(this, false)" onchange="updateTrays(${cook.id}, this.value)">
+          <div class="temp-display" id="temp-input-${cook.id}" title="由蓝牙温度计自动填写 Auto-filled by Bluetooth thermometer">
+            ${cook.temp ? `<span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span>` : '<span class="temp-waiting">🌡️ 等待温度计 Waiting for thermometer</span>'}
+          </div>
+          <input type="number" min="1" step="1" inputmode="numeric" placeholder="盘数 Trays" value="${cook.trays}" oninput="sanitizeNumberInput(this, false)" onchange="updateTrays(${cook.id}, this.value)">
           <button class="save-btn" onclick="saveCook(${cook.id})">保存 SAVE</button>
           <button class="start-btn" onclick="resumeCook(${cook.id})">继续烹饪 RESUME</button>
         </div>
@@ -244,17 +246,17 @@ function setBtTarget(id) {
   }
 }
 
-// Fill temperature into the targeted (or last-finished) cook card
+// Fill temperature into ALL finished cook cards (all cooks in same oven share the reading)
 function setLatestCookTemp(value) {
   if (!value) return false;
   const tempValue = String(value).trim();
-  let target = window.btTargetCookId !== null ? cooks.find(c => c.id === window.btTargetCookId && c.endTime) : null;
-  if (!target) target = [...cooks].reverse().find(c => c.endTime);
-  if (!target) return false;
-  target.temp = tempValue;
-  const inp = document.getElementById(`temp-input-${target.id}`);
-  if (inp) inp.value = tempValue;
-  else renderActiveCooks();
+  const finishedCooks = cooks.filter(c => c.endTime);
+  if (!finishedCooks.length) return false;
+  finishedCooks.forEach(cook => {
+    cook.temp = tempValue;
+    const el = document.getElementById(`temp-input-${cook.id}`);
+    if (el) el.innerHTML = `<span class="temp-value">${tempValue}</span><span class="temp-unit">°C</span>`;
+  });
   return true;
 }
 
