@@ -112,9 +112,9 @@
       const val = el.dataset[lang];
       if (val) el.textContent = val;
     });
-    document.getElementById('hdr-title').textContent  = LABELS[lang].title;
-    document.getElementById('hdr-sub').textContent    = LABELS[lang].sub;
-    document.getElementById('langToggle').textContent = LABELS[lang].toggle;
+    const _t = document.getElementById('hdr-title');   if (_t) _t.textContent = LABELS[lang].title;
+    const _s = document.getElementById('hdr-sub');     if (_s) _s.textContent = LABELS[lang].sub;
+    const _l = document.getElementById('langToggle');  if (_l) _l.textContent = LABELS[lang].toggle;
     document.getElementById('itemNameInput').placeholder = PLACEHOLDERS[lang].item;
     document.getElementById('qtyInput').placeholder      = PLACEHOLDERS[lang].qty;
     document.getElementById('deptInput').placeholder     = PLACEHOLDERS[lang].dept;
