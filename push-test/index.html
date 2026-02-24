@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Push Notification Test — Central Kitchen</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .push-container { max-width: 720px; margin: 0 auto; padding: 32px 20px 60px; }
+    .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .status-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 10px var(--shadow); }
+    .status-box .label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 6px; }
+    .status-box .value { font-size: 1.15rem; font-weight: 800; color: var(--ink); }
+    .status-box .value.ok     { color: #27ae60; }
+    .status-box .value.warn   { color: #e67e22; }
+    .status-box .value.error  { color: #e74c3c; }
+    .log { background: #1a1d22; color: #a8e06e; font-family: 'Consolas', monospace; font-size: 0.83rem; border-radius: 10px; padding: 16px 18px; min-height: 140px; max-height: 300px; overflow-y: auto; line-height: 1.6; margin-top: 16px; }
+    .log .ts { color: #5a6476; margin-right: 8px; }
+    .log .ok   { color: #a8e06e; }
+    .log .err  { color: #e06e6e; }
+    .log .info { color: #6ebbe0; }
+    .sub-list { margin-top: 10px; }
+    .sub-item { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; font-size: 0.82rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .sub-item .ep { font-family: monospace; font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .sub-item .ua { font-size: 0.72rem; color: #a0a7b0; flex-shrink: 0; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  </style>
+</head>
+<body data-module="push-test">
+
+<main>
+  <div class="push-container">
+    <h1 style="font-size:1.6rem;margin-bottom:4px">🔔 Web Push — Test Module</h1>
+    <p style="color:var(--muted);margin-bottom:28px">Use this page to verify that push notifications work end-to-end on Railway.</p>
+
+    <!-- Status grid -->
+    <div class="status-grid">
+      <div class="status-box">
+        <div class="label">Browser Support</div>
+        <div class="value" id="st-browser">Checking…</div>
+      </div>
+      <div class="status-box">
+        <div class="label">Permission</div>
+        <div class="value" id="st-permission">Checking…</div>
+      </div>
+      <div class="status-box">
+        <div class="label">Service Worker</div>
+        <div class="value" id="st-sw">Checking…</div>
+      </div>
+      <div class="status-box">
+        <div class="label">Subscription</div>
+        <div class="value" id="st-sub">None</div>
+      </div>
+      <div class="status-box">
+        <div class="label">VAPID Key</div>
+        <div class="value" id="st-vapid">Checking…</div>
+      </div>
+      <div class="status-box">
+        <div class="label">Subscribed Devices</div>
+        <div class="value" id="st-count">—</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <section>
+      <h2>Actions</h2>
+
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px">
+        <button class="btn" id="btn-enable" onclick="enablePush()">Enable Push on This Device</button>
+        <button class="btn" id="btn-send" onclick="sendTest()" style="background:linear-gradient(135deg,#27ae60,#2ecc71)">📤 Send Test Push</button>
+        <button class="btn" onclick="refreshStatus()" style="background:var(--muted)">↻ Refresh Status</button>
+        <button class="btn" id="btn-disable" onclick="disablePush()" style="background:var(--danger);display:none">Unsubscribe This Device</button>
+      </div>
+
+      <div class="form-group" style="max-width:500px">
+        <label class="form-label">Custom notification title</label>
+        <input type="text" class="form-input" id="push-title" value="🔧 Test from Central Kitchen" placeholder="Notification title">
+      </div>
+      <div class="form-group" style="max-width:500px">
+        <label class="form-label">Custom message</label>
+        <input type="text" class="form-input" id="push-msg" value="This is a test push notification." placeholder="Notification body">
+      </div>
+    </section>
+
+    <!-- Log -->
+    <section>
+      <h2>Activity Log</h2>
+      <div class="log" id="log"><span class="info">Ready. Click "Enable Push" to start.</span></div>
+    </section>
+
+    <!-- Subscribed devices -->
+    <section>
+      <h2>Subscribed Devices <span id="sub-count-badge" style="font-size:0.85rem;font-weight:600;color:var(--muted)"></span></h2>
+      <p style="color:var(--muted);font-size:0.88rem;margin-bottom:12px">Every device that has enabled push on this app will appear here.</p>
+      <div class="sub-list" id="sub-list"><div style="color:var(--muted);font-size:0.9rem">Loading…</div></div>
+    </section>
+  </div>
+</main>
+
+<script>
+  var vapidPublicKey = null;
+  var currentSub    = null;
+
+  function log(msg, type) {
+    type = type || 'info';
+    var el  = document.getElementById('log');
+    var ts  = new Date().toLocaleTimeString();
+    el.innerHTML += '\n<span class="ts">' + ts + '</span><span class="' + type + '">' + msg + '</span>';
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function setStatus(id, text, cls) {
+    var el = document.getElementById(id);
+    el.textContent = text;
+    el.className   = 'value ' + (cls || '');
+  }
+
+  // ── urlBase64ToUint8Array — converts VAPID public key ─────────────────────
+  function urlBase64ToUint8Array(base64String) {
+    var padding = '='.repeat((4 - base64String.length % 4) % 4);
+    var base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    var raw     = window.atob(base64);
+    var output  = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+    return output;
+  }
+
+  async function refreshStatus() {
+    // Browser support
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setStatus('st-browser', 'Not supported', 'error');
+      log('❌ This browser does not support Web Push.', 'err');
+      return;
+    }
+    setStatus('st-browser', 'Supported ✓', 'ok');
+
+    // Permission
+    var perm = Notification.permission;
+    setStatus('st-permission',
+      perm === 'granted' ? 'Granted ✓' : perm === 'denied' ? 'Denied ✗' : 'Not asked',
+      perm === 'granted' ? 'ok' : perm === 'denied' ? 'error' : 'warn'
+    );
+
+    // VAPID key
+    try {
+      var r = await fetch('/api/push/vapid-public-key');
+      var d = await r.json();
+      vapidPublicKey = d.publicKey;
+      setStatus('st-vapid', vapidPublicKey ? 'Loaded ✓' : 'Missing ✗', vapidPublicKey ? 'ok' : 'error');
+    } catch (e) {
+      setStatus('st-vapid', 'Error', 'error');
+      log('❌ Could not fetch VAPID key: ' + e.message, 'err');
+    }
+
+    // Service worker
+    try {
+      var reg = await navigator.serviceWorker.getRegistration('/');
+      if (reg) {
+        setStatus('st-sw', 'Registered ✓', 'ok');
+
+        // Check existing subscription
+        var sub = await reg.pushManager.getSubscription();
+        currentSub = sub;
+        setStatus('st-sub', sub ? 'Active ✓' : 'None', sub ? 'ok' : 'warn');
+        document.getElementById('btn-disable').style.display = sub ? '' : 'none';
+      } else {
+        setStatus('st-sw', 'Not registered', 'warn');
+        setStatus('st-sub', 'None', 'warn');
+      }
+    } catch (e) {
+      setStatus('st-sw', 'Error', 'error');
+    }
+
+    // Server-side sub count
+    try {
+      var sr = await fetch('/api/push/subscriptions');
+      var subs = await sr.json();
+      setStatus('st-count', subs.length, subs.length > 0 ? 'ok' : 'warn');
+      document.getElementById('sub-count-badge').textContent = '(' + subs.length + ')';
+
+      var list = document.getElementById('sub-list');
+      if (!subs.length) {
+        list.innerHTML = '<div style="color:var(--muted);font-size:0.9rem">No devices subscribed yet.</div>';
+      } else {
+        list.innerHTML = subs.map(function (s) {
+          var date = new Date(s.createdAt).toLocaleString();
+          return '<div class="sub-item"><span class="ep">' + s.endpoint + '</span><span class="ua">' + (s.userAgent || '—') + '</span><span style="flex-shrink:0;color:var(--muted);font-size:0.72rem">' + date + '</span></div>';
+        }).join('');
+      }
+    } catch (e) {
+      log('❌ Could not fetch subscriptions: ' + e.message, 'err');
+    }
+  }
+
+  async function enablePush() {
+    log('Requesting notification permission…', 'info');
+
+    var perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      log('❌ Permission denied by user.', 'err');
+      setStatus('st-permission', 'Denied ✗', 'error');
+      return;
+    }
+    log('✓ Permission granted.', 'ok');
+    setStatus('st-permission', 'Granted ✓', 'ok');
+
+    log('Registering service worker…', 'info');
+    var reg;
+    try {
+      reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+      log('✓ Service worker ready.', 'ok');
+      setStatus('st-sw', 'Registered ✓', 'ok');
+    } catch (e) {
+      log('❌ SW registration failed: ' + e.message, 'err');
+      setStatus('st-sw', 'Failed', 'error');
+      return;
+    }
+
+    if (!vapidPublicKey) {
+      log('❌ VAPID public key not loaded. Check server env vars.', 'err');
+      return;
+    }
+
+    log('Subscribing to push…', 'info');
+    try {
+      var sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+      });
+      currentSub = sub;
+      setStatus('st-sub', 'Active ✓', 'ok');
+      document.getElementById('btn-disable').style.display = '';
+
+      // Send to server
+      var resp = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sub.toJSON()),
+        credentials: 'include'
+      });
+      if (resp.ok) {
+        log('✓ Subscription saved to server. You will now receive push notifications.', 'ok');
+      } else {
+        log('⚠️  Subscribed locally but server save failed.', 'err');
+      }
+      await refreshStatus();
+    } catch (e) {
+      log('❌ Subscribe failed: ' + e.message, 'err');
+      setStatus('st-sub', 'Failed', 'error');
+    }
+  }
+
+  async function disablePush() {
+    if (!currentSub) return;
+    try {
+      await fetch('/api/push/unsubscribe', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: currentSub.endpoint }),
+        credentials: 'include'
+      });
+      await currentSub.unsubscribe();
+      currentSub = null;
+      log('✓ Unsubscribed from push notifications.', 'ok');
+      await refreshStatus();
+    } catch (e) {
+      log('❌ Unsubscribe failed: ' + e.message, 'err');
+    }
+  }
+
+  async function sendTest() {
+    var title = document.getElementById('push-title').value || 'Test';
+    var msg   = document.getElementById('push-msg').value   || 'Test push';
+    log('Sending push to all subscribed devices…', 'info');
+    try {
+      var r = await fetch('/api/push/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title, message: msg }),
+        credentials: 'include'
+      });
+      var d = await r.json();
+      log('✓ Sent: ' + d.sent + ' device(s) | Failed/expired: ' + d.failed, d.sent > 0 ? 'ok' : 'err');
+      await refreshStatus();
+    } catch (e) {
+      log('❌ Send failed: ' + e.message, 'err');
+    }
+  }
+
+  // Auto-init
+  refreshStatus();
+</script>
+
+<script src="/js/shell.js"></script>
+</body>
+</html>

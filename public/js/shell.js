@@ -19,6 +19,7 @@
     templog:     { label: '🌡️ Kitchen Logs' },
     procurement: { label: '📦 Procurement'  },
     admin:       { label: '⚙️ Admin'        },
+    'push-test': { label: '🔔 Push Test'   },
   };
 
   /* ── Navigation tree ─────────────────────────────────────────── */
@@ -66,6 +67,11 @@
     {
       icon: '⚙️', label: 'Admin', module: 'admin',
       href: '/admin/', perm: '__admin__',
+      children: [],
+    },
+    {
+      icon: '🔔', label: 'Push Test', module: 'push-test',
+      href: '/push-test/', perm: '__admin__',
       children: [],
     },
   ];

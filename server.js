@@ -125,6 +125,13 @@ app.get('/auth-guard.js', (req, res) => {
 app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 app.use('/js',  express.static(path.join(__dirname, 'public', 'js')));
 
+// Service worker — must be served from root with correct scope headers
+app.get('/sw.js', (req, res) => {
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.setHeader('Content-Type', 'application/javascript');
+  res.sendFile(path.join(__dirname, 'public', 'sw.js'));
+});
+
 // Food Safety NC — requires 'foodsafety' permission
 app.use('/foodsafety', requirePageAccess('foodsafety'), express.static(path.join(__dirname, 'foodsafety'), noCacheHtml));
 app.get('/foodsafety', requirePageAccess('foodsafety'), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'index.html')));
@@ -138,6 +145,11 @@ app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html'))
 app.use('/admin', requirePageAccess('__admin__'), express.static(path.join(__dirname, 'admin'), noCacheHtml));
 app.get('/admin',  requirePageAccess('__admin__'), (req, res) => res.sendFile(path.join(__dirname, 'admin', 'index.html')));
 app.get('/admin/', requirePageAccess('__admin__'), (req, res) => res.sendFile(path.join(__dirname, 'admin', 'index.html')));
+
+// Push notification test module — admin only
+app.use('/push-test', requirePageAccess('__admin__'), express.static(path.join(__dirname, 'push-test'), noCacheHtml));
+app.get('/push-test', requirePageAccess('__admin__'), (req, res) => res.sendFile(path.join(__dirname, 'push-test', 'index.html')));
+app.get('/push-test/', requirePageAccess('__admin__'), (req, res) => res.sendFile(path.join(__dirname, 'push-test', 'index.html')));
 
 // Hub page — any authenticated user
 app.get('/', requirePageAccess(null), (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
@@ -185,6 +197,10 @@ app.use('/api/areas',            areasRoutes);
 app.use('/api/reports',          reportsRoutes);
 app.use('/api/notifications',    notificationsRoutes);
 app.use('/api/seed',             seedRoutes);
+
+// Push notifications
+const pushRoutes = require('./routes/push');
+app.use('/api/push', pushRoutes);
 
 // ─── Procurement API Routes ──────────────────────────────────────────────────
 const procurementRequestsRoutes = require('./routes/procurementRequests');
