@@ -453,6 +453,29 @@
     let btCommandChar  = null;
     let _buttonPressed = false; // true when physical Thermapen button triggered this read
 
+    // ── Feedback: vibration + audio beep on lock-in ──
+    function feedbackLockIn() {
+      // Vibration: double-buzz (Android Chrome)
+      if (navigator.vibrate) navigator.vibrate([80, 60, 120]);
+      // Audio: two short beeps via Web Audio API
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        function beep(freq, startAt, dur) {
+          const osc  = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.5, startAt);
+          gain.gain.exponentialRampToValueAtTime(0.001, startAt + dur);
+          osc.start(startAt);
+          osc.stop(startAt + dur + 0.01);
+        }
+        beep(880, ctx.currentTime,        0.12);
+        beep(1100, ctx.currentTime + 0.18, 0.15);
+      } catch(e) { /* audio not available */ }
+    }
+
     function setBtStatus(msg) { btStatus.textContent = msg; }
 
     function setBtTemp(temp) {
@@ -614,6 +637,7 @@
           });
           setBtStatus(`🔒 ${name} — ${tempStr} °C → 正在保存 ${finished.length} 个… Saving ${finished.length} card(s)…`);
           if (label) label.textContent = `🔒 已锁定 ${tempStr} °C — 保存 ${finished.length} 个 Locked & saving ${finished.length}`;
+          feedbackLockIn();
           // Lock each card immediately, then save with small stagger
           finished.forEach((cook, i) => {
             if (typeof window.lockCookTemp === 'function') window.lockCookTemp(cook.id);
