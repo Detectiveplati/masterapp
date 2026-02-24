@@ -3,12 +3,33 @@ const router    = express.Router();
 const webpush   = require('web-push');
 const PushSubscription = require('../models/PushSubscription');
 
-// Configure VAPID once — reads from env
-webpush.setVapidDetails(
-  'mailto:' + (process.env.VAPID_EMAIL || 'admin@example.com'),
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-);
+// Configure VAPID lazily — only when keys are present in env.
+// This prevents a crash on startup if Railway vars aren't set yet.
+function configureVapid() {
+  const pub  = process.env.VAPID_PUBLIC_KEY;
+  const priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) {
+    return false;
+  }
+  try {
+    webpush.setVapidDetails(
+      'mailto:' + (process.env.VAPID_EMAIL || 'admin@example.com'),
+      pub,
+      priv
+    );
+    return true;
+  } catch (e) {
+    console.error('[Push] VAPID config error:', e.message);
+    return false;
+  }
+}
+
+function vapidReady(req, res, next) {
+  if (!configureVapid()) {
+    return res.status(503).json({ error: 'Push not configured — VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY env vars missing. Add them in Railway Variables.' });
+  }
+  next();
+}
 
 // ─── GET /api/push/vapid-public-key ─────────────────────────────────────────
 // Returns the public key so the browser can subscribe
@@ -18,7 +39,7 @@ router.get('/vapid-public-key', (req, res) => {
 
 // ─── POST /api/push/subscribe ────────────────────────────────────────────────
 // Save a new push subscription (upsert by endpoint)
-router.post('/subscribe', async (req, res) => {
+router.post('/subscribe', vapidReady, async (req, res) => {
   try {
     const { endpoint, keys } = req.body;
     if (!endpoint || !keys || !keys.p256dh || !keys.auth) {
@@ -54,7 +75,7 @@ router.delete('/unsubscribe', async (req, res) => {
 
 // ─── POST /api/push/test ─────────────────────────────────────────────────────
 // Send a test push to ALL subscribed devices
-router.post('/test', async (req, res) => {
+router.post('/test', vapidReady, async (req, res) => {
   const title   = req.body.title   || '🔔 Test Notification';
   const message = req.body.message || 'This is a test push from Central Kitchen.';
   const results = await sendPushToAll({ title, message, url: '/' });
