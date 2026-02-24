@@ -51,7 +51,7 @@
 <body>
 
   <div style="margin-bottom:12px;">
-    <a href="../index.html" style="font-size:0.82rem;font-weight:700;color:#5a616c;text-decoration:none;display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;border:1px solid rgba(18,19,22,0.1);background:#fff;">← Kitchen Logs</a>
+    <a href="../index.html" style="font-size:0.82rem;font-weight:700;color:#5a616c;text-decoration:none;display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;border:1px solid rgba(18,19,22,0.1);background:#fff;">← 厨房日志 Kitchen Logs</a>
   </div>
 
   <img src="../assets/Chilli-Api-Logo-170px.png" alt="ChilliApi" style="width:64px;height:64px;float:left;margin-right:12px;border-radius:6px;">
@@ -59,12 +59,12 @@
 
   <!-- Bluetooth Thermometer Panel -->
   <div class="bt-panel">
-    <button id="bt-connect" class="export-btn">🌡️ Connect Thermometer</button>
-    <button id="bt-read" class="export-btn" disabled>📖 Read Temp</button>
+    <button id="bt-connect" class="export-btn">🌡️ 连接温度计 Connect Thermometer</button>
+    <button id="bt-read" class="export-btn" disabled>📖 读取温度 Read Temp</button>
     <span id="bt-temp" class="bt-temp"></span>
-    <span id="bt-status" class="bt-status">Not connected</span>
+    <span id="bt-status" class="bt-status">未连接 Not connected</span>
     <div class="bt-target-row">
-      🎯 Target: <span id="bt-target-label">No cook targeted — tap “Set BT Target” on a finished cook card</span>
+      🎯 目标 Target: <span id="bt-target-label">自动 — 目标为最后停止的烹饪 Auto — targets last ended cook</span>
     </div>
   </div>
 
@@ -404,24 +404,24 @@
   <div id="status"></div>
 
   <div id="log">
-    <h3>Recent Entries (last 8)</h3>
+    <h3>最近记录（最后8条） Recent Entries (last 8)</h3>
     <table id="recent-table">
       <thead>
         <tr>
-          <th class="food-col">Food Item</th>
-          <th class="date-col">Start Date</th>
-          <th class="time-col">Start Time</th>
-          <th class="time-col">End Time</th>
-          <th class="small-col">Duration (min)</th>
-          <th class="small-col">Core Temp (°C)</th>
-          <th class="small-col">Staff</th>
-          <th class="small-col">Trays</th>
+          <th class="food-col">食物 Food Item</th>
+          <th class="date-col">开始日期 Start Date</th>
+          <th class="time-col">开始时间 Start Time</th>
+          <th class="time-col">结束时间 End Time</th>
+          <th class="small-col">时长(分) Duration (min)</th>
+          <th class="small-col">核心温度(°C) Core Temp</th>
+          <th class="small-col">厨师 Staff</th>
+          <th class="small-col">盘数 Trays</th>
         </tr>
       </thead>
       <tbody id="recent-body"></tbody>
     </table>
     <button onclick="exportFullCSV()" class="export-btn">
-      Download Full CSV
+      下载完整CSV Download Full CSV
     </button>
   </div>
 
@@ -463,7 +463,7 @@
       if (dataView.byteLength < 4) return null;
       if (dataView.getUint8(0) === 0xff && dataView.getUint8(1) === 0xff &&
           dataView.getUint8(2) === 0xff && dataView.getUint8(3) === 0xff) {
-        setBtStatus('⚠️ Sensor fault — check probe connection');
+        setBtStatus('⚠️ 探头故障 — 检查探头连接 Sensor fault — check probe connection');
         return null;
       }
       const t = dataView.getFloat32(0, true);
@@ -474,7 +474,7 @@
     // Connect to Bluetooth thermometer
     async function connectThermometer() {
       try {
-        setBtStatus('Opening device picker…');
+        setBtStatus('打开设备选择器… Opening device picker…');
         setBtTemp(null);
 
         btDevice = await navigator.bluetooth.requestDevice({
@@ -485,13 +485,13 @@
           optionalServices: [ETI_SERVICE]
         });
 
-        setBtStatus('Connecting…');
+        setBtStatus('连接中… Connecting…');
         const server = await btDevice.gatt.connect();
 
-        setBtStatus('Getting ETI service…');
+        setBtStatus('获取ETI服务… Getting ETI service…');
         const service = await server.getPrimaryService(ETI_SERVICE);
 
-        setBtStatus('Getting characteristics…');
+        setBtStatus('获取特性… Getting characteristics…');
         btSensor1     = await service.getCharacteristic(ETI_SENSOR1);
         btCommandChar = await service.getCharacteristic(ETI_COMMAND);
 
@@ -503,15 +503,15 @@
         await btCommandChar.startNotifications();
         btCommandChar.addEventListener('characteristicvaluechanged', (ev) => {
           const code = ev.target.value.getUint16(0, true);
-          if (code === 0x0001) setBtStatus('🔴 Button pressed — reading incoming…');
-          if (code === 0x0002) { setBtStatus('⏻ Thermapen shutting down'); setBtTemp(null); btRead.disabled = true; }
+          if (code === 0x0001) setBtStatus('🔴 按键已按下 — 读取中… Button pressed — reading incoming…');
+          if (code === 0x0002) { setBtStatus('⏻ Thermapen 正在关机 Shutting down'); setBtTemp(null); btRead.disabled = true; }
         });
 
-        setBtStatus(`✓ ${btDevice.name || 'Thermapen'} connected — press Read Temp or device button`);
+        setBtStatus(`✓ ${btDevice.name || 'Thermapen'} 已连接 — 按设备按键或点击读取温度 Connected — press device button or Read Temp`);
         btRead.disabled = false;
 
         btDevice.addEventListener('gattserverdisconnected', () => {
-          setBtStatus('❌ Disconnected');
+          setBtStatus('❌ 已断开 Disconnected');
           setBtTemp(null);
           btRead.disabled = true;
           btSensor1 = null;
@@ -520,8 +520,8 @@
 
       } catch (err) {
         console.error('BT connect error:', err);
-        if (err.name === 'NotFoundError') setBtStatus('❌ No device selected.');
-        else if (err.name === 'SecurityError') setBtStatus('❌ Bluetooth blocked — needs HTTPS.');
+        if (err.name === 'NotFoundError') setBtStatus('❌ 未选择设备 No device selected.');
+        else if (err.name === 'SecurityError') setBtStatus('❌ 蓝牙被封锁 — 需要HTTPS Bluetooth blocked — needs HTTPS.');
         else setBtStatus(`❌ ${err.message}`);
         btRead.disabled = true;
       }
@@ -541,7 +541,7 @@
     async function readTemperature() {
       if (!btCommandChar) { setBtStatus('❌ Not connected'); return; }
       try {
-        setBtStatus('Requesting measurement…');
+        setBtStatus('请求测量中… Requesting measurement…');
         await btCommandChar.writeValue(CMD_MEASURE);
       } catch (err) {
         console.error('Read error:', err);
@@ -552,6 +552,18 @@
     // Attach event listeners
     btConnect.addEventListener('click', connectThermometer);
     btRead.addEventListener('click', readTemperature);
+
+    // Called automatically by endCook() in app.js when a cook is stopped.
+    // Sends the BT Measure command so the reading arrives in that card.
+    window.requestBtReadForCook = function(cookId) {
+      const cook = (typeof cooks !== 'undefined') && cooks.find(c => c.id === cookId);
+      const label = document.getElementById('bt-target-label');
+      if (label && cook) label.textContent = `🎯 ${cook.food.split(' ').slice(0, 4).join(' ')}…`;
+      if (btCommandChar) {
+        readTemperature();
+      }
+      // If not connected, just leave target set — chef can connect and press Read Temp
+    };
 
     // ============================================================
     // APP INITIALIZATION

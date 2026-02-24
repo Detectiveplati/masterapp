@@ -49,7 +49,7 @@ function setGlobalStaff(staff) {
     btn.classList.remove('staff-selected');
   });
   document.getElementById(`staff-${staff.replace(/\s+/g, '')}`).classList.add('staff-selected');
-  statusEl.textContent = `Current staff set to: ${staff}`;
+  statusEl.textContent = `当前厨师：${staff} Current staff: ${staff}`;
 }
 
 // Auto-select the first staff member on page load
@@ -81,8 +81,8 @@ function showToast(message, type = 'success') {
 
 function addNewCook(food) {
   if (!currentStaff) {
-    showToast("Please select a staff member first!", "error");
-    alert("Please select a staff member (Alice, Bob, or Charlie) first.");
+    showToast("请先选择厨师！ Please select a staff member first!", "error");
+    alert("请先选择厨师。 Please select a staff member first.");
     return;
   }
 
@@ -98,7 +98,7 @@ function addNewCook(food) {
     timerRunning: false
   });
   renderActiveCooks();
-  showToast(`✓ Added ${food}`);
+  showToast(`✓ 已添加 Added: ${food}`);
   statusEl.textContent = `已添加 Added ${food} by ${currentStaff} — 按开始做好准备 press Start when ready.`;
 }
 
@@ -119,14 +119,11 @@ function renderActiveCooks() {
       ${cook.startTime && !cook.endTime ? `<button class="end-btn" onclick="endCook(${cook.id})">停止烹饪 END COOKING</button>` : ''}
       ${cook.endTime ? `
         <div class="info-row">
-          <input type="number" step="0.1" min="0" max="150" inputmode="decimal" placeholder="核心温度 °C" value="${cook.temp}" oninput="sanitizeNumberInput(this, true)" onchange="updateTemp(${cook.id}, this.value)" id="temp-input-${cook.id}">
+          <input type="text" placeholder="🌡️ 蓝牙温度计 BT Thermometer" value="${cook.temp}" id="temp-input-${cook.id}" readonly style="background:#f5f5f5;color:#555;cursor:not-allowed;border:1px dashed #ccc;" title="由蓝牙温度计自动填写 Auto-filled by Bluetooth thermometer">
           <input type="number" min="1" step="1" inputmode="numeric" placeholder="盘子" value="${cook.trays}" oninput="sanitizeNumberInput(this, false)" onchange="updateTrays(${cook.id}, this.value)">
           <button class="save-btn" onclick="saveCook(${cook.id})">保存 SAVE</button>
           <button class="start-btn" onclick="resumeCook(${cook.id})">继续烹饪 RESUME</button>
         </div>
-        <button class="bt-target-btn${window.btTargetCookId === cook.id ? ' active' : ''}" onclick="setBtTarget(${cook.id})" title="Send Bluetooth temperature to this card">
-          🌡️ ${window.btTargetCookId === cook.id ? '✓ BT Target' : 'Set BT Target'}
-        </button>
       ` : ''}
       ${!cook.startTime || cook.endTime ? `<button class="back-btn" onclick="confirmCancelCook(${cook.id})">取消/删除 Cancel / Remove</button>` : ''}
     `;
@@ -150,7 +147,7 @@ function startCook(id) {
   cook.timerRunning = true;
   renderActiveCooks();
   startGlobalTimer();
-  showToast(`🔥 Started cooking: ${cook.food}`);
+  showToast(`🔥 开始烹饪 Started: ${cook.food}`);
 }
 
 function endCook(id) {
@@ -161,6 +158,9 @@ function endCook(id) {
   const sec = (now - cook.startTime) / 1000;
   cook.duration = (sec / 60).toFixed(1);
   cook.timerRunning = false;
+  // Auto-target this card for BT reading and trigger a measurement
+  window.btTargetCookId = id;
+  if (typeof window.requestBtReadForCook === 'function') window.requestBtReadForCook(id);
   renderActiveCooks();
   checkAllTimers();
 }
@@ -181,7 +181,7 @@ function resumeCook(id) {
   
   renderActiveCooks();
   startGlobalTimer();
-  showToast(`🔥 Resumed cooking: ${cook.food}`);
+  showToast(`🔥 继续烹饪 Resumed: ${cook.food}`);
 }
 
 // ============================================================
@@ -190,7 +190,7 @@ function resumeCook(id) {
 function startAllCooks() {
   const unstarted = cooks.filter(c => !c.startTime);
   if (unstarted.length === 0) {
-    showToast("No cooks to start", "error");
+    showToast("没有待开始的烹饪 No cooks to start", "error");
     return;
   }
   
@@ -201,13 +201,13 @@ function startAllCooks() {
   
   renderActiveCooks();
   startGlobalTimer();
-  showToast(`🔥 Started ${unstarted.length} cook(s)`);
+  showToast(`🔥 已开始 ${unstarted.length} 个 Started ${unstarted.length} cook(s)`);
 }
 
 function endAllCooks() {
   const running = cooks.filter(c => c.startTime && !c.endTime);
   if (running.length === 0) {
-    showToast("No running cooks to end", "error");
+    showToast("没有正在进行的烹饪 No running cooks to end", "error");
     return;
   }
   
@@ -221,7 +221,7 @@ function endAllCooks() {
   
   renderActiveCooks();
   checkAllTimers();
-  showToast(`⏹️ Ended ${running.length} cook(s)`);
+  showToast(`⏹️ 已停止 ${running.length} 个 Ended ${running.length} cook(s)`);
 }
 
 
@@ -230,33 +230,28 @@ function updateTemp(id, value) {
   if (cook) cook.temp = value.trim();
 }
 
-// Set BT target cook card
+// Set BT target cook card (still available for manual override)
 function setBtTarget(id) {
   window.btTargetCookId = (window.btTargetCookId === id) ? null : id;
-  renderActiveCooks();
-  // Notify the BT panel if it exists
   const label = document.getElementById('bt-target-label');
   if (label) {
     if (window.btTargetCookId !== null) {
       const cook = cooks.find(c => c.id === window.btTargetCookId);
-      label.textContent = cook ? `🎯 ${cook.food.split(' ').slice(0,4).join(' ')}…` : '🎯 Cook targeted';
+      label.textContent = cook ? `🎯 ${cook.food.split(' ').slice(0,4).join(' ')}…` : '🎯 烹饪已选中 Cook targeted';
     } else {
-      label.textContent = 'No cook targeted';
+      label.textContent = '自动 — 目标为最后停止的烹饪 Auto — targets last ended cook';
     }
   }
 }
 
-// Set temperature for the targeted (or last-finished) cook card
+// Fill temperature into the targeted (or last-finished) cook card
 function setLatestCookTemp(value) {
   if (!value) return false;
   const tempValue = String(value).trim();
-  // Use explicitly targeted card first
   let target = window.btTargetCookId !== null ? cooks.find(c => c.id === window.btTargetCookId && c.endTime) : null;
-  // Fall back to most recently finished
   if (!target) target = [...cooks].reverse().find(c => c.endTime);
   if (!target) return false;
   target.temp = tempValue;
-  // Update the input directly without full re-render to avoid losing focus
   const inp = document.getElementById(`temp-input-${target.id}`);
   if (inp) inp.value = tempValue;
   else renderActiveCooks();
@@ -287,15 +282,15 @@ function sanitizeNumberInput(inputEl, allowDecimal) {
 async function saveCook(id) {
   const cook = cooks.find(c => c.id === id);
   if (!cook || !cook.endTime || !cook.temp || isNaN(parseFloat(cook.temp))) {
-    alert("End cooking first and enter valid core temperature.");
+    alert("请先结束烹饪并输入有效核心温度。 End cooking first and enter valid core temperature.");
     return;
   }
   if (!cook.trays || isNaN(parseInt(cook.trays)) || parseInt(cook.trays) < 1) {
-    alert("Please enter a valid number of trays (≥ 1).");
+    alert("请输入有效的盘数（≥1）。 Please enter a valid number of trays (≥ 1).");
     return;
   }
   if (!currentStaff) {
-    alert("No staff selected. Please choose Alice, Bob, or Charlie at the top.");
+    alert("请先选择厨师。 No staff selected. Please choose a chef at the top.");
     return;
   }
 
@@ -355,7 +350,7 @@ function confirmCancelCook(id) {
   
   if (confirm(message)) {
     removeCook(id);
-    showToast(`✓ Removed ${cook.food}`);
+    showToast(`✓ 已删除 Removed: ${cook.food}`);
   }
 }
 
