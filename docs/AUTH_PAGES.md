@@ -11,8 +11,12 @@ Shows which pages are protected by authentication and which are public.
 | **Auth ON** (production) | `BYPASS_AUTH=false` or unset | All protected pages redirect to `/login` |
 | **Auth OFF** (testing) | `BYPASS_AUTH=true` in env | All pages open freely; fake admin user injected |
 
-> **Current Railway setting:** `BYPASS_AUTH=true`  
-> **Current local `.env`:** `BYPASS_AUTH=true`
+> **Current Railway setting:** `BYPASS_AUTH=false`  
+> **Current local `.env`:** `BYPASS_AUTH=false`
+
+> **Default admin credentials (seeded on first run):**  
+> Username: `admin` / Password: `admin123`  
+> ⚠️ Change this password immediately via the Admin panel after first login.
 
 ---
 
