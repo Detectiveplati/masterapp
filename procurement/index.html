@@ -6,32 +6,132 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Central Kitchen Procurement</title>
   <link rel="stylesheet" href="/css/app.css"/>
+  <style>
+    .proc-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 6px;
+    }
+    .proc-stat {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 12px;
+      text-align: center;
+    }
+    .proc-stat .n {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--accent);
+      line-height: 1;
+      display: block;
+    }
+    .proc-stat .l {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 600;
+      margin-top: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .proc-stat.pending .n { color: #d97706; }
+    .proc-stat.done    .n { color: var(--success); }
+
+    .proc-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .proc-actions .btn-new {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .proc-actions .btn-new:hover { opacity: 0.9; transform: translateY(-1px); }
+    .proc-actions .btn-secondary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: var(--card);
+      color: var(--ink);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .proc-actions .btn-secondary:hover { background: var(--bg); }
+
+    .qr-section {
+      text-align: center;
+      padding: 8px 0 4px;
+    }
+    .qr-section img { border-radius: 12px; border: 1px solid var(--border); max-width: 180px; }
+    .qr-section p   { font-size: 0.8rem; color: var(--muted); margin: 8px 0 4px; }
+    .qr-url-text    { font-size: 0.72rem; color: var(--muted); word-break: break-all; }
+  </style>
 </head>
 <body data-module="procurement">
 
-<main>
-  <div class="card" style="max-width:700px;margin:0 auto 20px;">
-    <h2>📊 Quick Stats</h2>
-    <div class="stats-bar" id="statsBar">
-      <div class="stat-box"><div class="num" id="statTotal">—</div><div class="lbl">Total</div></div>
-      <div class="stat-box"><div class="num" id="statPending">—</div><div class="lbl">Pending</div></div>
-      <div class="stat-box"><div class="num" id="statDone">—</div><div class="lbl">Done</div></div>
-    </div>
-  </div>
+<main style="max-width:700px;margin:0 auto;">
 
-  <div class="card" style="max-width:700px;margin:0 auto 20px;">
-    <div class="qr-container">
-      <h2>📱 Scan to Submit a Request</h2>
-      <p>Staff can scan this QR code with any phone or tablet to submit a procurement request.</p>
-      <img class="qr-code" src="/api/qr" alt="QR Code"/>
-      <p class="qr-url" id="formUrl"></p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:8px;">
-        <a href="/procurement/request" class="btn btn-primary">📋 Open Request Form</a>
-        <a href="/procurement/requests" class="btn btn-outline">📊 View All Requests</a>
-        <a href="/api/qr" download="procurement-qr.png" class="btn btn-outline">⬇ Download QR</a>
+  <!-- Stats -->
+  <div class="card" style="margin-bottom:16px;">
+    <h2 style="margin-bottom:14px;">📊 Overview</h2>
+    <div class="proc-stats">
+      <div class="proc-stat total">
+        <span class="n" id="statTotal">—</span>
+        <div class="l">Total</div>
+      </div>
+      <div class="proc-stat pending">
+        <span class="n" id="statPending">—</span>
+        <div class="l">Pending</div>
+      </div>
+      <div class="proc-stat done">
+        <span class="n" id="statDone">—</span>
+        <div class="l">Done</div>
       </div>
     </div>
   </div>
+
+  <!-- Actions -->
+  <div class="card" style="margin-bottom:16px;">
+    <h2 style="margin-bottom:14px;">⚡ Quick Actions</h2>
+    <div class="proc-actions">
+      <a href="/procurement/request" class="btn-new">➕ Add New Request</a>
+      <a href="/procurement/requests" class="btn-secondary">📋 View All Requests</a>
+      <a href="/api/qr" download="procurement-qr.png" class="btn-secondary">⬇ Download QR Code</a>
+    </div>
+  </div>
+
+  <!-- QR Code -->
+  <div class="card">
+    <h2 style="margin-bottom:10px;">📱 Staff QR Code</h2>
+    <div class="qr-section">
+      <img src="/api/qr" alt="QR Code"/>
+      <p>Staff can scan this to submit a request from any device.</p>
+      <div class="qr-url-text" id="formUrl"></div>
+    </div>
+  </div>
+
 </main>
 
 <script>
@@ -39,7 +139,7 @@
 
   async function loadStats() {
     try {
-      const all = await fetch('/api/requests').then(r => r.json());
+      const all = await fetch('/api/requests', { credentials: 'include' }).then(r => r.json());
       document.getElementById('statTotal').textContent   = all.length;
       document.getElementById('statPending').textContent = all.filter(r => r.status === 'Pending').length;
       document.getElementById('statDone').textContent    = all.filter(r => r.status === 'Done').length;
