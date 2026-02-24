@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"/>
   <title>Combi Oven Report</title>
-  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="/css/app.css">
   <style>
     .report-controls {
       margin: 10px 0;
@@ -50,7 +51,7 @@
     }
   </style>
 </head>
-<body>
+<body data-module="templog">
 
   <img src="../assets/Chilli-Api-Logo-170px.png" alt="ChilliApi" style="width:64px;height:64px;float:left;margin-right:12px;border-radius:6px;">
   <h1>组合烤箱报表 Combi Oven Report</h1>
@@ -214,5 +215,6 @@
     });
   </script>
 
+  <script src="/js/shell.js"></script>
 </body>
 </html>

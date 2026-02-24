@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin — Central Kitchen</title>
   <style>
@@ -36,10 +37,11 @@
     .btn-primary { background: linear-gradient(135deg,var(--accent-2),#e67e22); color:#fff; box-shadow: 0 3px 8px rgba(0,0,0,0.1); }
     .btn-grey    { background: linear-gradient(135deg,#7f8c8d,#95a5a6); color:#fff; box-shadow: 0 3px 8px rgba(0,0,0,0.1); }
     .btn-green   { background: linear-gradient(135deg,#27ae60,#2ecc71); color:#fff; box-shadow: 0 3px 8px rgba(0,0,0,0.1); }
-    /* Tab bar */
+    /* Tab bar — bleeds outside main padding */
     .tab-bar {
       display: flex; gap: 0; background: var(--card);
-      border-bottom: 1px solid var(--border); padding: 0 28px;
+      border-bottom: 1px solid var(--border); padding: 0 4px;
+      margin: -28px -24px 28px -24px;
     }
     .tab-btn {
       padding: 14px 22px; font-size: 0.95rem; font-weight: 700; font-family: inherit;
@@ -47,8 +49,6 @@
       cursor: pointer; color: var(--muted); transition: color 0.15s, border-color 0.15s;
     }
     .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-    /* Main */
-    main { flex: 1; padding: 28px; max-width: 1100px; width: 100%; margin: 0 auto; }
     .panel { display: none; }
     .panel.active { display: block; }
     /* Cards */
@@ -134,28 +134,17 @@
       .data-table, .perm-table { font-size: 0.8rem; }
     }
   </style>
+  <link rel="stylesheet" href="/css/app.css">
 </head>
-<body>
-  <header>
-    <a href="/"><img src="/maintenance/assets/Chilli-Api-Logo-170px.png" alt="Logo"></a>
-    <div class="hdr-text">
-      <h1>Admin Control Panel</h1>
-      <p>User management &amp; module access</p>
-    </div>
-    <div class="hdr-right">
-      <span class="user-badge" id="userBadge">Loading…</span>
-      <a href="/" class="btn-sm btn-grey">← Hub</a>
-      <button class="btn-sm btn-danger" id="logoutBtn">Sign Out</button>
-    </div>
-  </header>
+<body data-module="admin">
 
+<main>
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="users">👤 Users</button>
     <button class="tab-btn"        data-tab="permissions">🔒 Permissions</button>
   </div>
 
-  <!-- ─── USERS PANEL ─────────────────────────────────── -->
-  <main>
+  <!-- ─── USERS PANEL ───────────────────── -->
     <div id="panel-users" class="panel active">
       <div id="usersNotice" class="notice"></div>
 
@@ -226,9 +215,7 @@
         </div>
       </div>
     </div>
-  </main>
-
-  <!-- ─── EDIT USER MODAL ──────────────────────────────── -->
+</main>
   <div class="modal-overlay" id="editModal">
     <div class="modal-box">
       <h3>Edit User</h3>
@@ -263,19 +250,13 @@
     // ── Auth check ──────────────────────────────────────────
     async function checkAuth() {
       try {
-        const r = await fetch('/api/auth/me');
+        const r = await fetch('/api/auth/me', { credentials: 'include' });
         if (!r.ok) return window.location.replace('/login?next=/admin/');
         const d = await r.json();
         if (d.user.role !== 'admin') return window.location.replace('/');
-        document.getElementById('userBadge').textContent = d.user.displayName + ' (admin)';
+        window._authUser = d.user; // make available to shell.js
       } catch { window.location.replace('/login?next=/admin/'); }
     }
-
-    // ── Logout ─────────────────────────────────────────────
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      window.location.replace('/login');
-    });
 
     // ── Tabs ───────────────────────────────────────────────
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -439,5 +420,6 @@
     // ── Init ────────────────────────────────────────────────
     checkAuth().then(loadUsers);
   </script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

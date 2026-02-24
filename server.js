@@ -18,6 +18,7 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 const path = require('path');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const { requirePageAccess } = require('./services/auth-middleware');
 
 // Try to load puppeteer (optional - for PDF generation)
 let puppeteer = null;
@@ -108,38 +109,42 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ─── Static file serving ────────────────────────────────────────────────────
-// Food Safety NC - Serve from foodsafety/ folder
-app.use('/foodsafety', express.static(path.join(__dirname, 'foodsafety'), noCacheHtml));
-app.get('/foodsafety', (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'index.html')));
-// Also support explicit index path and any unmatched foodsafety subpaths (SPA-style, but NOT uploads)
-app.get('/foodsafety/index.html', (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'index.html')));
-app.get(/^\/foodsafety(?!\/uploads)(\/.*)?$/, (req, res) => {
+// ─── Public shared assets (no auth required) ──────────────────────────────
+app.get('/auth-guard.js', (req, res) => res.sendFile(path.join(__dirname, 'auth-guard.js')));
+app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
+app.use('/js',  express.static(path.join(__dirname, 'public', 'js')));
+
+// Food Safety NC — requires 'foodsafety' permission
+app.use('/foodsafety', requirePageAccess('foodsafety'), express.static(path.join(__dirname, 'foodsafety'), noCacheHtml));
+app.get('/foodsafety', requirePageAccess('foodsafety'), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'index.html')));
+app.get('/foodsafety/index.html', requirePageAccess('foodsafety'), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'index.html')));
+app.get(/^\/foodsafety(?!\/uploads)(\/.*)?$/, requirePageAccess('foodsafety'), (req, res) => {
     res.sendFile(path.join(__dirname, 'foodsafety', 'index.html'));
 });
 
-// Auth pages — login & admin panel (no auth required to serve HTML; JS handles redirect)
+// Auth pages — login is always public; admin requires admin role
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
-app.use('/admin', express.static(path.join(__dirname, 'admin'), noCacheHtml));
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin', 'index.html')));
-app.get('/admin/', (req, res) => res.sendFile(path.join(__dirname, 'admin', 'index.html')));
+app.use('/admin', requirePageAccess('__admin__'), express.static(path.join(__dirname, 'admin'), noCacheHtml));
+app.get('/admin',  requirePageAccess('__admin__'), (req, res) => res.sendFile(path.join(__dirname, 'admin', 'index.html')));
+app.get('/admin/', requirePageAccess('__admin__'), (req, res) => res.sendFile(path.join(__dirname, 'admin', 'index.html')));
 
-// Hub page — root index.html
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+// Hub page — any authenticated user
+app.get('/', requirePageAccess(null), (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-// Maintenance Dashboard - Serve from maintenance/ folder
-app.use('/maintenance', express.static(path.join(__dirname, 'maintenance'), noCacheHtml));
-app.use(express.static(path.join(__dirname, 'maintenance'), noCacheHtml)); // legacy: root-relative asset paths in maintenance pages
+// Maintenance Dashboard — requires 'maintenance' permission
+app.use('/maintenance', requirePageAccess('maintenance'), express.static(path.join(__dirname, 'maintenance'), noCacheHtml));
+app.use(requirePageAccess('maintenance'), express.static(path.join(__dirname, 'maintenance'), noCacheHtml)); // legacy root-relative asset paths
 
-// TempLog - Serve from templog/ folder (legacy embedded app)
-app.use('/templog', express.static(path.join(__dirname, 'templog'), noCacheHtml));
-app.get('/templog', (req, res) => res.sendFile(path.join(__dirname, 'templog', 'index.html')));
+// TempLog — requires 'templog' permission
+app.use('/templog', requirePageAccess('templog'), express.static(path.join(__dirname, 'templog'), noCacheHtml));
+app.get('/templog', requirePageAccess('templog'), (req, res) => res.sendFile(path.join(__dirname, 'templog', 'index.html')));
 
-// Procurement - Serve from procurement/ folder
-app.use('/procurement', express.static(path.join(__dirname, 'procurement'), noCacheHtml));
-app.get('/procurement',             (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'index.html')));
-app.get('/procurement/request',     (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'request-form.html')));
-app.get('/procurement/requests',    (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'requests.html')));
-app.get('/procurement/request/:id', (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'request-detail.html')));
+// Procurement — requires 'procurement' permission
+app.use('/procurement', requirePageAccess('procurement'), express.static(path.join(__dirname, 'procurement'), noCacheHtml));
+app.get('/procurement',             requirePageAccess('procurement'), (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'index.html')));
+app.get('/procurement/request',     requirePageAccess('procurement'), (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'request-form.html')));
+app.get('/procurement/requests',    requirePageAccess('procurement'), (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'requests.html')));
+app.get('/procurement/request/:id', requirePageAccess('procurement'), (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'request-detail.html')));
 
 // ─── Auth & Admin API Routes ──────────────────────────────────────────────────
 const authRoutes  = require('./routes/auth');
@@ -365,7 +370,7 @@ app.get('/templog/api/cooks/report.pdf', requireTemplogDb, async (req, res) => {
 
 // ─── Root route ──────────────────────────────────────────────────────────────
 
-app.get('/maintenance', (req, res) => res.sendFile(path.join(__dirname, 'maintenance', 'maintenance.html')));
+app.get('/maintenance', requirePageAccess('maintenance'), (req, res) => res.sendFile(path.join(__dirname, 'maintenance', 'maintenance.html')));
 
 // ─── Error handler ───────────────────────────────────────────────────────────
 

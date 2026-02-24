@@ -2,25 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Central Kitchen Procurement</title>
-  <link rel="stylesheet" href="css/styles.css"/>
+  <link rel="stylesheet" href="/css/app.css"/>
 </head>
-<body>
-
-<header>
-  <div class="header-content">
-    <a href="/" style="line-height:0;flex-shrink:0;"><img class="site-logo" src="assets/logo.png" alt="Chilli API" style="cursor:pointer;"/></a>
-    <div class="header-text">
-      <h1>Central Kitchen Procurement</h1>
-      <p>中央厨房采购管理 · Scan the QR code to submit a request</p>
-    </div>
-  </div>
-  <nav class="nav-links">
-    <a href="/procurement/requests">📊 All Requests</a>
-    <a href="/procurement/request" class="accent">+ New Request</a>
-  </nav>
-</header>
+<body data-module="procurement">
 
 <main>
   <div class="card" style="max-width:700px;margin:0 auto 20px;">
@@ -60,5 +47,6 @@
   }
   loadStats();
 </script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

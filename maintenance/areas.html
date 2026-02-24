@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Area QR Codes | Central Kitchen</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="/css/app.css">
     <style>
         /* ── Main content ─────────────────────────── */
         main {
@@ -237,20 +238,9 @@
         }
     </style>
 </head>
-<body>
+<body data-module="maintenance">
 
-<header>
-    <div class="header-content">
-        <a href="maintenance.html" style="display:inline-flex;text-decoration:none;">
-            <img src="assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo" class="site-logo">
-        </a>
-        <div class="header-text">
-            <h1>📍 Area QR Codes</h1>
-            <p>Print or display in each kitchen area — staff scan to report issues instantly</p>
-        </div>
-    </div>
-    <button onclick="window.print()">🖨️ Print All QR Codes</button>
-</header>
+
 
 <main>
     <div class="section-head">
@@ -396,5 +386,6 @@ async function init() {
 
 init();
 </script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

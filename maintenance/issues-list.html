@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="refresh" content="0; url=all-issues.html#area">
     <title>Redirecting… | Central Kitchen Maintenance</title>
     <script>window.location.replace('all-issues.html#area');</script>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="/css/app.css">
     <style>
         /* ── Stats bar ───────────────────────────────────── */
         .stats-bar {
@@ -243,20 +244,9 @@
         }
     </style>
 </head>
-<body>
+<body data-module="maintenance">
 
-<header>
-    <div class="header-content">
-        <a href="maintenance.html" style="display:inline-flex;text-decoration:none;">
-            <img src="assets/Chilli-Api-Logo-170px.png" alt="Logo" class="site-logo">
-        </a>
-        <div class="header-text">
-            <h1>🏗️ Area Issues</h1>
-            <p>Facility & general area issue reports</p>
-        </div>
-    </div>
-    <button onclick="window.location.href='area-maintenance.html'">➕ Report Issue</button>
-</header>
+
 
 <main>
 
@@ -462,5 +452,6 @@
 
     loadIssues();
 </script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

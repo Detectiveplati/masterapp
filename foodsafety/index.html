@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Food Safety NC - Central Kitchen</title>
-  <link rel="stylesheet" href="../maintenance/css/styles.css">
+  <link rel="stylesheet" href="/css/app.css">
   <style>
     .module-grid {
       display: grid;
@@ -59,17 +60,8 @@
     @media (max-width: 600px) { .module-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
-<body>
-  <header>
-    <div class="header-content">
-      <a href="/index.html" style="display:inline-flex;text-decoration:none;"><img src="../maintenance/assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo" class="site-logo"></a>
-      <div class="header-text">
-        <h1>Food Safety Non-Conformance</h1>
-        <p>Report and track food safety issues across all kitchen units</p>
-      </div>
-    </div>
-    <a href="/index.html" class="btn-secondary">← Hub</a>
-  </header>
+<body data-module="foodsafety">
+
 
   <main>
     <div class="module-grid">
@@ -89,7 +81,8 @@
   </main>
 
   <footer>
-    <p>&copy; 2026 Central Kitchen | <a href="/index.html">Hub</a> | <a href="/maintenance/maintenance.html">Maintenance</a></p>
+    <p>&copy; 2026 Central Kitchen | <a href="/">Hub</a> | <a href="/maintenance/maintenance.html">Maintenance</a></p>
   </footer>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <title>Equipment Details - Central Kitchen Maintenance</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="/css/app.css">
     <style>
         .content-grid {
             display: grid;
@@ -491,18 +492,8 @@
         }
     </style>
 </head>
-<body>
-    <header>
-        <div class="header-content">
-            <a href="maintenance.html" style="display: inline-flex; text-decoration: none;">
-                <img src="assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo" class="site-logo">
-            </a>
-            <div class="header-text">
-                <h1 id="equipmentName">Equipment Details</h1>
-                <p id="equipmentId">Loading...</p>
-            </div>
-        </div>
-    </header>
+<body data-module="maintenance">
+
 
     <main>
         <a href="equipment-list.html" class="back-button">← Back to All Equipment</a>
@@ -998,5 +989,6 @@
             }
         }
     </script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

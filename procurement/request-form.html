@@ -2,30 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Procurement Request 采购申请</title>
-  <link rel="stylesheet" href="css/styles.css"/>
+  <link rel="stylesheet" href="/css/app.css"/>
 </head>
-<body>
-
-<header>
-  <div class="header-content">
-    <a href="/index.html" style="line-height:0;flex-shrink:0;"><img class="site-logo" src="assets/logo.png" alt="Chilli API" style="cursor:pointer;"/></a>
-    <div class="header-text">
-      <h1 id="hdr-title">Procurement Request</h1>
-      <p id="hdr-sub">Central Kitchen · Submit a new item request</p>
-    </div>
-  </div>
-  <nav class="nav-links">
-    <button class="lang-toggle" id="langToggle" onclick="toggleLang()">中文</button>
-    <a href="/procurement">🏠 <span class="t" data-en="Home" data-zh="主页">Home</span></a>
-    <a href="/procurement/requests">📊 <span class="t" data-en="All Requests" data-zh="所有申请">All Requests</span></a>
-  </nav>
-</header>
+<body data-module="procurement">
 
 <main>
-  <div id="msgSuccess" class="msg success">✅ <span class="t" data-en="Request submitted successfully!" data-zh="申请提交成功！">Request submitted successfully!</span></div>
-  <div id="msgError"   class="msg error">❌ <span id="errText">Failed to submit. Please try again.</span></div>
+  <div id="msgSuccess" class="msg success" style="display:none">✅ <span class="t" data-en="Request submitted successfully!" data-zh="申请提交成功！">Request submitted successfully!</span></div>
+  <div id="msgError"   class="msg error"   style="display:none">❌ <span id="errText">Failed to submit. Please try again.</span></div>
 
   <form id="requestForm" enctype="multipart/form-data" style="max-width:680px;margin:0 auto;">
 
@@ -186,5 +172,6 @@
     }
   });
 </script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

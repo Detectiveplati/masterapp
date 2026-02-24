@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API Test Dashboard - Phase 1</title>
+    <link rel="stylesheet" href="/css/app.css">
     <style>
         * {
             margin: 0;
@@ -16,7 +18,7 @@
             background: radial-gradient(1200px 600px at 10% -10%, #ffe9d6 0%, transparent 60%),
                         radial-gradient(900px 500px at 90% 0%, #d6f0ff 0%, transparent 55%),
                         linear-gradient(180deg, #f6f4ef, #efe6df);
-            padding: 20px;
+            padding: calc(var(--topnav-h) + 20px) 20px 20px;
             min-height: 100vh;
         }
         
@@ -223,7 +225,7 @@
         }
     </style>
 </head>
-<body>
+<body data-module="maintenance">
     <div class="container">
         <div class="header-section">
             <img src="assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo" class="site-logo">
@@ -415,5 +417,6 @@
             testHealth();
         });
     </script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

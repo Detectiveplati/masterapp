@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Request Detail · Central Kitchen Procurement</title>
-  <link rel="stylesheet" href="/procurement/css/styles.css"/>
+  <link rel="stylesheet" href="/css/app.css"/>
   <style>
     .back-link {
       display: inline-flex; align-items: center; gap: 6px;
@@ -90,23 +91,7 @@
     .modal-overlay img { max-width: 92vw; max-height: 90vh; border-radius: 10px; box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
   </style>
 </head>
-<body>
-
-<header>
-  <div class="header-content">
-    <a href="/index.html" style="line-height:0;flex-shrink:0;"><img class="site-logo" src="/procurement/assets/logo.png" alt="Chilli API" style="cursor:pointer;"/></a>
-    <a href="/procurement" class="test-button" style="margin-left:18px;align-self:center;">← Back to Procurement Home</a>
-    <div class="header-text">
-      <h1 id="pageTitle">Request Detail</h1>
-      <p>Central Kitchen Procurement · 采购申请详情</p>
-    </div>
-  </div>
-  <nav class="nav-links">
-    <a href="/procurement">🏠 Home</a>
-    <a href="/procurement/requests">📋 All Requests</a>
-    <a href="/procurement/request" class="accent">+ New Request</a>
-  </nav>
-</header>
+<body data-module="procurement">
 
 <main>
   <a class="back-link" href="/procurement/requests">← Back to All Requests</a>
@@ -317,5 +302,6 @@
 
   loadRequest();
 </script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

@@ -1,7 +1,19 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'ck-dev-secret-change-in-production';
+const JWT_SECRET  = process.env.JWT_SECRET  || 'ck-dev-secret-change-in-production';
 const COOKIE_NAME = 'ck_auth';
+const BYPASS_AUTH = process.env.BYPASS_AUTH === 'true';
+
+if (BYPASS_AUTH) {
+  console.warn('⚠️  [Auth] BYPASS_AUTH=true — ALL authentication disabled. For testing only!');
+}
+
+/** Fake admin user injected when BYPASS_AUTH is on */
+const BYPASS_USER = {
+  id: 'bypass', username: 'bypass', displayName: 'Test Admin',
+  role: 'admin',
+  permissions: { maintenance: true, foodsafety: true, templog: true, procurement: true }
+};
 
 /**
  * Sign a JWT for a user. Returns the token string.
@@ -44,6 +56,7 @@ function clearAuthCookie(res) {
  * If invalid/missing, returns 401 JSON (for API routes).
  */
 function requireAuth(req, res, next) {
+  if (BYPASS_AUTH) { req.user = BYPASS_USER; return next(); }
   const token = req.cookies && req.cookies[COOKIE_NAME];
   if (!token) return res.status(401).json({ error: 'Not authenticated' });
   try {
@@ -90,4 +103,50 @@ function requirePermission(module) {
   };
 }
 
-module.exports = { signToken, setAuthCookie, clearAuthCookie, requireAuth, requireAuthPage, requireAdmin, requirePermission, COOKIE_NAME };
+/**
+ * Middleware factory for HTML page protection.
+ * Skips non-HTML assets (CSS, JS, images, fonts, etc.).
+ * Redirects unauthenticated users to /login.
+ * Redirects users lacking module permission to /.
+ *
+ * module = null        → any authenticated user (hub)
+ * module = '__admin__' → admin role required
+ * module = 'xxx'       → user.permissions.xxx must be true (or admin)
+ */
+function requirePageAccess(module) {
+  return function (req, res, next) {
+    if (BYPASS_AUTH) return next();
+
+    // Only protect HTML page requests; pass assets straight through
+    var p = req.path;
+    var isHtml = p.endsWith('.html') || p === '/' || p.endsWith('/');
+    if (!isHtml) return next();
+
+    var token = req.cookies && req.cookies[COOKIE_NAME];
+    if (!token) {
+      return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
+    }
+
+    var user;
+    try {
+      user = jwt.verify(token, JWT_SECRET);
+    } catch (_e) {
+      return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
+    }
+
+    // Admins bypass everything
+    if (user.role === 'admin') return next();
+
+    // Admin-only pages: redirect non-admins to hub
+    if (module === '__admin__') return res.redirect('/');
+
+    // Module permission gate
+    if (module && !(user.permissions && user.permissions[module])) {
+      return res.redirect('/?access=denied');
+    }
+
+    next();
+  };
+}
+
+module.exports = { signToken, setAuthCookie, clearAuthCookie, requireAuth, requireAuthPage, requireAdmin, requirePermission, requirePageAccess, COOKIE_NAME };

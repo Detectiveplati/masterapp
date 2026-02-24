@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Food Safety NCs - Central Kitchen</title>
-  <link rel="stylesheet" href="../maintenance/css/styles.css">
+  <link rel="stylesheet" href="/css/app.css">
   <style>
     .list-container {
       max-width: 960px;
@@ -63,17 +64,8 @@
     @media (max-width: 600px) { .filter-row { flex-direction: column; } }
   </style>
 </head>
-<body>
-  <header>
-    <div class="header-content">
-      <a href="/index.html" style="display:inline-flex;text-decoration:none;"><img src="../maintenance/assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo" class="site-logo"></a>
-      <div class="header-text">
-        <h1>Food Safety NCs</h1>
-        <p>View and manage all food safety non-conformance reports</p>
-      </div>
-    </div>
-    <a href="index.html" class="btn-secondary" style="text-decoration:none;">← Back to Food Safety</a>
-  </header>
+<body data-module="foodsafety">
+
 
   <main>
     <div class="list-container">
@@ -116,5 +108,6 @@
     <p>&copy; 2026 Central Kitchen | <a href="index.html">Food Safety NC</a> | <a href="/maintenance/maintenance.html">Maintenance</a></p>
   </footer>
   <script src="js/foodsafety-nc.js"></script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

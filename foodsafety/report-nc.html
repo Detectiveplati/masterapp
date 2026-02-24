@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Log NC - Central Kitchen</title>
-  <link rel="stylesheet" href="../maintenance/css/styles.css">
+  <link rel="stylesheet" href="/css/app.css">
   <style>
     .form-container {
       max-width: 920px;
@@ -69,17 +70,8 @@
     @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } }
   </style>
 </head>
-<body>
-  <header>
-    <div class="header-content">
-      <a href="/index.html" style="display:inline-flex;text-decoration:none;"><img src="../maintenance/assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo" class="site-logo"></a>
-      <div class="header-text">
-        <h1>Log NC</h1>
-        <p>Submit a new food safety non-conformance</p>
-      </div>
-    </div>
-    <a href="index.html" class="btn-secondary" style="text-decoration:none;">← Back to Food Safety</a>
-  </header>
+<body data-module="foodsafety">
+
   <main>
     <div class="form-container">
       <div class="form-header">
@@ -211,5 +203,6 @@
     }
 
   </script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

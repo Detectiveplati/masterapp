@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>All Requests · Central Kitchen Procurement</title>
-  <link rel="stylesheet" href="css/styles.css"/>
+  <link rel="stylesheet" href="/css/app.css"/>
   <style>
     /* ── Compact list ── */
     .req-list { display: flex; flex-direction: column; gap: 6px; }
@@ -112,21 +113,7 @@
     .filters input, .filters select { font-size: 0.82rem; padding: 6px 10px; }
   </style>
 </head>
-<body>
-
-<header>
-  <div class="header-content">
-    <a href="/index.html" style="line-height:0;flex-shrink:0;"><img class="site-logo" src="assets/logo.png" alt="Chilli API" style="cursor:pointer;"/></a>
-    <div class="header-text">
-      <h1>All Procurement Requests</h1>
-      <p>所有采购申请 · Central Kitchen</p>
-    </div>
-  </div>
-  <nav class="nav-links">
-    <a href="/procurement">🏠 Home</a>
-    <a href="/procurement/request" class="accent">+ New Request</a>
-  </nav>
-</header>
+<body data-module="procurement">
 
 <main>
   <!-- Stats -->
@@ -292,5 +279,6 @@
 
   loadRequests();
 </script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

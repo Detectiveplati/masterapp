@@ -1,167 +1,128 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-store">
-    <title>Central Kitchen  Master App</title>
-    <style>
-        :root {
-            --ink: #121316; --muted: #5a616c; --accent: #ff7a18;
-            --accent-2: #3aa6ff; --card: #ffffff;
-            --border: rgba(18,19,22,0.08); --bg: #f4f5f7; --shadow: rgba(18,19,22,0.08);
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: "Bahnschrift","Trebuchet MS","Segoe UI",sans-serif;
-            background: radial-gradient(1200px 600px at 10% -10%,#ffe9d6 0%,transparent 60%),
-                        radial-gradient(800px 500px at 90% 110%,#d6ecff 0%,transparent 55%), var(--bg);
-            min-height: 100vh; display: flex; flex-direction: column;
-        }
-        header {
-            background: var(--card); border-bottom: 1px solid var(--border);
-            padding: 20px 32px; display: flex; align-items: center; gap: 16px;
-            box-shadow: 0 2px 8px var(--shadow);
-        }
-        header img { height: 48px; border-radius: 10px; }
-        header h1  { font-size: 1.4rem; font-weight: 700; color: var(--ink); }
-        header p   { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
-        main {
-            flex: 1; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; padding: 48px 24px;
-        }
-        .hub-title    { font-size: 2rem; font-weight: 800; color: var(--ink); text-align: center; margin-bottom: 8px; }
-        .hub-subtitle { font-size: 1rem; color: var(--muted); text-align: center; margin-bottom: 48px; }
-        .hub-grid {
-            display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr));
-            gap: 28px; width: 100%; max-width: 1000px;
-        }
-        .hub-card {
-            background: var(--card); border: 1px solid var(--border); border-radius: 20px;
-            padding: 36px 32px; text-decoration: none; color: inherit;
-            box-shadow: 0 6px 24px var(--shadow);
-            transition: transform 0.18s ease, box-shadow 0.18s ease;
-            display: flex; flex-direction: column; gap: 12px;
-            position: relative; overflow: hidden;
-        }
-        .hub-card::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0;
-            height: 4px; border-radius: 20px 20px 0 0;
-        }
-        .hub-card.maintenance::before { background: linear-gradient(90deg,var(--accent),#e74c3c); }
-        .hub-card.templog::before     { background: linear-gradient(90deg,var(--accent-2),#0e7fd6); }
-        .hub-card.procurement::before { background: linear-gradient(90deg,#27ae60,#1e8449); }
-        .hub-card.foodsafety::before  { background: linear-gradient(90deg,#16a085,#1abc9c); }
-        .hub-card.admin::before       { background: linear-gradient(90deg,#7f5af0,#5e3fce); }
-        .hub-card:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(18,19,22,0.13); }
-        .hub-card .icon { font-size: 2.8rem; line-height: 1; }
-        .hub-card h2   { font-size: 1.35rem; font-weight: 700; color: var(--ink); }
-        .hub-card p    { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
-        .hub-card .go-btn {
-            margin-top: auto; padding-top: 16px; font-size: 0.9rem;
-            font-weight: 700; display: flex; align-items: center; gap: 6px;
-        }
-        .hub-card.maintenance .go-btn { color: var(--accent); }
-        .hub-card.templog .go-btn     { color: var(--accent-2); }
-        .hub-card.procurement .go-btn { color: #27ae60; }
-        .hub-card.foodsafety .go-btn  { color: #16a085; }
-        .hub-card.admin .go-btn       { color: #7f5af0; }
-        .hub-card .go-btn::after { content: ' →'; transition: transform 0.15s ease; }
-        .hub-card:hover .go-btn::after { transform: translateX(4px); }
-        .status-bar {
-            margin-top: 48px; display: flex; gap: 12px; align-items: center;
-            font-size: 0.8rem; color: var(--muted);
-        }
-        .status-dot {
-            width: 8px; height: 8px; border-radius: 50%; background: #27ae60;
-            display: inline-block; animation: pulse 2s infinite;
-        }
-        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
-        footer {
-            text-align: center; padding: 20px; font-size: 0.78rem;
-            color: var(--muted); border-top: 1px solid var(--border); background: var(--card);
-        }
-        @media (max-width:640px) {
-            .hub-title { font-size: 1.5rem; }
-            .hub-grid  { grid-template-columns: 1fr; }
-            header     { padding: 16px 20px; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Central Kitchen — Hub</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 62px);
+      padding: 48px 24px 64px;
+    }
+  </style>
 </head>
-<body>
-    <header>
-        <img src="/maintenance/assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo">
-        <div>
-            <h1>Central Kitchen</h1>
-            <p>Master Application Hub</p>
-        </div>
-    </header>
-    <main>
-        <div class="hub-title">Where would you like to go?</div>
-        <div class="hub-subtitle">Select an app below to get started.</div>
-        <div class="hub-grid">
-            <a href="/maintenance/maintenance.html" class="hub-card maintenance">
-                <div class="icon">🔧</div>
-                <h2>Maintenance Dashboard</h2>
-                <p>Track equipment status, log service records, report issues, and manage maintenance schedules across all kitchen equipment.</p>
-                <div class="go-btn">Open Maintenance Dashboard</div>
-            </a>
-            <a href="/templog/" class="hub-card templog">
-                <div class="icon">🌡️</div>
-                <h2>Kitchen Temp Log</h2>
-                <p>Record cooking activities, monitor temperatures, track cook times, and export logs to CSV or PDF for compliance reporting.</p>
-                <div class="go-btn">Open Temp Log</div>
-            </a>
-            <a href="/procurement/requests" class="hub-card procurement">
-                <div class="icon">🛒</div>
-                <h2>Kitchen Equipment Procurement</h2>
-                <p>Submit and track purchase requests, attach photos, manage approvals, and keep a full history of all procurement activity.</p>
-                <div class="go-btn">Open Procurement</div>
-            </a>
-            <a href="/foodsafety/" class="hub-card foodsafety">
-                <div class="icon">🍽️</div>
-                <h2>Food Safety NC</h2>
-                <p>Log and resolve food safety non-conformance instances across all kitchen units. Track open issues and log resolutions.</p>
-                <div class="go-btn">Open Food Safety NC</div>
-            </a>
-            <a href="/login?next=/admin/" class="hub-card admin">
-                <div class="icon">🔐</div>
-                <h2>Admin &amp; User Management</h2>
-                <p>Manage user accounts, reset passwords, and control module permissions for all staff members. Login required.</p>
-                <div class="go-btn">Login to Admin Panel</div>
-            </a>
-        </div>
-        <div class="status-bar">
-            <span class="status-dot"></span>
-            <span id="statusText">Checking server</span>
-        </div>
-    </main>
-    <footer>
-        &copy; 2026 Central Kitchen Master App by Zack &nbsp;|&nbsp;
-        <a href="/api/health" style="color:var(--muted);">Health Check</a>
-    </footer>
-    <script>
-        fetch('/api/health')
-            .then(r => r.json())
-            .then(d => {
-                const el   = document.getElementById('statusText');
-                const dot  = document.querySelector('.status-dot');
-                const both = d.maintenance_db === 'Connected' && d.templog_db === 'Connected' && d.procurement_db === 'Connected';
-                const one  = d.maintenance_db === 'Connected' || d.templog_db  === 'Connected' || d.procurement_db === 'Connected';
-                if (both) {
-                    el.textContent = 'All systems online — all databases connected';
-                } else if (one) {
-                    el.textContent = 'Partial: Maintenance ' + d.maintenance_db + ' | TempLog ' + d.templog_db;
-                    dot.style.background = '#f39c12';
-                } else {
-                    el.textContent = 'Databases offline — check MongoDB';
-                    dot.style.background = '#e74c3c';
-                }
-            })
-            .catch(() => {
-                document.getElementById('statusText').textContent = 'Server unreachable';
-                document.querySelector('.status-dot').style.background = '#e74c3c';
-            });
-    </script>
+<body data-module="hub">
+  <main>
+    <div class="hub-title">Where would you like to go?</div>
+    <div class="hub-subtitle" id="hubSubtitle">Select a module below to get started.</div>
+    <div id="accessBanner" class="access-banner">
+      🔒 You don't have permission for that module. Contact your administrator to request access.
+    </div>
+    <div class="hub-grid">
+      <a href="/maintenance/maintenance.html" class="hub-card maintenance" data-perm="maintenance">
+        <div class="icon">🔧</div>
+        <h2>Maintenance Dashboard</h2>
+        <p>Track equipment status, log service records, report issues, and manage maintenance schedules across all kitchen equipment.</p>
+        <div class="lock-note">🔒 No access — contact administrator</div>
+        <div class="go-btn">Open Maintenance</div>
+      </a>
+      <a href="/templog/" class="hub-card templog" data-perm="templog">
+        <div class="icon">🌡️</div>
+        <h2>Kitchen Temp Log</h2>
+        <p>Record cooking activities, monitor temperatures, track cook times, and export logs for compliance reporting.</p>
+        <div class="lock-note">🔒 No access — contact administrator</div>
+        <div class="go-btn">Open Temp Log</div>
+      </a>
+      <a href="/procurement/" class="hub-card procurement" data-perm="procurement">
+        <div class="icon">🛒</div>
+        <h2>Procurement</h2>
+        <p>Submit and track purchase requests, attach photos, manage approvals, and keep a full history of all procurement activity.</p>
+        <div class="lock-note">🔒 No access — contact administrator</div>
+        <div class="go-btn">Open Procurement</div>
+      </a>
+      <a href="/foodsafety/" class="hub-card foodsafety" data-perm="foodsafety">
+        <div class="icon">🍽️</div>
+        <h2>Food Safety NC</h2>
+        <p>Log and resolve food safety non-conformance instances across all kitchen units. Track open issues and log resolutions.</p>
+        <div class="lock-note">🔒 No access — contact administrator</div>
+        <div class="go-btn">Open Food Safety</div>
+      </a>
+      <a href="/admin/" class="hub-card admin" data-perm="__admin__" style="display:none">
+        <div class="icon">🔐</div>
+        <h2>Admin &amp; User Management</h2>
+        <p>Manage user accounts, reset passwords, and control module access permissions for all staff members.</p>
+        <div class="go-btn">Open Admin Panel</div>
+      </a>
+    </div>
+    <div class="status-bar">
+      <span class="status-dot"></span>
+      <span id="statusText">Checking server…</span>
+    </div>
+  </main>
+  <footer>&copy; 2026 Central Kitchen Master App &nbsp;|&nbsp; <a href="/api/health">Health Check</a></footer>
+
+  <script src="/js/shell.js"></script>
+  <script>
+    async function initHub() {
+      try {
+        const r = await fetch('/api/auth/me', { credentials: 'include' });
+        if (!r.ok) { window.location.replace('/login'); return; }
+        const { user } = await r.json();
+
+        // Cache for shell.js
+        window._authUser = user;
+
+        document.getElementById('hubSubtitle').textContent =
+          'Welcome back, ' + (user.displayName || user.username) + '. Select a module below.';
+
+        const isAdmin = user.role === 'admin';
+        document.querySelectorAll('.hub-card[data-perm]').forEach(function (card) {
+          var perm = card.dataset.perm;
+          if (perm === '__admin__') {
+            card.style.display = isAdmin ? '' : 'none';
+          } else if (!isAdmin && !(user.permissions && user.permissions[perm])) {
+            card.classList.add('locked');
+            card.removeAttribute('href');
+          }
+        });
+
+        if (new URLSearchParams(window.location.search).get('access') === 'denied') {
+          document.getElementById('accessBanner').style.display = 'block';
+        }
+
+        document.documentElement.style.visibility = '';
+      } catch (e) {
+        window.location.replace('/login');
+      }
+    }
+
+    fetch('/api/health')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var el  = document.getElementById('statusText');
+        var dot = document.querySelector('.status-dot');
+        var both = d.maintenance_db === 'Connected' && d.templog_db === 'Connected' && d.procurement_db === 'Connected';
+        if (both) {
+          el.textContent = 'All systems online  all databases connected';
+        } else {
+          el.textContent = 'Partial connection  check server logs';
+          dot.style.background = '#f39c12';
+        }
+      })
+      .catch(function () {
+        document.getElementById('statusText').textContent = 'Server unreachable';
+        document.querySelector('.status-dot').style.background = '#e74c3c';
+      });
+
+    // Hide until auth confirmed
+    document.documentElement.style.visibility = 'hidden';
+    initHub();
+  </script>
 </body>
 </html>

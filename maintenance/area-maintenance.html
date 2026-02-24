@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Report Area Issue | Central Kitchen</title>
+    <link rel="stylesheet" href="/css/app.css">
     <style>
         :root {
             --accent:   #c0392b;
@@ -301,7 +303,7 @@
 
     </style>
 </head>
-<body>
+<body data-module="maintenance">
 
 <!-- Language toggle -->
 <div class="lang-bar">
@@ -309,11 +311,7 @@
     <button class="lang-btn"        id="btnZH" onclick="setLang('zh')">中文</button>
 </div>
 
-<header>
-    <img src="assets/Chilli-Api-Logo-170px.png" alt="Logo" class="logo">
-    <h1 id="hdrTitle">🏗️ Report Area Issue</h1>
-    <p id="hdrSub">Central Kitchen — Facility Issue Reporting</p>
-</header>
+
 
 <main>
     <div class="area-banner" id="areaBanner">
@@ -785,5 +783,6 @@ function resetForm() {
     document.getElementById('areaBanner').classList.remove('visible');
 }
 </script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

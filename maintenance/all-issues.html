@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>All Issues | Central Kitchen Maintenance</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="/css/app.css">
     <style>
         /* ── Category tab bar ───────────────────────────── */
         .cat-tabs {
@@ -336,24 +337,9 @@
         }
     </style>
 </head>
-<body>
+<body data-module="maintenance">
 
-<header>
-    <div class="header-content">
-        <a href="maintenance.html" style="display:inline-flex;text-decoration:none;">
-            <img src="assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo" class="site-logo">
-        </a>
-        <div class="header-text">
-            <h1>⚠️ All Issues</h1>
-            <p>Area &amp; facilities reports · Equipment issues &amp; needing action</p>
-        </div>
-    </div>
-    <div style="display:inline-flex;gap:10px;flex-wrap:wrap;align-items:center;">
-        <button onclick="window.location.href='area-maintenance.html'">➕ Report Area Issue</button>
-        <button onclick="window.location.href='report-issue.html'" style="background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;border:none;">⚠️ Report Equipment Issue</button>
-        <button onclick="window.location.href='areas.html'" style="background:linear-gradient(135deg,#1a252f,#2c3e50);">📍 Area QR Codes</button>
-    </div>
-</header>
+
 
 <main>
     <div id="loadingState">Loading…</div>
@@ -700,5 +686,6 @@
 
     loadAll();
 </script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

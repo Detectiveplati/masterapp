@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Issue Details | Central Kitchen Maintenance</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="/css/app.css">
     <style>
         /* ── Issue hero card ─────────────────────────────── */
         .issue-hero {
@@ -286,20 +287,9 @@
         }
     </style>
 </head>
-<body>
+<body data-module="maintenance">
 
-<header>
-    <div class="header-content">
-        <a href="maintenance.html" style="display:inline-flex;text-decoration:none;">
-            <img src="assets/Chilli-Api-Logo-170px.png" alt="Logo" class="site-logo">
-        </a>
-        <div class="header-text">
-            <h1>Issue Details</h1>
-            <p>View and manage a reported area issue</p>
-        </div>
-    </div>
-    <button onclick="window.location.href='all-issues.html#area'">← All Issues</button>
-</header>
+
 
 <main>
     <div id="loadingState">Loading issue…</div>
@@ -531,5 +521,6 @@
 
     loadIssue();
 </script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>

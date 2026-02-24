@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Central Kitchen Maintenance Dashboard</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="/css/app.css">
     <style>
         .test-button {
             background: linear-gradient(135deg, #7f8c8d, #95a5a6);
@@ -184,23 +185,8 @@
         }
     </style>
 </head>
-<body>
-    <header>
-        <div class="header-content">
-            <a href="/index.html" style="display: inline-flex; text-decoration: none;">
-                <img src="assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen Logo" class="site-logo">
-            </a>
-            <div class="header-text">
-                <h1>Central Kitchen Maintenance Dashboard</h1>
-                <p>Equipment tracking and maintenance management system</p>
-            </div>
-        </div>
-        <div style="display:inline-flex;gap:10px;align-items:center;">
-            
-            <a href="/templog/" class="test-button" style="background:linear-gradient(135deg,#3aa6ff,#0e7fd6);">🌡 Temp Log</a>
-            <a href="api-test.html" class="test-button">🧪 API Test Page</a>
-        </div>
-    </header>
+<body data-module="maintenance">
+
     <main>
         <section id="areaIssuesSection">
             <h2>📍 Area &amp; Facilities Issues <span id="areaIssueBadge" style="font-size:0.75rem;font-weight:700;background:linear-gradient(135deg,var(--accent),#e74c3c);color:#fff;border-radius:20px;padding:2px 10px;vertical-align:middle;margin-left:6px;">…</span></h2>
@@ -363,5 +349,6 @@
     <script src="js/app.js"></script>
     <script src="js/equipment.js"></script>
     <script src="js/records.js"></script>
+  <script src="/js/shell.js"></script>
 </body>
 </html>
