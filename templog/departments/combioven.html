@@ -508,24 +508,35 @@
       btDevice.addEventListener('gattserverdisconnected', onDisconnected);
     }
 
-    // ── Auto-reconnect on unexpected disconnect ──
+    // ── Auto-reconnect on unexpected disconnect — retries every 5 s until success ──
     let _reconnectTimeout = null;
+    let _reconnectAttempt  = 0;
+
     function onDisconnected() {
-      setBtStatus('⚠️ 已断开 — 自动重连中… Disconnected — auto-reconnecting…');
       setBtTemp(null);
       btRead.disabled = true;
       btSensor1 = null;
       btCommandChar = null;
+      _reconnectAttempt = 0;
       clearTimeout(_reconnectTimeout);
+      scheduleReconnect();
+    }
+
+    function scheduleReconnect() {
+      if (!btDevice) return;
+      _reconnectAttempt++;
+      setBtStatus(`⚠️ 已断开 — 5秒后第${_reconnectAttempt}次重连… Disconnected — reconnecting in 5s (attempt ${_reconnectAttempt})…`);
       _reconnectTimeout = setTimeout(async () => {
         if (!btDevice) return;
         try {
+          setBtStatus(`🔄 第${_reconnectAttempt}次重连中… Reconnecting (attempt ${_reconnectAttempt})…`);
           await gattConnect(btDevice);
+          _reconnectAttempt = 0; // success — reset counter
         } catch (err) {
-          setBtStatus(`❌ 重连失败 Reconnect failed — ${err.message}`);
-          btConnect.disabled = false;
+          // Device still unavailable — schedule another attempt
+          scheduleReconnect();
         }
-      }, 2000);
+      }, 5000);
     }
 
     // ── Auto-connect on page load using previously permitted device ──
@@ -581,28 +592,46 @@
 
       setBtTemp(temp);
       const name = btDevice ? btDevice.name || 'Thermapen' : 'Thermapen';
-      const wasButtonPress = _buttonPressed;
-      _buttonPressed = false;
 
-      // Update the targeted (single) cook card
-      const updatedId = (typeof setLatestCookTemp === 'function') ? setLatestCookTemp(temp.toFixed(1)) : null;
-      const label = document.getElementById('bt-target-label');
+      // Small hold: wait 120ms in case 0x0001 command notification is still in flight
+      setTimeout(() => {
+        const wasButtonPress = _buttonPressed;
+        _buttonPressed = false;
+        const label = document.getElementById('bt-target-label');
 
-      if (wasButtonPress && updatedId !== null && typeof window.saveCook === 'function') {
-        // Physical button press → lock in and save automatically
-        setBtStatus(`🔒 ${name} — ${temp.toFixed(1)} °C → 自动保存中… Auto-saving…`);
-        if (label) label.textContent = `🔒 已锁定 ${temp.toFixed(1)} °C — 保存中… Locking in & saving…`;
-        window.saveCook(updatedId);
-      } else {
-        // Manual read or auto-triggered — just display, chef presses SAVE manually
-        setBtStatus(`✓ ${name} — ${temp.toFixed(1)} °C`);
-        if (label) {
-          const cook = (typeof cooks !== 'undefined' && updatedId !== null) ? cooks.find(c => c.id === updatedId) : null;
-          label.textContent = cook
-            ? `✓ ${cook.food.split(' ').slice(0,3).join(' ')} — ${temp.toFixed(1)} °C (按保存 press SAVE)`
-            : `✓ ${temp.toFixed(1)} °C`;
+        if (wasButtonPress) {
+          // ── Physical button press: lock in temp on ALL finished cook cards and save each ──
+          const finished = (typeof cooks !== 'undefined') ? cooks.filter(c => c.endTime) : [];
+          if (finished.length === 0) {
+            setBtStatus(`⚠️ ${name} — ${temp.toFixed(1)} °C — 没有已停止的烹饪 No finished cooks to save`);
+            return;
+          }
+          const tempStr = temp.toFixed(1);
+          finished.forEach(cook => {
+            cook.temp = tempStr;
+            const el = document.getElementById(`temp-input-${cook.id}`);
+            if (el) el.innerHTML = `<span class="temp-value">${tempStr}</span><span class="temp-unit">°C</span>`;
+          });
+          setBtStatus(`🔒 ${name} — ${tempStr} °C → 正在保存 ${finished.length} 个… Saving ${finished.length} card(s)…`);
+          if (label) label.textContent = `🔒 已锁定 ${tempStr} °C — 保存 ${finished.length} 个 Locked & saving ${finished.length}`;
+          // Save each one sequentially (small stagger to avoid hammering the server)
+          finished.forEach((cook, i) => {
+            setTimeout(() => {
+              if (typeof window.saveCook === 'function') window.saveCook(cook.id);
+            }, i * 300);
+          });
+        } else {
+          // ── Manual Read button or auto-triggered: display on targeted card only ──
+          const updatedId = (typeof setLatestCookTemp === 'function') ? setLatestCookTemp(temp.toFixed(1)) : null;
+          setBtStatus(`✓ ${name} — ${temp.toFixed(1)} °C`);
+          if (label) {
+            const cook = (typeof cooks !== 'undefined' && updatedId !== null) ? cooks.find(c => c.id === updatedId) : null;
+            label.textContent = cook
+              ? `✓ ${cook.food.split(' ').slice(0,3).join(' ')} — ${temp.toFixed(1)} °C (按保存 press SAVE)`
+              : `✓ ${temp.toFixed(1)} °C`;
+          }
         }
-      }
+      }, 120);
     }
 
     // Read Temp button: write Measure command (0x0010) → response fires as Sensor 1 notification
