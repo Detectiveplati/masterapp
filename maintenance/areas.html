@@ -304,7 +304,7 @@ async function getPublicBase() {
 async function buildUrl(params) {
     const base = await getPublicBase();
     const qs   = new URLSearchParams(params).toString();
-    const url  = `${base}/area-maintenance.html?${qs}`;
+    const url  = `${base}/maintenance/area-maintenance.html?${qs}`;
     return base.includes('ngrok') ? `${url}&ngrok-skip-browser-warning=1` : url;
 }
 

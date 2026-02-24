@@ -62,7 +62,7 @@ async function generateAreaQRCode(areaId, areaName, baseUrl) {
     // If called with old 2-arg signature (areaId, baseUrl), shift args
     if (!baseUrl) { baseUrl = areaName; areaName = areaId; }
     try {
-        const url = `${baseUrl}/area-maintenance.html?area=${encodeURIComponent(areaName)}`;
+        const url = `${baseUrl}/maintenance/area-maintenance.html?area=${encodeURIComponent(areaName)}`;
         const qrCodeDataUrl = await QRCode.toDataURL(url, {
             errorCorrectionLevel: 'M',
             type: 'image/png',

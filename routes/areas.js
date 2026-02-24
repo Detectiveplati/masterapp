@@ -96,7 +96,7 @@ router.get('/:id/download-qr', async (req, res) => {
         }
         
         const baseUrl = process.env.QR_BASE_URL || `${req.protocol}://${req.get('host')}`;
-        const url = `${baseUrl}/area-maintenance.html?area=${encodeURIComponent(area.areaId)}`;
+        const url = `${baseUrl}/maintenance/area-maintenance.html?area=${encodeURIComponent(area.areaId)}`;
         const buffer = await generateQRCodeBuffer(url);
         
         res.set({
