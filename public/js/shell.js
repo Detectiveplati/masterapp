@@ -134,7 +134,7 @@
     }
   });
 
-  sideItems += '<div class="sidenav-footer">Central Kitchen &copy; 2026</div>';
+  sideItems += '<div class="sidenav-footer">Central Kitchen Master App by Zack &copy; 2026</div>';
 
   var sidenavHTML  = '<aside id="sidenav">'       + sideItems + '</aside>';
   var overlayHTML  = '<div id="sidenav-overlay"></div>';
@@ -142,8 +142,7 @@
   /* ── Footer ──────────────────────────────────────────────────── */
   var footerHTML =
     '<footer>' +
-      '&copy; ' + new Date().getFullYear() + ' Central Kitchen &mdash; Chilli API. ' +
-      'All Rights Reserved.' +
+      '&copy; ' + new Date().getFullYear() + ' Central Kitchen Master App by Zack. All Rights Reserved.' +
     '</footer>';
 
   /* ── Inject nav before existing body content ─────────────────── */
