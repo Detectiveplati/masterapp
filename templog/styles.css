@@ -226,6 +226,7 @@ button {
 .temp-display {
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 3px;
   background: #fff8f8;
   border: 2px solid #d32f2f;
@@ -234,9 +235,34 @@ button {
   min-width: 110px;
   justify-content: center;
 }
+/* Has temp but not yet locked — amber pulsing border */
+.temp-display.temp-unlocked {
+  background: #fffbf0;
+  border-color: #e65100;
+  animation: pulse-border 1.2s ease-in-out infinite;
+}
+.temp-display.temp-unlocked .temp-value,
+.temp-display.temp-unlocked .temp-unit {
+  color: #e65100;
+}
+@keyframes pulse-border {
+  0%, 100% { border-color: #e65100; box-shadow: 0 0 0 0 rgba(230,81,0,0.3); }
+  50%       { border-color: #ff6d00; box-shadow: 0 0 0 5px rgba(230,81,0,0); }
+}
+.temp-lock-hint {
+  width: 100%;
+  text-align: center;
+  font-size: 0.65rem;
+  color: #e65100;
+  font-style: italic;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+/* Locked — green confirmed state */
 .temp-display.temp-locked {
   background: #f0fff4;
   border-color: #2e7d32;
+  animation: none;
   cursor: not-allowed;
 }
 .temp-display.temp-locked .temp-value,
