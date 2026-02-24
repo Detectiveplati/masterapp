@@ -144,7 +144,6 @@ app.get('/', requirePageAccess(null), (req, res) => res.sendFile(path.join(__dir
 
 // Maintenance Dashboard — requires 'maintenance' permission
 app.use('/maintenance', requirePageAccess('maintenance'), express.static(path.join(__dirname, 'maintenance'), noCacheHtml));
-app.use(requirePageAccess('maintenance'), express.static(path.join(__dirname, 'maintenance'), noCacheHtml)); // legacy root-relative asset paths
 
 // TempLog — requires 'templog' permission
 app.use('/templog', requirePageAccess('templog'), express.static(path.join(__dirname, 'templog'), noCacheHtml));
