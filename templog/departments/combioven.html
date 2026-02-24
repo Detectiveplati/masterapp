@@ -614,8 +614,9 @@
           });
           setBtStatus(`🔒 ${name} — ${tempStr} °C → 正在保存 ${finished.length} 个… Saving ${finished.length} card(s)…`);
           if (label) label.textContent = `🔒 已锁定 ${tempStr} °C — 保存 ${finished.length} 个 Locked & saving ${finished.length}`;
-          // Save each one sequentially (small stagger to avoid hammering the server)
+          // Lock each card immediately, then save with small stagger
           finished.forEach((cook, i) => {
+            if (typeof window.lockCookTemp === 'function') window.lockCookTemp(cook.id);
             setTimeout(() => {
               if (typeof window.saveCook === 'function') window.saveCook(cook.id);
             }, i * 300);

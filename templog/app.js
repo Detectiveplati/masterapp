@@ -119,8 +119,12 @@ function renderActiveCooks() {
       ${cook.startTime && !cook.endTime ? `<button class="end-btn" onclick="endCook(${cook.id})">停止烹饪 END COOKING</button>` : ''}
       ${cook.endTime ? `
         <div class="info-row">
-          <div class="temp-display" id="temp-input-${cook.id}" title="由蓝牙温度计自动填写 Auto-filled by Bluetooth thermometer">
-            ${cook.temp ? `<span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span>` : '<span class="temp-waiting">🌡️ 等待温度计 Waiting for thermometer</span>'}
+          <div class="temp-display${cook.tempLocked ? ' temp-locked' : ''}" id="temp-input-${cook.id}" title="${cook.tempLocked ? '已锁定 Locked by thermometer button' : '由蓝牙温度计自动填写 Auto-filled by Bluetooth thermometer'}">
+            ${cook.temp
+              ? (cook.tempLocked
+                  ? `<span class="temp-lock-icon">🔒</span><span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span>`
+                  : `<span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span>`)
+              : '<span class="temp-waiting">🌡️ 等待温度计 Waiting for thermometer</span>'}
           </div>
           <input type="number" min="1" step="1" inputmode="numeric" placeholder="盘数 Trays" value="${cook.trays}" oninput="sanitizeNumberInput(this, false)" onchange="updateTrays(${cook.id}, this.value)">
           <button class="save-btn" onclick="saveCook(${cook.id})">保存 SAVE</button>
@@ -178,6 +182,8 @@ function resumeCook(id) {
   cook.endTime = null;
   cook.duration = null;
   cook.timerRunning = true;
+  cook.temp = null;
+  cook.tempLocked = false;
   
   renderActiveCooks();
   startGlobalTimer();
@@ -244,17 +250,17 @@ function setBtTarget(id) {
 }
 
 // Fill temperature into the targeted cook card only (btTargetCookId, or most recently ended)
+// Skips any card that has been locked by the physical button press.
 function setLatestCookTemp(value) {
   if (!value) return null;
   const tempValue = String(value).trim();
-  // Find target: explicit btTargetCookId, otherwise the most recently ended cook
+  // Find target: explicit btTargetCookId (if not locked), otherwise most recently ended unlocked cook
   let cook = null;
   if (window.btTargetCookId !== null) {
-    cook = cooks.find(c => c.id === window.btTargetCookId && c.endTime);
+    cook = cooks.find(c => c.id === window.btTargetCookId && c.endTime && !c.tempLocked);
   }
   if (!cook) {
-    // Fallback: most recently ended
-    const finished = cooks.filter(c => c.endTime).sort((a, b) => b.endTime - a.endTime);
+    const finished = cooks.filter(c => c.endTime && !c.tempLocked).sort((a, b) => b.endTime - a.endTime);
     cook = finished[0] || null;
   }
   if (!cook) return null;
@@ -263,6 +269,20 @@ function setLatestCookTemp(value) {
   if (el) el.innerHTML = `<span class="temp-value">${tempValue}</span><span class="temp-unit">°C</span>`;
   return cook.id;
 }
+
+// Lock a cook's temperature so BT reads can no longer overwrite it
+function lockCookTemp(id) {
+  const cook = cooks.find(c => c.id === id);
+  if (!cook) return;
+  cook.tempLocked = true;
+  const el = document.getElementById(`temp-input-${cook.id}`);
+  if (el && cook.temp) {
+    el.classList.add('temp-locked');
+    el.title = '已锁定 Locked by thermometer button';
+    el.innerHTML = `<span class="temp-lock-icon">🔒</span><span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span>`;
+  }
+}
+window.lockCookTemp = lockCookTemp;
 
 function updateTrays(id, value) {
   const cook = cooks.find(c => c.id === id);

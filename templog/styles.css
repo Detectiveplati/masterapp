@@ -234,6 +234,20 @@ button {
   min-width: 110px;
   justify-content: center;
 }
+.temp-display.temp-locked {
+  background: #f0fff4;
+  border-color: #2e7d32;
+  cursor: not-allowed;
+}
+.temp-display.temp-locked .temp-value,
+.temp-display.temp-locked .temp-unit {
+  color: #2e7d32;
+}
+.temp-lock-icon {
+  font-size: 1rem;
+  margin-right: 4px;
+  line-height: 1;
+}
 .temp-value {
   font-size: 2rem;
   font-weight: 800;
