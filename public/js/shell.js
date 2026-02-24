@@ -12,6 +12,22 @@
 (function () {
   'use strict';
 
+  // Inject apple-touch-icon and favicon for iOS home screen / browser tab
+  (function injectIcons() {
+    var head = document.head;
+    var iconUrl = '/icons/app-icon.png';
+    if (!document.querySelector('link[rel="apple-touch-icon"]')) {
+      var ati = document.createElement('link');
+      ati.rel = 'apple-touch-icon'; ati.href = iconUrl;
+      head.appendChild(ati);
+    }
+    if (!document.querySelector('link[rel="icon"]')) {
+      var fav = document.createElement('link');
+      fav.rel = 'icon'; fav.type = 'image/png'; fav.href = iconUrl;
+      head.appendChild(fav);
+    }
+  }());
+
   /* ── Module metadata ─────────────────────────────────────────── */
   var MODULE_INFO = {
     maintenance: { label: '🔧 Maintenance' },

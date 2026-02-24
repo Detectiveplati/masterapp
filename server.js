@@ -122,8 +122,9 @@ app.get('/auth-guard.js', (req, res) => {
   }
   res.sendFile(path.join(__dirname, 'auth-guard.js'));
 });
-app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
-app.use('/js',  express.static(path.join(__dirname, 'public', 'js')));
+app.use('/css',   express.static(path.join(__dirname, 'public', 'css')));
+app.use('/js',    express.static(path.join(__dirname, 'public', 'js')));
+app.use('/icons', express.static(path.join(__dirname, 'public', 'icons')));
 
 // Service worker — must be served from root with correct scope headers
 app.get('/sw.js', (req, res) => {
