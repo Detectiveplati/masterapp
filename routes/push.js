@@ -1,7 +1,23 @@
 const express   = require('express');
 const router    = express.Router();
 const webpush   = require('web-push');
+const jwt       = require('jsonwebtoken');
 const PushSubscription = require('../models/PushSubscription');
+const User             = require('../models/User');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const COOKIE_NAME = 'ck_auth';
+
+function getUserIdFromReq(req) {
+  try {
+    const token = req.cookies && req.cookies[COOKIE_NAME];
+    if (!token) return null;
+    const decoded = jwt.verify(token, JWT_SECRET);
+    return decoded.id || null;
+  } catch (_) {
+    return null;
+  }
+}
 
 // Configure VAPID lazily — only when keys are present in env.
 // This prevents a crash on startup if Railway vars aren't set yet.
@@ -45,11 +61,13 @@ router.post('/subscribe', vapidReady, async (req, res) => {
     if (!endpoint || !keys || !keys.p256dh || !keys.auth) {
       return res.status(400).json({ error: 'Invalid subscription object' });
     }
+    const userId = getUserIdFromReq(req);
     await PushSubscription.findOneAndUpdate(
       { endpoint },
       {
         endpoint,
         keys,
+        userId: userId || null,
         userAgent: req.headers['user-agent'] || '',
         createdAt: new Date()
       },
@@ -109,6 +127,44 @@ async function sendPushToAll({ title, message, url = '/' }) {
   return { sent, failed };
 }
 
+// ─── sendPushToPermission ───────────────────────────────────────────────────
+// Send a push only to users who have a specific module permission (or are admin)
+async function sendPushToPermission(permission, { title, message, url = '/' }) {
+  configureVapid();
+  const payload = JSON.stringify({ title, message, url });
+
+  // Find all users with the permission enabled (or admin role)
+  const users = await User.find({
+    active: true,
+    $or: [
+      { role: 'admin' },
+      { [`permissions.${permission}`]: true }
+    ]
+  }, '_id');
+
+  const userIds = users.map(u => u._id);
+  const subs = await PushSubscription.find({ userId: { $in: userIds } });
+  let sent = 0, failed = 0;
+
+  await Promise.all(subs.map(async (sub) => {
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: sub.keys },
+        payload,
+        { TTL: 3600 }
+      );
+      sent++;
+    } catch (err) {
+      failed++;
+      if (err.statusCode === 404 || err.statusCode === 410) {
+        await PushSubscription.deleteOne({ _id: sub._id });
+      }
+    }
+  }));
+
+  return { sent, failed };
+}
+
 // ─── GET /api/push/subscriptions ────────────────────────────────────────────
 // List all subscriptions (for the test UI)
 router.get('/subscriptions', async (req, res) => {
@@ -122,3 +178,4 @@ router.get('/subscriptions', async (req, res) => {
 
 module.exports = router;
 module.exports.sendPushToAll = sendPushToAll;
+module.exports.sendPushToPermission = sendPushToPermission;

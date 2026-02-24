@@ -3,6 +3,7 @@ const router = express.Router();
 const AreaIssue = require('../models/AreaIssue');
 const { createIssueReportedNotification } = require('../services/notification-service');
 const { memUpload, uploadBufferToCloudinary } = require('../services/cloudinary-upload');
+const { sendPushToPermission } = require('./push');
 
 // Get all issues with optional filters
 router.get('/', async (req, res) => {
@@ -107,6 +108,14 @@ router.post('/', (req, res, next) => {
 
         const newIssue = await issue.save();
         await createIssueReportedNotification(newIssue);
+
+        // Send web push only to users with maintenance access
+        sendPushToPermission('maintenance', {
+            title: `New Issue: ${newIssue.priority} Priority`,
+            message: `[${newIssue.area}] ${newIssue.title}`,
+            url: `/maintenance/issue-details.html?id=${newIssue._id}`
+        }).catch(err => console.error('[Push] Failed to send issue push:', err.message));
+
         res.status(201).json(newIssue);
     } catch (error) {
         res.status(400).json({ message: error.message });
