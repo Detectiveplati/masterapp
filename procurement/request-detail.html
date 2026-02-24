@@ -189,13 +189,12 @@
   };
   async function loadRequest() {
     try {
-      const r = await fetch(`/api/requests/${id}`).then(res => {
+      const r = await fetch(`/api/requests/${id}`, { credentials: 'include' }).then(res => {
         if (!res.ok) throw new Error('Not found');
         return res.json();
       });
 
       document.title = `${r.itemNameEn} · Procurement`;
-      document.getElementById('pageTitle').textContent = r.itemNameEn;
 
       document.getElementById('dItemEn').textContent = r.itemNameEn;
       if (r.itemNameZh) document.getElementById('dItemZh').textContent = r.itemNameZh;
@@ -253,6 +252,7 @@
     try {
       const updated = await fetch(`/api/requests/${id}`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       }).then(r => r.json());
@@ -273,6 +273,7 @@
     try {
       await fetch(`/api/requests/${id}`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ purchaserNotes })
       });
