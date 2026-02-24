@@ -90,6 +90,7 @@
       '<span class="topnav-brand">Central Kitchen</span>' +
       modPill +
       '<span class="topnav-spacer"></span>' +
+      '<button id="nav-notif" class="notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>' +
       '<span class="topnav-user" id="nav-user">…</span>' +
       '<button id="nav-logout" title="Sign out">Sign Out</button>' +
     '</nav>';
@@ -146,8 +147,9 @@
     '</footer>';
 
   /* ── Inject nav before existing body content ─────────────────── */
+  var notifPanelHTML = '<div id="notif-panel"></div>';
   var tmp = document.createElement('div');
-  tmp.innerHTML = topnavHTML + sidenavHTML + overlayHTML;
+  tmp.innerHTML = topnavHTML + sidenavHTML + overlayHTML + notifPanelHTML;
   while (tmp.firstChild) {
     body.insertBefore(tmp.firstChild, body.firstChild);
   }
@@ -231,5 +233,95 @@
       })
       .catch(function () {});
   }
+
+  /* ── Notifications ───────────────────────────────────────────── */
+  function initNotifications() {
+    var btn   = document.getElementById('nav-notif');
+    var panel = document.getElementById('notif-panel');
+    if (!btn || !panel) return;
+
+    function updateBadge(count) {
+      var badge = document.getElementById('notif-badge');
+      if (!badge) return;
+      badge.textContent = count > 99 ? '99+' : count;
+      badge.style.display = count > 0 ? '' : 'none';
+    }
+
+    function fetchUnreadCount() {
+      fetch('/api/notifications/unread-count', { credentials: 'include' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { if (d) updateBadge(d.count); })
+        .catch(function () {});
+    }
+
+    function renderItems(items) {
+      var html =
+        '<div class="notif-header">' +
+          '<span>🔔 Notifications</span>' +
+          '<button id="notif-mark-all" class="notif-mark-all">Mark all read</button>' +
+        '</div>';
+      if (!items.length) {
+        html += '<div class="notif-empty">No notifications yet.</div>';
+      } else {
+        items.forEach(function (n) {
+          var cls  = 'notif-item' + (n.read ? ' read' : ' unread');
+          var time = new Date(n.createdAt).toLocaleString();
+          html +=
+            '<div class="' + cls + '" data-id="' + n._id + '">' +
+              '<div class="notif-title">' + n.title   + '</div>' +
+              '<div class="notif-msg">'   + n.message + '</div>' +
+              '<div class="notif-time">'  + time      + '</div>' +
+            '</div>';
+        });
+      }
+      panel.innerHTML = html;
+
+      panel.querySelectorAll('.notif-item.unread').forEach(function (item) {
+        item.addEventListener('click', function () {
+          fetch('/api/notifications/mark-read/' + item.dataset.id, { method: 'POST', credentials: 'include' })
+            .then(function () {
+              item.classList.remove('unread');
+              item.classList.add('read');
+              fetchUnreadCount();
+            }).catch(function () {});
+        });
+      });
+
+      var markAll = document.getElementById('notif-mark-all');
+      if (markAll) {
+        markAll.addEventListener('click', function (e) {
+          e.stopPropagation();
+          fetch('/api/notifications/mark-all-read', { method: 'POST', credentials: 'include' })
+            .then(function () { loadPanel(); fetchUnreadCount(); })
+            .catch(function () {});
+        });
+      }
+    }
+
+    function loadPanel() {
+      panel.innerHTML = '<div class="notif-empty">Loading…</div>';
+      fetch('/api/notifications', { credentials: 'include' })
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(renderItems)
+        .catch(function () { panel.innerHTML = '<div class="notif-empty">Could not load notifications.</div>'; });
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = panel.classList.toggle('open');
+      if (open) loadPanel();
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!panel.contains(e.target) && e.target !== btn) {
+        panel.classList.remove('open');
+      }
+    });
+
+    fetchUnreadCount();
+    setInterval(fetchUnreadCount, 60000);
+  }
+
+  initNotifications();
 
 }());
