@@ -6,6 +6,9 @@ let globalTimerId = null;
 let currentStaff = null;  // 'Alice', 'Bob', 'Charlie' or null
 let wakeLock = null;
 
+// BT thermometer target: which cook card receives the next reading
+window.btTargetCookId = null;
+
 // ============================================================
 // SCREEN WAKE LOCK - Keep screen on
 // ============================================================
@@ -116,11 +119,14 @@ function renderActiveCooks() {
       ${cook.startTime && !cook.endTime ? `<button class="end-btn" onclick="endCook(${cook.id})">停止烹饪 END COOKING</button>` : ''}
       ${cook.endTime ? `
         <div class="info-row">
-          <input type="number" step="0.1" min="0" max="150" inputmode="decimal" placeholder="核心温度 °C" value="${cook.temp}" oninput="sanitizeNumberInput(this, true)" onchange="updateTemp(${cook.id}, this.value)">
+          <input type="number" step="0.1" min="0" max="150" inputmode="decimal" placeholder="核心温度 °C" value="${cook.temp}" oninput="sanitizeNumberInput(this, true)" onchange="updateTemp(${cook.id}, this.value)" id="temp-input-${cook.id}">
           <input type="number" min="1" step="1" inputmode="numeric" placeholder="盘子" value="${cook.trays}" oninput="sanitizeNumberInput(this, false)" onchange="updateTrays(${cook.id}, this.value)">
           <button class="save-btn" onclick="saveCook(${cook.id})">保存 SAVE</button>
           <button class="start-btn" onclick="resumeCook(${cook.id})">继续烹饪 RESUME</button>
         </div>
+        <button class="bt-target-btn${window.btTargetCookId === cook.id ? ' active' : ''}" onclick="setBtTarget(${cook.id})" title="Send Bluetooth temperature to this card">
+          🌡️ ${window.btTargetCookId === cook.id ? '✓ BT Target' : 'Set BT Target'}
+        </button>
       ` : ''}
       ${!cook.startTime || cook.endTime ? `<button class="back-btn" onclick="confirmCancelCook(${cook.id})">取消/删除 Cancel / Remove</button>` : ''}
     `;
@@ -224,14 +230,36 @@ function updateTemp(id, value) {
   if (cook) cook.temp = value.trim();
 }
 
-// Set temperature for the most recently finished cook card
+// Set BT target cook card
+function setBtTarget(id) {
+  window.btTargetCookId = (window.btTargetCookId === id) ? null : id;
+  renderActiveCooks();
+  // Notify the BT panel if it exists
+  const label = document.getElementById('bt-target-label');
+  if (label) {
+    if (window.btTargetCookId !== null) {
+      const cook = cooks.find(c => c.id === window.btTargetCookId);
+      label.textContent = cook ? `🎯 ${cook.food.split(' ').slice(0,4).join(' ')}…` : '🎯 Cook targeted';
+    } else {
+      label.textContent = 'No cook targeted';
+    }
+  }
+}
+
+// Set temperature for the targeted (or last-finished) cook card
 function setLatestCookTemp(value) {
   if (!value) return false;
   const tempValue = String(value).trim();
-  const lastFinished = [...cooks].reverse().find(c => c.endTime);
-  if (!lastFinished) return false;
-  lastFinished.temp = tempValue;
-  renderActiveCooks();
+  // Use explicitly targeted card first
+  let target = window.btTargetCookId !== null ? cooks.find(c => c.id === window.btTargetCookId && c.endTime) : null;
+  // Fall back to most recently finished
+  if (!target) target = [...cooks].reverse().find(c => c.endTime);
+  if (!target) return false;
+  target.temp = tempValue;
+  // Update the input directly without full re-render to avoid losing focus
+  const inp = document.getElementById(`temp-input-${target.id}`);
+  if (inp) inp.value = tempValue;
+  else renderActiveCooks();
   return true;
 }
 

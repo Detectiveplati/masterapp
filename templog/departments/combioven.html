@@ -31,8 +31,21 @@
     .bt-temp {
       font-weight: bold;
       color: #d32f2f;
-      font-size: 1.1rem;
+      font-size: 1.4rem;
+      min-width: 90px;
+      text-align: center;
     }
+    .bt-target-row {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #888;
+      padding-top: 4px;
+      border-top: 1px solid #f0f0f0;
+    }
+    .bt-target-row span { font-weight: 700; color: #d32f2f; }
   </style>
 </head>
 <body>
@@ -47,9 +60,12 @@
   <!-- Bluetooth Thermometer Panel -->
   <div class="bt-panel">
     <button id="bt-connect" class="export-btn">🌡️ Connect Thermometer</button>
-    <button id="bt-read" class="export-btn" disabled>📖 Read Temperature</button>
-    <span id="bt-status" class="bt-status">Not connected</span>
+    <button id="bt-read" class="export-btn" disabled>📖 Read Temp</button>
     <span id="bt-temp" class="bt-temp"></span>
+    <span id="bt-status" class="bt-status">Not connected</span>
+    <div class="bt-target-row">
+      🎯 Target: <span id="bt-target-label">No cook targeted — tap “Set BT Target” on a finished cook card</span>
+    </div>
   </div>
 
   <div id="staff-selector">
@@ -415,11 +431,11 @@
     // ============================================================
     // BLUETOOTH THERMOMETER INTEGRATION
     // ============================================================
-    // ETI Thermometer UUIDs — UPDATE THESE based on your ETI thermometer documentation
-    // These are standard Health Thermometer Service UUIDs (GATT)
-    // If ETI uses custom UUIDs, replace them here
-    const BT_SERVICE_UUID = '00001809-0000-1000-8000-00805f9b34fb';  // Health Thermometer Service
-    const BT_CHARACTERISTIC_UUID = '00002a1c-0000-1000-8000-00805f9b34fb';  // Temperature Measurement
+    // ETI Thermapen One Blue — standard GATT Health Thermometer profile
+    // Using acceptAllDevices so the browser scan dialog shows all BLE devices nearby
+    // (Thermapen One Blue may not advertise its service UUID in scan packets)
+    const BT_SERVICE_UUID        = '00001809-0000-1000-8000-00805f9b34fb'; // Health Thermometer
+    const BT_CHARACTERISTIC_UUID = '00002a1c-0000-1000-8000-00805f9b34fb'; // Temperature Measurement
 
     const btStatus = document.getElementById('bt-status');
     const btConnect = document.getElementById('bt-connect');
@@ -479,32 +495,46 @@
     // Connect to Bluetooth thermometer
     async function connectThermometer() {
       try {
-        setBtStatus('Requesting device...');
+        setBtStatus('Scanning for devices…');
         setBtTemp(null);
-        
-        // Request Bluetooth device
+
+        // acceptAllDevices shows ALL nearby BLE devices in the browser picker
+        // Required for ETI Thermapen One Blue which may not advertise its service UUID
         btDevice = await navigator.bluetooth.requestDevice({
-          filters: [{ services: [BT_SERVICE_UUID] }],
+          acceptAllDevices: true,
           optionalServices: [BT_SERVICE_UUID]
         });
 
-        setBtStatus('Connecting...');
+        setBtStatus('Connecting…');
         const server = await btDevice.gatt.connect();
-        
-        setBtStatus('Getting service...');
-        const service = await server.getPrimaryService(BT_SERVICE_UUID);
-        
-        setBtStatus('Getting characteristic...');
+
+        setBtStatus('Getting service…');
+        let service;
+        try {
+          service = await server.getPrimaryService(BT_SERVICE_UUID);
+        } catch (e) {
+          setBtStatus('❌ Service not found. Try “Read Temp” or check device docs.');
+          btRead.disabled = false;
+          return;
+        }
+
+        setBtStatus('Getting characteristic…');
         btCharacteristic = await service.getCharacteristic(BT_CHARACTERISTIC_UUID);
 
-        setBtStatus(`✓ Connected to ${btDevice.name || 'ETI Thermometer'}`);
+        setBtStatus(`✓ Connected to ${btDevice.name || 'Thermometer'}`);
         btRead.disabled = false;
 
         // Enable auto-notifications if supported
         if (btCharacteristic.properties.notify) {
           await btCharacteristic.startNotifications();
           btCharacteristic.addEventListener('characteristicvaluechanged', handleTemperatureUpdate);
-          setBtStatus(`✓ Connected (auto-update enabled)`);
+          setBtStatus(`✓ ${btDevice.name || 'Thermometer'} — auto-reading enabled`);
+        } else if (btCharacteristic.properties.indicate) {
+          await btCharacteristic.startNotifications();
+          btCharacteristic.addEventListener('characteristicvaluechanged', handleTemperatureUpdate);
+          setBtStatus(`✓ ${btDevice.name || 'Thermometer'} — indicate mode`);
+        } else {
+          setBtStatus(`✓ ${btDevice.name || 'Thermometer'} — press Read Temp`);
         }
 
         // Handle disconnection
@@ -518,11 +548,11 @@
       } catch (err) {
         console.error('Bluetooth connection error:', err);
         if (err.name === 'NotFoundError') {
-          setBtStatus('❌ No thermometer found. Check it\'s powered on.');
+          setBtStatus('❌ No device selected.');
         } else if (err.name === 'SecurityError') {
-          setBtStatus('❌ Bluetooth not allowed. Use HTTPS or localhost.');
+          setBtStatus('❌ Bluetooth blocked — needs HTTPS or localhost.');
         } else {
-          setBtStatus(`❌ Connection failed: ${err.message}`);
+          setBtStatus(`❌ ${err.message}`);
         }
         btRead.disabled = true;
       }
