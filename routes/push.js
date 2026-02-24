@@ -143,7 +143,13 @@ async function sendPushToPermission(permission, { title, message, url = '/' }) {
   }, '_id');
 
   const userIds = users.map(u => u._id);
-  const subs = await PushSubscription.find({ userId: { $in: userIds } });
+  // Also include subscriptions with no userId (saved before userId tracking was added)
+  const subs = await PushSubscription.find({
+    $or: [
+      { userId: { $in: userIds } },
+      { userId: null }
+    ]
+  });
   let sent = 0, failed = 0;
 
   await Promise.all(subs.map(async (sub) => {
