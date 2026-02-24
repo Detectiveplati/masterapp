@@ -55,6 +55,7 @@ body {
     radial-gradient(900px 500px at 90% 0%,   #d6f0ff 0%, transparent 55%),
     var(--bg);
   background-attachment: fixed;
+  background-color: var(--bg);
   color: var(--ink);
   min-height: 100vh;
   padding-top: var(--topnav-h); /* room for fixed topnav */

@@ -267,19 +267,21 @@
             position: fixed;
             bottom: 24px;
             left: 50%;
-            transform: translateX(-50%) translateY(80px);
+            transform: translateX(-50%);
             background: #1a1a2e;
             color: white;
             padding: 12px 24px;
             border-radius: 10px;
             font-size: 0.9rem;
             font-weight: 600;
-            transition: transform 0.3s ease;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
             z-index: 999;
             pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
         }
 
-        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.show { opacity: 1; visibility: visible; }
 
         @media (max-width: 600px) {
             .detail-grid { grid-template-columns: 1fr 1fr; }
@@ -363,7 +365,7 @@
     </div>
 </main>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" style="opacity:0;visibility:hidden;"></div>
 
 <script src="js/api.js"></script>
 <script src="js/area-issues.js"></script>
