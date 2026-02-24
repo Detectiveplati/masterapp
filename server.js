@@ -110,7 +110,18 @@ app.use(express.urlencoded({ extended: true }));
 
 // ─── Static file serving ────────────────────────────────────────────────────
 // ─── Public shared assets (no auth required) ──────────────────────────────
-app.get('/auth-guard.js', (req, res) => res.sendFile(path.join(__dirname, 'auth-guard.js')));
+app.get('/auth-guard.js', (req, res) => {
+  if (process.env.BYPASS_AUTH === 'true') {
+    // Serve a no-op guard that immediately reveals the page and sets a fake admin user
+    res.setHeader('Content-Type', 'application/javascript');
+    return res.send(
+      'document.documentElement.style.visibility="";\n' +
+      'window._authUser={id:"bypass",username:"bypass",displayName:"Test Admin",' +
+      'role:"admin",permissions:{maintenance:true,foodsafety:true,templog:true,procurement:true}};'
+    );
+  }
+  res.sendFile(path.join(__dirname, 'auth-guard.js'));
+});
 app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 app.use('/js',  express.static(path.join(__dirname, 'public', 'js')));
 
