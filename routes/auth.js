@@ -48,12 +48,28 @@ router.post('/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-// GET /api/auth/me  — returns current user from token
+// GET /api/auth/me  — returns current user (always fresh from DB)
 router.get('/me', (req, res, next) => {
   if (BYPASS_AUTH) return res.json({ ok: true, user: BYPASS_USER });
   return requireAuth(req, res, next);
-}, (req, res) => {
-  res.json({ ok: true, user: req.user });
+}, async (req, res) => {
+  try {
+    const dbUser = await User.findById(req.user.id, '-passwordHash');
+    if (!dbUser || !dbUser.active)
+      return res.status(401).json({ error: 'User not found or inactive' });
+    res.json({
+      ok: true,
+      user: {
+        id:          dbUser._id,
+        username:    dbUser.username,
+        displayName: dbUser.displayName,
+        role:        dbUser.role,
+        permissions: dbUser.permissions
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

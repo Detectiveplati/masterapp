@@ -109,12 +109,15 @@ function requirePermission(module) {
  * Redirects unauthenticated users to /login.
  * Redirects users lacking module permission to /.
  *
+ * Always re-reads permissions from the database so changes made in the admin
+ * panel take effect immediately without requiring the user to re-login.
+ *
  * module = null        → any authenticated user (hub)
  * module = '__admin__' → admin role required
  * module = 'xxx'       → user.permissions.xxx must be true (or admin)
  */
 function requirePageAccess(module) {
-  return function (req, res, next) {
+  return async function (req, res, next) {
     if (BYPASS_AUTH) return next();
 
     // Only protect HTML page requests; pass assets straight through
@@ -127,12 +130,28 @@ function requirePageAccess(module) {
       return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
     }
 
-    var user;
+    var decoded;
     try {
-      user = jwt.verify(token, JWT_SECRET);
+      decoded = jwt.verify(token, JWT_SECRET);
     } catch (_e) {
       return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
     }
+
+    // Re-read user from DB so permission changes are effective immediately
+    var user;
+    try {
+      const User = require('../models/User');
+      const dbUser = await User.findById(decoded.id);
+      if (!dbUser || !dbUser.active) {
+        return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
+      }
+      user = dbUser;
+    } catch (_e) {
+      // DB unavailable — fall back to JWT claims
+      user = decoded;
+    }
+
+    req.user = user;
 
     // Admins bypass everything
     if (user.role === 'admin') return next();
