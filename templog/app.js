@@ -135,10 +135,9 @@ function renderActiveCooks() {
 
 function formatElapsed(cook) {
   if (!cook.startTime) return '未开始 Not started';
-  if (cook.endTime) return `${cook.duration} 分钟 min`;
-  const sec = Math.floor((Date.now() - cook.startTime) / 1000);
-  const m = String(Math.floor(sec / 60)).padStart(2,'0');
-  const s = String(sec % 60).padStart(2,'0');
+  const totalSec = cook.endTime ? cook.duration : Math.floor((Date.now() - cook.startTime) / 1000);
+  const m = String(Math.floor(totalSec / 60)).padStart(2,'0');
+  const s = String(totalSec % 60).padStart(2,'0');
   return `${m}:${s}`;
 }
 
@@ -157,8 +156,7 @@ function endCook(id) {
   if (!cook || !cook.startTime || cook.endTime) return;
   const now = Date.now();
   cook.endTime = now;
-  const sec = (now - cook.startTime) / 1000;
-  cook.duration = (sec / 60).toFixed(1);
+  cook.duration = Math.floor((now - cook.startTime) / 1000);
   cook.timerRunning = false;
   // Auto-target this card for BT reading and trigger a measurement
   window.btTargetCookId = id;
@@ -216,8 +214,7 @@ function endAllCooks() {
   const now = Date.now();
   running.forEach(cook => {
     cook.endTime = now;
-    const sec = (now - cook.startTime) / 1000;
-    cook.duration = (sec / 60).toFixed(1);
+    cook.duration = Math.floor((now - cook.startTime) / 1000);
     cook.timerRunning = false;
   });
   
@@ -246,18 +243,25 @@ function setBtTarget(id) {
   }
 }
 
-// Fill temperature into ALL finished cook cards (all cooks in same oven share the reading)
+// Fill temperature into the targeted cook card only (btTargetCookId, or most recently ended)
 function setLatestCookTemp(value) {
-  if (!value) return false;
+  if (!value) return null;
   const tempValue = String(value).trim();
-  const finishedCooks = cooks.filter(c => c.endTime);
-  if (!finishedCooks.length) return false;
-  finishedCooks.forEach(cook => {
-    cook.temp = tempValue;
-    const el = document.getElementById(`temp-input-${cook.id}`);
-    if (el) el.innerHTML = `<span class="temp-value">${tempValue}</span><span class="temp-unit">°C</span>`;
-  });
-  return true;
+  // Find target: explicit btTargetCookId, otherwise the most recently ended cook
+  let cook = null;
+  if (window.btTargetCookId !== null) {
+    cook = cooks.find(c => c.id === window.btTargetCookId && c.endTime);
+  }
+  if (!cook) {
+    // Fallback: most recently ended
+    const finished = cooks.filter(c => c.endTime).sort((a, b) => b.endTime - a.endTime);
+    cook = finished[0] || null;
+  }
+  if (!cook) return null;
+  cook.temp = tempValue;
+  const el = document.getElementById(`temp-input-${cook.id}`);
+  if (el) el.innerHTML = `<span class="temp-value">${tempValue}</span><span class="temp-unit">°C</span>`;
+  return cook.id;
 }
 
 function updateTrays(id, value) {
@@ -280,6 +284,9 @@ function sanitizeNumberInput(inputEl, allowDecimal) {
     inputEl.value = value;
   }
 }
+
+// Expose saveCook so combioven.html BT handler can call it directly
+window.saveCook = function(id) { return saveCook(id); };
 
 async function saveCook(id) {
   const cook = cooks.find(c => c.id === id);

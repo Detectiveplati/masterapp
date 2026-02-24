@@ -448,9 +448,10 @@
     const btRead    = document.getElementById('bt-read');
     const btTemp    = document.getElementById('bt-temp');
 
-    let btDevice      = null;
-    let btSensor1     = null;
-    let btCommandChar = null;
+    let btDevice       = null;
+    let btSensor1      = null;
+    let btCommandChar  = null;
+    let _buttonPressed = false; // true when physical Thermapen button triggered this read
 
     function setBtStatus(msg) { btStatus.textContent = msg; }
 
@@ -471,13 +472,90 @@
       return t;
     }
 
-    // Connect to Bluetooth thermometer
+    // ── Shared GATT connection logic (used by both auto and manual connect) ──
+    async function gattConnect(device) {
+      btDevice = device;
+      setBtStatus('连接中… Connecting…');
+
+      const server  = await btDevice.gatt.connect();
+      setBtStatus('获取ETI服务… Getting ETI service…');
+      const service = await server.getPrimaryService(ETI_SERVICE);
+
+      setBtStatus('获取特性… Getting characteristics…');
+      btSensor1     = await service.getCharacteristic(ETI_SENSOR1);
+      btCommandChar = await service.getCharacteristic(ETI_COMMAND);
+
+      await btSensor1.startNotifications();
+      btSensor1.addEventListener('characteristicvaluechanged', handleTempNotification);
+
+      await btCommandChar.startNotifications();
+      btCommandChar.addEventListener('characteristicvaluechanged', (ev) => {
+        const code = ev.target.value.getUint16(0, true);
+        if (code === 0x0001) {
+          _buttonPressed = true;  // next Sensor1 notification should lock in + save
+          setBtStatus('🔴 按键已按下 — 锁定温度中… Button pressed — locking in temp…');
+        }
+        if (code === 0x0002) { setBtStatus('⏻ Thermapen 正在关机 Shutting down'); setBtTemp(null); btRead.disabled = true; }
+      });
+
+      const name = btDevice.name || 'Thermapen';
+      setBtStatus(`✓ ${name} 已连接 Connected — 按设备按键或点击读取温度 press button or Read Temp`);
+      btRead.disabled  = false;
+      btConnect.textContent = '🔄 重新配对 Re-pair';
+
+      // Remove any old listener before adding new one to avoid duplicates
+      btDevice.removeEventListener('gattserverdisconnected', onDisconnected);
+      btDevice.addEventListener('gattserverdisconnected', onDisconnected);
+    }
+
+    // ── Auto-reconnect on unexpected disconnect ──
+    let _reconnectTimeout = null;
+    function onDisconnected() {
+      setBtStatus('⚠️ 已断开 — 自动重连中… Disconnected — auto-reconnecting…');
+      setBtTemp(null);
+      btRead.disabled = true;
+      btSensor1 = null;
+      btCommandChar = null;
+      clearTimeout(_reconnectTimeout);
+      _reconnectTimeout = setTimeout(async () => {
+        if (!btDevice) return;
+        try {
+          await gattConnect(btDevice);
+        } catch (err) {
+          setBtStatus(`❌ 重连失败 Reconnect failed — ${err.message}`);
+          btConnect.disabled = false;
+        }
+      }, 2000);
+    }
+
+    // ── Auto-connect on page load using previously permitted device ──
+    async function autoConnectThermometer() {
+      if (!navigator.bluetooth || !navigator.bluetooth.getDevices) return;
+      try {
+        const devices = await navigator.bluetooth.getDevices();
+        const thermapen = devices.find(d => d.name && d.name.startsWith('Thermapen'));
+        if (!thermapen) return; // No remembered device yet
+        setBtStatus(`🔵 已记住 ${thermapen.name} — 自动连接中… Remembered — auto-connecting…`);
+        btConnect.disabled = true;
+        await gattConnect(thermapen);
+        btConnect.disabled = false;
+      } catch (err) {
+        // Device may be off or out of range — silently set a friendly hint
+        const saved = (btDevice && btDevice.name) ? btDevice.name : 'Thermapen';
+        setBtStatus(`💤 已记住 ${saved} — 开机后自动连接或点击重新配对 Remembered — will auto-connect when on`);
+        btConnect.disabled = false;
+        console.warn('Auto-connect skipped:', err.message);
+      }
+    }
+
+    // ── Manual connect button: shows picker (first-time or re-pair) ──
     async function connectThermometer() {
       try {
         setBtStatus('打开设备选择器… Opening device picker…');
         setBtTemp(null);
+        btConnect.disabled = true;
 
-        btDevice = await navigator.bluetooth.requestDevice({
+        const device = await navigator.bluetooth.requestDevice({
           filters: [
             { namePrefix: 'Thermapen' },
             { manufacturerData: [{ companyIdentifier: 0x0376 }] }
@@ -485,57 +563,45 @@
           optionalServices: [ETI_SERVICE]
         });
 
-        setBtStatus('连接中… Connecting…');
-        const server = await btDevice.gatt.connect();
-
-        setBtStatus('获取ETI服务… Getting ETI service…');
-        const service = await server.getPrimaryService(ETI_SERVICE);
-
-        setBtStatus('获取特性… Getting characteristics…');
-        btSensor1     = await service.getCharacteristic(ETI_SENSOR1);
-        btCommandChar = await service.getCharacteristic(ETI_COMMAND);
-
-        // Subscribe to Sensor 1 notifications
-        await btSensor1.startNotifications();
-        btSensor1.addEventListener('characteristicvaluechanged', handleTempNotification);
-
-        // Subscribe to command notifications (button press etc.)
-        await btCommandChar.startNotifications();
-        btCommandChar.addEventListener('characteristicvaluechanged', (ev) => {
-          const code = ev.target.value.getUint16(0, true);
-          if (code === 0x0001) setBtStatus('🔴 按键已按下 — 读取中… Button pressed — reading incoming…');
-          if (code === 0x0002) { setBtStatus('⏻ Thermapen 正在关机 Shutting down'); setBtTemp(null); btRead.disabled = true; }
-        });
-
-        setBtStatus(`✓ ${btDevice.name || 'Thermapen'} 已连接 — 按设备按键或点击读取温度 Connected — press device button or Read Temp`);
-        btRead.disabled = false;
-
-        btDevice.addEventListener('gattserverdisconnected', () => {
-          setBtStatus('❌ 已断开 Disconnected');
-          setBtTemp(null);
-          btRead.disabled = true;
-          btSensor1 = null;
-          btCommandChar = null;
-        });
-
+        await gattConnect(device);
+        btConnect.disabled = false;
       } catch (err) {
         console.error('BT connect error:', err);
         if (err.name === 'NotFoundError') setBtStatus('❌ 未选择设备 No device selected.');
         else if (err.name === 'SecurityError') setBtStatus('❌ 蓝牙被封锁 — 需要HTTPS Bluetooth blocked — needs HTTPS.');
         else setBtStatus(`❌ ${err.message}`);
         btRead.disabled = true;
+        btConnect.disabled = false;
       }
     }
 
     function handleTempNotification(event) {
       const temp = parseEtiTemp(event.target.value);
-      if (temp !== null) {
-        setBtTemp(temp);
-        const updated = setLatestCookTemp(temp.toFixed(1));
-        const finishedCount = (typeof cooks !== 'undefined') ? cooks.filter(c => c.endTime).length : 0;
-        setBtStatus(`✓ ${btDevice ? btDevice.name || 'Thermapen' : 'Thermapen'} — ${temp.toFixed(1)} °C${finishedCount > 1 ? ` → 已更新${finishedCount}张卡 Updated ${finishedCount} cards` : ''}`);
-        const label = document.getElementById('bt-target-label');
-        if (label) label.textContent = `✓ 已更新 ${finishedCount} 个烹饪 Updated ${finishedCount} cook(s): ${temp.toFixed(1)} °C`;
+      if (temp === null) return;
+
+      setBtTemp(temp);
+      const name = btDevice ? btDevice.name || 'Thermapen' : 'Thermapen';
+      const wasButtonPress = _buttonPressed;
+      _buttonPressed = false;
+
+      // Update the targeted (single) cook card
+      const updatedId = (typeof setLatestCookTemp === 'function') ? setLatestCookTemp(temp.toFixed(1)) : null;
+      const label = document.getElementById('bt-target-label');
+
+      if (wasButtonPress && updatedId !== null && typeof window.saveCook === 'function') {
+        // Physical button press → lock in and save automatically
+        setBtStatus(`🔒 ${name} — ${temp.toFixed(1)} °C → 自动保存中… Auto-saving…`);
+        if (label) label.textContent = `🔒 已锁定 ${temp.toFixed(1)} °C — 保存中… Locking in & saving…`;
+        window.saveCook(updatedId);
+      } else {
+        // Manual read or auto-triggered — just display, chef presses SAVE manually
+        setBtStatus(`✓ ${name} — ${temp.toFixed(1)} °C`);
+        if (label) {
+          const cook = (typeof cooks !== 'undefined' && updatedId !== null) ? cooks.find(c => c.id === updatedId) : null;
+          label.textContent = cook
+            ? `✓ ${cook.food.split(' ').slice(0,3).join(' ')} — ${temp.toFixed(1)} °C (按保存 press SAVE)`
+            : `✓ ${temp.toFixed(1)} °C`;
+        }
       }
     }
 
@@ -555,12 +621,17 @@
     btConnect.addEventListener('click', connectThermometer);
     btRead.addEventListener('click', readTemperature);
 
+    // Auto-connect to remembered device on page load (no picker shown)
+    autoConnectThermometer();
+
     // Called automatically by endCook() in app.js when a cook is stopped.
     // Sends the BT Measure command so the reading arrives in that card.
     window.requestBtReadForCook = function(cookId) {
       const label = document.getElementById('bt-target-label');
-      const finishedCount = (typeof cooks !== 'undefined') ? cooks.filter(c => c.endTime).length : 1;
-      if (label) label.textContent = `🌡️ 将更新 ${finishedCount} 个已停止烹饪 Will update ${finishedCount} finished cook(s)`;
+      const cook = (typeof cooks !== 'undefined') ? cooks.find(c => c.id === cookId) : null;
+      if (label) label.textContent = cook
+        ? `🌡️ 目标: ${cook.food.split(' ').slice(0,3).join(' ')} — 按设备按键锁定 Target set — press device button to lock in`
+        : '🌡️ 目标已设定 Target set — press device button to lock in';
       if (btCommandChar) {
         readTemperature();
       }
