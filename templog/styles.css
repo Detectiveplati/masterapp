@@ -485,7 +485,9 @@ button {
 /* Tappable top zone on finished cards */
 .card-tap-zone {
   border-radius: 8px;
-  flex: 1;  /* fills remaining vertical space — pushes buttons to bottom of card */
+  flex: 1;
+  position: relative;  /* anchor for absolutely-positioned state hints */
+  padding-bottom: 14px; /* room for the overlaid hint at the bottom */
 }
 .card-tap-active {
   cursor: pointer;
@@ -506,14 +508,18 @@ button {
   50%       { box-shadow: 0 4px 22px rgba(230,81,0,0.45); }
 }
 
-/* "Tap to end" hint inside in-progress cards */
+/* "Tap to end/start" hint — overlaid at bottom, zero layout impact */
 .end-tap-hint {
-  font-size: 0.7rem;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  font-size: 0.65rem;
   font-weight: 700;
   color: #e65100;
   text-align: center;
-  margin-top: 4px;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
+  pointer-events: none;
 }
 
 /* Not-started card — green pulsing border inviting a tap */
@@ -533,27 +539,35 @@ button {
 
 /* Big "TAP TO START" CTA — removed; whole card is tappable, green border is the cue */
 
-/* "Tap to target" hint shown when card is finished but not targeted */
+/* "Tap to target" hint — overlaid, zero layout impact */
 .bt-target-hint {
-  font-size: 0.65rem;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  font-size: 0.6rem;
   color: #90a4ae;
   text-align: center;
-  margin-top: 2px;
   letter-spacing: 0.02em;
+  pointer-events: none;
 }
 
-/* "Targeted" indicator — large, obvious banner inside the card */
+/* "Targeted" indicator — compact badge overlaid, no layout impact */
 .bt-target-indicator {
-  font-size: 0.88rem;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  font-size: 0.65rem;
   font-weight: 800;
   color: #fff;
   text-align: center;
   background: #1565c0;
-  border-radius: 6px;
-  padding: 5px 8px;
-  margin-top: 5px;
-  letter-spacing: 0.04em;
+  border-radius: 0 0 6px 6px;
+  padding: 2px 4px;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
+  pointer-events: none;
 }
 
 #menu h2 {
