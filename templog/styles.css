@@ -461,7 +461,7 @@ button {
 .temp-manual-input {
   width: 100%;
   min-width: 0;
-  font-size: 1.6rem;
+  font-size: 1.8rem;
   font-weight: 800;
   color: #d32f2f;
   border: none;
@@ -469,6 +469,7 @@ button {
   text-align: center;
   outline: none;
   padding: 0;
+  line-height: 1;
   -moz-appearance: textfield;
 }
 .temp-manual-input::-webkit-outer-spin-button,
