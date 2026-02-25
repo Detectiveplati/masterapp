@@ -183,7 +183,8 @@ h1 {
   font-weight: 700;
   line-height: 1.2;
   word-break: break-word;
-  padding-right: 48px;  /* clear the corner buttons */
+  padding-left: 28px;   /* clear resume button (top-left) */
+  padding-right: 28px;  /* clear cancel button (top-right) */
 }
 
 .timer-display {
@@ -226,15 +227,7 @@ button {
   box-shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
 
-/* Corner icon buttons — cancel (✕) and resume (▶) top-right of card */
-.card-corner-btns {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  display: flex;
-  gap: 3px;
-  z-index: 2;
-}
+/* Corner icon buttons */
 .corner-btn {
   width: 22px;
   height: 22px;
@@ -250,6 +243,8 @@ button {
   align-items: center;
   justify-content: center;
 }
+.corner-tl { position: absolute; top: 4px; left: 4px; z-index: 2; }
+.corner-tr { position: absolute; top: 4px; right: 4px; z-index: 2; }
 .corner-cancel { background: #e53935; color: #fff; }
 .corner-cancel:active { background: #b71c1c; }
 .corner-resume { background: #1565c0; color: #fff; }

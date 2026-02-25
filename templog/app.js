@@ -168,10 +168,8 @@ function renderActiveCooks() {
       + (notStarted  ? ' not-started' : '')
       + (inProgress  ? ' cooking'     : '');
     card.innerHTML = `
-      <div class="card-corner-btns">
-        ${cook.endTime ? `<button class="corner-btn corner-resume" onclick="resumeCook(${cook.id})" title="Resume">&#9654;</button>` : ''}
-        ${(notStarted || cook.endTime) ? `<button class="corner-btn corner-cancel" onclick="confirmCancelCook(${cook.id})" title="Cancel">&#10005;</button>` : ''}
-      </div>
+      ${cook.endTime ? `<button class="corner-btn corner-resume corner-tl" onclick="resumeCook(${cook.id})" title="Resume">&#9654;</button>` : ''}
+      ${(notStarted || cook.endTime) ? `<button class="corner-btn corner-cancel corner-tr" onclick="confirmCancelCook(${cook.id})" title="Cancel">&#10005;</button>` : ''}
       <div class="card-tap-zone card-tap-active">
         <h3>${cook.food}</h3>
         <div class="timer-display ${cook.endTime ? 'finished' : ''}" id="timer-${cook.id}">
