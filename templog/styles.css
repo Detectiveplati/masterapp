@@ -109,7 +109,15 @@ h1 {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 4px;
+}
+
+.card-instructions {
+  font-size: 0.75rem;
+  color: #999;
+  margin: 0 0 8px;
+  text-align: center;
+  letter-spacing: 0.02em;
 }
 
 #active-cooks h2 {
