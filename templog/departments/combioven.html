@@ -575,14 +575,38 @@
       });
 
       const name = btDevice.name || 'Thermapen';
-      localStorage.setItem('bt_device_name', name);  // Remember name for auto-connect status messages
-      clearTimeout(_autoConnectTimer);               // Stop any pending auto-connect retry
+      localStorage.setItem('bt_device_name', name);
+      clearTimeout(_autoConnectTimer);
       setBtStatus(`✓ ${name} 已连接 Connected — 按设备按键锁定温度 press button to lock in temp`);
       btConnect.textContent = '🔄 重新配对 Re-pair';
 
-      // Remove any old listener before adding new one to avoid duplicates
+      // Remove any old listeners before adding new ones to avoid duplicates
       btDevice.removeEventListener('gattserverdisconnected', onDisconnected);
       btDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+      // ── watchAdvertisements: auto-reconnect when device wakes/comes in range ──
+      // After first connect we start watching BLE adverts. When the device advertises
+      // (e.g. it was sleeping or briefly out of range) we reconnect with no user tap needed.
+      if (typeof btDevice.watchAdvertisements === 'function' && !btDevice._watchingAds) {
+        try {
+          await btDevice.watchAdvertisements();
+          btDevice._watchingAds = true;
+          btDevice.addEventListener('advertisementreceived', () => {
+            // Device is advertising — if we're waiting to reconnect, do it immediately
+            // instead of waiting for the 5s scheduleReconnect timeout
+            if (btDevice && !btDevice.gatt.connected && _reconnectTimeout !== null) {
+              console.log('[BT] Advertisement received — connecting immediately');
+              clearTimeout(_reconnectTimeout);
+              _reconnectTimeout = null;
+              _reconnectAttempt = 0;
+              gattConnect(btDevice).catch(() => {});
+            }
+          });
+          console.log('[BT] watchAdvertisements active');
+        } catch (e) {
+          console.warn('[BT] watchAdvertisements not available:', e.message);
+        }
+      }
     }
 
     // ── Auto-reconnect on unexpected disconnect — retries every 5 s until success ──
@@ -782,6 +806,12 @@
 
     // Attach event listeners
     btConnect.addEventListener('click', connectThermometer);
+
+    // Update button label if device was previously paired
+    (function() {
+      const savedName = localStorage.getItem('bt_device_name');
+      if (savedName) btConnect.textContent = `🔄 重连 Reconnect ${savedName}`;
+    })();
 
     // Auto-connect to remembered device on page load (no picker shown)
     autoConnectThermometer();
