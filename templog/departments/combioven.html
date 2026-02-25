@@ -622,10 +622,25 @@
 
     async function autoConnectThermometer() {
       if (_autoConnecting || (btDevice && btDevice.gatt && btDevice.gatt.connected)) return;
-      if (!navigator.bluetooth || !navigator.bluetooth.getDevices) {
+
+      // Check for Web Bluetooth API at all
+      if (!navigator.bluetooth) {
         setBtStatus('⚠️ 此浏览器不支持蓝牙 Bluetooth not supported in this browser (use Chrome/Edge)');
         return;
       }
+
+      // getDevices() = silent auto-reconnect (Chrome 85+ desktop, some Android versions).
+      // If unavailable, fall through to prompt user to tap Connect instead.
+      if (!navigator.bluetooth.getDevices) {
+        const savedName = localStorage.getItem('bt_device_name');
+        if (savedName) {
+          setBtStatus(`📡 ${savedName} — 点击"连接"以重新连接 Tap "Connect" to reconnect`);
+        } else {
+          setBtStatus('📡 点击"连接温度计"完成首次配对 Tap "Connect Thermometer" to pair');
+        }
+        return;
+      }
+
       _autoConnecting = true;
       clearTimeout(_autoConnectTimer);
       try {
