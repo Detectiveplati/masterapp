@@ -372,59 +372,58 @@ function sanitizeNumberInput(inputEl, allowDecimal) {
   }
 }
 
-// Expose saveCook so combioven.html BT handler can call it directly
-window.saveCook = function(id) { return saveCook(id); };
-
+// saveCook is already global (top-level function declaration → window.saveCook).
+// Do NOT re-assign window.saveCook with a wrapper — that creates infinite recursion
+// because in the global scope the wrapper's `saveCook` reference resolves back to itself.
 async function saveCook(id) {
-  const cook = cooks.find(c => c.id === id);
-  if (!cook || !cook.endTime) {
-    alert("请先结束烹饪。 Please end cooking first.");
-    return;
-  }
-
-  // Read directly from DOM inputs as the source of truth at save time
-  const tempInputEl  = document.querySelector(`#temp-input-${id} input`);
-  const traysInputEl = document.getElementById(`trays-input-${id}`);
-  if (tempInputEl  && tempInputEl.value.trim())  cook.temp  = tempInputEl.value.trim();
-  if (traysInputEl && traysInputEl.value.trim()) cook.trays = traysInputEl.value.trim();
-
-  if (!cook.temp || isNaN(parseFloat(cook.temp))) {
-    alert("请输入有效核心温度。 Enter a valid core temperature.");
-    return;
-  }
-  if (!cook.trays || isNaN(parseInt(cook.trays)) || parseInt(cook.trays) < 1) {
-    alert("请输入有效的盘数（≥1）。 Please enter a valid number of trays (≥ 1).");
-    return;
-  }
-  if (!currentStaff) {
-    alert("请先选择厨师。 No staff selected. Please choose a chef at the top.");
-    return;
-  }
-
-  const start = new Date(cook.startTime);
-  const end   = new Date(cook.endTime);
-
-  // Use Singapore time for recorded timestamps
-  const fmtDate = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Singapore',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-  const fmtTime = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Singapore',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  });
-
-  const startDate = fmtDate.format(start);
-  const startTime = fmtTime.format(start);
-  const endTime   = fmtTime.format(end);
-
-  // Call the data layer instead of directly writing CSV
   try {
+    const cook = cooks.find(c => c.id === id);
+    if (!cook || !cook.endTime) {
+      alert("请先结束烹饪。 Please end cooking first.");
+      return;
+    }
+
+    // Read directly from DOM inputs as the source of truth at save time
+    const tempInputEl  = document.querySelector(`#temp-input-${id} input`);
+    const traysInputEl = document.getElementById(`trays-input-${id}`);
+    if (tempInputEl  && tempInputEl.value.trim())  cook.temp  = tempInputEl.value.trim();
+    if (traysInputEl && traysInputEl.value.trim()) cook.trays = traysInputEl.value.trim();
+
+    if (!cook.temp || isNaN(parseFloat(cook.temp))) {
+      alert("请输入有效核心温度。 Enter a valid core temperature.");
+      return;
+    }
+    if (!cook.trays || isNaN(parseInt(cook.trays)) || parseInt(cook.trays) < 1) {
+      alert("请输入有效的盘数（≥1）。 Please enter a valid number of trays (≥ 1).");
+      return;
+    }
+    if (!currentStaff) {
+      alert("请先选择厨师。 No staff selected. Please choose a chef at the top.");
+      return;
+    }
+
+    const start = new Date(cook.startTime);
+    const end   = new Date(cook.endTime);
+
+    // Use Singapore time for recorded timestamps
+    const fmtDate = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Singapore',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const fmtTime = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Singapore',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+
+    const startDate = fmtDate.format(start);
+    const startTime = fmtTime.format(start);
+    const endTime   = fmtTime.format(end);
+
     await saveCookData({
       food: cook.food,
       startDate,
@@ -437,14 +436,13 @@ async function saveCook(id) {
     });
 
     await loadRecent();
-    statusEl.textContent = `${cook.food} (${cook.trays} 盘子 trays) 保存 saved ✓`;
-  } catch (err) {
-    console.error("Error saving cook data:", err);
-    alert(`保存失败 Save failed:\n${err.message}\n\n请重试 Please try again.`);
-    return;
-  }
+    if (statusEl) statusEl.textContent = `${cook.food} (${cook.trays} 盘子 trays) 保存 saved ✓`;
 
-  removeCook(id);
+    removeCook(id);
+  } catch (err) {
+    console.error("saveCook error:", err);
+    alert(`保存失败 Save failed:\n${err.message}\n\n请重试 Please try again.`);
+  }
 }
 
 function confirmCancelCook(id) {
