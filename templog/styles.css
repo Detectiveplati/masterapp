@@ -43,8 +43,7 @@
 
 body {
   font-family: 'Segoe UI', Roboto, system-ui, -apple-system, 'Helvetica Neue', Arial;
-  max-width: 900px;
-  margin: 0 auto;
+  margin: 0;
   padding: 12px 14px;
   background: linear-gradient(180deg,var(--bg-1),var(--bg-2));
   color: #222;
