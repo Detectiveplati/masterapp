@@ -159,18 +159,29 @@ function renderActiveCooks() {
       ${!cook.startTime ? `<button class="start-btn" onclick="startCook(${cook.id})">开始烹饪 START COOKING</button>` : ''}
       ${cook.startTime && !cook.endTime ? `<button class="end-btn" onclick="endCook(${cook.id})">停止烹饪 END COOKING</button>` : ''}
       ${cook.endTime ? `
-        <div class="info-row">
-          ${cook.tempLocked
-            ? `<div class="temp-display temp-locked" id="temp-input-${cook.id}" title="已锁定 Locked by thermometer button"><span class="temp-lock-icon">🔒</span><span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span></div>`
-            : `<div class="temp-display${cook.temp ? ' temp-unlocked' : ''}" id="temp-input-${cook.id}"><input type="number" step="0.1" min="0" max="300" inputmode="decimal" placeholder="核心温度 Core Temp °C" value="${cook.temp || ''}" oninput="sanitizeNumberInput(this, true);updateTemp(${cook.id}, this.value);" class="temp-manual-input"></div>`
-          }
-          ${!cook.tempLocked ? `<button class="target-btn${isTarget ? ' target-btn-active' : ''}" onclick="setBtTarget(${cook.id})">${isTarget ? '🎯 已选中 Targeted' : '🎯 选中温度计 Target'}</button>` : ''}
-          <input type="number" min="1" step="1" inputmode="numeric" placeholder="盘数 Trays" value="${cook.trays}" oninput="sanitizeNumberInput(this, false);updateTrays(${cook.id}, this.value);">
-          <button class="save-btn" onclick="saveCook(${cook.id})">保存 SAVE</button>
-          <button class="start-btn" onclick="resumeCook(${cook.id})">继续烹饪 RESUME</button>
+        <div class="cook-inputs">
+          <div class="cook-input-row">
+            <label class="cook-input-label">核心温度 Core Temp</label>
+            ${cook.tempLocked
+              ? `<div class="temp-display temp-locked" id="temp-input-${cook.id}"><span class="temp-lock-icon">🔒</span><span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span></div>`
+              : `<div class="temp-display${cook.temp ? ' temp-unlocked' : ''}" id="temp-input-${cook.id}">
+                  <input type="number" step="0.1" min="0" max="300" inputmode="decimal" placeholder="e.g. 75.0" value="${cook.temp || ''}" oninput="sanitizeNumberInput(this, true);updateTemp(${cook.id}, this.value);" class="temp-manual-input">
+                  <span class="temp-unit-static">°C</span>
+                </div>`
+            }
+          </div>
+          <div class="cook-input-row">
+            <label class="cook-input-label">盘数 Trays</label>
+            <input type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 3" value="${cook.trays}" class="trays-input" oninput="sanitizeNumberInput(this, false);updateTrays(${cook.id}, this.value);" id="trays-input-${cook.id}">
+          </div>
         </div>
-      ` : ''}
-      ${!cook.startTime || cook.endTime ? `<button class="back-btn" onclick="confirmCancelCook(${cook.id})">取消/删除 Cancel / Remove</button>` : ''}
+        ${!cook.tempLocked ? `<button class="target-btn${isTarget ? ' target-btn-active' : ''}" onclick="setBtTarget(${cook.id})">${isTarget ? '🎯 已选中 BT Targeted' : '🎯 选中温度计 BT Target'}</button>` : ''}
+        <div class="card-action-row">
+          <button class="save-btn" onclick="saveCook(${cook.id})">✅ 保存 SAVE</button>
+          <button class="resume-btn" onclick="resumeCook(${cook.id})">▶️ 继续 RESUME</button>
+        </div>
+      ` : ''}      
+      ${!cook.startTime || cook.endTime ? `<button class="back-btn" onclick="confirmCancelCook(${cook.id})">✖ 取消 Cancel</button>` : ''}
     `;
     activeGrid.appendChild(card);
   });
@@ -365,8 +376,19 @@ window.saveCook = function(id) { return saveCook(id); };
 
 async function saveCook(id) {
   const cook = cooks.find(c => c.id === id);
-  if (!cook || !cook.endTime || !cook.temp || isNaN(parseFloat(cook.temp))) {
-    alert("请先结束烹饪并输入有效核心温度。 End cooking first and enter valid core temperature.");
+  if (!cook || !cook.endTime) {
+    alert("请先结束烹饪。 Please end cooking first.");
+    return;
+  }
+
+  // Read directly from DOM inputs as the source of truth at save time
+  const tempInputEl  = document.querySelector(`#temp-input-${id} input`);
+  const traysInputEl = document.getElementById(`trays-input-${id}`);
+  if (tempInputEl  && tempInputEl.value.trim())  cook.temp  = tempInputEl.value.trim();
+  if (traysInputEl && traysInputEl.value.trim()) cook.trays = traysInputEl.value.trim();
+
+  if (!cook.temp || isNaN(parseFloat(cook.temp))) {
+    alert("请输入有效核心温度。 Enter a valid core temperature.");
     return;
   }
   if (!cook.trays || isNaN(parseInt(cook.trays)) || parseInt(cook.trays) < 1) {

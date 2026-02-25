@@ -211,16 +211,66 @@ button {
 .start-btn { background: var(--success); color: var(--btn-text); }
 .end-btn   { background: var(--accent); color: var(--btn-text); }
 .save-btn  { background: var(--accent-2); color: var(--btn-text); }
-.back-btn  { background: #7f8c8d; color: var(--btn-text); margin-top: 12px; }
-.bt-target-btn {
-  width: 100%; margin-top: 8px;
-  background: #f0f4ff; color: #3a5fcd;
-  border: 2px dashed #3a5fcd; border-radius: 10px;
-  padding: 8px 12px; font-size: 0.9rem; font-weight: 700;
-  cursor: pointer; transition: background 0.15s;
+.back-btn  { background: #7f8c8d; color: var(--btn-text); margin-top: 8px; width: 100%; }
+
+/* Cook card input sections */
+.cook-inputs {
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.bt-target-btn:hover  { background: #dce8ff; }
-.bt-target-btn.active { background: #d32f2f; color: #fff; border: 2px solid #d32f2f; }
+.cook-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cook-input-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #666;
+  min-width: 80px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.trays-input {
+  font-size: 1.1rem;
+  width: 90px;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid #ddd;
+  background: #fff;
+}
+.temp-unit-static {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #d32f2f;
+}
+/* Action buttons row at bottom of finished card */
+.card-action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+.resume-btn {
+  background: #1565c0;
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+}
+.save-btn {
+  border-radius: 10px;
+  padding: 10px 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
 
 /* Temperature display on finished cook cards */
 .temp-display {
@@ -295,6 +345,7 @@ button {
 /* Manual temperature input inside the temp-display container */
 .temp-manual-input {
   width: 100%;
+  min-width: 80px;
   font-size: 1.6rem;
   font-weight: 800;
   color: #d32f2f;
@@ -307,7 +358,7 @@ button {
 }
 .temp-manual-input::-webkit-outer-spin-button,
 .temp-manual-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.temp-manual-input::placeholder { font-size: 0.75rem; font-weight: 400; color: #bbb; }
+.temp-manual-input::placeholder { font-size: 0.8rem; font-weight: 400; color: #bbb; }
 
 /* BT target button on cook cards */
 .target-btn {
@@ -315,17 +366,25 @@ button {
   color: #1565c0;
   border: 2px solid #1565c0;
   border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 0.8rem;
+  padding: 8px 12px;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
+  width: 100%;
+  margin-top: 8px;
 }
 .target-btn:hover { background: #bbdefb; }
 .target-btn.target-btn-active {
   background: #1565c0;
   color: #fff;
   border-color: #0d47a1;
+}
+/* Full-width main action buttons on cook cards */
+.cook-card > .start-btn,
+.cook-card > .end-btn {
+  width: 100%;
+  margin-top: 6px;
 }
 /* Targeted card gets a blue left accent */
 .cook-card.bt-targeted {
