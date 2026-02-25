@@ -151,30 +151,36 @@ h1 {
 
 .active-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
 }
 
 .cook-card {
   background: linear-gradient(180deg,var(--card),#fffbf9);
-  border-radius: 12px;
-  box-shadow: 0 6px 18px var(--shadow);
-  padding: 14px;
-  border: 1px solid rgba(0,0,0,0.03);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px var(--shadow);
+  padding: 8px;
+  border: 1px solid rgba(0,0,0,0.06);
+  /* Standardized equal height — content aligns top */
+  display: flex;
+  flex-direction: column;
 }
 
 .cook-card h3 {
-  margin: 0 0 10px;
+  margin: 0 0 5px;
   color: #333;
-  font-size: 0.9rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  word-break: break-word;
 }
 
 .timer-display {
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 800;
   color: var(--accent-2);
   text-align: center;
-  margin: 10px 0;
+  margin: 5px 0;
 }
 
 .timer-display.finished {
@@ -184,9 +190,10 @@ h1 {
 .info-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin: 10px 0;
+  gap: 4px;
+  margin: 4px 0;
   align-items: center;
+  font-size: 0.7rem;
 }
 
 input {
@@ -211,36 +218,37 @@ button {
 .start-btn { background: var(--success); color: var(--btn-text); }
 .end-btn   { background: var(--accent); color: var(--btn-text); }
 .save-btn  { background: var(--accent-2); color: var(--btn-text); }
-.back-btn  { background: #7f8c8d; color: var(--btn-text); margin-top: 8px; width: 100%; }
+.back-btn  { background: #7f8c8d; color: var(--btn-text); margin-top: 4px; width: 100%; font-size: 0.7rem; padding: 6px 8px; }
 
 /* Cook card input sections */
 .cook-inputs {
-  margin: 10px 0;
+  margin: 5px 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
 }
 .cook-input-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
 }
 .cook-input-label {
-  font-size: 0.78rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  color: #666;
-  min-width: 80px;
+  color: #888;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 .trays-input {
-  font-size: 1.1rem;
-  width: 90px;
+  font-size: 1rem;
+  width: 100%;
   text-align: center;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 5px 6px;
+  border-radius: 7px;
   border: 1.5px solid #ddd;
   background: #fff;
+  box-sizing: border-box;
 }
 .temp-unit-static {
   font-size: 1rem;
@@ -251,24 +259,26 @@ button {
 .card-action-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 4px;
+  margin-top: 5px;
 }
 .resume-btn {
   background: #1565c0;
   color: #fff;
-  border-radius: 10px;
-  padding: 10px 8px;
-  font-size: 0.95rem;
+  border-radius: 8px;
+  padding: 6px 4px;
+  font-size: 0.7rem;
   font-weight: 700;
   border: none;
   cursor: pointer;
+  line-height: 1.2;
 }
 .save-btn {
-  border-radius: 10px;
-  padding: 10px 8px;
-  font-size: 0.95rem;
+  border-radius: 8px;
+  padding: 6px 4px;
+  font-size: 0.7rem;
   font-weight: 700;
+  line-height: 1.2;
 }
 
 
@@ -277,12 +287,14 @@ button {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: 2px;
   background: #fff8f8;
   border: 2px solid #d32f2f;
-  border-radius: 8px;
-  padding: 8px 14px;
-  min-width: 110px;
+  border-radius: 7px;
+  padding: 5px 8px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   justify-content: center;
 }
 /* Has temp but not yet locked — amber pulsing border */
@@ -325,7 +337,7 @@ button {
   line-height: 1;
 }
 .temp-value {
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: #d32f2f;
   line-height: 1;
@@ -345,8 +357,8 @@ button {
 /* Manual temperature input inside the temp-display container */
 .temp-manual-input {
   width: 100%;
-  min-width: 80px;
-  font-size: 1.6rem;
+  min-width: 0;
+  font-size: 1.3rem;
   font-weight: 800;
   color: #d32f2f;
   border: none;
@@ -364,15 +376,16 @@ button {
 .target-btn {
   background: #e3f2fd;
   color: #1565c0;
-  border: 2px solid #1565c0;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 0.82rem;
+  border: 1.5px solid #1565c0;
+  border-radius: 7px;
+  padding: 5px 6px;
+  font-size: 0.68rem;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   width: 100%;
-  margin-top: 8px;
+  margin-top: 4px;
+  line-height: 1.2;
 }
 .target-btn:hover { background: #bbdefb; }
 .target-btn.target-btn-active {
@@ -384,7 +397,9 @@ button {
 .cook-card > .start-btn,
 .cook-card > .end-btn {
   width: 100%;
-  margin-top: 6px;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  padding: 7px 6px;
 }
 /* Targeted card gets a blue left accent */
 .cook-card.bt-targeted {
