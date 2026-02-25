@@ -21,14 +21,28 @@
     body.print .no-print {
       display: none;
     }
+    body.print #topnav,
+    body.print #sidenav {
+      display: none !important;
+    }
+    body.print {
+      padding: 8px !important;
+    }
     body.print .print-only {
       display: block;
     }
     /* PDF optimization */
     @media print {
+      /* Hide shell navigation */
+      #topnav,
+      #sidenav,
+      #nav-toggle {
+        display: none !important;
+      }
+      /* Remove nav offsets so content fills the full page */
       body {
-        margin: 0;
-        padding: 8px;
+        margin: 0 !important;
+        padding: 8px !important;
       }
       h1 {
         font-size: 1.2rem;
