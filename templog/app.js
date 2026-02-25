@@ -177,12 +177,13 @@ function renderActiveCooks() {
           </div>
         </div>
 
-        <div class="card-action-row">
-          <button class="save-btn" onclick="saveCook(${cook.id})">✅ 保存 SAVE</button>
+        <button class="save-btn" onclick="saveCook(${cook.id})">✅ 保存 SAVE</button>
+        <div class="card-secondary-row">
           <button class="resume-btn" onclick="resumeCook(${cook.id})">▶️ 继续 RESUME</button>
+          ${(!cook.startTime || cook.endTime) ? `<button class="back-btn" onclick="confirmCancelCook(${cook.id})">✖ 取消 Cancel</button>` : ''}
         </div>
       ` : ''}      
-      ${!cook.startTime || cook.endTime ? `<button class="back-btn" onclick="confirmCancelCook(${cook.id})">✖ 取消 Cancel</button>` : ''}
+      ${!cook.startTime && !cook.endTime ? `<button class="back-btn" onclick="confirmCancelCook(${cook.id})">✖ 取消 Cancel</button>` : ''}
     `;
     activeGrid.appendChild(card);
   });
