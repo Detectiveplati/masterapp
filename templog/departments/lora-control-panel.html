@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LoRa Gateway Control Panel</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #fff;
+      --ink: #10243a;
+      --muted: #5d7591;
+      --line: #d9e4f1;
+      --primary: #1660d1;
+      --danger: #cc2f3d;
+      --ok: #1f8d5f;
+    }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(900px 500px at 10% -5%, #dbebff 0%, transparent 55%),
+        radial-gradient(700px 450px at 92% 8%, #ffe8cf 0%, transparent 58%),
+        var(--bg);
+      font-family: "Bahnschrift", "Segoe UI", sans-serif;
+      color: var(--ink);
+    }
+    .page {
+      max-width: 1150px;
+      margin: 0 auto;
+      padding: 16px 14px 28px;
+    }
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .back {
+      display: inline-flex;
+      text-decoration: none;
+      color: #3f5878;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 6px 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+    .chip {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #365675;
+    }
+    .hero {
+      background: linear-gradient(125deg, #fff 0%, #e9f2ff 100%);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 15px;
+      margin-bottom: 12px;
+      box-shadow: 0 8px 24px rgba(19, 48, 74, 0.08);
+    }
+    .hero h1 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+    .hero p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 12px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 4px 14px rgba(13, 41, 67, 0.06);
+    }
+    h2 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+    .hint {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    code {
+      background: #f2f6fb;
+      border: 1px solid #dde7f2;
+      border-radius: 6px;
+      padding: 1px 5px;
+      font-family: Consolas, monospace;
+      font-size: 0.78rem;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    label {
+      display: block;
+      font-size: 0.75rem;
+      color: #3f5978;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    input, select, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #c8d8ea;
+      border-radius: 8px;
+      background: #fff;
+      padding: 7px 8px;
+      font-size: 0.85rem;
+    }
+    textarea {
+      min-height: 90px;
+      font-family: Consolas, monospace;
+      font-size: 0.78rem;
+    }
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    button {
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-muted { background: #f5f8fc; color: #345472; border-color: #d8e3f1; }
+    .btn-danger { background: #fff1f3; color: var(--danger); border-color: #f2c4ca; }
+    .btn-ok { background: #effbf5; color: var(--ok); border-color: #b8e5ce; }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #d8e3f1;
+      border-radius: 10px;
+      background: #fff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+      font-size: 0.8rem;
+    }
+    th, td {
+      border-bottom: 1px solid #e7eff9;
+      padding: 7px 8px;
+      text-align: left;
+      vertical-align: middle;
+    }
+    th {
+      background: #eef5ff;
+      color: #2d4b6d;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    .mono {
+      font-family: Consolas, monospace;
+      font-size: 0.78rem;
+    }
+    .events {
+      margin-top: 10px;
+      border: 1px solid #d8e3f1;
+      border-radius: 10px;
+      max-height: 330px;
+      overflow: auto;
+      background: #fff;
+    }
+    .event {
+      border-bottom: 1px solid #ebf2fb;
+      padding: 8px 10px;
+      font-size: 0.79rem;
+    }
+    .event:last-child { border-bottom: none; }
+    .event-title { font-weight: 800; color: #14385d; }
+    .event-meta { color: #587391; font-size: 0.75rem; margin-top: 2px; }
+    .empty { color: #68819b; padding: 10px; font-size: 0.8rem; }
+    @media (max-width: 940px) {
+      .grid { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body data-module="templog">
+  <div class="page">
+    <div class="top-row">
+      <a class="back" href="../index.html">← Kitchen Logs</a>
+      <div class="chip" id="status-chip">Loading...</div>
+    </div>
+
+    <div class="hero">
+      <h1>LoRa Gateway + TAG08B/TAG09 Control Panel</h1>
+      <p>Configure Railway HTTP receive endpoint, add/remove TAG devices, and map each sensor to chiller/freezer/food warmer.</p>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Gateway HTTP Receive</h2>
+        <p class="hint">Set your gateway receive URL to <code id="receive-url"></code>. If you set <code>LORA_HTTP_TOKEN</code> in Railway, send it as header <code>X-Lora-Token</code>.</p>
+
+        <label for="sample-json">Sample Payload</label>
+        <textarea id="sample-json">{"gatewayId":"GW-01","sensors":[{"sensorId":"TAG09-0001","temperature":3.4,"humidity":71,"rssi":-65},{"sensorId":"TAG08B-0002","temperature":-18.9,"humidity":49,"rssi":-70}]}</textarea>
+        <div class="btn-row">
+          <button id="send-sample" class="btn-primary">Send Sample To Receive API</button>
+          <button id="refresh-events" class="btn-muted">Refresh Events</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Add / Update TAG Device</h2>
+        <p class="hint">This is your control panel registration list. Adding a sensor here enables mapping into the temperature module.</p>
+
+        <form id="device-form">
+          <div class="row">
+            <div>
+              <label for="sensor-id">Sensor ID / SN</label>
+              <input id="sensor-id" required placeholder="TAG09-0001" />
+            </div>
+            <div>
+              <label for="model">Model</label>
+              <select id="model" required>
+                <option value="TAG08B">TAG08B / TAG08(B-L)</option>
+                <option value="TAG08L">TAG08L</option>
+                <option value="TAG09">TAG09</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="equipment">Map To Equipment</label>
+              <select id="equipment" required>
+                <option value="chiller">Chiller</option>
+                <option value="freezer">Freezer</option>
+                <option value="food-warmer">Food Warmer</option>
+              </select>
+            </div>
+            <div>
+              <label for="alias">Alias</label>
+              <input id="alias" placeholder="Kitchen Chiller Left Rack" />
+            </div>
+          </div>
+          <label for="notes">Notes</label>
+          <input id="notes" placeholder="Installed near entrance shelf" />
+          <div class="btn-row">
+            <button type="submit" class="btn-primary">Save Device</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:12px;">
+      <h2>Registered Devices</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Sensor ID</th>
+              <th>Model</th>
+              <th>Equipment</th>
+              <th>Alias</th>
+              <th>Status</th>
+              <th>Updated</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="devices-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:12px;">
+      <h2>Recent Gateway Events</h2>
+      <div id="events" class="events"></div>
+    </section>
+  </div>
+
+  <script>
+    const state = { devices: [], events: [] };
+    const statusChip = document.getElementById('status-chip');
+    const devicesBody = document.getElementById('devices-body');
+    const eventsEl = document.getElementById('events');
+    const receiveUrlEl = document.getElementById('receive-url');
+
+    receiveUrlEl.textContent = window.location.origin + '/templog/api/lora/receive';
+
+    async function fetchJson(url, options) {
+      const res = await fetch(url, options);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Request failed (${res.status})`);
+      }
+      return res.json();
+    }
+
+    function esc(value) {
+      return String(value || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function fmt(value) {
+      if (!value) return '--';
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? '--' : d.toLocaleString();
+    }
+
+    function setStatus(message) {
+      statusChip.textContent = message;
+    }
+
+    function renderDevices() {
+      if (!state.devices.length) {
+        devicesBody.innerHTML = '<tr><td colspan="7" class="empty">No devices registered yet.</td></tr>';
+        return;
+      }
+      devicesBody.innerHTML = state.devices.map((d) => `
+        <tr>
+          <td class="mono">${esc(d.sensorId)}</td>
+          <td>${esc(d.model)}</td>
+          <td>${esc(d.equipment)}</td>
+          <td>${esc(d.alias || '')}</td>
+          <td>${d.enabled ? '<span style="color:#1f8d5f;font-weight:700;">Enabled</span>' : '<span style="color:#cc2f3d;font-weight:700;">Disabled</span>'}</td>
+          <td>${fmt(d.updatedAt || d.createdAt)}</td>
+          <td>
+            <div class="btn-row" style="margin:0;">
+              <button class="${d.enabled ? 'btn-muted' : 'btn-ok'}" data-action="toggle" data-id="${esc(d.sensorId)}">${d.enabled ? 'Disable' : 'Enable'}</button>
+              <button class="btn-danger" data-action="remove" data-id="${esc(d.sensorId)}">Remove</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+
+      devicesBody.querySelectorAll('button[data-action]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const sensorId = btn.dataset.id;
+          const action = btn.dataset.action;
+          try {
+            btn.disabled = true;
+            if (action === 'remove') {
+              if (!confirm(`Remove device ${sensorId}?`)) { btn.disabled = false; return; }
+              await fetchJson(`/templog/api/lora/devices/${encodeURIComponent(sensorId)}`, { method: 'DELETE' });
+            } else if (action === 'toggle') {
+              const device = state.devices.find((x) => x.sensorId === sensorId);
+              await fetchJson(`/templog/api/lora/devices/${encodeURIComponent(sensorId)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: !(device && device.enabled) })
+              });
+            }
+            await loadDevices();
+          } catch (err) {
+            alert(err.message);
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+
+    function renderEvents() {
+      if (!state.events.length) {
+        eventsEl.innerHTML = '<div class="empty">No events yet.</div>';
+        return;
+      }
+      eventsEl.innerHTML = state.events.map((e) => `
+        <div class="event">
+          <div class="event-title">Gateway ${esc(e.gatewayId || '(unknown)')} - received ${e.sensorCount || 0}, ingested ${e.ingestedCount || 0}</div>
+          <div class="event-meta">${fmt(e.receivedAt)} | unmatched: ${e.unmatchedCount || 0}</div>
+          ${(Array.isArray(e.unmatched) && e.unmatched.length) ? `<div class="event-meta">Unmatched sensors: ${esc(e.unmatched.map(u => u.sensorId).join(', '))}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    async function loadDevices() {
+      state.devices = await fetchJson('/templog/api/lora/devices');
+      renderDevices();
+    }
+
+    async function loadEvents() {
+      state.events = await fetchJson('/templog/api/lora/events?limit=40');
+      renderEvents();
+    }
+
+    function bindForm() {
+      document.getElementById('device-form').addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const body = {
+          sensorId: document.getElementById('sensor-id').value.trim(),
+          model: document.getElementById('model').value,
+          equipment: document.getElementById('equipment').value,
+          alias: document.getElementById('alias').value.trim(),
+          notes: document.getElementById('notes').value.trim(),
+          enabled: true
+        };
+        try {
+          await fetchJson('/templog/api/lora/devices', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          document.getElementById('sensor-id').value = '';
+          document.getElementById('alias').value = '';
+          document.getElementById('notes').value = '';
+          await loadDevices();
+          setStatus('Device saved');
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+    }
+
+    function bindSample() {
+      document.getElementById('send-sample').addEventListener('click', async () => {
+        const text = document.getElementById('sample-json').value;
+        try {
+          const body = JSON.parse(text);
+          const result = await fetchJson('/templog/api/lora/receive', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          setStatus(`Sample sent: received ${result.received}, ingested ${result.ingested}`);
+          await loadEvents();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+
+      document.getElementById('refresh-events').addEventListener('click', async () => {
+        try {
+          await loadEvents();
+          setStatus('Events refreshed');
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+    }
+
+    async function init() {
+      bindForm();
+      bindSample();
+      try {
+        await Promise.all([loadDevices(), loadEvents()]);
+        setStatus('Ready');
+      } catch (err) {
+        setStatus('Error: ' + err.message);
+      }
+    }
+
+    window.addEventListener('load', init);
+  </script>
+
+  <script src="/js/shell.js"></script>
+</body>
+</html>

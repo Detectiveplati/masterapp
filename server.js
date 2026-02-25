@@ -220,6 +220,7 @@ app.use('/api/seed',             seedRoutes);
 
 // Push notifications
 const pushRoutes = require('./routes/push');
+const sendPushToPermission = pushRoutes.sendPushToPermission;
 app.use('/api/push', pushRoutes);
 
 // ─── Procurement API Routes ──────────────────────────────────────────────────
@@ -315,6 +316,661 @@ function buildDateFilter(query) {
     }
     return {};
 }
+
+const EQUIPMENT_TEMPERATURES = ['chiller', 'freezer', 'food-warmer'];
+const EQUIPMENT_PAGE_URL = '/templog/departments/equipment-temperature.html';
+
+function normalizeEquipmentName(value) {
+    const raw = String(value || '').trim().toLowerCase();
+    if (raw === 'food warmer') return 'food-warmer';
+    return raw;
+}
+
+function defaultConfigForEquipment(equipment) {
+    const base = {
+        equipment,
+        warningDelayMinutes: 10,
+        repeatMinutes: 30,
+        pushEnabled: true
+    };
+
+    if (equipment === 'freezer') return { ...base, minTemp: -25, maxTemp: -15 };
+    if (equipment === 'food-warmer') return { ...base, minTemp: 60, maxTemp: 85 };
+    return { ...base, minTemp: 0, maxTemp: 5 };
+}
+
+function sanitizeConfigInput(raw, equipment) {
+    const config = defaultConfigForEquipment(equipment);
+    if (raw.minTemp !== undefined) config.minTemp = Number(raw.minTemp);
+    if (raw.maxTemp !== undefined) config.maxTemp = Number(raw.maxTemp);
+    if (raw.warningDelayMinutes !== undefined) config.warningDelayMinutes = Number(raw.warningDelayMinutes);
+    if (raw.repeatMinutes !== undefined) config.repeatMinutes = Number(raw.repeatMinutes);
+    if (raw.pushEnabled !== undefined) config.pushEnabled = !!raw.pushEnabled;
+
+    if (!isFinite(config.minTemp) || !isFinite(config.maxTemp)) return { error: 'Invalid threshold values' };
+    if (config.minTemp >= config.maxTemp) return { error: 'minTemp must be lower than maxTemp' };
+    if (!Number.isFinite(config.warningDelayMinutes) || config.warningDelayMinutes < 0) return { error: 'Invalid warningDelayMinutes' };
+    if (!Number.isFinite(config.repeatMinutes) || config.repeatMinutes < 1) return { error: 'Invalid repeatMinutes' };
+    return { config };
+}
+
+async function getEquipmentConfig(db, equipment) {
+    const saved = await db.collection('equipment_temp_configs').findOne({ equipment });
+    return { ...defaultConfigForEquipment(equipment), ...(saved || {}) };
+}
+
+function evaluateTemperatureStatus(temp, config) {
+    if (temp < config.minTemp) return { status: 'low', outOfRange: true };
+    if (temp > config.maxTemp) return { status: 'high', outOfRange: true };
+    return { status: 'normal', outOfRange: false };
+}
+
+const equipmentTempSseClients = new Set();
+
+function sendSse(res, event, payload) {
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+function broadcastEquipmentTemperature(event, payload) {
+    for (const res of equipmentTempSseClients) {
+        try { sendSse(res, event, payload); } catch (_) {}
+    }
+}
+
+async function processEquipmentAlarm(req, reading, config) {
+    const { status, outOfRange } = evaluateTemperatureStatus(reading.temp, config);
+    const states = req.templogDb.collection('equipment_temp_states');
+    const state = await states.findOne({ equipment: reading.equipment });
+    const recordedAt = new Date(reading.recordedAt);
+
+    if (!outOfRange) {
+        await states.updateOne(
+            { equipment: reading.equipment },
+            {
+                $set: {
+                    equipment: reading.equipment,
+                    outOfRangeSince: null,
+                    lastDirection: 'normal',
+                    updatedAt: new Date()
+                }
+            },
+            { upsert: true }
+        );
+        return;
+    }
+
+    const outOfRangeSince = state && state.outOfRangeSince ? new Date(state.outOfRangeSince) : recordedAt;
+    const elapsedMs = Math.max(0, recordedAt.getTime() - outOfRangeSince.getTime());
+    const shouldWarn = elapsedMs >= config.warningDelayMinutes * 60 * 1000;
+
+    await states.updateOne(
+        { equipment: reading.equipment },
+        {
+            $set: {
+                equipment: reading.equipment,
+                outOfRangeSince,
+                lastDirection: status,
+                updatedAt: new Date()
+            }
+        },
+        { upsert: true }
+    );
+
+    if (!shouldWarn) return;
+
+    const lastPushAt = state && state.lastPushAt ? new Date(state.lastPushAt) : null;
+    const canPush = !lastPushAt || (recordedAt.getTime() - lastPushAt.getTime()) >= (config.repeatMinutes * 60 * 1000);
+    if (!canPush) return;
+
+    const minutesOut = Math.round(elapsedMs / 60000);
+    const message = `${reading.equipment} is ${status.toUpperCase()} at ${reading.temp.toFixed(1)} C for ${minutesOut} min (threshold ${config.minTemp} to ${config.maxTemp} C).`;
+    const alertDoc = {
+        equipment: reading.equipment,
+        status,
+        temp: reading.temp,
+        minTemp: config.minTemp,
+        maxTemp: config.maxTemp,
+        warningDelayMinutes: config.warningDelayMinutes,
+        minutesOut,
+        message,
+        source: reading.source || 'iot-gateway',
+        gatewayId: reading.gatewayId || '',
+        createdAt: recordedAt
+    };
+
+    await req.templogDb.collection('equipment_temp_alerts').insertOne(alertDoc);
+
+    await states.updateOne(
+        { equipment: reading.equipment },
+        { $set: { lastPushAt: recordedAt, lastAlertAt: recordedAt } },
+        { upsert: true }
+    );
+
+    broadcastEquipmentTemperature('alert', alertDoc);
+
+    if (config.pushEnabled && typeof sendPushToPermission === 'function') {
+        try {
+            await sendPushToPermission('templog', {
+                title: `Temperature Alert: ${reading.equipment}`,
+                message,
+                url: EQUIPMENT_PAGE_URL
+            });
+        } catch (err) {
+            console.warn('[TempLog] Push alert skipped:', err.message);
+        }
+    }
+}
+
+async function ingestEquipmentReadings(req, readings) {
+    if (!Array.isArray(readings) || readings.length === 0) return { count: 0, processed: [] };
+
+    await req.templogDb.collection('equipment_temp_readings').insertMany(readings);
+
+    const processed = [];
+    for (const reading of readings) {
+        const config = await getEquipmentConfig(req.templogDb, reading.equipment);
+        const status = evaluateTemperatureStatus(reading.temp, config);
+        broadcastEquipmentTemperature('reading', { ...reading, ...status, config });
+        await processEquipmentAlarm(req, reading, config);
+        processed.push({ ...reading, ...status, config });
+    }
+    return { count: readings.length, processed };
+}
+
+/**
+ * GET /templog/api/equipment-temp/config
+ * Load configuration for all equipment or one target equipment
+ */
+app.get('/templog/api/equipment-temp/config', requireTemplogDb, async (req, res) => {
+    try {
+        const equipment = normalizeEquipmentName(req.query.equipment);
+        if (equipment) {
+            if (!EQUIPMENT_TEMPERATURES.includes(equipment)) return res.status(400).json({ error: 'Invalid equipment' });
+            return res.json(await getEquipmentConfig(req.templogDb, equipment));
+        }
+
+        const all = await Promise.all(EQUIPMENT_TEMPERATURES.map(async (item) => getEquipmentConfig(req.templogDb, item)));
+        res.json(all);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * PUT /templog/api/equipment-temp/config/:equipment
+ * Save thresholds / warning settings for one equipment
+ */
+app.put('/templog/api/equipment-temp/config/:equipment', requireTemplogDb, async (req, res) => {
+    try {
+        const equipment = normalizeEquipmentName(req.params.equipment);
+        if (!EQUIPMENT_TEMPERATURES.includes(equipment)) return res.status(400).json({ error: 'Invalid equipment' });
+        const parsed = sanitizeConfigInput(req.body || {}, equipment);
+        if (parsed.error) return res.status(400).json({ error: parsed.error });
+
+        const doc = {
+            ...parsed.config,
+            updatedAt: new Date()
+        };
+        await req.templogDb.collection('equipment_temp_configs').updateOne(
+            { equipment },
+            { $set: doc },
+            { upsert: true }
+        );
+        res.json({ ok: true, config: doc });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * POST /templog/api/equipment-temp/readings
+ * Ingest IoT gateway or single thermometer reading(s)
+ */
+app.post('/templog/api/equipment-temp/readings', requireTemplogDb, async (req, res) => {
+    try {
+        const payload = req.body || {};
+        const incoming = Array.isArray(payload.readings) ? payload.readings : [payload];
+        const valid = [];
+
+        for (const raw of incoming) {
+            const equipment = normalizeEquipmentName(raw.equipment);
+            const temp = Number(raw.temp);
+            if (!EQUIPMENT_TEMPERATURES.includes(equipment)) continue;
+            if (!Number.isFinite(temp)) continue;
+            const recordedAt = raw.recordedAt ? new Date(raw.recordedAt) : new Date();
+            if (isNaN(recordedAt.getTime())) continue;
+
+            valid.push({
+                equipment,
+                temp,
+                source: String(raw.source || payload.source || 'iot-gateway'),
+                gatewayId: String(raw.gatewayId || payload.gatewayId || ''),
+                sensorId: String(raw.sensorId || ''),
+                recordedAt,
+                createdAt: new Date()
+            });
+        }
+
+        if (!valid.length) return res.status(400).json({ error: 'No valid readings provided' });
+
+        const result = await ingestEquipmentReadings(req, valid);
+        res.json({ ok: true, count: result.count });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+const LORA_SUPPORTED_MODELS = ['TAG08B', 'TAG08L', 'TAG09'];
+
+function normalizeLoraModel(value) {
+    const model = String(value || '').trim().toUpperCase();
+    if (model === 'TAG08(B-L)' || model === 'TAG08') return 'TAG08B';
+    if (model === 'TAG09') return 'TAG09';
+    return model;
+}
+
+function normalizeSensorId(value) {
+    return String(value || '').trim().toUpperCase();
+}
+
+function parseRecordedAt(value) {
+    if (value === undefined || value === null || value === '') return new Date();
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        const ms = value > 1e12 ? value : value * 1000;
+        const d = new Date(ms);
+        return isNaN(d.getTime()) ? new Date() : d;
+    }
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && String(value).trim().match(/^\d+$/)) {
+        const ms = numeric > 1e12 ? numeric : numeric * 1000;
+        const d = new Date(ms);
+        return isNaN(d.getTime()) ? new Date() : d;
+    }
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? new Date() : d;
+}
+
+function pickFirst(obj, keys) {
+    if (!obj || typeof obj !== 'object') return undefined;
+    for (const key of keys) {
+        if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];
+    }
+    return undefined;
+}
+
+function extractLoraSensorRows(payload) {
+    const rows = [];
+    const sourceRoot = payload && typeof payload === 'object' ? payload : {};
+    const listCandidates = [
+        sourceRoot.readings,
+        sourceRoot.sensors,
+        sourceRoot.SensorList,
+        sourceRoot.data,
+        sourceRoot.items,
+        Array.isArray(payload) ? payload : null
+    ].filter(Array.isArray);
+
+    const inputRows = listCandidates.length > 0 ? listCandidates[0] : [sourceRoot];
+
+    for (const row of inputRows) {
+        if (!row || typeof row !== 'object') continue;
+        const sensorId = normalizeSensorId(pickFirst(row, ['sensorId', 'sensorID', 'sensor_id', 'SN', 'sn', 'tagId', 'deviceId', 'mac']));
+        const rawTemp = pickFirst(row, ['temp', 'temperature', 'Temperature', 'Temp', 'T']);
+        const temp = Number(rawTemp);
+        if (!sensorId || !Number.isFinite(temp)) continue;
+
+        const humidityValue = pickFirst(row, ['humidity', 'Humidity', 'H']);
+        const humidity = Number(humidityValue);
+        const rssiValue = pickFirst(row, ['rssi', 'RSSI']);
+        const rssi = Number(rssiValue);
+        const model = normalizeLoraModel(pickFirst(row, ['model', 'deviceModel', 'tagModel']) || sourceRoot.model);
+
+        rows.push({
+            sensorId,
+            temp,
+            humidity: Number.isFinite(humidity) ? humidity : null,
+            rssi: Number.isFinite(rssi) ? rssi : null,
+            model: model || '',
+            recordedAt: parseRecordedAt(pickFirst(row, ['recordedAt', 'time', 'timestamp', 'rtc', 'RTC']) || sourceRoot.recordedAt || sourceRoot.time || sourceRoot.timestamp),
+            raw: row
+        });
+    }
+    return rows;
+}
+
+function parseLoraGatewayId(payload) {
+    const root = payload && typeof payload === 'object' ? payload : {};
+    const value = pickFirst(root, ['gatewayId', 'gatewayID', 'gateway', 'imei', 'IMEI', 'serial', 'Serial', 'gw']);
+    return String(value || '').trim();
+}
+
+function validateLoraIngestAuth(req) {
+    const token = process.env.LORA_HTTP_TOKEN;
+    if (!token) return true;
+    const supplied = String(req.headers['x-lora-token'] || req.query.token || req.body?.token || '');
+    return supplied && supplied === token;
+}
+
+/**
+ * GET /templog/api/lora/devices
+ * List registered TAG devices and their mapping targets
+ */
+app.get('/templog/api/lora/devices', requireTemplogDb, async (req, res) => {
+    try {
+        const docs = await req.templogDb.collection('lora_devices')
+            .find({})
+            .sort({ createdAt: -1 })
+            .toArray();
+        res.json(docs);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * POST /templog/api/lora/devices
+ * Register a TAG08B/TAG09 device mapping
+ */
+app.post('/templog/api/lora/devices', requireTemplogDb, async (req, res) => {
+    try {
+        const sensorId = normalizeSensorId(req.body.sensorId);
+        const model = normalizeLoraModel(req.body.model);
+        const equipment = normalizeEquipmentName(req.body.equipment);
+        const alias = String(req.body.alias || '').trim();
+        const notes = String(req.body.notes || '').trim();
+
+        if (!sensorId) return res.status(400).json({ error: 'sensorId is required' });
+        if (!EQUIPMENT_TEMPERATURES.includes(equipment)) return res.status(400).json({ error: 'Invalid equipment mapping' });
+        if (!LORA_SUPPORTED_MODELS.includes(model)) return res.status(400).json({ error: 'Unsupported model. Use TAG08B/TAG08L/TAG09' });
+
+        const now = new Date();
+        const doc = {
+            sensorId,
+            model,
+            equipment,
+            alias,
+            notes,
+            enabled: req.body.enabled !== false,
+            createdAt: now,
+            updatedAt: now
+        };
+
+        await req.templogDb.collection('lora_devices').updateOne(
+            { sensorId },
+            { $set: doc, $setOnInsert: { createdAt: now } },
+            { upsert: true }
+        );
+        res.json({ ok: true, device: doc });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * PUT /templog/api/lora/devices/:sensorId
+ * Update device mapping or enable/disable state
+ */
+app.put('/templog/api/lora/devices/:sensorId', requireTemplogDb, async (req, res) => {
+    try {
+        const sensorId = normalizeSensorId(req.params.sensorId);
+        if (!sensorId) return res.status(400).json({ error: 'Invalid sensorId' });
+
+        const update = { updatedAt: new Date() };
+        if (req.body.model !== undefined) {
+            const model = normalizeLoraModel(req.body.model);
+            if (!LORA_SUPPORTED_MODELS.includes(model)) return res.status(400).json({ error: 'Unsupported model' });
+            update.model = model;
+        }
+        if (req.body.equipment !== undefined) {
+            const equipment = normalizeEquipmentName(req.body.equipment);
+            if (!EQUIPMENT_TEMPERATURES.includes(equipment)) return res.status(400).json({ error: 'Invalid equipment mapping' });
+            update.equipment = equipment;
+        }
+        if (req.body.alias !== undefined) update.alias = String(req.body.alias || '').trim();
+        if (req.body.notes !== undefined) update.notes = String(req.body.notes || '').trim();
+        if (req.body.enabled !== undefined) update.enabled = !!req.body.enabled;
+
+        const result = await req.templogDb.collection('lora_devices').updateOne(
+            { sensorId },
+            { $set: update }
+        );
+        if (!result.matchedCount) return res.status(404).json({ error: 'Device not found' });
+        const device = await req.templogDb.collection('lora_devices').findOne({ sensorId });
+        res.json({ ok: true, device });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * DELETE /templog/api/lora/devices/:sensorId
+ * Remove a registered TAG device mapping
+ */
+app.delete('/templog/api/lora/devices/:sensorId', requireTemplogDb, async (req, res) => {
+    try {
+        const sensorId = normalizeSensorId(req.params.sensorId);
+        if (!sensorId) return res.status(400).json({ error: 'Invalid sensorId' });
+
+        const result = await req.templogDb.collection('lora_devices').deleteOne({ sensorId });
+        if (!result.deletedCount) return res.status(404).json({ error: 'Device not found' });
+        res.json({ ok: true });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * GET /templog/api/lora/events
+ * Recent raw gateway receive records for troubleshooting
+ */
+app.get('/templog/api/lora/events', requireTemplogDb, async (req, res) => {
+    try {
+        const limit = Math.max(1, Math.min(200, parseInt(req.query.limit || '50', 10)));
+        const events = await req.templogDb.collection('lora_gateway_events')
+            .find({})
+            .sort({ receivedAt: -1 })
+            .limit(limit)
+            .toArray();
+        res.json(events);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * POST /templog/api/lora/receive
+ * HTTP entrypoint for LoRa WiFi gateway payloads
+ */
+app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
+    try {
+        if (!validateLoraIngestAuth(req)) return res.status(401).json({ error: 'Invalid token' });
+
+        const payload = req.body || {};
+        const gatewayId = parseLoraGatewayId(payload);
+        const sensorRows = extractLoraSensorRows(payload);
+        const now = new Date();
+
+        const devices = await req.templogDb.collection('lora_devices').find({ enabled: true }).toArray();
+        const map = new Map(devices.map(d => [normalizeSensorId(d.sensorId), d]));
+        const mappedReadings = [];
+        const unmatched = [];
+
+        for (const row of sensorRows) {
+            const mapped = map.get(row.sensorId);
+            if (!mapped) {
+                unmatched.push({ sensorId: row.sensorId, temp: row.temp, model: row.model || '', recordedAt: row.recordedAt });
+                continue;
+            }
+            mappedReadings.push({
+                equipment: mapped.equipment,
+                temp: row.temp,
+                source: 'lora-http-gateway',
+                gatewayId,
+                sensorId: row.sensorId,
+                model: row.model || mapped.model || '',
+                humidity: row.humidity,
+                rssi: row.rssi,
+                recordedAt: row.recordedAt,
+                createdAt: now
+            });
+        }
+
+        let ingested = 0;
+        if (mappedReadings.length) {
+            const result = await ingestEquipmentReadings(req, mappedReadings);
+            ingested = result.count;
+        }
+
+        await req.templogDb.collection('lora_gateway_events').insertOne({
+            gatewayId,
+            sensorCount: sensorRows.length,
+            ingestedCount: ingested,
+            unmatchedCount: unmatched.length,
+            unmatched,
+            payload,
+            receivedAt: now
+        });
+
+        res.json({
+            ok: true,
+            gatewayId,
+            received: sensorRows.length,
+            ingested,
+            unmatched
+        });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * GET /templog/api/equipment-temp/readings
+ * Returns trend readings for a selected equipment
+ */
+app.get('/templog/api/equipment-temp/readings', requireTemplogDb, async (req, res) => {
+    try {
+        const equipment = normalizeEquipmentName(req.query.equipment);
+        if (!EQUIPMENT_TEMPERATURES.includes(equipment)) return res.status(400).json({ error: 'Invalid equipment' });
+
+        const minutes = Math.max(5, Math.min(24 * 60, parseInt(req.query.minutes || '240', 10)));
+        const limit = Math.max(10, Math.min(2000, parseInt(req.query.limit || '480', 10)));
+        const since = new Date(Date.now() - minutes * 60 * 1000);
+
+        const readings = await req.templogDb.collection('equipment_temp_readings')
+            .find({ equipment, recordedAt: { $gte: since } })
+            .sort({ recordedAt: 1 })
+            .limit(limit)
+            .toArray();
+
+        const config = await getEquipmentConfig(req.templogDb, equipment);
+        res.json({
+            equipment,
+            minutes,
+            config,
+            readings: readings.map(r => ({ ...r, ...evaluateTemperatureStatus(r.temp, config) }))
+        });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * GET /templog/api/equipment-temp/latest
+ * Returns the latest reading for each equipment
+ */
+app.get('/templog/api/equipment-temp/latest', requireTemplogDb, async (req, res) => {
+    try {
+        const latest = await Promise.all(EQUIPMENT_TEMPERATURES.map(async (equipment) => {
+            const config = await getEquipmentConfig(req.templogDb, equipment);
+            const reading = await req.templogDb.collection('equipment_temp_readings')
+                .find({ equipment })
+                .sort({ recordedAt: -1 })
+                .limit(1)
+                .next();
+            if (!reading) return { equipment, config, reading: null, status: 'no-data' };
+            return { equipment, config, reading, ...evaluateTemperatureStatus(reading.temp, config) };
+        }));
+
+        res.json(latest);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * GET /templog/api/equipment-temp/alerts
+ * Returns latest alert events
+ */
+app.get('/templog/api/equipment-temp/alerts', requireTemplogDb, async (req, res) => {
+    try {
+        const equipment = normalizeEquipmentName(req.query.equipment);
+        const limit = Math.max(1, Math.min(200, parseInt(req.query.limit || '50', 10)));
+        const filter = {};
+        if (equipment) {
+            if (!EQUIPMENT_TEMPERATURES.includes(equipment)) return res.status(400).json({ error: 'Invalid equipment' });
+            filter.equipment = equipment;
+        }
+
+        const alerts = await req.templogDb.collection('equipment_temp_alerts')
+            .find(filter)
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .toArray();
+        res.json(alerts);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * GET /templog/api/equipment-temp/stream
+ * Server-sent events stream for real-time monitoring
+ */
+app.get('/templog/api/equipment-temp/stream', requireTemplogDb, async (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    if (typeof res.flushHeaders === 'function') res.flushHeaders();
+    res.write('retry: 5000\n\n');
+
+    equipmentTempSseClients.add(res);
+
+    try {
+        const snapshot = await Promise.all(EQUIPMENT_TEMPERATURES.map(async (equipment) => {
+            const config = await getEquipmentConfig(req.templogDb, equipment);
+            const reading = await req.templogDb.collection('equipment_temp_readings')
+                .find({ equipment })
+                .sort({ recordedAt: -1 })
+                .limit(1)
+                .next();
+            if (!reading) return { equipment, config, reading: null, status: 'no-data' };
+            return { equipment, config, reading, ...evaluateTemperatureStatus(reading.temp, config) };
+        }));
+        sendSse(res, 'snapshot', snapshot);
+    } catch (_) {}
+
+    const heartbeat = setInterval(() => {
+        try { res.write('event: heartbeat\ndata: {}\n\n'); } catch (_) {}
+    }, 20000);
+
+    req.on('close', () => {
+        clearInterval(heartbeat);
+        equipmentTempSseClients.delete(res);
+    });
+});
 
 /**
  * POST /templog/api/cooks

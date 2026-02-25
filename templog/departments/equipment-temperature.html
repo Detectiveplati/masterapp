@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equipment Temperature Monitor</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --card: #ffffff;
+      --ink: #112136;
+      --muted: #56718f;
+      --ok: #198754;
+      --warn: #ff8a00;
+      --danger: #d62839;
+      --accent: #0b6efd;
+      --border: #dce6f2;
+    }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(1000px 550px at 12% -10%, #dceeff 0%, transparent 55%),
+        radial-gradient(900px 500px at 88% 2%, #fff1dc 0%, transparent 56%),
+        var(--bg);
+      font-family: "Bahnschrift", "Segoe UI", sans-serif;
+    }
+    .page {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 18px 14px 28px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #3f5a7a;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+    .status-chip {
+      font-size: 0.8rem;
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 999px;
+      padding: 6px 12px;
+      color: #34506f;
+      font-weight: 700;
+    }
+    .hero {
+      background: linear-gradient(125deg, #fff 0%, #e7f2ff 100%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 15px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 8px 24px rgba(22, 56, 92, 0.08);
+      margin-bottom: 14px;
+    }
+    .hero img {
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+    }
+    .hero h1 {
+      margin: 0;
+      font-size: 1.35rem;
+    }
+    .hero p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: 0 5px 18px rgba(20, 44, 67, 0.08);
+    }
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .card h3 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 3px 8px;
+      border: 1px solid;
+    }
+    .badge.normal { color: var(--ok); border-color: #9ed6b7; background: #ecfaf3; }
+    .badge.high,
+    .badge.low { color: var(--danger); border-color: #f0a8af; background: #fff0f2; }
+    .badge.no-data { color: #6c757d; border-color: #ced4da; background: #f8f9fa; }
+    .temp {
+      font-size: 1.8rem;
+      font-weight: 800;
+      line-height: 1;
+      margin: 6px 0 2px;
+    }
+    .meta {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .trend-wrap {
+      margin-top: 8px;
+      border: 1px solid #e8edf4;
+      border-radius: 10px;
+      background: #fbfdff;
+      padding: 6px;
+    }
+    canvas {
+      width: 100%;
+      height: 140px;
+      display: block;
+    }
+    .panel-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+    }
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+    }
+    .help {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 0.83rem;
+    }
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    label {
+      display: block;
+      font-size: 0.76rem;
+      color: #425e7e;
+      margin-bottom: 4px;
+      font-weight: 700;
+    }
+    input, select, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #cbd8e8;
+      border-radius: 8px;
+      padding: 7px 8px;
+      font-size: 0.88rem;
+      background: #fff;
+    }
+    textarea {
+      min-height: 92px;
+      font-family: Consolas, monospace;
+      font-size: 0.78rem;
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    button {
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 7px 11px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-muted { background: #f7f9fc; color: #2f4b6d; border-color: #d5e0ef; }
+    .settings-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .settings-table th,
+    .settings-table td {
+      border: 1px solid #d8e3f1;
+      padding: 6px;
+      text-align: center;
+      background: #fff;
+    }
+    .settings-table th {
+      background: #edf4ff;
+      color: #2c4a6b;
+      font-weight: 800;
+    }
+    .settings-table input[type="number"] {
+      text-align: center;
+      padding: 5px 4px;
+      font-size: 0.78rem;
+    }
+    .settings-table input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+    }
+    .alerts {
+      margin-top: 12px;
+      max-height: 320px;
+      overflow: auto;
+      border: 1px solid #d8e3f1;
+      border-radius: 10px;
+      background: #fff;
+    }
+    .alert-item {
+      border-bottom: 1px solid #eef3fa;
+      padding: 8px 10px;
+      font-size: 0.8rem;
+    }
+    .alert-item:last-child { border-bottom: none; }
+    .alert-title {
+      font-weight: 800;
+      color: #113860;
+      margin-bottom: 2px;
+    }
+    .alert-meta {
+      color: #516e8f;
+      font-size: 0.76rem;
+    }
+    .empty {
+      padding: 10px;
+      color: #6b7d91;
+      font-size: 0.8rem;
+    }
+
+    @media (max-width: 920px) {
+      .panel-grid {
+        grid-template-columns: 1fr;
+      }
+      .input-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body data-module="templog">
+  <div class="page">
+    <div class="topbar">
+      <a class="back-link" href="../index.html">← Kitchen Logs</a>
+      <div id="stream-state" class="status-chip">Live stream: connecting...</div>
+    </div>
+
+    <div class="hero">
+      <img src="../assets/Chilli-Api-Logo-170px.png" alt="ChilliApi">
+      <div>
+        <h1>Equipment Temperature Monitor</h1>
+        <p>Real-time monitoring for chiller, freezer, and food warmer with trends, alarms, and push-ready notifications.</p>
+      </div>
+    </div>
+
+    <section id="cards" class="cards"></section>
+
+    <section class="panel-grid">
+      <div class="card panel">
+        <h2>IoT Gateway Input</h2>
+        <p class="help">Use this for testing or direct gateway posting. Recommended endpoint for IoT gateway: <code>POST /templog/api/equipment-temp/readings</code>.</p>
+        <form id="gateway-form">
+          <div class="input-row">
+            <div>
+              <label for="gateway-equipment">Equipment</label>
+              <select id="gateway-equipment">
+                <option value="chiller">Chiller</option>
+                <option value="freezer">Freezer</option>
+                <option value="food-warmer">Food Warmer</option>
+              </select>
+            </div>
+            <div>
+              <label for="gateway-temp">Temperature (C)</label>
+              <input id="gateway-temp" type="number" step="0.1" required />
+            </div>
+          </div>
+          <div class="input-row">
+            <div>
+              <label for="gateway-id">Gateway ID</label>
+              <input id="gateway-id" type="text" placeholder="GW-001" />
+            </div>
+            <div>
+              <label for="sensor-id">Sensor ID</label>
+              <input id="sensor-id" type="text" placeholder="SENSOR-CHILLER-01" />
+            </div>
+          </div>
+          <div class="btn-row">
+            <button type="submit" class="btn-primary">Send Reading</button>
+            <button type="button" id="send-sample-batch" class="btn-muted">Send 3-Sensor Batch</button>
+          </div>
+        </form>
+
+        <label for="gateway-json" style="margin-top:10px;">Gateway JSON Payload</label>
+        <textarea id="gateway-json">{"gatewayId":"GW-DEMO","source":"iot-gateway","readings":[{"equipment":"chiller","temp":3.4},{"equipment":"freezer","temp":-19.2},{"equipment":"food-warmer","temp":64.1}]}</textarea>
+        <div class="btn-row">
+          <button type="button" id="send-json" class="btn-muted">Send JSON Payload</button>
+          <button type="button" id="enable-push" class="btn-muted">Enable Push On This Device</button>
+          <span id="push-state" class="status-chip">Push: not enabled</span>
+        </div>
+      </div>
+
+      <div class="card panel">
+        <h2>Alarm Settings</h2>
+        <p class="help">Set min/max thresholds, warning delay time, and push repeat interval.</p>
+        <table class="settings-table">
+          <thead>
+            <tr>
+              <th>Equipment</th>
+              <th>Min C</th>
+              <th>Max C</th>
+              <th>Warn Delay (min)</th>
+              <th>Repeat (min)</th>
+              <th>Push</th>
+              <th>Save</th>
+            </tr>
+          </thead>
+          <tbody id="settings-body"></tbody>
+        </table>
+
+        <h2 style="margin-top:12px;">Alert History</h2>
+        <div id="alerts" class="alerts"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const EQUIPMENT = ['chiller', 'freezer', 'food-warmer'];
+    const LABELS = {
+      'chiller': 'Chiller',
+      'freezer': 'Freezer',
+      'food-warmer': 'Food Warmer'
+    };
+
+    const state = {
+      config: {},
+      latest: {},
+      trends: {
+        chiller: [],
+        freezer: [],
+        'food-warmer': []
+      },
+      alerts: []
+    };
+
+    const cardsEl = document.getElementById('cards');
+    const settingsBody = document.getElementById('settings-body');
+    const alertsEl = document.getElementById('alerts');
+    const streamStateEl = document.getElementById('stream-state');
+    const pushStateEl = document.getElementById('push-state');
+
+    function formatTime(value) {
+      if (!value) return '--';
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return '--';
+      return d.toLocaleString();
+    }
+
+    function statusClass(status) {
+      if (status === 'normal') return 'normal';
+      if (status === 'high' || status === 'low') return status;
+      return 'no-data';
+    }
+
+    function safeNumber(value, fallback = 0) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    async function fetchJson(url, options) {
+      const res = await fetch(url, options);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Request failed (${res.status})`);
+      }
+      return res.json();
+    }
+
+    function drawTrend(canvas, equipment) {
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(300, Math.floor(rect.width));
+      const height = 140;
+      canvas.width = width;
+      canvas.height = height;
+      ctx.clearRect(0, 0, width, height);
+
+      const readings = state.trends[equipment] || [];
+      const cfg = state.config[equipment];
+      if (!cfg || readings.length === 0) {
+        ctx.fillStyle = '#6e8297';
+        ctx.font = '12px Bahnschrift';
+        ctx.fillText('No trend data yet', 10, 20);
+        return;
+      }
+
+      const temps = readings.map(r => Number(r.temp)).filter(Number.isFinite);
+      if (!temps.length) return;
+
+      let min = Math.min(...temps, cfg.minTemp) - 2;
+      let max = Math.max(...temps, cfg.maxTemp) + 2;
+      if (min === max) max = min + 1;
+
+      const pad = { l: 28, r: 10, t: 8, b: 18 };
+      const graphW = width - pad.l - pad.r;
+      const graphH = height - pad.t - pad.b;
+
+      ctx.strokeStyle = '#e4edf7';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const y = pad.t + (graphH * i / 4);
+        ctx.beginPath();
+        ctx.moveTo(pad.l, y);
+        ctx.lineTo(width - pad.r, y);
+        ctx.stroke();
+      }
+
+      function yForTemp(t) {
+        return pad.t + (max - t) / (max - min) * graphH;
+      }
+      function xForIndex(i) {
+        if (readings.length === 1) return pad.l + graphW / 2;
+        return pad.l + i / (readings.length - 1) * graphW;
+      }
+
+      const yMin = yForTemp(cfg.minTemp);
+      const yMax = yForTemp(cfg.maxTemp);
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = '#ff8a00';
+      ctx.beginPath();
+      ctx.moveTo(pad.l, yMin);
+      ctx.lineTo(width - pad.r, yMin);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pad.l, yMax);
+      ctx.lineTo(width - pad.r, yMax);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.strokeStyle = '#0b6efd';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      readings.forEach((r, i) => {
+        const x = xForIndex(i);
+        const y = yForTemp(r.temp);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      const last = readings[readings.length - 1];
+      const lx = xForIndex(readings.length - 1);
+      const ly = yForTemp(last.temp);
+      ctx.fillStyle = '#0b6efd';
+      ctx.beginPath();
+      ctx.arc(lx, ly, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#58708a';
+      ctx.font = '11px Bahnschrift';
+      ctx.fillText(min.toFixed(1), 2, height - 4);
+      ctx.fillText(max.toFixed(1), 2, 12);
+      ctx.fillStyle = '#355573';
+      ctx.fillText('-' + (state.rangeMinutes || 240) + ' min', width - 66, height - 4);
+    }
+
+    function renderCards() {
+      cardsEl.innerHTML = '';
+      EQUIPMENT.forEach((equipment) => {
+        const item = state.latest[equipment];
+        const cfg = state.config[equipment] || {};
+        const status = item ? item.status : 'no-data';
+        const reading = item ? item.reading : null;
+
+        const card = document.createElement('article');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="card-head">
+            <h3>${LABELS[equipment]}</h3>
+            <span class="badge ${statusClass(status)}">${status.toUpperCase()}</span>
+          </div>
+          <div class="temp">${reading ? reading.temp.toFixed(1) + ' C' : '--'}</div>
+          <p class="meta">Threshold: ${safeNumber(cfg.minTemp).toFixed(1)} to ${safeNumber(cfg.maxTemp).toFixed(1)} C</p>
+          <p class="meta">Updated: ${reading ? formatTime(reading.recordedAt) : '--'}</p>
+          <div class="trend-wrap"><canvas id="chart-${equipment}"></canvas></div>
+        `;
+        cardsEl.appendChild(card);
+      });
+
+      EQUIPMENT.forEach((equipment) => {
+        const canvas = document.getElementById('chart-' + equipment);
+        if (canvas) drawTrend(canvas, equipment);
+      });
+    }
+
+    function renderSettings() {
+      settingsBody.innerHTML = '';
+      EQUIPMENT.forEach((equipment) => {
+        const cfg = state.config[equipment];
+        if (!cfg) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${LABELS[equipment]}</td>
+          <td><input id="min-${equipment}" type="number" step="0.1" value="${cfg.minTemp}"></td>
+          <td><input id="max-${equipment}" type="number" step="0.1" value="${cfg.maxTemp}"></td>
+          <td><input id="delay-${equipment}" type="number" min="0" value="${cfg.warningDelayMinutes}"></td>
+          <td><input id="repeat-${equipment}" type="number" min="1" value="${cfg.repeatMinutes}"></td>
+          <td><input id="push-${equipment}" type="checkbox" ${cfg.pushEnabled ? 'checked' : ''}></td>
+          <td><button class="btn-primary" data-equipment="${equipment}">Save</button></td>
+        `;
+        settingsBody.appendChild(tr);
+      });
+
+      settingsBody.querySelectorAll('button[data-equipment]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const equipment = btn.dataset.equipment;
+          const body = {
+            minTemp: safeNumber(document.getElementById('min-' + equipment).value),
+            maxTemp: safeNumber(document.getElementById('max-' + equipment).value),
+            warningDelayMinutes: safeNumber(document.getElementById('delay-' + equipment).value),
+            repeatMinutes: safeNumber(document.getElementById('repeat-' + equipment).value),
+            pushEnabled: document.getElementById('push-' + equipment).checked
+          };
+          try {
+            btn.disabled = true;
+            await fetchJson('/templog/api/equipment-temp/config/' + equipment, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            });
+            await loadConfig();
+            await loadLatest();
+          } catch (err) {
+            alert(err.message);
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+
+    function renderAlerts() {
+      if (!state.alerts.length) {
+        alertsEl.innerHTML = '<div class="empty">No alerts yet.</div>';
+        return;
+      }
+      alertsEl.innerHTML = state.alerts.map((a) => `
+        <div class="alert-item">
+          <div class="alert-title">${LABELS[a.equipment] || a.equipment} - ${String(a.status || '').toUpperCase()} (${Number(a.temp).toFixed(1)} C)</div>
+          <div>${a.message || ''}</div>
+          <div class="alert-meta">${formatTime(a.createdAt)} | Delay: ${a.warningDelayMinutes || 0} min | Source: ${a.source || 'iot-gateway'}</div>
+        </div>
+      `).join('');
+    }
+
+    async function loadConfig() {
+      const configs = await fetchJson('/templog/api/equipment-temp/config');
+      state.config = {};
+      configs.forEach((item) => { state.config[item.equipment] = item; });
+      renderSettings();
+    }
+
+    async function loadLatest() {
+      const latest = await fetchJson('/templog/api/equipment-temp/latest');
+      latest.forEach((item) => { state.latest[item.equipment] = item; });
+      renderCards();
+    }
+
+    async function loadTrends(minutes = 240) {
+      state.rangeMinutes = minutes;
+      await Promise.all(EQUIPMENT.map(async (equipment) => {
+        const data = await fetchJson(`/templog/api/equipment-temp/readings?equipment=${encodeURIComponent(equipment)}&minutes=${minutes}&limit=600`);
+        state.trends[equipment] = data.readings || [];
+      }));
+      renderCards();
+    }
+
+    async function loadAlerts() {
+      state.alerts = await fetchJson('/templog/api/equipment-temp/alerts?limit=50');
+      renderAlerts();
+    }
+
+    function upsertLiveReading(data) {
+      const equipment = data.equipment;
+      if (!equipment || !state.trends[equipment]) return;
+      state.latest[equipment] = {
+        equipment,
+        config: data.config || state.config[equipment],
+        reading: data,
+        status: data.status || 'no-data'
+      };
+      state.trends[equipment].push(data);
+      if (state.trends[equipment].length > 600) state.trends[equipment].shift();
+      renderCards();
+    }
+
+    function connectStream() {
+      const es = new EventSource('/templog/api/equipment-temp/stream');
+      streamStateEl.textContent = 'Live stream: connected';
+
+      es.addEventListener('snapshot', (ev) => {
+        try {
+          const snapshot = JSON.parse(ev.data);
+          snapshot.forEach((item) => {
+            state.latest[item.equipment] = item;
+            if (item.config) state.config[item.equipment] = item.config;
+          });
+          renderSettings();
+          renderCards();
+        } catch (_) {}
+      });
+
+      es.addEventListener('reading', (ev) => {
+        try { upsertLiveReading(JSON.parse(ev.data)); } catch (_) {}
+      });
+
+      es.addEventListener('alert', (ev) => {
+        try {
+          const alertItem = JSON.parse(ev.data);
+          state.alerts.unshift(alertItem);
+          state.alerts = state.alerts.slice(0, 100);
+          renderAlerts();
+        } catch (_) {}
+      });
+
+      es.onerror = () => {
+        streamStateEl.textContent = 'Live stream: reconnecting...';
+      };
+    }
+
+    async function sendReading(body) {
+      await fetchJson('/templog/api/equipment-temp/readings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      await loadLatest();
+    }
+
+    function setupGatewayForms() {
+      document.getElementById('gateway-form').addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        try {
+          await sendReading({
+            equipment: document.getElementById('gateway-equipment').value,
+            temp: safeNumber(document.getElementById('gateway-temp').value),
+            gatewayId: document.getElementById('gateway-id').value.trim(),
+            sensorId: document.getElementById('sensor-id').value.trim(),
+            source: 'iot-thermometer'
+          });
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+
+      document.getElementById('send-json').addEventListener('click', async () => {
+        try {
+          const payload = JSON.parse(document.getElementById('gateway-json').value);
+          await sendReading(payload);
+        } catch (err) {
+          alert('Invalid JSON payload: ' + err.message);
+        }
+      });
+
+      document.getElementById('send-sample-batch').addEventListener('click', async () => {
+        const now = Date.now();
+        const payload = {
+          gatewayId: 'GW-DEMO',
+          source: 'iot-gateway',
+          readings: [
+            { equipment: 'chiller', temp: +(2 + Math.random() * 2).toFixed(1), recordedAt: new Date(now).toISOString() },
+            { equipment: 'freezer', temp: +(-20 + Math.random() * 2).toFixed(1), recordedAt: new Date(now).toISOString() },
+            { equipment: 'food-warmer', temp: +(62 + Math.random() * 6).toFixed(1), recordedAt: new Date(now).toISOString() }
+          ]
+        };
+        try {
+          await sendReading(payload);
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const rawData = atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+      return outputArray;
+    }
+
+    async function enablePushForThisDevice() {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+        pushStateEl.textContent = 'Push: unsupported in this browser';
+        return;
+      }
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          pushStateEl.textContent = 'Push: permission denied';
+          return;
+        }
+
+        const keyRes = await fetchJson('/api/push/vapid-public-key');
+        if (!keyRes.publicKey) {
+          pushStateEl.textContent = 'Push: VAPID key missing on server';
+          return;
+        }
+
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(keyRes.publicKey)
+          });
+        }
+
+        await fetchJson('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(subscription)
+        });
+        pushStateEl.textContent = 'Push: enabled';
+      } catch (err) {
+        pushStateEl.textContent = 'Push: failed (' + err.message + ')';
+      }
+    }
+
+    async function init() {
+      setupGatewayForms();
+      document.getElementById('enable-push').addEventListener('click', enablePushForThisDevice);
+
+      try {
+        await loadConfig();
+        await Promise.all([loadLatest(), loadTrends(240), loadAlerts()]);
+      } catch (err) {
+        streamStateEl.textContent = 'Error: ' + err.message;
+      }
+
+      connectStream();
+      setInterval(() => loadLatest().catch(() => {}), 30000);
+      setInterval(() => loadAlerts().catch(() => {}), 60000);
+    }
+
+    window.addEventListener('load', init);
+  </script>
+
+  <script src="/js/shell.js"></script>
+</body>
+</html>
