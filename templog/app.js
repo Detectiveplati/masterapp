@@ -160,10 +160,10 @@ function renderActiveCooks() {
           <strong>厨师 Staff:</strong> ${currentStaff || '(not set)'}
         </div>
         ${isTarget
-          ? '<div class="bt-target-indicator">🎯 已选中 Targeted</div>'
+          ? '<div class="bt-target-indicator">🎯 已选中 — 按探针按键 TARGETED — PRESS PROBE BUTTON</div>'
           : tappable
             ? cook.tempLocked
-              ? '<div class="bt-target-hint">🔄 重新选中 Re-tap to re-lock</div>'
+              ? '<div class="bt-target-hint">🔄 重新点击以重新锁定 Re-tap to re-lock</div>'
               : '<div class="bt-target-hint">🎯 点击选中 Tap to target</div>'
             : ''
         }
