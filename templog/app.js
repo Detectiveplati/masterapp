@@ -174,7 +174,7 @@ function renderActiveCooks() {
           <strong>厨师 Staff:</strong> ${currentStaff || '(not set)'}
         </div>
         ${notStarted
-          ? '<div class="start-tap-indicator">👆 点击开始烹饪<br>TAP TO START COOKING</div>'
+          ? ''
           : isTarget
             ? '<div class="bt-target-indicator">🎯 已选中 — 按探针按键 TARGETED — PRESS PROBE BUTTON</div>'
             : tappable
