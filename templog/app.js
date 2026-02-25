@@ -149,13 +149,20 @@ function renderActiveCooks() {
     const card = document.createElement('div');
     const isTarget = cook.endTime && !cook.tempLocked && window.btTargetCookId === cook.id;
     card.className = 'cook-card' + (isTarget ? ' bt-targeted' : '');
+    const tappable = cook.endTime && !cook.tempLocked;
     card.innerHTML = `
-      <h3>${cook.food}</h3>
-      <div class="timer-display ${cook.endTime ? 'finished' : ''}" id="timer-${cook.id}">
-        ${cook.startTime ? formatElapsed(cook) : '未开始 Not started'}
-      </div>
-      <div class="info-row">
-        <strong>厨师 Staff:</strong> ${currentStaff || '(not set)'}
+      <div class="card-tap-zone${tappable ? ' card-tap-active' : ''}" ${tappable ? `onclick="setBtTarget(${cook.id})"` : ''}>
+        <h3>${cook.food}</h3>
+        <div class="timer-display ${cook.endTime ? 'finished' : ''}" id="timer-${cook.id}">
+          ${cook.startTime ? formatElapsed(cook) : '未开始 Not started'}
+        </div>
+        <div class="info-row">
+          <strong>厨师 Staff:</strong> ${currentStaff || '(not set)'}
+        </div>
+        ${isTarget
+          ? '<div class="bt-target-indicator">🎯 已选中 Targeted</div>'
+          : tappable ? '<div class="bt-target-hint">🎯 点击选中 Tap to target</div>' : ''
+        }
       </div>
       ${!cook.startTime ? `<button class="start-btn" onclick="startCook(${cook.id})">开始烹饪 START COOKING</button>` : ''}
       ${cook.startTime && !cook.endTime ? `<button class="end-btn" onclick="endCook(${cook.id})">停止烹饪 END COOKING</button>` : ''}

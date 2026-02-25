@@ -409,7 +409,38 @@ button {
 /* Targeted card gets a blue left accent */
 .cook-card.bt-targeted {
   border-left: 4px solid #1565c0;
-  box-shadow: 0 0 0 2px rgba(21,101,192,0.2);
+  box-shadow: 0 0 0 3px rgba(21,101,192,0.35);
+}
+
+/* Tappable top zone on finished cards */
+.card-tap-zone { border-radius: 8px; }
+.card-tap-active {
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: rgba(21,101,192,0.12);
+  transition: background 0.12s;
+}
+.card-tap-active:active { background: rgba(21,101,192,0.08); }
+
+/* "Tap to target" hint shown when card is finished but not targeted */
+.bt-target-hint {
+  font-size: 0.65rem;
+  color: #90a4ae;
+  text-align: center;
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
+
+/* "Targeted" indicator shown on the active target card */
+.bt-target-indicator {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #1565c0;
+  text-align: center;
+  background: #e3f2fd;
+  border-radius: 6px;
+  padding: 3px 6px;
+  margin-top: 3px;
 }
 
 #menu h2 {

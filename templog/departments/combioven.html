@@ -618,25 +618,32 @@
         const label = document.getElementById('bt-target-label');
 
         if (wasButtonPress) {
-          // ── Physical button press: lock in temp on ALL finished cook cards (do NOT save) ──
-          const finished = (typeof cooks !== 'undefined') ? cooks.filter(c => c.endTime) : [];
-          if (finished.length === 0) {
-            setBtStatus(`⚠️ ${name} — ${temp.toFixed(1)} °C — 没有已停止的烹饪 No finished cooks`);
+          // ── Physical button press: lock ONLY the targeted card ──
+          // Auto-target if only one finished card and none explicitly targeted
+          const finished = (typeof cooks !== 'undefined') ? cooks.filter(c => c.endTime && !c.tempLocked) : [];
+          let targetCook = finished.find(c => c.id === window.btTargetCookId);
+          if (!targetCook && finished.length === 1) targetCook = finished[0];
+
+          if (!targetCook) {
+            if (finished.length === 0) {
+              setBtStatus(`⚠️ ${name} — ${temp.toFixed(1)} °C — 没有已停止的烹饪 No finished cooks`);
+            } else {
+              setBtStatus(`⚠️ ${name} — ${temp.toFixed(1)} °C — 请先点击卡片选择 Tap a card to target it`);
+              if (label) label.textContent = `⚠️ 多个烹饪 — 请先点击卡片 Tap a card to target`;
+            }
             return;
           }
+
           const tempStr = temp.toFixed(1);
-          finished.forEach(cook => {
-            cook.temp = tempStr;
-            const el = document.getElementById(`temp-input-${cook.id}`);
-            if (el) el.innerHTML = `<span class="temp-value">${tempStr}</span><span class="temp-unit">°C</span>`;
-          });
-          setBtStatus(`🔒 ${name} — ${tempStr} °C — 已锁定 ${finished.length} 个 Locked ${finished.length} card(s) — 按保存 press SAVE`);
-          if (label) label.textContent = `🔒 已锁定 ${tempStr} °C (${finished.length} 个) — 请按保存 Locked — press SAVE to record`;
+          targetCook.temp = tempStr;
+          const el = document.getElementById(`temp-input-${targetCook.id}`);
+          if (el) el.innerHTML = `<span class="temp-value">${tempStr}</span><span class="temp-unit">°C</span>`;
+          setBtStatus(`🔒 ${name} — ${tempStr} °C → ${targetCook.food} — 按保存 press SAVE`);
+          if (label) label.textContent = `🔒 ${targetCook.food} — ${tempStr} °C — 请按保存 press SAVE`;
           feedbackLockIn();
-          // Lock each card's temp display (no auto-save — chef must press SAVE)
-          finished.forEach(cook => {
-            if (typeof window.lockCookTemp === 'function') window.lockCookTemp(cook.id);
-          });
+          if (typeof window.lockCookTemp === 'function') window.lockCookTemp(targetCook.id);
+          // Clear target after locking so next card must be tapped
+          window.btTargetCookId = null;
         } else {
           // ── Manual Read button or auto-triggered: display on targeted card only ──
           const updatedId = (typeof setLatestCookTemp === 'function') ? setLatestCookTemp(temp.toFixed(1)) : null;
