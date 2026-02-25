@@ -43,18 +43,18 @@
 
 body {
   font-family: 'Segoe UI', Roboto, system-ui, -apple-system, 'Helvetica Neue', Arial;
-  max-width: 1200px;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 12px 14px;
   background: linear-gradient(180deg,var(--bg-1),var(--bg-2));
   color: #222;
+  min-height: 100vh;
 }
 
 h1 {
-  text-align: center;
   color: var(--accent);
-  margin-bottom: 10px;
-  font-size: 1.6rem;
+  margin-bottom: 8px;
+  font-size: 1.25rem;
 }
 
 #staff-selector {
@@ -532,15 +532,15 @@ button {
 
 #status {
   text-align: center;
-  color: var(--muted);
-  margin: 10px 0;
-  font-size: 1.05rem;
+  color: var(--success);
+  margin: 8px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  min-height: 1.4em;
 }
 
 #log {
-  margin-top: 40px;
-  border-top: 1px solid #ccc;
-  padding-top: 20px;
+  margin-top: 32px;
 }
 
 #recent-table {
@@ -549,6 +549,7 @@ button {
   background: white;
   font-size: 0.75rem;
   overflow: hidden;
+  border-radius: 8px;
 }
 
 #recent-table th,
@@ -559,31 +560,41 @@ button {
 }
 
 #recent-table th {
-  background: #faf7f5;
+  background: #f5f5f5;
   font-weight: 700;
-  color: #333;
+  color: #444;
   padding: 8px;
+  position: sticky;
+  top: 0;
 }
 
 #recent-table tr:last-child td {
   border-bottom: none;
 }
 
-#recent-table .food-col { min-width: 160px; }
+#recent-table tr:hover td {
+  background: #fafafa;
+}
+
+#recent-table .food-col { min-width: 140px; }
 #recent-table .date-col,
-#recent-table .time-col { width: 100px; }
+#recent-table .time-col { width: 90px; }
 
 #recent-table .small-col {
-  width: 80px;
+  width: 75px;
   text-align: center;
 }
 
 .export-btn {
-  margin-top: 16px;
+  margin-top: 14px;
   background: var(--accent-2);
   color: var(--btn-text);
-  padding: 12px 16px;
-  font-size: 1rem;
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  font-weight: 700;
   border-radius: 10px;
   display: inline-block;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }

@@ -11,51 +11,105 @@
   <title>Combi Oven Kitchen Log - Multi Cook</title>
   <link rel="stylesheet" href="../styles.css">
   <style>
-    .bt-panel {
-      margin: 10px 0 20px;
-      padding: 10px 12px;
+    /* ── Page header ── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .page-header img {
+      width: 52px;
+      height: 52px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .page-header h1 {
+      margin: 0;
+      font-size: 1.3rem;
+      text-align: left;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #5a616c;
+      text-decoration: none;
+      padding: 5px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,0,0,0.1);
       background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      margin-bottom: 10px;
+    }
+    /* ── BT panel ── */
+    .bt-panel {
+      margin: 0 0 16px;
+      padding: 10px 14px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
       align-items: center;
+      border-left: 4px solid #1565c0;
     }
     .bt-status {
-      color: #555;
-      font-size: 0.95rem;
+      color: #444;
+      font-size: 0.88rem;
       flex: 1;
-      min-width: 200px;
+      min-width: 160px;
     }
     .bt-temp {
-      font-weight: bold;
+      font-weight: 800;
       color: #d32f2f;
-      font-size: 1.4rem;
-      min-width: 90px;
+      font-size: 1.5rem;
+      min-width: 80px;
       text-align: center;
     }
     .bt-target-row {
       width: 100%;
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 0.85rem;
-      color: #888;
-      padding-top: 4px;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: #999;
+      padding-top: 6px;
       border-top: 1px solid #f0f0f0;
+      margin-top: 2px;
     }
-    .bt-target-row span { font-weight: 700; color: #d32f2f; }
+    .bt-target-row span { font-weight: 700; color: #1565c0; }
+    /* ── Log / recent table ── */
+    #log {
+      margin-top: 32px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    }
+    #log h3 {
+      margin: 0 0 12px;
+      font-size: 0.95rem;
+      color: #444;
+      font-weight: 700;
+    }
+    .export-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 14px;
+    }
   </style>
 </head>
 <body>
 
-  <div style="margin-bottom:12px;">
-    <a href="../index.html" style="font-size:0.82rem;font-weight:700;color:#5a616c;text-decoration:none;display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;border:1px solid rgba(18,19,22,0.1);background:#fff;">← 厨房日志 Kitchen Logs</a>
-  </div>
+  <a href="../index.html" class="back-link">← 厨房日志 Kitchen Logs</a>
 
-  <img src="../assets/Chilli-Api-Logo-170px.png" alt="ChilliApi" style="width:64px;height:64px;float:left;margin-right:12px;border-radius:6px;">
-  <h1>组合烤箱部门 Combi Oven Kitchen Log</h1>
+  <div class="page-header">
+    <img src="../assets/Chilli-Api-Logo-170px.png" alt="ChilliApi">
+    <h1>组合烤笼部门 Combi Oven Kitchen Log</h1>
+  </div>
 
   <!-- Bluetooth Thermometer Panel -->
   <div class="bt-panel">
@@ -422,7 +476,6 @@
     <button onclick="exportFullCSV()" class="export-btn">
       下载完整CSV Download Full CSV
     </button>
-  </div>
 
   <script src="../data.js"></script>
   <script src="../app.js"></script>
