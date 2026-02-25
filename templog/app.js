@@ -145,7 +145,7 @@ function addNewCook(food) {
     endTime: null,
     duration: null,
     temp: '',
-    trays: '',    units: '',    timerRunning: false
+    trays: '',    units: 'Full GN',    timerRunning: false
   });
   renderActiveCooks();
   showToast(`✓ 已添加 Added: ${food}`);
@@ -204,8 +204,8 @@ function renderActiveCooks() {
             <div class="cook-input-row">
               <label class="cook-input-label">单位 Units</label>
               <div class="units-picker" id="units-input-${cook.id}">
-                <button class="unit-btn${cook.units === 'Full GN' ? ' unit-selected' : ''}" onclick="updateUnits(${cook.id},'Full GN');document.querySelectorAll('#units-input-${cook.id} .unit-btn').forEach(b=>b.classList.remove('unit-selected'));this.classList.add('unit-selected');">Full GN</button>
-                <button class="unit-btn${cook.units === 'Half GN' ? ' unit-selected' : ''}" onclick="updateUnits(${cook.id},'Half GN');document.querySelectorAll('#units-input-${cook.id} .unit-btn').forEach(b=>b.classList.remove('unit-selected'));this.classList.add('unit-selected');">Half GN</button>
+                <button class="unit-btn${cook.units === 'Full GN' ? ' unit-selected' : ''}" onclick="updateUnits(${cook.id},'Full GN');document.querySelectorAll('#units-input-${cook.id} .unit-btn').forEach(b=>b.classList.remove('unit-selected'));this.classList.add('unit-selected');"><span class="unit-btn-cn">全盘</span>Full GN</button>
+                <button class="unit-btn${cook.units === 'Half GN' ? ' unit-selected' : ''}" onclick="updateUnits(${cook.id},'Half GN');document.querySelectorAll('#units-input-${cook.id} .unit-btn').forEach(b=>b.classList.remove('unit-selected'));this.classList.add('unit-selected');"><span class="unit-btn-cn">半盘</span>Half GN</button>
               </div>
             </div>
           </div>
