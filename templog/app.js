@@ -151,7 +151,7 @@ function renderActiveCooks() {
     card.className = 'cook-card' + (isTarget ? ' bt-targeted' : '');
     const tappable = cook.endTime && !cook.tempLocked;
     card.innerHTML = `
-      <div class="card-tap-zone${tappable ? ' card-tap-active' : ''}" ${tappable ? `onclick="setBtTarget(${cook.id})"` : ''}>
+      <div class="card-tap-zone${tappable ? ' card-tap-active' : ''}">
         <h3>${cook.food}</h3>
         <div class="timer-display ${cook.endTime ? 'finished' : ''}" id="timer-${cook.id}">
           ${cook.startTime ? formatElapsed(cook) : '未开始 Not started'}
@@ -192,6 +192,17 @@ function renderActiveCooks() {
       ` : ''}      
       ${!cook.startTime && !cook.endTime ? `<button class="back-btn" onclick="confirmCancelCook(${cook.id})">✖ 取消 Cancel</button>` : ''}
     `;
+
+    // Attach tap-to-target via addEventListener (reliable on mobile; inline onclick on divs is not)
+    if (tappable) {
+      const tapZone = card.querySelector('.card-tap-zone');
+      tapZone.addEventListener('click', (e) => {
+        // Ignore if the click originated from a button or input inside the card
+        if (e.target.closest('button, input')) return;
+        setBtTarget(cook.id);
+      });
+    }
+
     activeGrid.appendChild(card);
   });
   saveCooksToStorage();

@@ -417,6 +417,7 @@ button {
 .card-tap-active {
   cursor: pointer;
   user-select: none;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: rgba(21,101,192,0.12);
   transition: background 0.12s;
 }
