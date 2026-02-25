@@ -83,7 +83,8 @@
           <th class="small-col">Duration (min)</th>
           <th class="small-col">Core Temp (°C)</th>
           <th class="small-col">Staff</th>
-          <th class="small-col">Trays</th>
+          <th class="small-col">Numbers</th>
+          <th class="small-col">Units</th>
         </tr>
       </thead>
       <tbody id="recent-body"></tbody>
@@ -125,7 +126,7 @@
 
         body.innerHTML = '';
         if (!entries.length) {
-          body.innerHTML = '<tr><td colspan="8">No entries found</td></tr>';
+          body.innerHTML = '<tr><td colspan="9">No entries found</td></tr>';
           statusEl.textContent = 'No data yet.';
           periodEl.textContent = (startDate || endDate)
             ? `Report period: ${startDate || '...'} to ${endDate || '...'}`
@@ -145,6 +146,7 @@
             <td class="small-col">${entry.temp || ''}</td>
             <td class="small-col">${entry.staff || ''}</td>
             <td class="small-col">${entry.trays || ''}</td>
+            <td class="small-col">${entry.units || ''}</td>
           `;
           body.appendChild(row);
         });
