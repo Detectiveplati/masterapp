@@ -204,7 +204,11 @@ function renderActiveCooks() {
           </div>
           <div class="cook-input-row">
             <label class="cook-input-label">盘数 Trays</label>
-            <input type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 3" value="${cook.trays}" class="trays-input" oninput="sanitizeNumberInput(this, false);updateTrays(${cook.id}, this.value);" id="trays-input-${cook.id}">
+            <div class="trays-picker" id="trays-input-${cook.id}">
+              ${[1,2,3,4,5,6,7,8,9,10].map(n =>
+                `<button class="tray-btn${cook.trays == n ? ' tray-selected' : ''}" onclick="updateTrays(${cook.id},${n});document.querySelectorAll('#trays-input-${cook.id} .tray-btn').forEach(b=>b.classList.remove('tray-selected'));this.classList.add('tray-selected');">${n}</button>`
+              ).join('')}
+            </div>
           </div>
         </div>
 
@@ -401,7 +405,7 @@ window.lockCookTemp = lockCookTemp;
 
 function updateTrays(id, value) {
   const cook = cooks.find(c => c.id === id);
-  if (cook) cook.trays = value.trim();
+  if (cook) cook.trays = String(value).trim();
 }
 
 function sanitizeNumberInput(inputEl, allowDecimal) {
@@ -431,11 +435,9 @@ async function saveCook(id) {
       return;
     }
 
-    // Read directly from DOM inputs as the source of truth at save time
+    // Read directly from DOM for temp; trays already stored via updateTrays button taps
     const tempInputEl  = document.querySelector(`#temp-input-${id} input`);
-    const traysInputEl = document.getElementById(`trays-input-${id}`);
     if (tempInputEl  && tempInputEl.value.trim())  cook.temp  = tempInputEl.value.trim();
-    if (traysInputEl && traysInputEl.value.trim()) cook.trays = traysInputEl.value.trim();
 
     if (!cook.temp || isNaN(parseFloat(cook.temp))) {
       alert("请输入有效核心温度。 Enter a valid core temperature.");
