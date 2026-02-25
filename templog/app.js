@@ -153,7 +153,7 @@ function addNewCook(food) {
   });
   renderActiveCooks();
   showToast(`✓ 已添加 Added: ${food}`);
-  statusEl.textContent = `已添加 Added ${food} by ${currentStaff} — 按开始做好准备 press Start when ready.`;
+  statusEl.textContent = `已添加 Added ${food} by ${currentStaff} — 点击卡片开始 tap card to start.`;
 }
 
 function renderActiveCooks() {
@@ -162,10 +162,14 @@ function renderActiveCooks() {
     const card = document.createElement('div');
     const isTarget = cook.endTime && window.btTargetCookId === cook.id;
     const notStarted = !cook.startTime && !cook.endTime;
-    const tappable = notStarted || !!cook.endTime;  // tap to start OR tap to BT-target
-    card.className = 'cook-card' + (isTarget ? ' bt-targeted' : '') + (notStarted ? ' not-started' : '');
+    const inProgress = !!(cook.startTime && !cook.endTime);
+    const tappable = true;  // all states: tap to start / end / BT-target
+    card.className = 'cook-card'
+      + (isTarget    ? ' bt-targeted' : '')
+      + (notStarted  ? ' not-started' : '')
+      + (inProgress  ? ' cooking'     : '');
     card.innerHTML = `
-      <div class="card-tap-zone${tappable ? ' card-tap-active' : ''}">
+      <div class="card-tap-zone card-tap-active">
         <h3>${cook.food}</h3>
         <div class="timer-display ${cook.endTime ? 'finished' : ''}" id="timer-${cook.id}">
           ${cook.startTime ? formatElapsed(cook) : '未开始 Not started'}
@@ -175,7 +179,9 @@ function renderActiveCooks() {
         </div>
         ${notStarted
           ? ''
-          : isTarget
+          : inProgress
+            ? '<div class="end-tap-hint">🔴 点击停止烹饪 Tap to end cooking</div>'
+            : isTarget
             ? '<div class="bt-target-indicator">🎯 已选中 — 按探针按键 TARGETED — PRESS PROBE BUTTON</div>'
             : tappable
               ? cook.tempLocked
@@ -184,7 +190,6 @@ function renderActiveCooks() {
               : ''
         }
       </div>
-      ${cook.startTime && !cook.endTime ? `<button class="end-btn" onclick="endCook(${cook.id})">停止烹饪 END COOKING</button>` : ''}
       ${cook.endTime ? `
         <div class="cook-inputs">
           <div class="cook-input-row">
@@ -213,25 +218,19 @@ function renderActiveCooks() {
     `;
 
     // Attach tap handler via addEventListener (reliable on mobile; inline onclick on divs is not)
-    if (tappable) {
-      const tapZone = card.querySelector('.card-tap-zone');
-      tapZone.addEventListener('click', (e) => {
-        if (e.target.closest('button, input')) return;
-        const c = cooks.find(x => x.id === cook.id);
-        if (!c) return;
-        // Not-started card: tap starts the cook
-        if (!c.startTime && !c.endTime) {
-          startCook(cook.id);
-          return;
-        }
-        // Finished card: tap to BT-target (unlock first if already locked)
-        if (c.tempLocked) {
-          c.tempLocked = false;
-          c.temp = null;
-        }
-        setBtTarget(cook.id);
-      });
-    }
+    const tapZone = card.querySelector('.card-tap-zone');
+    tapZone.addEventListener('click', (e) => {
+      if (e.target.closest('button, input')) return;
+      const c = cooks.find(x => x.id === cook.id);
+      if (!c) return;
+      // Not-started: tap starts the cook
+      if (!c.startTime && !c.endTime) { startCook(cook.id); return; }
+      // In-progress: tap ends the cook
+      if (c.startTime && !c.endTime) { endCook(cook.id); return; }
+      // Finished: tap to BT-target (unlock first if already locked)
+      if (c.tempLocked) { c.tempLocked = false; c.temp = null; }
+      setBtTarget(cook.id);
+    });
 
     activeGrid.appendChild(card);
   });

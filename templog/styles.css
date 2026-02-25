@@ -432,6 +432,26 @@ button {
 }
 .card-tap-active:active { background: rgba(21,101,192,0.08); }
 
+/* In-progress card — amber pulsing border, tap to end */
+.cook-card.cooking {
+  border: 2.5px solid #e65100;
+  animation: cooking-pulse 2s ease-in-out infinite;
+}
+@keyframes cooking-pulse {
+  0%, 100% { box-shadow: 0 4px 12px rgba(230,81,0,0.15); }
+  50%       { box-shadow: 0 4px 22px rgba(230,81,0,0.45); }
+}
+
+/* "Tap to end" hint inside in-progress cards */
+.end-tap-hint {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #e65100;
+  text-align: center;
+  margin-top: 4px;
+  letter-spacing: 0.03em;
+}
+
 /* Not-started card — green pulsing border inviting a tap */
 .cook-card.not-started {
   border: 2.5px solid #27ae60;
