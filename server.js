@@ -74,8 +74,10 @@ const TEMPLOG_DB_NAME   = process.env.TEMPLOG_DB_NAME || 'kitchenlog';
 let templogDb;
 
 // Build MongoClient options — add serverApi when connecting to Atlas (srv URI)
+// Use literal '1' instead of ServerApiVersion.One — the enum value may be undefined
+// in some driver versions, causing a MongoParseError that silently kills the connection.
 const templogClientOptions = TEMPLOG_MONGO_URI.startsWith('mongodb+srv')
-    ? { serverApi: { version: ServerApiVersion.One, strict: false, deprecationErrors: false } }
+    ? { serverApi: { version: '1', strict: false, deprecationErrors: false } }
     : {};
 
 MongoClient.connect(TEMPLOG_MONGO_URI, templogClientOptions)
