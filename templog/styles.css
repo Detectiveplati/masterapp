@@ -567,14 +567,14 @@ button {
   bottom: 0;
   left: 0;
   right: 0;
-  font-size: 0.65rem;
-  font-weight: 800;
-  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: #90c4f8;
   text-align: center;
-  background: #1565c0;
+  background: rgba(21, 101, 192, 0.12);
   border-radius: 0 0 6px 6px;
   padding: 2px 4px;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   pointer-events: none;
 }
