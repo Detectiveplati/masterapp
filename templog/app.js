@@ -190,7 +190,7 @@ function renderActiveCooks() {
       </div>
       ${cook.endTime ? `
         <div class="cook-inputs">
-          <div class="cook-inputs-col">
+          <div class="cook-inputs-row1">
             <div class="cook-input-row">
               <label class="cook-input-label">温度 Temp</label>
               ${cook.tempLocked
@@ -201,22 +201,20 @@ function renderActiveCooks() {
                   </div>`
               }
             </div>
-          </div>
-          <div class="cook-inputs-col">
             <div class="cook-input-row">
-              <label class="cook-input-label">盘数 Trays</label>
-              <div class="trays-picker" id="trays-input-${cook.id}">
-                ${[1,2,3,4,5,6,7,8,9,10].map(n =>
-                  `<button class="tray-btn${cook.trays == n ? ' tray-selected' : ''}" onclick="updateTrays(${cook.id},${n});document.querySelectorAll('#trays-input-${cook.id} .tray-btn').forEach(b=>b.classList.remove('tray-selected'));this.classList.add('tray-selected');">${n}</button>`
-                ).join('')}
-              </div>
-            </div>
-            <div class="cook-input-row" style="margin-top:4px">
               <label class="cook-input-label">单位 Units</label>
               <div class="units-picker" id="units-input-${cook.id}">
                 <button class="unit-btn${cook.units === 'Full GN' ? ' unit-selected' : ''}" onclick="updateUnits(${cook.id},'Full GN');document.querySelectorAll('#units-input-${cook.id} .unit-btn').forEach(b=>b.classList.remove('unit-selected'));this.classList.add('unit-selected');">Full GN</button>
                 <button class="unit-btn${cook.units === 'Half GN' ? ' unit-selected' : ''}" onclick="updateUnits(${cook.id},'Half GN');document.querySelectorAll('#units-input-${cook.id} .unit-btn').forEach(b=>b.classList.remove('unit-selected'));this.classList.add('unit-selected');">Half GN</button>
               </div>
+            </div>
+          </div>
+          <div class="cook-input-row">
+            <label class="cook-input-label">数量 Numbers</label>
+            <div class="trays-picker" id="trays-input-${cook.id}">
+              ${[1,2,3,4,5,6,7,8,9,10].map(n =>
+                `<button class="tray-btn${cook.trays == n ? ' tray-selected' : ''}" onclick="updateTrays(${cook.id},${n});document.querySelectorAll('#trays-input-${cook.id} .tray-btn').forEach(b=>b.classList.remove('tray-selected'));this.classList.add('tray-selected');">${n}</button>`
+              ).join('')}
             </div>
           </div>
         </div>
