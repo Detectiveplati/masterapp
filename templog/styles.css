@@ -432,20 +432,14 @@ button {
 }
 .card-tap-active:active { background: rgba(21,101,192,0.08); }
 
-/* Not-started card — green pulsing border inviting a tap */
+/* Not-started card — tappable, no border animation */
 .cook-card.not-started {
-  border: 2.5px solid #27ae60;
   cursor: pointer;
-  animation: start-pulse 2s ease-in-out infinite;
 }
 .cook-card.not-started .card-tap-active {
   -webkit-tap-highlight-color: rgba(39,174,96,0.18);
 }
 .cook-card.not-started .card-tap-active:active { background: rgba(39,174,96,0.1); }
-@keyframes start-pulse {
-  0%, 100% { box-shadow: 0 4px 12px rgba(39,174,96,0.18); }
-  50%       { box-shadow: 0 4px 22px rgba(39,174,96,0.5); }
-}
 
 /* Big "TAP TO START" CTA shown inside not-started cards */
 .start-tap-indicator {
