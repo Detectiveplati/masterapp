@@ -171,8 +171,9 @@ h1 {
   border: 1px solid rgba(0,0,0,0.06);
   display: flex;
   flex-direction: column;
-  min-height: 160px;  /* consistent height across all states */
+  min-height: 160px;
   box-sizing: border-box;
+  position: relative;  /* anchor for corner buttons */
 }
 
 .cook-card h3 {
@@ -182,6 +183,7 @@ h1 {
   font-weight: 700;
   line-height: 1.2;
   word-break: break-word;
+  padding-right: 48px;  /* clear the corner buttons */
 }
 
 .timer-display {
@@ -224,10 +226,38 @@ button {
   box-shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
 
+/* Corner icon buttons — cancel (✕) and resume (▶) top-right of card */
+.card-corner-btns {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 3px;
+  z-index: 2;
+}
+.corner-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  font-size: 0.7rem;
+  line-height: 22px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.corner-cancel { background: #e53935; color: #fff; }
+.corner-cancel:active { background: #b71c1c; }
+.corner-resume { background: #1565c0; color: #fff; }
+.corner-resume:active { background: #0d47a1; }
+
 .start-btn { background: var(--success); color: var(--btn-text); }
 .end-btn   { background: var(--accent); color: var(--btn-text); }
 .save-btn  { background: var(--accent-2); color: var(--btn-text); }
-.back-btn  { background: #7f8c8d; color: var(--btn-text); margin-top: 0; width: 100%; font-size: 0.72rem; padding: 6px 4px; border-radius: 7px; }
 
 /* Cook card input sections */
 .cook-inputs {
@@ -292,25 +322,7 @@ button {
   font-weight: 800;
   line-height: 1.2;
 }
-/* RESUME + CANCEL: smaller, side by side */
-.card-secondary-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 5px;
-  margin-top: 5px;
-}
-.resume-btn {
-  background: #1565c0;
-  color: #fff;
-  border-radius: 7px;
-  padding: 6px 4px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  line-height: 1.3;
-}
-
+/* Card corner layout replaces old secondary row and back/resume buttons */
 
 /* Temperature display on finished cook cards */
 .temp-display {

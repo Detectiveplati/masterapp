@@ -169,6 +169,10 @@ function renderActiveCooks() {
       + (notStarted  ? ' not-started' : '')
       + (inProgress  ? ' cooking'     : '');
     card.innerHTML = `
+      <div class="card-corner-btns">
+        ${cook.endTime ? `<button class="corner-btn corner-resume" onclick="resumeCook(${cook.id})" title="Resume">&#9654;</button>` : ''}
+        ${(notStarted || cook.endTime) ? `<button class="corner-btn corner-cancel" onclick="confirmCancelCook(${cook.id})" title="Cancel">&#10005;</button>` : ''}
+      </div>
       <div class="card-tap-zone card-tap-active">
         <h3>${cook.food}</h3>
         <div class="timer-display ${cook.endTime ? 'finished' : ''}" id="timer-${cook.id}">
@@ -213,12 +217,7 @@ function renderActiveCooks() {
         </div>
 
         <button class="save-btn" onclick="saveCook(${cook.id})">✅ 保存 SAVE</button>
-        <div class="card-secondary-row">
-          <button class="resume-btn" onclick="resumeCook(${cook.id})">▶️ 继续 RESUME</button>
-          ${(!cook.startTime || cook.endTime) ? `<button class="back-btn" onclick="confirmCancelCook(${cook.id})">✖ 取消 Cancel</button>` : ''}
-        </div>
       ` : ''}      
-      ${!cook.startTime && !cook.endTime ? `<button class="back-btn" onclick="confirmCancelCook(${cook.id})">✖ 取消 Cancel</button>` : ''}
     `;
 
     // Attach tap handler via addEventListener (reliable on mobile; inline onclick on divs is not)
