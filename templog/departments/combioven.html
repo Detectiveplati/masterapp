@@ -618,10 +618,10 @@
         const label = document.getElementById('bt-target-label');
 
         if (wasButtonPress) {
-          // ── Physical button press: lock in temp on ALL finished cook cards and save each ──
+          // ── Physical button press: lock in temp on ALL finished cook cards (do NOT save) ──
           const finished = (typeof cooks !== 'undefined') ? cooks.filter(c => c.endTime) : [];
           if (finished.length === 0) {
-            setBtStatus(`⚠️ ${name} — ${temp.toFixed(1)} °C — 没有已停止的烹饪 No finished cooks to save`);
+            setBtStatus(`⚠️ ${name} — ${temp.toFixed(1)} °C — 没有已停止的烹饪 No finished cooks`);
             return;
           }
           const tempStr = temp.toFixed(1);
@@ -630,15 +630,12 @@
             const el = document.getElementById(`temp-input-${cook.id}`);
             if (el) el.innerHTML = `<span class="temp-value">${tempStr}</span><span class="temp-unit">°C</span>`;
           });
-          setBtStatus(`🔒 ${name} — ${tempStr} °C → 正在保存 ${finished.length} 个… Saving ${finished.length} card(s)…`);
-          if (label) label.textContent = `🔒 已锁定 ${tempStr} °C — 保存 ${finished.length} 个 Locked & saving ${finished.length}`;
+          setBtStatus(`🔒 ${name} — ${tempStr} °C — 已锁定 ${finished.length} 个 Locked ${finished.length} card(s) — 按保存 press SAVE`);
+          if (label) label.textContent = `🔒 已锁定 ${tempStr} °C (${finished.length} 个) — 请按保存 Locked — press SAVE to record`;
           feedbackLockIn();
-          // Lock each card immediately, then save with small stagger
-          finished.forEach((cook, i) => {
+          // Lock each card's temp display (no auto-save — chef must press SAVE)
+          finished.forEach(cook => {
             if (typeof window.lockCookTemp === 'function') window.lockCookTemp(cook.id);
-            setTimeout(() => {
-              if (typeof window.saveCook === 'function') window.saveCook(cook.id);
-            }, i * 300);
           });
         } else {
           // ── Manual Read button or auto-triggered: display on targeted card only ──
