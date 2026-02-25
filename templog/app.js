@@ -152,6 +152,13 @@ function addNewCook(food) {
   statusEl.textContent = `已添加 Added ${food} by ${currentStaff} — 点击卡片开始 tap card to start.`;
 }
 
+// Split "中文 English" food strings into two-line display
+function formatFoodName(food) {
+  const m = food.match(/^(.+?)\s+([A-Z].*)$/);
+  if (m) return `<span class="food-cn">${m[1]}</span><span class="food-en">${m[2]}</span>`;
+  return food;
+}
+
 function renderActiveCooks() {
   activeGrid.innerHTML = '';
   cooks.forEach(cook => {
@@ -168,7 +175,7 @@ function renderActiveCooks() {
       ${cook.endTime ? `<button class="corner-btn corner-resume corner-tl" onclick="resumeCook(${cook.id})" title="Resume">&#9654;</button>` : ''}
       ${(notStarted || cook.endTime) ? `<button class="corner-btn corner-cancel corner-tr" onclick="confirmCancelCook(${cook.id})" title="Cancel">&#10005;</button>` : ''}
       <div class="card-tap-zone card-tap-active">
-        <h3>${cook.food}</h3>
+        <h3>${formatFoodName(cook.food)}</h3>
         <div class="timer-display ${cook.endTime ? 'finished' : ''}" id="timer-${cook.id}">
           ${cook.startTime ? formatElapsed(cook) : '未开始 Not started'}
         </div>
