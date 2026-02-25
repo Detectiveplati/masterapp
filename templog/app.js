@@ -22,6 +22,17 @@ function saveCooksToStorage() {
   } catch (e) { console.warn('localStorage save failed:', e); }
 }
 
+function loadStaffFromStorage() {
+  try {
+    const savedStaff = localStorage.getItem(STAFF_KEY);
+    if (savedStaff) {
+      setTimeout(() => {
+        try { setGlobalStaff(savedStaff); } catch(e) {}
+      }, 0);
+    }
+  } catch(e) { console.warn('staff restore failed:', e); }
+}
+
 function loadCooksFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -37,7 +48,6 @@ function loadCooksFromStorage() {
     });
     renderActiveCooks();
     if (cooks.some(c => c.startTime && !c.endTime)) startGlobalTimer();
-    // Restore staff
     const savedStaff = localStorage.getItem(STAFF_KEY);
     if (savedStaff) {
       // Defer until DOM is ready for staff buttons
@@ -47,6 +57,8 @@ function loadCooksFromStorage() {
     }
   } catch (e) { console.warn('localStorage load failed:', e); }
 }
+
+// Restore staff from storage separately so it works even when cooks array is empty
 
 // ============================================================
 // SCREEN WAKE LOCK - Keep screen on
@@ -93,8 +105,9 @@ function setGlobalStaff(staff) {
   try { localStorage.setItem(STAFF_KEY, staff); } catch(e) {}
 }
 
-// Auto-select the first staff member on page load
+// Auto-select the first staff member on page load — only if no staff was restored from storage
 function autoSelectFirstStaff() {
+  if (currentStaff) return;  // already restored from localStorage — don't overwrite
   const firstStaffBtn = document.querySelector('.staff-btn');
   if (firstStaffBtn) {
     const staffName = firstStaffBtn.textContent.trim();
@@ -583,6 +596,7 @@ async function exportFullCSV() {
 // Load persisted cooks immediately (before inline scripts call autoSelectFirstStaff)
 // so that autoSelectFirstStaff() cannot overwrite a restored cooks array.
 loadCooksFromStorage();
+loadStaffFromStorage();
 
 window.addEventListener('load', () => {
   loadRecent();
