@@ -176,7 +176,7 @@ function renderActiveCooks() {
             <input type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 3" value="${cook.trays}" class="trays-input" oninput="sanitizeNumberInput(this, false);updateTrays(${cook.id}, this.value);" id="trays-input-${cook.id}">
           </div>
         </div>
-        ${!cook.tempLocked ? `<button class="target-btn${isTarget ? ' target-btn-active' : ''}" onclick="setBtTarget(${cook.id})">${isTarget ? '🎯 已选中 BT Targeted' : '🎯 选中温度计 BT Target'}</button>` : ''}
+
         <div class="card-action-row">
           <button class="save-btn" onclick="saveCook(${cook.id})">✅ 保存 SAVE</button>
           <button class="resume-btn" onclick="resumeCook(${cook.id})">▶️ 继续 RESUME</button>
