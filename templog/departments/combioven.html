@@ -453,24 +453,26 @@
 
     // ── Feedback: vibration + audio beep on lock-in ──
     function feedbackLockIn() {
-      // Vibration: double-buzz (Android Chrome)
-      if (navigator.vibrate) navigator.vibrate([80, 60, 120]);
-      // Audio: two short beeps via Web Audio API
+      // Vibration: strong triple-buzz (Android Chrome)
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+      // Audio: three sharp beeps — square wave cuts through kitchen noise better than sine
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         function beep(freq, startAt, dur) {
           const osc  = ctx.createOscillator();
           const gain = ctx.createGain();
           osc.connect(gain); gain.connect(ctx.destination);
-          osc.type = 'sine';
+          osc.type = 'square';          // sharp/piercing — much louder-sounding than sine
           osc.frequency.value = freq;
-          gain.gain.setValueAtTime(0.5, startAt);
+          gain.gain.setValueAtTime(0.9, startAt);
           gain.gain.exponentialRampToValueAtTime(0.001, startAt + dur);
           osc.start(startAt);
           osc.stop(startAt + dur + 0.01);
         }
-        beep(880, ctx.currentTime,        0.12);
-        beep(1100, ctx.currentTime + 0.18, 0.15);
+        const t = ctx.currentTime;
+        beep(1200, t,        0.12);   // short high beep
+        beep(1200, t + 0.17, 0.12);   // repeat
+        beep(1800, t + 0.36, 0.22);  // final higher confirming tone
       } catch(e) { /* audio not available */ }
     }
 
