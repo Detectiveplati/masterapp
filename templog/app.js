@@ -26,21 +26,25 @@ function loadStaffFromStorage() {
   try {
     const savedStaff = localStorage.getItem(STAFF_KEY);
     if (savedStaff) {
-      setTimeout(() => {
-        try { setGlobalStaff(savedStaff); } catch(e) {}
-      }, 0);
+      // app.js is loaded mid-page so staff buttons are already in the DOM — call directly
+      try { setGlobalStaff(savedStaff); } catch(e) { currentStaff = savedStaff; }
     }
   } catch(e) { console.warn('staff restore failed:', e); }
 }
 
 function loadCooksFromStorage() {
   try {
+    // Restore staff first so cards render with the correct name
+    const savedStaff = localStorage.getItem(STAFF_KEY);
+    if (savedStaff && !currentStaff) {
+      try { setGlobalStaff(savedStaff); } catch(e) { currentStaff = savedStaff; }
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const saved = JSON.parse(raw);
     if (!Array.isArray(saved) || saved.length === 0) return;
     cooks = saved;
-    // Resume running timers: adjust startTime so elapsed time is preserved
     cooks.forEach(cook => {
       if (cook.startTime && !cook.endTime) {
         cook.timerRunning = true;
@@ -48,13 +52,6 @@ function loadCooksFromStorage() {
     });
     renderActiveCooks();
     if (cooks.some(c => c.startTime && !c.endTime)) startGlobalTimer();
-    const savedStaff = localStorage.getItem(STAFF_KEY);
-    if (savedStaff) {
-      // Defer until DOM is ready for staff buttons
-      setTimeout(() => {
-        try { setGlobalStaff(savedStaff); } catch(e) {}
-      }, 0);
-    }
   } catch (e) { console.warn('localStorage load failed:', e); }
 }
 
@@ -613,8 +610,8 @@ async function exportFullCSV() {
 // ============================================================
 // Load persisted cooks immediately (before inline scripts call autoSelectFirstStaff)
 // so that autoSelectFirstStaff() cannot overwrite a restored cooks array.
+loadStaffFromStorage();   // must run before loadCooks so cards render with correct staff
 loadCooksFromStorage();
-loadStaffFromStorage();
 
 window.addEventListener('load', () => {
   loadRecent();
