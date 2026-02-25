@@ -183,21 +183,23 @@ h1 {
   font-weight: 700;
   line-height: 1.2;
   word-break: break-word;
+  text-align: center;
   padding-left: 28px;   /* clear resume button (top-left) */
   padding-right: 28px;  /* clear cancel button (top-right) */
 }
 .food-cn {
   display: block;
-  font-size: 0.88rem;
-  font-weight: 700;
-  line-height: 1.15;
-  color: #222;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #111;
+  letter-spacing: 0.04em;
 }
 .food-en {
   display: block;
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   font-weight: 500;
-  color: #888;
+  color: #999;
   line-height: 1.2;
   letter-spacing: 0.01em;
 }
