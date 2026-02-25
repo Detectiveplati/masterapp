@@ -148,8 +148,9 @@ function renderActiveCooks() {
   cooks.forEach(cook => {
     const card = document.createElement('div');
     const isTarget = cook.endTime && window.btTargetCookId === cook.id;
-    card.className = 'cook-card' + (isTarget ? ' bt-targeted' : '');
-    const tappable = !!cook.endTime;  // all finished cards are tappable (locked or not)
+    const notStarted = !cook.startTime && !cook.endTime;
+    const tappable = notStarted || !!cook.endTime;  // tap to start OR tap to BT-target
+    card.className = 'cook-card' + (isTarget ? ' bt-targeted' : '') + (notStarted ? ' not-started' : '');
     card.innerHTML = `
       <div class="card-tap-zone${tappable ? ' card-tap-active' : ''}">
         <h3>${cook.food}</h3>
@@ -159,16 +160,17 @@ function renderActiveCooks() {
         <div class="info-row">
           <strong>厨师 Staff:</strong> ${currentStaff || '(not set)'}
         </div>
-        ${isTarget
-          ? '<div class="bt-target-indicator">🎯 已选中 — 按探针按键 TARGETED — PRESS PROBE BUTTON</div>'
-          : tappable
-            ? cook.tempLocked
-              ? '<div class="bt-target-hint">🔄 重新点击以重新锁定 Re-tap to re-lock</div>'
-              : '<div class="bt-target-hint">🎯 点击选中 Tap to target</div>'
-            : ''
+        ${notStarted
+          ? '<div class="start-tap-indicator">👆 点击开始烹饪<br>TAP TO START COOKING</div>'
+          : isTarget
+            ? '<div class="bt-target-indicator">🎯 已选中 — 按探针按键 TARGETED — PRESS PROBE BUTTON</div>'
+            : tappable
+              ? cook.tempLocked
+                ? '<div class="bt-target-hint">🔄 重新点击以重新锁定 Re-tap to re-lock</div>'
+                : '<div class="bt-target-hint">🎯 点击选中 Tap to target</div>'
+              : ''
         }
       </div>
-      ${!cook.startTime ? `<button class="start-btn" onclick="startCook(${cook.id})">开始烹饪 START COOKING</button>` : ''}
       ${cook.startTime && !cook.endTime ? `<button class="end-btn" onclick="endCook(${cook.id})">停止烹饪 END COOKING</button>` : ''}
       ${cook.endTime ? `
         <div class="cook-inputs">
@@ -197,15 +199,20 @@ function renderActiveCooks() {
       ${!cook.startTime && !cook.endTime ? `<button class="back-btn" onclick="confirmCancelCook(${cook.id})">✖ 取消 Cancel</button>` : ''}
     `;
 
-    // Attach tap-to-target via addEventListener (reliable on mobile; inline onclick on divs is not)
+    // Attach tap handler via addEventListener (reliable on mobile; inline onclick on divs is not)
     if (tappable) {
       const tapZone = card.querySelector('.card-tap-zone');
       tapZone.addEventListener('click', (e) => {
-        // Ignore if the click originated from a button or input inside the card
         if (e.target.closest('button, input')) return;
-        // If card is locked, unlock it so it can receive a new BT reading
         const c = cooks.find(x => x.id === cook.id);
-        if (c && c.tempLocked) {
+        if (!c) return;
+        // Not-started card: tap starts the cook
+        if (!c.startTime && !c.endTime) {
+          startCook(cook.id);
+          return;
+        }
+        // Finished card: tap to BT-target (unlock first if already locked)
+        if (c.tempLocked) {
           c.tempLocked = false;
           c.temp = null;
         }
