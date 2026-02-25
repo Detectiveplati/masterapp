@@ -439,7 +439,7 @@ async function saveCook(id) {
     statusEl.textContent = `${cook.food} (${cook.trays} 盘子 trays) 保存 saved ✓`;
   } catch (err) {
     console.error("Error saving cook data:", err);
-    alert("保存失败 Failed to save cook data. 请重试 Please try again.");
+    alert(`保存失败 Save failed:\n${err.message}\n\n请重试 Please try again.`);
     return;
   }
 

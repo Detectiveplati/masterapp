@@ -72,12 +72,26 @@ mongoose.connect(MAINTENANCE_MONGO_URI)
 const TEMPLOG_MONGO_URI = process.env.TEMPLOG_MONGODB_URI || 'mongodb://localhost:27017';
 const TEMPLOG_DB_NAME   = process.env.TEMPLOG_DB_NAME || 'kitchenlog';
 let templogDb;
-MongoClient.connect(TEMPLOG_MONGO_URI)
+
+// Build MongoClient options — add serverApi when connecting to Atlas (srv URI)
+const templogClientOptions = TEMPLOG_MONGO_URI.startsWith('mongodb+srv')
+    ? { serverApi: { version: ServerApiVersion.One, strict: false, deprecationErrors: false } }
+    : {};
+
+MongoClient.connect(TEMPLOG_MONGO_URI, templogClientOptions)
     .then(client => {
         templogDb = client.db(TEMPLOG_DB_NAME);
-        console.log('✓ [TempLog] MongoDB (native) connected');
+        console.log(`✓ [TempLog] MongoDB connected (db: ${TEMPLOG_DB_NAME})`);
+        // Handle unexpected disconnection
+        client.on('close', () => {
+            console.warn('⚠️  [TempLog] MongoDB connection closed');
+            templogDb = null;
+        });
     })
-    .catch(err => console.error('✗ [TempLog] MongoDB connection error:', err));
+    .catch(err => {
+        console.error('✗ [TempLog] MongoDB connection error:', err.message);
+        console.error('  URI used:', TEMPLOG_MONGO_URI.replace(/:([^@]+)@/, ':***@'));
+    });
 
 /**
  * Middleware to ensure TempLog database is ready
@@ -86,7 +100,10 @@ MongoClient.connect(TEMPLOG_MONGO_URI)
  * @param {Function} next - Next middleware
  */
 function requireTemplogDb(req, res, next) {
-    if (!templogDb) return res.status(503).json({ error: 'TempLog database not ready' });
+    if (!templogDb) {
+        console.error('[TempLog] DB not ready — TEMPLOG_MONGODB_URI may be misconfigured');
+        return res.status(503).json({ error: 'TempLog database not ready. Check TEMPLOG_MONGODB_URI env var.' });
+    }
     req.templogDb = templogDb;
     next();
 }

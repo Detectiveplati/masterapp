@@ -107,16 +107,23 @@ function openIndexedDB() {
   });
 }
 
-// Save cook data to CSV (currently) or API (future MongoDB)
+// Save cook data via API
 async function saveCookData(cookData) {
-  const res = await fetch('/templog/api/cooks', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(cookData)
-  });
+  let res;
+  try {
+    res = await fetch('/templog/api/cooks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cookData)
+    });
+  } catch (networkErr) {
+    throw new Error(`网络错误 Network error: ${networkErr.message}`);
+  }
 
   if (!res.ok) {
-    throw new Error('Failed to save cook data');
+    let detail = '';
+    try { const j = await res.json(); detail = j.error || ''; } catch (_) {}
+    throw new Error(`保存失败 Save failed (HTTP ${res.status})${detail ? ': ' + detail : ''}`);
   }
 
   return true;
