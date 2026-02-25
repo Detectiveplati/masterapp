@@ -147,9 +147,9 @@ function renderActiveCooks() {
   activeGrid.innerHTML = '';
   cooks.forEach(cook => {
     const card = document.createElement('div');
-    const isTarget = cook.endTime && !cook.tempLocked && window.btTargetCookId === cook.id;
+    const isTarget = cook.endTime && window.btTargetCookId === cook.id;
     card.className = 'cook-card' + (isTarget ? ' bt-targeted' : '');
-    const tappable = cook.endTime && !cook.tempLocked;
+    const tappable = !!cook.endTime;  // all finished cards are tappable (locked or not)
     card.innerHTML = `
       <div class="card-tap-zone${tappable ? ' card-tap-active' : ''}">
         <h3>${cook.food}</h3>
@@ -161,7 +161,11 @@ function renderActiveCooks() {
         </div>
         ${isTarget
           ? '<div class="bt-target-indicator">🎯 已选中 Targeted</div>'
-          : tappable ? '<div class="bt-target-hint">🎯 点击选中 Tap to target</div>' : ''
+          : tappable
+            ? cook.tempLocked
+              ? '<div class="bt-target-hint">🔄 重新选中 Re-tap to re-lock</div>'
+              : '<div class="bt-target-hint">🎯 点击选中 Tap to target</div>'
+            : ''
         }
       </div>
       ${!cook.startTime ? `<button class="start-btn" onclick="startCook(${cook.id})">开始烹饪 START COOKING</button>` : ''}
@@ -199,6 +203,12 @@ function renderActiveCooks() {
       tapZone.addEventListener('click', (e) => {
         // Ignore if the click originated from a button or input inside the card
         if (e.target.closest('button, input')) return;
+        // If card is locked, unlock it so it can receive a new BT reading
+        const c = cooks.find(x => x.id === cook.id);
+        if (c && c.tempLocked) {
+          c.tempLocked = false;
+          c.temp = null;
+        }
         setBtTarget(cook.id);
       });
     }

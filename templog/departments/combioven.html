@@ -620,7 +620,7 @@
         if (wasButtonPress) {
           // ── Physical button press: lock ONLY the targeted card ──
           // Auto-target if only one finished card and none explicitly targeted
-          const finished = (typeof cooks !== 'undefined') ? cooks.filter(c => c.endTime && !c.tempLocked) : [];
+          const finished = (typeof cooks !== 'undefined') ? cooks.filter(c => c.endTime) : [];
           let targetCook = finished.find(c => c.id === window.btTargetCookId);
           if (!targetCook && finished.length === 1) targetCook = finished[0];
 
