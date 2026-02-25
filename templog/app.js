@@ -178,7 +178,7 @@ function renderActiveCooks() {
           <strong>厨师 Staff:</strong> ${currentStaff || '(not set)'}
         </div>
         ${notStarted
-          ? ''
+          ? '<div class="end-tap-hint" style="color:#27ae60;">🟢 点击开始烹饪 Tap to start cooking</div>'
           : inProgress
             ? '<div class="end-tap-hint">🔴 点击停止烹饪 Tap to end cooking</div>'
             : isTarget
