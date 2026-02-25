@@ -153,6 +153,7 @@ h1 {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+  align-items: start;  /* cards size to their content, not stretched to match tallest in row */
 }
 
 .cook-card {
@@ -161,9 +162,10 @@ h1 {
   box-shadow: 0 4px 12px var(--shadow);
   padding: 8px;
   border: 1px solid rgba(0,0,0,0.06);
-  /* Standardized equal height — content aligns top */
   display: flex;
   flex-direction: column;
+  min-height: 300px;  /* consistent height across all states */
+  box-sizing: border-box;
 }
 
 .cook-card h3 {
@@ -418,7 +420,10 @@ button {
 }
 
 /* Tappable top zone on finished cards */
-.card-tap-zone { border-radius: 8px; }
+.card-tap-zone {
+  border-radius: 8px;
+  flex: 1;  /* fills remaining vertical space — pushes buttons to bottom of card */
+}
 .card-tap-active {
   cursor: pointer;
   user-select: none;
