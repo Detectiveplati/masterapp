@@ -292,6 +292,23 @@ button {
   font-style: italic;
 }
 
+/* Manual temperature input inside the temp-display container */
+.temp-manual-input {
+  width: 100%;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #d32f2f;
+  border: none;
+  background: transparent;
+  text-align: center;
+  outline: none;
+  padding: 0;
+  -moz-appearance: textfield;
+}
+.temp-manual-input::-webkit-outer-spin-button,
+.temp-manual-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.temp-manual-input::placeholder { font-size: 0.75rem; font-weight: 400; color: #bbb; }
+
 /* BT target button on cook cards */
 .target-btn {
   background: #e3f2fd;

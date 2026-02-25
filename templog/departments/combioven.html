@@ -60,7 +60,6 @@
   <!-- Bluetooth Thermometer Panel -->
   <div class="bt-panel">
     <button id="bt-connect" class="export-btn">🌡️ 连接温度计 Connect Thermometer</button>
-    <button id="bt-read" class="export-btn" disabled>📖 读取温度 Read Temp</button>
     <span id="bt-temp" class="bt-temp"></span>
     <span id="bt-status" class="bt-status">未连接 Not connected</span>
     <div class="bt-target-row">
@@ -445,7 +444,6 @@
 
     const btStatus  = document.getElementById('bt-status');
     const btConnect = document.getElementById('bt-connect');
-    const btRead    = document.getElementById('bt-read');
     const btTemp    = document.getElementById('bt-temp');
 
     let btDevice       = null;
@@ -518,12 +516,11 @@
           _buttonPressed = true;  // next Sensor1 notification should lock in + save
           setBtStatus('🔴 按键已按下 — 锁定温度中… Button pressed — locking in temp…');
         }
-        if (code === 0x0002) { setBtStatus('⏻ Thermapen 正在关机 Shutting down'); setBtTemp(null); btRead.disabled = true; }
+        if (code === 0x0002) { setBtStatus('⏻ Thermapen 正在关机 Shutting down'); setBtTemp(null); }
       });
 
       const name = btDevice.name || 'Thermapen';
-      setBtStatus(`✓ ${name} 已连接 Connected — 按设备按键或点击读取温度 press button or Read Temp`);
-      btRead.disabled  = false;
+      setBtStatus(`✓ ${name} 已连接 Connected — 按设备按键锁定温度 press button to lock in temp`);
       btConnect.textContent = '🔄 重新配对 Re-pair';
 
       // Remove any old listener before adding new one to avoid duplicates
@@ -537,7 +534,6 @@
 
     function onDisconnected() {
       setBtTemp(null);
-      btRead.disabled = true;
       btSensor1 = null;
       btCommandChar = null;
       _reconnectAttempt = 0;
@@ -604,7 +600,6 @@
         if (err.name === 'NotFoundError') setBtStatus('❌ 未选择设备 No device selected.');
         else if (err.name === 'SecurityError') setBtStatus('❌ 蓝牙被封锁 — 需要HTTPS Bluetooth blocked — needs HTTPS.');
         else setBtStatus(`❌ ${err.message}`);
-        btRead.disabled = true;
         btConnect.disabled = false;
       }
     }
@@ -673,7 +668,6 @@
 
     // Attach event listeners
     btConnect.addEventListener('click', connectThermometer);
-    btRead.addEventListener('click', readTemperature);
 
     // Auto-connect to remembered device on page load (no picker shown)
     autoConnectThermometer();

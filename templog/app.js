@@ -160,15 +160,12 @@ function renderActiveCooks() {
       ${cook.startTime && !cook.endTime ? `<button class="end-btn" onclick="endCook(${cook.id})">停止烹饪 END COOKING</button>` : ''}
       ${cook.endTime ? `
         <div class="info-row">
-          <div class="temp-display${cook.tempLocked ? ' temp-locked' : cook.temp ? ' temp-unlocked' : ''}" id="temp-input-${cook.id}" title="${cook.tempLocked ? '已锁定 Locked by thermometer button' : '按温度计按键锁定 Press thermometer button to lock'}">
-            ${cook.temp
-              ? (cook.tempLocked
-                  ? `<span class="temp-lock-icon">🔒</span><span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span>`
-                  : `<span class="temp-lock-icon">🔓</span><span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span><span class="temp-lock-hint">按按键锁定 Press button to lock</span>`)
-              : '<span class="temp-waiting">🌡️ 等待温度计 Waiting for thermometer</span>'}
-          </div>
+          ${cook.tempLocked
+            ? `<div class="temp-display temp-locked" id="temp-input-${cook.id}" title="已锁定 Locked by thermometer button"><span class="temp-lock-icon">🔒</span><span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span></div>`
+            : `<div class="temp-display${cook.temp ? ' temp-unlocked' : ''}" id="temp-input-${cook.id}"><input type="number" step="0.1" min="0" max="300" inputmode="decimal" placeholder="核心温度 Core Temp °C" value="${cook.temp || ''}" oninput="sanitizeNumberInput(this, true);updateTemp(${cook.id}, this.value);" class="temp-manual-input"></div>`
+          }
           ${!cook.tempLocked ? `<button class="target-btn${isTarget ? ' target-btn-active' : ''}" onclick="setBtTarget(${cook.id})">${isTarget ? '🎯 已选中 Targeted' : '🎯 选中温度计 Target'}</button>` : ''}
-          <input type="number" min="1" step="1" inputmode="numeric" placeholder="盘数 Trays" value="${cook.trays}" oninput="sanitizeNumberInput(this, false)" onchange="updateTrays(${cook.id}, this.value)">
+          <input type="number" min="1" step="1" inputmode="numeric" placeholder="盘数 Trays" value="${cook.trays}" oninput="sanitizeNumberInput(this, false);updateTrays(${cook.id}, this.value);">
           <button class="save-btn" onclick="saveCook(${cook.id})">保存 SAVE</button>
           <button class="start-btn" onclick="resumeCook(${cook.id})">继续烹饪 RESUME</button>
         </div>
@@ -311,9 +308,16 @@ function setLatestCookTemp(value) {
   cook.temp = tempValue;
   const el = document.getElementById(`temp-input-${cook.id}`);
   if (el) {
-    el.className = el.className.replace('temp-locked','').replace('temp-unlocked','').trim() + ' temp-unlocked';
-    el.title = '按温度计按键锁定 Press thermometer button to lock';
-    el.innerHTML = `<span class="temp-lock-icon">🔓</span><span class="temp-value">${tempValue}</span><span class="temp-unit">°C</span><span class="temp-lock-hint">按按键锁定 Press button to lock</span>`;
+    const input = el.querySelector('input[type="number"]');
+    if (input) {
+      // Update the manual input value so user can see the BT reading
+      input.value = tempValue;
+      el.className = el.className.replace('temp-locked','').replace('temp-unlocked','').trim() + ' temp-unlocked';
+    } else {
+      el.className = el.className.replace('temp-locked','').replace('temp-unlocked','').trim() + ' temp-unlocked';
+      el.title = '按温度计按键锁定 Press thermometer button to lock';
+      el.innerHTML = `<span class="temp-lock-icon">🔓</span><span class="temp-value">${tempValue}</span><span class="temp-unit">°C</span><span class="temp-lock-hint">按按键锁定 Press button to lock</span>`;
+    }
   }
   saveCooksToStorage();
   return cook.id;
@@ -403,7 +407,7 @@ async function saveCook(id) {
       startDate,
       startTime,
       endTime,
-      duration: cook.duration,
+      duration: (cook.duration / 60).toFixed(1),  // Convert seconds → minutes for DB
       temp: cook.temp,
       staff: currentStaff,
       trays: cook.trays
