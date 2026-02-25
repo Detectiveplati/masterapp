@@ -89,7 +89,8 @@ function setGlobalStaff(staff) {
   });
   document.getElementById(`staff-${staff.replace(/\s+/g, '')}`).classList.add('staff-selected');
   statusEl.textContent = `当前厨师：${staff} Current staff: ${staff}`;
-  saveCooksToStorage();
+  // Only persist the staff selection, not the cooks array
+  try { localStorage.setItem(STAFF_KEY, staff); } catch(e) {}
 }
 
 // Auto-select the first staff member on page load
@@ -545,10 +546,11 @@ async function exportFullCSV() {
 // ============================================================
 // INITIALIZATION
 // ============================================================
-// initializeData() is called from HTML with the appropriate CSV filename
+// Load persisted cooks immediately (before inline scripts call autoSelectFirstStaff)
+// so that autoSelectFirstStaff() cannot overwrite a restored cooks array.
+loadCooksFromStorage();
 
 window.addEventListener('load', () => {
-  loadCooksFromStorage();
   loadRecent();
 });
 
