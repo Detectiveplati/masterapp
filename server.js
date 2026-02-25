@@ -360,8 +360,8 @@ app.get('/templog/api/cooks/export', requireTemplogDb, async (req, res) => {
         const filter = buildDateFilter(req.query);
         const cooks  = await req.templogDb.collection('cooks_combioven').find(filter).sort({ createdAt: 1 }).toArray();
 
-        const headers = ['Food Item','Start Date','Start Time','End Time','Duration (min)','Core Temp (°C)','Staff','Trays'];
-        const rows    = cooks.map(c => [c.food, c.startDate, c.startTime, c.endTime, c.duration, c.temp, c.staff, c.trays]);
+        const headers = ['Food Item','Start Date','Start Time','End Time','Duration (min)','Core Temp (°C)','Staff','Trays','Units'];
+        const rows    = cooks.map(c => [c.food, c.startDate, c.startTime, c.endTime, c.duration, c.temp, c.staff, c.trays, c.units||'']);
         const csv     = [headers, ...rows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
 
         const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];

@@ -148,8 +148,7 @@ function addNewCook(food) {
     endTime: null,
     duration: null,
     temp: '',
-    trays: '',
-    timerRunning: false
+    trays: '',    units: '',    timerRunning: false
   });
   renderActiveCooks();
   showToast(`✓ 已添加 Added: ${food}`);
@@ -196,22 +195,33 @@ function renderActiveCooks() {
       </div>
       ${cook.endTime ? `
         <div class="cook-inputs">
-          <div class="cook-input-row">
-            <label class="cook-input-label">核心温度 Core Temp</label>
-            ${cook.tempLocked
-              ? `<div class="temp-display temp-locked" id="temp-input-${cook.id}"><span class="temp-lock-icon">🔒</span><span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span></div>`
-              : `<div class="temp-display${cook.temp ? ' temp-unlocked' : ''}" id="temp-input-${cook.id}">
-                  <input type="number" step="0.1" min="0" max="300" inputmode="decimal" placeholder="e.g. 75.0" value="${cook.temp || ''}" oninput="sanitizeNumberInput(this, true);updateTemp(${cook.id}, this.value);" class="temp-manual-input">
-                  <span class="temp-unit-static">°C</span>
-                </div>`
-            }
+          <div class="cook-inputs-col">
+            <div class="cook-input-row">
+              <label class="cook-input-label">温度 Temp</label>
+              ${cook.tempLocked
+                ? `<div class="temp-display temp-locked" id="temp-input-${cook.id}"><span class="temp-lock-icon">🔒</span><span class="temp-value">${cook.temp}</span><span class="temp-unit">°C</span></div>`
+                : `<div class="temp-display${cook.temp ? ' temp-unlocked' : ''}" id="temp-input-${cook.id}">
+                    <input type="number" step="0.1" min="0" max="300" inputmode="decimal" placeholder="75.0" value="${cook.temp || ''}" oninput="sanitizeNumberInput(this, true);updateTemp(${cook.id}, this.value);" class="temp-manual-input">
+                    <span class="temp-unit-static">°C</span>
+                  </div>`
+              }
+            </div>
           </div>
-          <div class="cook-input-row">
-            <label class="cook-input-label">盘数 Trays</label>
-            <div class="trays-picker" id="trays-input-${cook.id}">
-              ${[1,2,3,4,5,6,7,8,9,10].map(n =>
-                `<button class="tray-btn${cook.trays == n ? ' tray-selected' : ''}" onclick="updateTrays(${cook.id},${n});document.querySelectorAll('#trays-input-${cook.id} .tray-btn').forEach(b=>b.classList.remove('tray-selected'));this.classList.add('tray-selected');">${n}</button>`
-              ).join('')}
+          <div class="cook-inputs-col">
+            <div class="cook-input-row">
+              <label class="cook-input-label">盘数 Trays</label>
+              <div class="trays-picker" id="trays-input-${cook.id}">
+                ${[1,2,3,4,5,6,7,8,9,10].map(n =>
+                  `<button class="tray-btn${cook.trays == n ? ' tray-selected' : ''}" onclick="updateTrays(${cook.id},${n});document.querySelectorAll('#trays-input-${cook.id} .tray-btn').forEach(b=>b.classList.remove('tray-selected'));this.classList.add('tray-selected');">${n}</button>`
+                ).join('')}
+              </div>
+            </div>
+            <div class="cook-input-row" style="margin-top:4px">
+              <label class="cook-input-label">单位 Units</label>
+              <div class="units-picker" id="units-input-${cook.id}">
+                <button class="unit-btn${cook.units === 'Full GN' ? ' unit-selected' : ''}" onclick="updateUnits(${cook.id},'Full GN');document.querySelectorAll('#units-input-${cook.id} .unit-btn').forEach(b=>b.classList.remove('unit-selected'));this.classList.add('unit-selected');">Full GN</button>
+                <button class="unit-btn${cook.units === 'Half GN' ? ' unit-selected' : ''}" onclick="updateUnits(${cook.id},'Half GN');document.querySelectorAll('#units-input-${cook.id} .unit-btn').forEach(b=>b.classList.remove('unit-selected'));this.classList.add('unit-selected');">Half GN</button>
+              </div>
             </div>
           </div>
         </div>
@@ -407,6 +417,11 @@ function updateTrays(id, value) {
   if (cook) cook.trays = String(value).trim();
 }
 
+function updateUnits(id, value) {
+  const cook = cooks.find(c => c.id === id);
+  if (cook) cook.units = value;
+}
+
 function sanitizeNumberInput(inputEl, allowDecimal) {
   let value = inputEl.value;
   if (allowDecimal) {
@@ -446,6 +461,10 @@ async function saveCook(id) {
       alert("请输入有效的盘数（≥1）。 Please enter a valid number of trays (≥ 1).");
       return;
     }
+    if (!cook.units) {
+      alert("请选择盘型单位。 Please select a tray unit (Full GN / Half GN).");
+      return;
+    }
     if (!currentStaff) {
       alert("请先选择厨师。 No staff selected. Please choose a chef at the top.");
       return;
@@ -478,14 +497,15 @@ async function saveCook(id) {
       startDate,
       startTime,
       endTime,
-      duration: (cook.duration / 60).toFixed(1),  // Convert seconds → minutes for DB
+      duration: (cook.duration / 60).toFixed(1),
       temp: cook.temp,
       staff: currentStaff,
-      trays: cook.trays
+      trays: cook.trays,
+      units: cook.units || ''
     });
 
     await loadRecent();
-    if (statusEl) statusEl.textContent = `${cook.food} (${cook.trays} 盘子 trays) 保存 saved ✓`;
+    if (statusEl) statusEl.textContent = `${cook.food} (${cook.trays} × ${cook.units || '盘'}) 保存 saved ✓`;
 
     removeCook(id);
   } catch (err) {
