@@ -575,22 +575,35 @@
       clearTimeout(_autoConnectTimer);
       try {
         const devices = await navigator.bluetooth.getDevices();
-        const thermapen = devices.find(d => d.name && d.name.startsWith('Thermapen'));
+        console.log('[BT] getDevices returned:', devices.map(d => d.name || '(unnamed)'));
+
+        // Match saved device by exact name first, then any Thermapen prefix, then first available
+        const savedName = localStorage.getItem('bt_device_name');
+        let thermapen = null;
+        if (savedName) thermapen = devices.find(d => d.name === savedName);
+        if (!thermapen)  thermapen = devices.find(d => d.name && d.name.toLowerCase().includes('thermapen'));
+        if (!thermapen && devices.length === 1) thermapen = devices[0]; // only one permitted device — use it
+
         if (!thermapen) {
-          // No remembered device — prompt user to pair first time
-          const saved = localStorage.getItem('bt_device_name');
-          if (saved) {
-            setBtStatus(`💤 未找到 ${saved} — 请开启设备或点击重新配对 Device not found — turn on or re-pair`);
+          if (devices.length > 0) {
+            // Permitted devices exist but none matched our filter — use first one
+            thermapen = devices[0];
+            console.warn('[BT] No Thermapen matched by name, trying first permitted device:', thermapen.name);
           } else {
-            setBtStatus('📡 点击"连接温度计"完成首次配对 Click "连接温度计 Connect" to pair for the first time');
+            // No remembered device — prompt user to pair first time
+            if (savedName) {
+              setBtStatus(`⚠️ ${savedName} — Chrome权限已重置，需要重新配对一次 Chrome cleared permissions — tap Connect once to re-pair`);
+            } else {
+              setBtStatus('📡 点击"连接温度计"完成首次配对 Tap "Connect Thermometer" to pair for the first time');
+            }
+            _autoConnecting = false;
+            return;
           }
-          _autoConnecting = false;
-          return; // Only manual connect can pair a new device
         }
 
-        // Device remembered — store name for future status messages
-        localStorage.setItem('bt_device_name', thermapen.name);
-        setBtStatus(`🔵 ${thermapen.name} — 自动连接中… Auto-connecting…`);
+        // Device found — store name and connect
+        if (thermapen.name) localStorage.setItem('bt_device_name', thermapen.name);
+        setBtStatus(`🔵 ${thermapen.name || 'Thermapen'} — 自动连接中… Auto-connecting…`);
         btConnect.disabled = true;
         await gattConnect(thermapen);
         btConnect.disabled = false;
