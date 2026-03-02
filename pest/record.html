@@ -233,9 +233,9 @@
       </div>
       <div class="card-body" id="body-${fid}">
         <!-- Counts -->
-        <div class="input-row">
+        <div class="input-row" style="grid-template-columns:1fr 1fr">
           <div class="input-group">
-            <label>🪳 Cockroach</label>
+            <label>🪳 Cockroach Count</label>
             <input type="number" min="0" value="${f.cockroach||0}" id="ck-${fid}"
               oninput="autoSave('${fid}')">
           </div>
@@ -244,18 +244,14 @@
             <input type="number" min="0" value="${f.others||0}" id="ot-${fid}"
               oninput="autoSave('${fid}')">
           </div>
-          <div class="input-group">
-            <label>🆕 New CK</label>
-            <input type="number" min="0" value="${f.newCockroaches||0}" id="nck-${fid}"
-              oninput="autoSave('${fid}')">
-          </div>
         </div>
         <!-- Trap status -->
         <div class="trap-row" id="trap-${fid}">
           <span style="font-size:0.75rem;font-weight:700;color:var(--muted);align-self:center">Trap:</span>
           <button class="trap-btn ${f.trapStatus==='normal'?'active-normal':''}" onclick="setTrap('${fid}','normal')">✅ Normal</button>
-          <button class="trap-btn ${f.trapStatus==='new-trap'?'active-new':''}" onclick="setTrap('${fid}','new-trap')">🆕 New Trap</button>
+          <button class="trap-btn ${f.trapStatus==='new-trap'?'active-new':''}" onclick="setTrap('${fid}','new-trap')">🆕 New Glue Trap</button>
           <button class="trap-btn ${f.trapStatus==='gone'?'active-gone':''}" onclick="setTrap('${fid}','gone')">❌ Gone</button>
+          <button class="trap-btn" style="border-color:#e65100;color:#e65100" onclick="resetTrap('${fid}')">🔄 Reset Count</button>
         </div>
         <!-- Remarks -->
         <div class="remarks-row" style="margin-bottom:12px">
@@ -295,10 +291,9 @@
 
   async function saveFinding(fid) {
     const payload = {
-      cockroach:      parseInt(document.getElementById('ck-'+fid)?.value)  || 0,
-      others:         parseInt(document.getElementById('ot-'+fid)?.value)  || 0,
-      newCockroaches: parseInt(document.getElementById('nck-'+fid)?.value) || 0,
-      remarks:        document.getElementById('rem-'+fid)?.value || ''
+      cockroach: parseInt(document.getElementById('ck-'+fid)?.value)  || 0,
+      others:    parseInt(document.getElementById('ot-'+fid)?.value)  || 0,
+      remarks:   document.getElementById('rem-'+fid)?.value || ''
     };
     try {
       const r = await fetch(`${API}/findings/${fid}`, {
@@ -322,21 +317,46 @@
 
   // ── Trap status ───────────────────────────────────────────
   async function setTrap(fid, status) {
-    // Update buttons
-    document.querySelectorAll(`#trap-${fid} .trap-btn`).forEach(b => b.className = 'trap-btn');
+    const trapRow = document.getElementById('trap-'+fid);
+    trapRow.querySelectorAll('.trap-btn').forEach(b => {
+      b.classList.remove('active-normal','active-new','active-gone');
+    });
     const map = {normal:'active-normal','new-trap':'active-new',gone:'active-gone'};
-    const activeBtn = document.querySelector(`#trap-${fid} .trap-btn:nth-child(${status==='normal'?2:status==='new-trap'?3:4})`);
-    if (activeBtn) activeBtn.classList.add(map[status]);
+    const btns = trapRow.querySelectorAll('.trap-btn');
+    const idx  = {normal:0,'new-trap':1,gone:2};
+    if (map[status] && btns[idx[status]]) btns[idx[status]].classList.add(map[status]);
     try {
       const r = await fetch(`${API}/findings/${fid}`, {
         method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ trapStatus: status })
       });
-      if (r.ok) {
-        const updated = await r.json();
-        findingsMap[fid] = updated;
-      }
+      if (r.ok) { findingsMap[fid] = await r.json(); }
     } catch(_) {}
     updateCardStyle(fid);
+  }
+
+  // Reset glue trap: set cockroach=0, trapStatus='new-trap'
+  async function resetTrap(fid) {
+    if (!confirm('Reset cockroach count to 0 and mark as new glue trap replaced?')) return;
+    const ckEl = document.getElementById('ck-'+fid);
+    if (ckEl) ckEl.value = 0;
+    setSaveDot('saving');
+    try {
+      const r = await fetch(`${API}/findings/${fid}`, {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ cockroach: 0, trapStatus: 'new-trap' })
+      });
+      if (r.ok) {
+        findingsMap[fid] = await r.json();
+        setSaveDot('saved');
+        // Update trap buttons UI
+        const trapRow = document.getElementById('trap-'+fid);
+        trapRow.querySelectorAll('.trap-btn').forEach(b => b.classList.remove('active-normal','active-new','active-gone'));
+        const btns = trapRow.querySelectorAll('.trap-btn');
+        if (btns[1]) btns[1].classList.add('active-new');
+      }
+    } catch(_) { setSaveDot(null); }
+    updateCardStyle(fid);
+    updateSubmitSummary(Object.values(findingsMap));
   }
 
   function updateCardStyle(fid) {

@@ -98,7 +98,7 @@
   </div>
 
   <div class="legend">
-    <span><span class="legend-dot" style="background:rgba(255,235,59,.7)"></span>Cockroach count &gt; 0</span>
+    <span><span class="legend-dot" style="background:rgba(255,235,59,.7)"></span>New cockroaches (delta) &gt; 0</span>
     <span><span class="legend-dot" style="background:rgba(21,101,192,.15);border:1px solid var(--new)"></span>New Trap</span>
     <span><span class="legend-dot" style="background:rgba(106,27,154,.1);border:1px solid var(--gone)"></span>Gone</span>
     <span><span class="legend-dot" style="background:#fff;border:1px solid var(--border)"></span>No findings</span>
@@ -169,11 +169,12 @@
   }
 
   function buildTable(sessions, stations, lookup) {
-    // Header row 1: colspan date groups (each session = 4 columns: CK, Others, New CK, —spacer)
-    let h1 = '<tr><th rowspan="2" style="text-align:left;padding-left:14px;min-width:30px">RTS No.</th>'
-           + '<th rowspan="2" style="text-align:left;min-width:160px">Location Description</th>'
-           + '<th rowspan="2" style="text-align:left;min-width:60px">Location</th>';
-
+    // sessions is oldest→newest
+    // Header row 1: fixed cols + one date-th per session (colspan 4: CK, Others, New CK, 📷)
+    let h1 = '<tr>'
+           + '<th rowspan="2" class="td-rtsno">RTS</th>'
+           + '<th rowspan="2" style="text-align:left;padding-left:10px;font-size:0.68rem;font-weight:800;max-width:110px">Location</th>'
+           + '<th rowspan="2" style="text-align:left;padding-left:6px;font-size:0.68rem;font-weight:800;white-space:nowrap">Unit</th>';
     sessions.forEach(s => {
       h1 += `<th class="date-th" colspan="4">${fmtDate(s.date)}</th>`;
     });
@@ -182,41 +183,57 @@
     // Header row 2: sub-columns per session
     let h2 = '<tr>';
     sessions.forEach(() => {
-      h2 += '<th class="sub-th">Cockroach</th><th class="sub-th">Others</th><th class="sub-th">New<br>Cockroaches</th><th class="sub-th">📷</th>';
+      h2 += '<th class="sub-th col-sep">🪳 CK</th>'
+          + '<th class="sub-th">🐛 Oth</th>'
+          + '<th class="sub-th highlight-col">⬆️ New CK</th>'
+          + '<th class="sub-th">📷</th>';
     });
     h2 += '</tr>';
 
-    // Body rows
+    // Body rows — auto-calculate new cockroaches per station across sessions
     let body = '';
     stations.forEach(st => {
-      let row = `<tr>
-        <td style="font-weight:900;text-align:center;color:var(--ink)">${st.rtsNo}</td>
-        <td class="td-rts">${st.locationDescription}</td>
-        <td class="td-unit">${st.unit}</td>`;
-      sessions.forEach(s => {
+      // Build per-session data in chronological order to compute deltas
+      let prevCK = 0;
+      let prevWasReset = false;
+
+      const sessionCells = sessions.map((s, si) => {
         const key = s._id + '_' + st._id;
         const f   = lookup[key];
+        const isFirst = si === 0;
+
         if (!f) {
-          row += '<td class="cell-zero">—</td><td class="cell-zero">—</td><td class="cell-zero">—</td><td></td>';
-          return;
+          const cell = '<td class="cell-zero col-sep">—</td><td class="cell-zero">—</td><td class="cell-zero">—</td><td></td>';
+          // prevCK unchanged
+          return cell;
         }
+
         if (f.trapStatus === 'new-trap') {
-          row += '<td class="cell-new" colspan="3">New</td><td>' + photoCell(f) + '</td>';
-          return;
+          prevCK = 0; prevWasReset = true;
+          return `<td class="cell-new col-sep" colspan="3">New</td><td>${photoCell(f)}</td>`;
         }
         if (f.trapStatus === 'gone') {
-          row += '<td class="cell-gone" colspan="3">Gone</td><td>' + photoCell(f) + '</td>';
-          return;
+          return `<td class="cell-gone col-sep" colspan="3">Gone</td><td>${photoCell(f)}</td>`;
         }
-        const ck  = f.cockroach  || 0;
-        const ot  = f.others     || 0;
-        const nck = f.newCockroaches || 0;
-        const alert = ck > 0 || nck > 0;
-        const ckCell  = `<td class="${alert ? 'cell-alert' : ck  === 0 ? 'cell-zero' : ''}">${ck  || ''}</td>`;
-        const otCell  = `<td class="${ot  === 0 ? 'cell-zero' : ''}">${ot  || ''}</td>`;
-        const nckCell = `<td class="${nck > 0 ? 'cell-alert' : nck === 0 ? 'cell-zero' : ''}">${nck || ''}</td>`;
-        row += ckCell + otCell + nckCell + '<td>' + photoCell(f) + '</td>';
+
+        const ck  = f.cockroach || 0;
+        const ot  = f.others   || 0;
+        // Auto-calculate new cockroaches = delta since last session (0 if trap was just reset)
+        const newCK = isFirst ? ck : Math.max(0, ck - prevCK);
+        prevCK = ck;
+        prevWasReset = false;
+
+        const ckCell  = `<td class="col-sep${ck === 0 ? ' cell-zero' : ''}">${ck || ''}</td>`;
+        const otCell  = `<td class="${ot === 0 ? 'cell-zero' : ''}">${ot || ''}</td>`;
+        const nckCell = `<td class="${newCK > 0 ? 'cell-alert' : 'cell-zero'}">${newCK > 0 ? newCK : ''}</td>`;
+        return ckCell + otCell + nckCell + `<td>${photoCell(f)}</td>`;
       });
+
+      let row = `<tr>
+        <td class="td-rtsno">${st.rtsNo}</td>
+        <td class="td-rts">${st.locationDescription}</td>
+        <td class="td-unit">${st.unit}</td>`;
+      row += sessionCells.join('');
       row += '</tr>';
       body += row;
     });

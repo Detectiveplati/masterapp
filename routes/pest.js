@@ -124,6 +124,18 @@ router.put('/sessions/:id/submit', async (req, res) => {
     }
 });
 
+// DELETE /api/pest/sessions/:id — delete session and all its findings
+router.delete('/sessions/:id', async (req, res) => {
+    try {
+        const session = await PestSession.findByIdAndDelete(req.params.id);
+        if (!session) return res.status(404).json({ error: 'Session not found' });
+        await PestFinding.deleteMany({ sessionId: req.params.id });
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // FINDINGS
 // ═══════════════════════════════════════════════════════════════════════════════
