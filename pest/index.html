@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script>
+  <script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Pest Control — Central Kitchen</title>
+  <style>
+    :root {
+      --ink:#121316; --muted:#5a616c; --accent:#2e7d32; --accent2:#66bb6a;
+      --card:#fff; --border:rgba(18,19,22,0.1); --bg:#f4f5f7; --shadow:rgba(18,19,22,0.08);
+      --warn:#f57f17; --alert:#c62828; --new:#1565c0;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Bahnschrift","Trebuchet MS","Segoe UI",sans-serif;background:radial-gradient(900px 500px at 5% -5%,#d4edda,transparent 55%),radial-gradient(600px 400px at 95% 105%,#c8e6c9,transparent 55%),var(--bg);min-height:100vh}
+    header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px var(--shadow)}
+    .hdr-icon{font-size:2rem}
+    .hdr-text h1{font-size:1.15rem;font-weight:800;color:var(--ink)}
+    .hdr-text p{font-size:0.78rem;color:var(--muted)}
+    .hdr-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+    main{max-width:1100px;margin:0 auto;padding:28px 20px}
+    .btn{padding:10px 20px;border:none;border-radius:10px;cursor:pointer;font-size:0.88rem;font-weight:700;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn-green{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 3px 10px rgba(46,125,50,0.25)}
+    .btn-grey{background:linear-gradient(135deg,#546e7a,#78909c);color:#fff;box-shadow:0 3px 8px rgba(0,0,0,0.15)}
+    .btn-outline{background:#fff;border:2px solid var(--accent);color:var(--accent)}
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px}
+    .stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 18px;box-shadow:0 3px 12px var(--shadow)}
+    .stat-card .val{font-size:2rem;font-weight:900;color:var(--accent)}
+    .stat-card .lbl{font-size:0.78rem;color:var(--muted);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
+    .stat-card.alert .val{color:var(--alert)}
+    .stat-card.warn .val{color:var(--warn)}
+    .section-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 24px;box-shadow:0 4px 16px var(--shadow);margin-bottom:24px}
+    .section-card h2{font-size:1rem;font-weight:800;color:var(--ink);margin-bottom:18px;display:flex;align-items:center;gap:8px}
+    .sessions-list{display:flex;flex-direction:column;gap:10px}
+    .session-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border:1px solid var(--border);border-radius:10px;background:#fafafa;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+    .session-row:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(46,125,50,0.12)}
+    .session-date{font-weight:800;font-size:1rem;color:var(--ink)}
+    .session-meta{font-size:0.8rem;color:var(--muted);margin-top:2px}
+    .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700}
+    .badge-draft{background:rgba(90,97,108,0.12);color:var(--muted)}
+    .badge-submitted{background:rgba(46,125,50,0.12);color:var(--accent)}
+    .finding-alert{background:rgba(198,40,40,.06);border:1px solid rgba(198,40,40,.15);border-radius:10px;padding:10px 14px;font-size:0.85rem;color:var(--alert);font-weight:600;margin-top:6px}
+    .no-data{text-align:center;padding:40px;color:var(--muted);font-style:italic}
+    .action-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+    .nav-links{display:flex;gap:6px;flex-wrap:wrap}
+    .nav-link{padding:8px 14px;border-radius:8px;background:#f0f0f0;color:var(--muted);font-size:0.82rem;font-weight:700;text-decoration:none;transition:background .15s}
+    .nav-link:hover{background:#e0e0e0;color:var(--ink)}
+    .nav-link.active{background:var(--accent);color:#fff}
+    @media(max-width:600px){main{padding:16px}.stats-row{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="hdr-icon">🐭</div>
+  <div class="hdr-text">
+    <h1>Pest Control</h1>
+    <p>Rat Trap Surveillance — Central Kitchen</p>
+  </div>
+  <div class="hdr-right">
+    <a href="/" class="btn btn-grey" style="padding:8px 14px;font-size:0.8rem">🏠 Hub</a>
+  </div>
+</header>
+<main>
+  <div class="nav-links" style="margin-bottom:20px">
+    <a href="/pest/" class="nav-link active">📊 Dashboard</a>
+    <a href="/pest/record.html" class="nav-link">✏️ Record Findings</a>
+    <a href="/pest/report.html" class="nav-link">📋 Report</a>
+    <a href="/pest/stations.html" class="nav-link">📍 Stations</a>
+  </div>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card"><div class="val" id="statSessions">—</div><div class="lbl">Total Sessions</div></div>
+    <div class="stat-card alert"><div class="val" id="statAlerts">—</div><div class="lbl">Active Findings (latest)</div></div>
+    <div class="stat-card warn"><div class="val" id="statStations">—</div><div class="lbl">Active Stations</div></div>
+    <div class="stat-card"><div class="val" id="statDraft">—</div><div class="lbl">Draft Sessions</div></div>
+  </div>
+
+  <div class="action-bar">
+    <button class="btn btn-green" onclick="openNewSession()">➕ New Inspection Session</button>
+    <a href="/pest/report.html" class="btn btn-outline">📋 View Full Report</a>
+  </div>
+
+  <div class="section-card">
+    <h2>📅 Recent Sessions</h2>
+    <div class="sessions-list" id="sessionsList">
+      <div class="no-data">Loading…</div>
+    </div>
+  </div>
+</main>
+
+<!-- New Session Modal -->
+<div id="modalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center" onclick="if(event.target===this)closeModal()">
+  <div style="background:#fff;border-radius:16px;padding:32px 28px;width:min(96vw,440px);box-shadow:0 8px 40px rgba(0,0,0,.25)">
+    <h3 style="font-size:1.1rem;margin-bottom:20px;color:var(--ink)">➕ New Inspection Session</h3>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label style="font-size:0.8rem;font-weight:700;color:var(--ink);display:block;margin-bottom:5px">Inspection Date <span style="color:var(--alert)">*</span></label>
+        <input type="date" id="newDate" style="width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;font-family:inherit">
+      </div>
+      <div>
+        <label style="font-size:0.8rem;font-weight:700;color:var(--ink);display:block;margin-bottom:5px">Conducted By <span style="color:var(--alert)">*</span></label>
+        <input type="text" id="newConductedBy" placeholder="Enter your name" style="width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;font-family:inherit">
+      </div>
+      <div>
+        <label style="font-size:0.8rem;font-weight:700;color:var(--ink);display:block;margin-bottom:5px">Notes</label>
+        <input type="text" id="newNotes" placeholder="Optional notes" style="width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;font-family:inherit">
+      </div>
+    </div>
+    <div id="modalErr" style="color:var(--alert);font-size:0.82rem;margin-top:10px;display:none"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px">
+      <button class="btn btn-grey" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-green" id="createBtn" onclick="createSession()">Create & Start →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = '/api/pest';
+
+  // ── Auth ──────────────────────────────────────────────
+  async function init() {
+    try {
+      const r = await fetch('/api/auth/me', { credentials: 'include' });
+      if (!r.ok) return window.location.replace('/login');
+      const { user } = await r.json();
+      if (!user.permissions?.pest && user.role !== 'admin')
+        return window.location.replace('/?access=denied');
+      document.documentElement.style.visibility = '';
+      loadDashboard();
+    } catch { window.location.replace('/login'); }
+  }
+
+  async function loadDashboard() {
+    const [sessRes, staRes] = await Promise.all([
+      fetch(`${API}/sessions`),
+      fetch(`${API}/stations`)
+    ]);
+    const sessions = await sessRes.json();
+    const stations = await staRes.json();
+
+    const activeStations = stations.filter(s => s.isActive);
+    const drafts = sessions.filter(s => s.status === 'draft');
+    document.getElementById('statSessions').textContent = sessions.length;
+    document.getElementById('statStations').textContent = activeStations.length;
+    document.getElementById('statDraft').textContent    = drafts.length;
+    document.getElementById('statAlerts').textContent   = '—';
+
+    if (!sessions.length) {
+      document.getElementById('sessionsList').innerHTML =
+        '<div class="no-data">No sessions yet. Create your first inspection session.</div>';
+      return;
+    }
+
+    // Load latest session findings for alert count
+    const latest = sessions[0];
+    try {
+      const fr = await fetch(`${API}/sessions/${latest._id}`);
+      const { findings } = await fr.json();
+      const alerts = findings.filter(f => f.cockroach > 0 || f.others > 0).length;
+      document.getElementById('statAlerts').textContent = alerts;
+    } catch(_) {}
+
+    document.getElementById('sessionsList').innerHTML = sessions.slice(0, 10).map(s => {
+      const d = new Date(s.date);
+      const label = d.toLocaleDateString('en-SG', { day:'2-digit', month:'short', year:'numeric' });
+      return `
+        <div class="session-row" onclick="window.location='/pest/record.html?session=${s._id}'">
+          <div>
+            <div class="session-date">${label}</div>
+            <div class="session-meta">By: ${s.conductedBy}${s.notes ? ' · ' + s.notes : ''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="badge badge-${s.status}">${s.status === 'submitted' ? '✅ Submitted' : '📝 Draft'}</span>
+            <span style="font-size:1.2rem;color:var(--muted)">›</span>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function openNewSession() {
+    // Default date = today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('newDate').value = today;
+    document.getElementById('newConductedBy').value = '';
+    document.getElementById('newNotes').value = '';
+    document.getElementById('modalErr').style.display = 'none';
+    document.getElementById('modalOverlay').style.display = 'flex';
+  }
+  function closeModal() {
+    document.getElementById('modalOverlay').style.display = 'none';
+  }
+  async function createSession() {
+    const date        = document.getElementById('newDate').value;
+    const conductedBy = document.getElementById('newConductedBy').value.trim();
+    const notes       = document.getElementById('newNotes').value.trim();
+    const errEl       = document.getElementById('modalErr');
+    if (!date || !conductedBy) {
+      errEl.textContent = 'Please fill in date and your name.';
+      errEl.style.display = 'block';
+      return;
+    }
+    const btn = document.getElementById('createBtn');
+    btn.disabled = true; btn.textContent = 'Creating…';
+    try {
+      const r = await fetch(`${API}/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, conductedBy, notes })
+      });
+      if (!r.ok) throw new Error((await r.json()).error);
+      const session = await r.json();
+      window.location.href = `/pest/record.html?session=${session._id}`;
+    } catch (err) {
+      errEl.textContent = 'Error: ' + err.message;
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Create & Start →';
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

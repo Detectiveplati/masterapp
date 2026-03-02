@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script>
+  <script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Stations — Pest Control</title>
+  <style>
+    :root{
+      --ink:#121316;--muted:#5a616c;--accent:#2e7d32;--accent2:#66bb6a;
+      --card:#fff;--border:rgba(18,19,22,0.1);--bg:#f4f5f7;--shadow:rgba(18,19,22,0.08);
+      --alert:#c62828;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Bahnschrift","Trebuchet MS","Segoe UI",sans-serif;background:var(--bg);min-height:100vh}
+    header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px var(--shadow)}
+    .hdr-icon{font-size:1.7rem}
+    .hdr-text h1{font-size:1rem;font-weight:800;color:var(--ink)}
+    .hdr-text p{font-size:0.75rem;color:var(--muted)}
+    .hdr-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+    main{max-width:860px;margin:0 auto;padding:20px 16px 40px}
+    .btn{padding:9px 18px;border:none;border-radius:9px;cursor:pointer;font-size:0.85rem;font-weight:700;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-green{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 3px 10px rgba(46,125,50,.25)}
+    .btn-grey{background:linear-gradient(135deg,#546e7a,#78909c);color:#fff}
+    .btn-orange{background:linear-gradient(135deg,#e65100,#ef6c00);color:#fff}
+    .btn-sm{padding:6px 12px;font-size:0.78rem;border-radius:7px}
+    .nav-links{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+    .nav-link{padding:8px 14px;border-radius:8px;background:#f0f0f0;color:var(--muted);font-size:0.82rem;font-weight:700;text-decoration:none;transition:background .15s}
+    .nav-link:hover{background:#e0e0e0;color:var(--ink)}
+    .nav-link.active{background:var(--accent);color:#fff}
+    .action-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;align-items:center}
+    .action-bar .count{font-size:0.82rem;color:var(--muted);margin-left:auto;font-weight:700}
+    .section-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 4px 16px var(--shadow);margin-bottom:24px}
+    .section-card h2{font-size:0.95rem;font-weight:800;color:var(--ink);padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+    table{width:100%;border-collapse:collapse;font-size:0.88rem}
+    th{padding:10px 14px;font-size:0.73rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:2px solid var(--border);text-align:left}
+    td{padding:12px 14px;border-bottom:1px solid rgba(18,19,22,.06);vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:#f9fdf9}
+    .rts-no{font-weight:900;font-size:1rem;color:var(--ink);width:60px;text-align:center}
+    .badge-active{background:rgba(46,125,50,.12);color:var(--accent);padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700}
+    .badge-inactive{background:rgba(90,97,108,.12);color:var(--muted);padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700}
+    .no-data{text-align:center;padding:36px;color:var(--muted);font-style:italic}
+
+    /* Modal */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center}
+    .modal-overlay.open{display:flex}
+    .modal-box{background:#fff;border-radius:16px;padding:30px 26px;width:min(96vw,440px);box-shadow:0 8px 40px rgba(0,0,0,.25)}
+    .modal-box h3{font-size:1.05rem;margin-bottom:20px;color:var(--ink)}
+    .fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+    .fg label{font-size:0.78rem;font-weight:700;color:var(--ink)}
+    .fg input,.fg select{padding:10px 13px;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;font-family:inherit}
+    .fg input:focus,.fg select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(46,125,50,.1)}
+    .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+    .modal-err{color:var(--alert);font-size:0.82rem;margin-top:8px;display:none}
+
+    /* Seed banner */
+    .seed-banner{background:rgba(46,125,50,.08);border:1px solid rgba(46,125,50,.2);border-radius:10px;padding:12px 16px;margin-bottom:18px;font-size:0.85rem;color:var(--accent);font-weight:600;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+<header>
+  <div class="hdr-icon">📍</div>
+  <div class="hdr-text">
+    <h1>RTS Stations</h1>
+    <p>Manage rat trap surveillance points</p>
+  </div>
+  <div class="hdr-right">
+    <a href="/pest/" class="btn btn-grey btn-sm">← Back</a>
+  </div>
+</header>
+<main>
+  <div class="nav-links">
+    <a href="/pest/" class="nav-link">📊 Dashboard</a>
+    <a href="/pest/record.html" class="nav-link">✏️ Record Findings</a>
+    <a href="/pest/report.html" class="nav-link">📋 Report</a>
+    <a href="/pest/stations.html" class="nav-link active">📍 Stations</a>
+  </div>
+
+  <div id="seedBanner" class="seed-banner" style="display:none">
+    🗂️ No stations found.
+    <button class="btn btn-green btn-sm" onclick="seedStations()">Seed 23 Stations from Spreadsheet</button>
+  </div>
+
+  <div class="action-bar">
+    <button class="btn btn-green" onclick="openAddModal()">➕ Add Station</button>
+    <span class="count" id="stationCount"></span>
+  </div>
+
+  <div class="section-card">
+    <h2>📍 All Stations</h2>
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:center">RTS No.</th>
+          <th>Location Description</th>
+          <th>Unit</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="stationsBody">
+        <tr><td colspan="5" class="no-data">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Add / Edit Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <h3 id="modalTitle">➕ Add Station</h3>
+    <input type="hidden" id="editId">
+    <div class="fg">
+      <label>RTS No. <span style="color:var(--alert)">*</span></label>
+      <input type="number" id="fRtsNo" min="1" placeholder="e.g. 24">
+    </div>
+    <div class="fg">
+      <label>Location Description <span style="color:var(--alert)">*</span></label>
+      <input type="text" id="fDesc" placeholder="e.g. Outside Packaging Room">
+    </div>
+    <div class="fg">
+      <label>Unit <span style="color:var(--alert)">*</span></label>
+      <input type="text" id="fUnit" placeholder="e.g. 06-27">
+    </div>
+    <div class="fg" id="fgActive" style="display:none">
+      <label>Status</label>
+      <select id="fActive">
+        <option value="true">Active</option>
+        <option value="false">Inactive</option>
+      </select>
+    </div>
+    <div class="modal-err" id="modalErr"></div>
+    <div class="modal-actions">
+      <button class="btn btn-grey" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-green" id="modalSaveBtn" onclick="saveStation()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = '/api/pest';
+  let stations = [];
+
+  async function init() {
+    try {
+      const r = await fetch('/api/auth/me', { credentials:'include' });
+      if (!r.ok) return window.location.replace('/login');
+      const { user } = await r.json();
+      if (!user.permissions?.pest && user.role !== 'admin')
+        return window.location.replace('/?access=denied');
+      document.documentElement.style.visibility = '';
+      loadStations();
+    } catch { window.location.replace('/login'); }
+  }
+
+  async function loadStations() {
+    const r = await fetch(`${API}/stations`);
+    stations = await r.json();
+
+    const active = stations.filter(s => s.isActive).length;
+    document.getElementById('stationCount').textContent = `${active} active / ${stations.length} total`;
+
+    if (!stations.length) {
+      document.getElementById('seedBanner').style.display = 'flex';
+      document.getElementById('stationsBody').innerHTML = '<tr><td colspan="5" class="no-data">No stations yet.</td></tr>';
+      return;
+    }
+
+    document.getElementById('seedBanner').style.display = 'none';
+    document.getElementById('stationsBody').innerHTML = stations.map(s => `
+      <tr>
+        <td class="rts-no">${s.rtsNo}</td>
+        <td style="font-weight:700;color:var(--ink)">${s.locationDescription}</td>
+        <td style="font-size:0.82rem;color:var(--muted);font-weight:700">${s.unit}</td>
+        <td><span class="badge-${s.isActive ? 'active' : 'inactive'}">${s.isActive ? '✅ Active' : '⏸ Inactive'}</span></td>
+        <td><button class="btn btn-grey btn-sm" onclick="openEditModal('${s._id}')">✏️ Edit</button></td>
+      </tr>`).join('');
+  }
+
+  function openAddModal() {
+    document.getElementById('modalTitle').textContent = '➕ Add Station';
+    document.getElementById('editId').value = '';
+    document.getElementById('fRtsNo').value = '';
+    document.getElementById('fDesc').value  = '';
+    document.getElementById('fUnit').value  = '';
+    document.getElementById('fgActive').style.display = 'none';
+    document.getElementById('modalErr').style.display = 'none';
+    document.getElementById('modalOverlay').classList.add('open');
+  }
+
+  function openEditModal(id) {
+    const s = stations.find(x => x._id === id);
+    if (!s) return;
+    document.getElementById('modalTitle').textContent = '✏️ Edit Station';
+    document.getElementById('editId').value  = id;
+    document.getElementById('fRtsNo').value  = s.rtsNo;
+    document.getElementById('fDesc').value   = s.locationDescription;
+    document.getElementById('fUnit').value   = s.unit;
+    document.getElementById('fActive').value = String(s.isActive);
+    document.getElementById('fgActive').style.display = 'flex';
+    document.getElementById('modalErr').style.display = 'none';
+    document.getElementById('modalOverlay').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+
+  async function saveStation() {
+    const id   = document.getElementById('editId').value;
+    const rtsNo = parseInt(document.getElementById('fRtsNo').value);
+    const desc  = document.getElementById('fDesc').value.trim();
+    const unit  = document.getElementById('fUnit').value.trim();
+    const errEl = document.getElementById('modalErr');
+
+    if (!rtsNo || !desc || !unit) {
+      errEl.textContent = 'All fields are required.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    const btn = document.getElementById('modalSaveBtn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    try {
+      let r;
+      if (id) {
+        const isActive = document.getElementById('fActive').value === 'true';
+        r = await fetch(`${API}/stations/${id}`, {
+          method:'PUT', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ locationDescription: desc, unit, isActive })
+        });
+      } else {
+        r = await fetch(`${API}/stations`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ rtsNo, locationDescription: desc, unit })
+        });
+      }
+      if (!r.ok) throw new Error((await r.json()).error);
+      closeModal();
+      loadStations();
+    } catch(err) {
+      errEl.textContent = 'Error: ' + err.message;
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save';
+    }
+  }
+
+  async function seedStations() {
+    if (!confirm('Seed 23 stations from the spreadsheet? Existing RTS numbers will be skipped.')) return;
+    const r = await fetch(`${API}/seed-stations`, { method:'POST' });
+    const d = await r.json();
+    alert(`Done! Created: ${d.created}, Skipped (existing): ${d.skipped}`);
+    loadStations();
+  }
+
+  init();
+</script>
+</body>
+</html>

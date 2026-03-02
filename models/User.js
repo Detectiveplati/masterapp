@@ -11,7 +11,8 @@ const UserSchema = new mongoose.Schema({
     maintenance:  { type: Boolean, default: false },
     foodsafety:   { type: Boolean, default: false },
     templog:      { type: Boolean, default: false },
-    procurement:  { type: Boolean, default: false }
+    procurement:  { type: Boolean, default: false },
+    pest:         { type: Boolean, default: false }
   }
 }, { timestamps: true });
 

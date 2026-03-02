@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script>
+  <script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Record Findings — Pest Control</title>
+  <style>
+    :root{
+      --ink:#121316;--muted:#5a616c;--accent:#2e7d32;--accent2:#66bb6a;
+      --card:#fff;--border:rgba(18,19,22,0.1);--bg:#f4f5f7;--shadow:rgba(18,19,22,0.08);
+      --warn:#f57f17;--alert:#c62828;--new:#1565c0;--gone:#6a1b9a;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Bahnschrift","Trebuchet MS","Segoe UI",sans-serif;background:var(--bg);min-height:100vh}
+    header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px var(--shadow);position:sticky;top:0;z-index:100}
+    .hdr-icon{font-size:1.7rem}
+    .hdr-text h1{font-size:1rem;font-weight:800;color:var(--ink)}
+    .hdr-text p{font-size:0.75rem;color:var(--muted)}
+    .hdr-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+    main{max-width:960px;margin:0 auto;padding:20px 16px 60px}
+    .btn{padding:9px 18px;border:none;border-radius:9px;cursor:pointer;font-size:0.85rem;font-weight:700;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:opacity .15s}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .btn-green{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 3px 10px rgba(46,125,50,.25)}
+    .btn-grey{background:linear-gradient(135deg,#546e7a,#78909c);color:#fff}
+    .btn-orange{background:linear-gradient(135deg,#e65100,#ef6c00);color:#fff;box-shadow:0 3px 10px rgba(230,81,0,.2)}
+    .btn-sm{padding:6px 12px;font-size:0.78rem;border-radius:7px}
+
+    /* Session info bar */
+    .session-bar{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;flex-wrap:wrap;align-items:center;gap:12px;box-shadow:0 2px 8px var(--shadow)}
+    .session-bar .session-date{font-weight:900;font-size:1.1rem;color:var(--ink)}
+    .session-bar .session-by{font-size:0.84rem;color:var(--muted);font-weight:600}
+    .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.72rem;font-weight:700}
+    .badge-draft{background:rgba(90,97,108,.12);color:var(--muted)}
+    .badge-submitted{background:rgba(46,125,50,.12);color:var(--accent)}
+
+    /* Station cards */
+    .stations-grid{display:flex;flex-direction:column;gap:12px}
+    .station-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 2px 10px var(--shadow);transition:box-shadow .15s}
+    .station-card.has-finding{border-color:rgba(198,40,40,.4);background:rgba(255,235,238,.25)}
+    .station-card.is-new{border-color:rgba(21,101,192,.4);background:rgba(227,242,253,.25)}
+    .station-card.is-gone{border-color:rgba(106,27,154,.4);background:rgba(243,229,245,.25)}
+    .card-header{padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+    .rts-badge{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1rem;flex-shrink:0}
+    .station-card.has-finding .rts-badge{background:linear-gradient(135deg,var(--alert),#ef5350)}
+    .station-card.is-new .rts-badge{background:linear-gradient(135deg,var(--new),#1976d2)}
+    .station-card.is-gone .rts-badge{background:linear-gradient(135deg,var(--gone),#8e24aa)}
+    .card-info h3{font-size:0.95rem;font-weight:800;color:var(--ink)}
+    .card-info p{font-size:0.76rem;color:var(--muted);margin-top:2px}
+    .card-summary{margin-left:auto;display:flex;gap:8px;align-items:center;flex-shrink:0}
+    .pill{padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:700}
+    .pill-alert{background:rgba(198,40,40,.12);color:var(--alert)}
+    .pill-new{background:rgba(21,101,192,.12);color:var(--new)}
+    .pill-gone{background:rgba(106,27,154,.12);color:var(--gone)}
+    .card-body{padding:0 16px 14px;border-top:1px solid var(--border);display:none}
+    .card-body.open{display:block;padding-top:14px}
+
+    /* Input grid */
+    .input-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+    .input-group label{font-size:0.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+    .input-group input[type=number]{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-weight:700;text-align:center;font-family:inherit;background:#fff}
+    .input-group input[type=number]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(46,125,50,.1)}
+
+    /* Trap status buttons */
+    .trap-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+    .trap-btn{padding:7px 16px;border-radius:20px;border:2px solid var(--border);background:#fff;font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;color:var(--muted)}
+    .trap-btn.active-normal{border-color:var(--accent);background:rgba(46,125,50,.1);color:var(--accent)}
+    .trap-btn.active-new{border-color:var(--new);background:rgba(21,101,192,.1);color:var(--new)}
+    .trap-btn.active-gone{border-color:var(--gone);background:rgba(106,27,154,.1);color:var(--gone)}
+
+    /* Remarks */
+    .remarks-row textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.88rem;font-family:inherit;resize:vertical;min-height:60px}
+    .remarks-row textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(46,125,50,.1)}
+
+    /* Photo section */
+    .photo-section{margin-top:12px}
+    .photo-section h4{font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+    .photo-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+    .photo-thumb{position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+    .photo-thumb img{width:100%;height:100%;object-fit:cover;cursor:pointer}
+    .photo-del{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:0.65rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900}
+    .upload-area{border:2px dashed var(--border);border-radius:8px;padding:12px;text-align:center;cursor:pointer;position:relative;transition:border-color .15s}
+    .upload-area:hover,.upload-area.drag{border-color:var(--accent)}
+    .upload-area input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+    .upload-area p{font-size:0.78rem;color:var(--muted);pointer-events:none}
+    .upload-area .upload-icon{font-size:1.5rem;pointer-events:none}
+
+    /* Save indicator */
+    .save-dot{width:8px;height:8px;background:#aaa;border-radius:50%;display:inline-block;transition:background .3s}
+    .save-dot.saving{background:var(--warn)}
+    .save-dot.saved{background:var(--accent)}
+
+    /* Submit bar */
+    .submit-bar{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 -4px 20px var(--shadow);z-index:200}
+    .submit-bar .summary-text{font-size:0.82rem;color:var(--muted);font-weight:600}
+
+    /* Light box */
+    .lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center}
+    .lightbox.open{display:flex}
+    .lightbox img{max-width:92vw;max-height:88vh;border-radius:8px;object-fit:contain}
+    .lightbox-close{position:fixed;top:14px;right:18px;font-size:2rem;color:#fff;cursor:pointer;background:none;border:none;font-weight:700}
+
+    .no-data{text-align:center;padding:36px;color:var(--muted);font-style:italic}
+    @media(max-width:500px){.input-row{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="hdr-icon">✏️</div>
+  <div class="hdr-text">
+    <h1>Record Findings</h1>
+    <p id="sessionLabel">Loading session…</p>
+  </div>
+  <div class="hdr-right">
+    <span class="save-dot" id="saveDot" title="Auto-save status"></span>
+    <a href="/pest/" class="btn btn-grey btn-sm">← Back</a>
+  </div>
+</header>
+<main>
+  <div class="session-bar" id="sessionBar">
+    <div>
+      <div class="session-date" id="sessionDate">—</div>
+      <div class="session-by" id="sessionBy">—</div>
+    </div>
+    <span class="badge" id="sessionStatus">—</span>
+  </div>
+
+  <div class="stations-grid" id="stationsGrid">
+    <div class="no-data">Loading stations…</div>
+  </div>
+</main>
+
+<div class="submit-bar" id="submitBar" style="display:none">
+  <div class="summary-text" id="submitSummary"></div>
+  <button class="btn btn-orange" id="submitBtn" onclick="submitSession()">✅ Submit Report</button>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+  const API = '/api/pest';
+  const params = new URLSearchParams(window.location.search);
+  const SESSION_ID = params.get('session');
+  let sessionData = null;
+  let findingsMap = {}; // findingId -> finding
+  let saveDotTimer = null;
+
+  // ── Auth ─────────────────────────────────────────────────────
+  async function init() {
+    try {
+      const r = await fetch('/api/auth/me', { credentials:'include' });
+      if (!r.ok) return window.location.replace('/login');
+      const { user } = await r.json();
+      if (!user.permissions?.pest && user.role !== 'admin')
+        return window.location.replace('/?access=denied');
+      document.documentElement.style.visibility = '';
+      if (!SESSION_ID) return window.location.replace('/pest/');
+      loadSession();
+    } catch { window.location.replace('/login'); }
+  }
+
+  async function loadSession() {
+    const r = await fetch(`${API}/sessions/${SESSION_ID}`);
+    if (!r.ok) return alert('Session not found');
+    const { session, findings } = await r.json();
+    sessionData = session;
+
+    // Header
+    const d = new Date(session.date);
+    const label = d.toLocaleDateString('en-SG',{day:'2-digit',month:'short',year:'numeric'});
+    document.getElementById('sessionLabel').textContent = label;
+    document.getElementById('sessionDate').textContent = label;
+    document.getElementById('sessionBy').textContent = 'Conducted by: ' + session.conductedBy;
+    const sEl = document.getElementById('sessionStatus');
+    sEl.className = 'badge badge-' + session.status;
+    sEl.textContent = session.status === 'submitted' ? '✅ Submitted' : '📝 Draft';
+
+    // Build map
+    findings.forEach(f => { findingsMap[f._id] = f; });
+
+    // Sort by rtsNo
+    const sorted = findings.slice().sort((a,b) => (a.stationId?.rtsNo||0) - (b.stationId?.rtsNo||0));
+
+    const grid = document.getElementById('stationsGrid');
+    if (!sorted.length) {
+      grid.innerHTML = '<div class="no-data">No stations found. <a href="/pest/stations.html">Add stations first.</a></div>';
+      return;
+    }
+
+    grid.innerHTML = sorted.map(f => buildCard(f)).join('');
+
+    if (session.status === 'submitted') {
+      // Read-only mode — disable all inputs
+      document.querySelectorAll('.card-body input, .card-body textarea, .trap-btn, .upload-area').forEach(el => el.disabled = true);
+      document.getElementById('submitBar').style.display = 'none';
+    } else {
+      document.getElementById('submitBar').style.display = 'flex';
+      updateSubmitSummary(findings);
+    }
+  }
+
+  function buildCard(f) {
+    const st  = f.stationId || {};
+    const fid = f._id;
+    const hasData = f.cockroach > 0 || f.others > 0 || f.newCockroaches > 0;
+    const cls = hasData ? 'has-finding' : (f.trapStatus === 'new-trap' ? 'is-new' : f.trapStatus === 'gone' ? 'is-gone' : '');
+    const summaryPill = hasData
+      ? `<span class="pill pill-alert">🪳 ${f.cockroach}</span>`
+      : (f.trapStatus==='new-trap' ? `<span class="pill pill-new">New Trap</span>`
+          : f.trapStatus==='gone' ? `<span class="pill pill-gone">Gone</span>` : '');
+
+    const photos = (f.photos||[]).map((p,i) =>
+      `<div class="photo-thumb">
+        <img src="${p.url}" alt="photo" onclick="openLightbox('${p.url}')">
+        <button class="photo-del" onclick="deletePhoto('${fid}',${i},event)">✕</button>
+      </div>`).join('');
+
+    return `
+    <div class="station-card ${cls}" id="card-${fid}">
+      <div class="card-header" onclick="toggleCard('${fid}')">
+        <div class="rts-badge">${st.rtsNo||'?'}</div>
+        <div class="card-info">
+          <h3>${st.locationDescription||'Unknown'}</h3>
+          <p>Unit ${st.unit||'—'}</p>
+        </div>
+        <div class="card-summary">${summaryPill}<span style="font-size:1rem;color:var(--muted)">▼</span></div>
+      </div>
+      <div class="card-body" id="body-${fid}">
+        <!-- Counts -->
+        <div class="input-row">
+          <div class="input-group">
+            <label>🪳 Cockroach</label>
+            <input type="number" min="0" value="${f.cockroach||0}" id="ck-${fid}"
+              oninput="autoSave('${fid}')">
+          </div>
+          <div class="input-group">
+            <label>🐛 Others</label>
+            <input type="number" min="0" value="${f.others||0}" id="ot-${fid}"
+              oninput="autoSave('${fid}')">
+          </div>
+          <div class="input-group">
+            <label>🆕 New CK</label>
+            <input type="number" min="0" value="${f.newCockroaches||0}" id="nck-${fid}"
+              oninput="autoSave('${fid}')">
+          </div>
+        </div>
+        <!-- Trap status -->
+        <div class="trap-row" id="trap-${fid}">
+          <span style="font-size:0.75rem;font-weight:700;color:var(--muted);align-self:center">Trap:</span>
+          <button class="trap-btn ${f.trapStatus==='normal'?'active-normal':''}" onclick="setTrap('${fid}','normal')">✅ Normal</button>
+          <button class="trap-btn ${f.trapStatus==='new-trap'?'active-new':''}" onclick="setTrap('${fid}','new-trap')">🆕 New Trap</button>
+          <button class="trap-btn ${f.trapStatus==='gone'?'active-gone':''}" onclick="setTrap('${fid}','gone')">❌ Gone</button>
+        </div>
+        <!-- Remarks -->
+        <div class="remarks-row" style="margin-bottom:12px">
+          <label style="font-size:0.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Remarks</label>
+          <textarea id="rem-${fid}" rows="2" placeholder="Optional remarks…" oninput="autoSave('${fid}')">${f.remarks||''}</textarea>
+        </div>
+        <!-- Photos -->
+        <div class="photo-section">
+          <h4>📷 Photo Evidence</h4>
+          <div class="photo-thumbs" id="photos-${fid}">${photos}</div>
+          <label class="upload-area" id="upload-${fid}">
+            <div class="upload-icon">📸</div>
+            <p>Tap to add photo (camera or file)</p>
+            <input type="file" accept="image/*" capture="environment" onchange="uploadPhoto('${fid}',event)">
+          </label>
+          <div id="uploading-${fid}" style="font-size:0.8rem;color:var(--warn);display:none;margin-top:4px">Uploading…</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function toggleCard(fid) {
+    const body = document.getElementById('body-' + fid);
+    body.classList.toggle('open');
+    const chevron = document.querySelector(`#card-${fid} .card-summary span`);
+    if (chevron) chevron.textContent = body.classList.contains('open') ? '▲' : '▼';
+  }
+
+  // ── Auto-save ─────────────────────────────────────────────
+  const saveQueue = {};
+  function autoSave(fid) {
+    clearTimeout(saveQueue[fid]);
+    setSaveDot('saving');
+    saveQueue[fid] = setTimeout(() => saveFinding(fid), 700);
+    updateCardStyle(fid);
+  }
+
+  async function saveFinding(fid) {
+    const payload = {
+      cockroach:      parseInt(document.getElementById('ck-'+fid)?.value)  || 0,
+      others:         parseInt(document.getElementById('ot-'+fid)?.value)  || 0,
+      newCockroaches: parseInt(document.getElementById('nck-'+fid)?.value) || 0,
+      remarks:        document.getElementById('rem-'+fid)?.value || ''
+    };
+    try {
+      const r = await fetch(`${API}/findings/${fid}`, {
+        method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      if (r.ok) {
+        const updated = await r.json();
+        findingsMap[fid] = updated;
+        setSaveDot('saved');
+      }
+    } catch(_) { setSaveDot(null); }
+    updateSubmitSummary(Object.values(findingsMap));
+  }
+
+  function setSaveDot(state) {
+    const el = document.getElementById('saveDot');
+    el.className = 'save-dot' + (state ? ' '+state : '');
+    clearTimeout(saveDotTimer);
+    if (state === 'saved') saveDotTimer = setTimeout(() => el.className = 'save-dot', 2500);
+  }
+
+  // ── Trap status ───────────────────────────────────────────
+  async function setTrap(fid, status) {
+    // Update buttons
+    document.querySelectorAll(`#trap-${fid} .trap-btn`).forEach(b => b.className = 'trap-btn');
+    const map = {normal:'active-normal','new-trap':'active-new',gone:'active-gone'};
+    const activeBtn = document.querySelector(`#trap-${fid} .trap-btn:nth-child(${status==='normal'?2:status==='new-trap'?3:4})`);
+    if (activeBtn) activeBtn.classList.add(map[status]);
+    try {
+      const r = await fetch(`${API}/findings/${fid}`, {
+        method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ trapStatus: status })
+      });
+      if (r.ok) {
+        const updated = await r.json();
+        findingsMap[fid] = updated;
+      }
+    } catch(_) {}
+    updateCardStyle(fid);
+  }
+
+  function updateCardStyle(fid) {
+    const f = findingsMap[fid] || {};
+    const hasData = (parseInt(document.getElementById('ck-'+fid)?.value)||0) > 0
+                 || (parseInt(document.getElementById('ot-'+fid)?.value)||0) > 0;
+    const card = document.getElementById('card-'+fid);
+    if (!card) return;
+    card.className = 'station-card' + (hasData ? ' has-finding' : (f.trapStatus==='new-trap' ? ' is-new' : f.trapStatus==='gone' ? ' is-gone' : ''));
+    const badge = card.querySelector('.rts-badge');
+    if (badge) badge.className = 'rts-badge';
+  }
+
+  function updateSubmitSummary(findings) {
+    const alerts = findings.filter(f => (f.cockroach||0)>0 || (f.others||0)>0).length;
+    const total  = findings.length;
+    document.getElementById('submitSummary').textContent = `${total} stations · ${alerts} with findings`;
+  }
+
+  // ── Photos ────────────────────────────────────────────────
+  async function uploadPhoto(fid, evt) {
+    const file = evt.target.files?.[0];
+    if (!file) return;
+    const upEl = document.getElementById('uploading-'+fid);
+    upEl.style.display = 'block';
+    const form = new FormData();
+    form.append('photo', file);
+    try {
+      const r = await fetch(`${API}/findings/${fid}/photos`, { method:'POST', body:form });
+      if (!r.ok) throw new Error((await r.json()).error);
+      const { photos } = await r.json();
+      findingsMap[fid].photos = photos;
+      renderPhotos(fid, photos);
+    } catch(err) {
+      alert('Photo upload failed: ' + err.message);
+    } finally {
+      upEl.style.display = 'none';
+      evt.target.value = '';
+    }
+  }
+
+  async function deletePhoto(fid, idx, evt) {
+    evt.stopPropagation();
+    if (!confirm('Remove this photo?')) return;
+    const r = await fetch(`${API}/findings/${fid}/photos/${idx}`, { method:'DELETE' });
+    if (!r.ok) return alert('Delete failed');
+    const { photos } = await r.json();
+    findingsMap[fid].photos = photos;
+    renderPhotos(fid, photos);
+  }
+
+  function renderPhotos(fid, photos) {
+    document.getElementById('photos-'+fid).innerHTML = photos.map((p,i) =>
+      `<div class="photo-thumb">
+        <img src="${p.url}" alt="photo" onclick="openLightbox('${p.url}')">
+        <button class="photo-del" onclick="deletePhoto('${fid}',${i},event)">✕</button>
+      </div>`).join('');
+  }
+
+  function openLightbox(url) {
+    document.getElementById('lightboxImg').src = url;
+    document.getElementById('lightbox').classList.add('open');
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.getElementById('lightboxImg').src = '';
+  }
+
+  // ── Submit ────────────────────────────────────────────────
+  async function submitSession() {
+    if (!confirm('Submit this inspection report? It cannot be edited after submission.')) return;
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.textContent = 'Submitting…';
+    try {
+      const r = await fetch(`${API}/sessions/${SESSION_ID}/submit`, { method:'PUT' });
+      if (!r.ok) throw new Error((await r.json()).error);
+      window.location.href = '/pest/';
+    } catch(err) {
+      alert('Submit failed: ' + err.message);
+      btn.disabled = false; btn.textContent = '✅ Submit Report';
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

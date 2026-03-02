@@ -12,7 +12,7 @@ if (BYPASS_AUTH) {
 const BYPASS_USER = {
   id: 'bypass', username: 'bypass', displayName: 'Test Admin',
   role: 'admin',
-  permissions: { maintenance: true, foodsafety: true, templog: true, procurement: true }
+  permissions: { maintenance: true, foodsafety: true, templog: true, procurement: true, pest: true }
 };
 
 /**

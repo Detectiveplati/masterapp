@@ -47,7 +47,7 @@ async function seedAdmin() {
                 passwordHash: 'admin123',
                 displayName:  'Administrator',
                 role:         'admin',
-                permissions:  { maintenance: true, foodsafety: true, templog: true, procurement: true }
+                permissions:  { maintenance: true, foodsafety: true, templog: true, procurement: true, pest: true }
             });
             await admin.save();
             console.log('✓ [Auth] Default admin created — username: admin / password: admin123');
@@ -181,6 +181,11 @@ app.use('/maintenance', requirePageAccess('maintenance'), express.static(path.jo
 app.use('/templog', requirePageAccess('templog'), express.static(path.join(__dirname, 'templog'), noCacheHtml));
 app.get('/templog', requirePageAccess('templog'), (req, res) => res.sendFile(path.join(__dirname, 'templog', 'index.html')));
 
+// Pest Control — requires 'pest' permission
+app.use('/pest', requirePageAccess('pest'), express.static(path.join(__dirname, 'pest'), noCacheHtml));
+app.get('/pest',       requirePageAccess('pest'), (req, res) => res.sendFile(path.join(__dirname, 'pest', 'index.html')));
+app.get('/pest/',      requirePageAccess('pest'), (req, res) => res.sendFile(path.join(__dirname, 'pest', 'index.html')));
+
 // Procurement — requires 'procurement' permission
 app.use('/procurement', requirePageAccess('procurement'), express.static(path.join(__dirname, 'procurement'), noCacheHtml));
 app.get('/procurement',             requirePageAccess('procurement'), (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'index.html')));
@@ -222,6 +227,10 @@ app.use('/api/seed',             seedRoutes);
 const pushRoutes = require('./routes/push');
 const sendPushToPermission = pushRoutes.sendPushToPermission;
 app.use('/api/push', pushRoutes);
+
+// ─── Pest Control API Routes ──────────────────────────────────────────────────
+const pestRoutes = require('./routes/pest');
+app.use('/api/pest', pestRoutes);
 
 // ─── Procurement API Routes ──────────────────────────────────────────────────
 const procurementRequestsRoutes = require('./routes/procurementRequests');

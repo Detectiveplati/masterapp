@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script>
+  <script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Surveillance Report — Pest Control</title>
+  <style>
+    :root{
+      --ink:#121316;--muted:#5a616c;--accent:#2e7d32;--accent2:#66bb6a;
+      --card:#fff;--border:rgba(18,19,22,0.1);--bg:#f4f5f7;--shadow:rgba(18,19,22,0.08);
+      --warn:#f9a825;--alert:#c62828;--new:#1565c0;--gone:#6a1b9a;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Bahnschrift","Trebuchet MS","Segoe UI",sans-serif;background:var(--bg);min-height:100vh}
+    header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px var(--shadow)}
+    .hdr-icon{font-size:1.7rem}
+    .hdr-text h1{font-size:1rem;font-weight:800;color:var(--ink)}
+    .hdr-text p{font-size:0.75rem;color:var(--muted)}
+    .hdr-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+    .btn{padding:9px 18px;border:none;border-radius:9px;cursor:pointer;font-size:0.85rem;font-weight:700;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-green{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 3px 10px rgba(46,125,50,.25)}
+    .btn-grey{background:linear-gradient(135deg,#546e7a,#78909c);color:#fff}
+    .btn-sm{padding:6px 12px;font-size:0.78rem;border-radius:7px}
+    main{padding:20px 16px 40px;max-width:100%;overflow-x:auto}
+    .nav-links{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+    .nav-link{padding:8px 14px;border-radius:8px;background:#f0f0f0;color:var(--muted);font-size:0.82rem;font-weight:700;text-decoration:none;transition:background .15s}
+    .nav-link:hover{background:#e0e0e0;color:var(--ink)}
+    .nav-link.active{background:var(--accent);color:#fff}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+    .controls label{font-size:0.8rem;font-weight:700;color:var(--muted)}
+    .controls select{padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;font-family:inherit}
+
+    /* Legend */
+    .legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;font-size:0.78rem;font-weight:700;color:var(--muted)}
+    .legend-dot{width:14px;height:14px;border-radius:4px;display:inline-block;margin-right:4px;vertical-align:middle}
+
+    /* Table */
+    .report-table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);box-shadow:0 4px 16px var(--shadow);background:var(--card)}
+    table{border-collapse:collapse;font-size:0.82rem;white-space:nowrap;width:100%}
+    thead tr:first-child th{background:#f0fdf4;font-size:0.7rem;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;padding:8px 6px;border-bottom:2px solid var(--accent);text-align:center}
+    thead .date-th{background:#e8f5e9;font-size:0.78rem;font-weight:900;color:var(--accent);padding:9px 10px;border-bottom:2px solid var(--accent);text-align:center}
+    thead .sub-th{background:#f0fdf4;font-size:0.68rem;font-weight:700;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--border);text-align:center}
+    tbody tr td{padding:8px 10px;border-bottom:1px solid rgba(18,19,22,.06);vertical-align:middle;text-align:center}
+    tbody tr:last-child td{border-bottom:none}
+    tbody tr:hover td{background:#f8fdf8}
+    .td-rts{font-weight:900;color:var(--ink);text-align:left;white-space:normal;min-width:180px;max-width:220px;padding-left:14px}
+    .td-rts .rts-no{font-size:0.68rem;color:var(--muted)}
+    .td-unit{font-size:0.75rem;font-weight:700;color:var(--muted);text-align:left;padding-left:8px}
+    .cell-alert{background:rgba(255,235,59,.55)!important;font-weight:900;color:#5d4037}
+    .cell-new{background:rgba(21,101,192,.12)!important;color:var(--new);font-weight:800;font-size:0.8rem}
+    .cell-gone{background:rgba(106,27,154,.1)!important;color:var(--gone);font-weight:800;font-size:0.8rem}
+    .cell-zero{color:#bbb}
+    .cell-photo{cursor:pointer;text-decoration:underline;font-size:0.75rem;color:var(--accent)}
+    .no-data{text-align:center;padding:40px;color:var(--muted);font-style:italic}
+
+    /* Lightbox */
+    .lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+    .lightbox.open{display:flex}
+    .lightbox img{max-width:92vw;max-height:82vh;border-radius:8px;object-fit:contain}
+    .lightbox-close{position:fixed;top:14px;right:18px;font-size:2rem;color:#fff;cursor:pointer;background:none;border:none;font-weight:700}
+    .photo-nav{display:flex;gap:14px;align-items:center}
+    .photo-nav button{background:rgba(255,255,255,.2);border:none;color:#fff;font-size:1.5rem;width:42px;height:42px;border-radius:50%;cursor:pointer;font-weight:900}
+    .photo-nav span{color:#fff;font-size:0.85rem;font-weight:700}
+    @media print{header,nav,.controls,.legend{display:none!important}.report-table-wrap{box-shadow:none;border:none}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="hdr-icon">📋</div>
+  <div class="hdr-text">
+    <h1>Rat Trap Surveillance Report</h1>
+    <p>Submitted inspection sessions</p>
+  </div>
+  <div class="hdr-right">
+    <button class="btn btn-grey btn-sm" onclick="window.print()">🖨️ Print</button>
+    <a href="/pest/" class="btn btn-grey btn-sm">← Back</a>
+  </div>
+</header>
+<main>
+  <div class="nav-links">
+    <a href="/pest/" class="nav-link">📊 Dashboard</a>
+    <a href="/pest/record.html" class="nav-link">✏️ Record Findings</a>
+    <a href="/pest/report.html" class="nav-link active">📋 Report</a>
+    <a href="/pest/stations.html" class="nav-link">📍 Stations</a>
+  </div>
+
+  <div class="controls">
+    <label>Show last</label>
+    <select id="limitSel" onchange="loadReport()">
+      <option value="5">5 sessions</option>
+      <option value="10" selected>10 sessions</option>
+      <option value="20">20 sessions</option>
+      <option value="52">All (up to 52)</option>
+    </select>
+  </div>
+
+  <div class="legend">
+    <span><span class="legend-dot" style="background:rgba(255,235,59,.7)"></span>Cockroach count &gt; 0</span>
+    <span><span class="legend-dot" style="background:rgba(21,101,192,.15);border:1px solid var(--new)"></span>New Trap</span>
+    <span><span class="legend-dot" style="background:rgba(106,27,154,.1);border:1px solid var(--gone)"></span>Gone</span>
+    <span><span class="legend-dot" style="background:#fff;border:1px solid var(--border)"></span>No findings</span>
+    <span>📷 = has photos</span>
+  </div>
+
+  <div id="tableWrap" class="report-table-wrap">
+    <div class="no-data">Loading report…</div>
+  </div>
+</main>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="if(event.target===this||event.target.classList.contains('lightbox'))closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightboxImg" src="" alt="">
+  <div class="photo-nav" id="photoNav" style="display:none">
+    <button onclick="prevPhoto()">‹</button>
+    <span id="photoCount"></span>
+    <button onclick="nextPhoto()">›</button>
+  </div>
+</div>
+
+<script>
+  const API = '/api/pest';
+  let lbPhotos = []; let lbIdx = 0;
+
+  async function init() {
+    try {
+      const r = await fetch('/api/auth/me', { credentials:'include' });
+      if (!r.ok) return window.location.replace('/login');
+      const { user } = await r.json();
+      if (!user.permissions?.pest && user.role !== 'admin')
+        return window.location.replace('/?access=denied');
+      document.documentElement.style.visibility = '';
+      loadReport();
+    } catch { window.location.replace('/login'); }
+  }
+
+  async function loadReport() {
+    const limit = document.getElementById('limitSel').value;
+    const wrap  = document.getElementById('tableWrap');
+    wrap.innerHTML = '<div class="no-data">Loading…</div>';
+    try {
+      const r = await fetch(`${API}/report?limit=${limit}`);
+      const { sessions, stations, findings } = await r.json();
+      if (!sessions || !sessions.length) {
+        wrap.innerHTML = '<div class="no-data">No submitted sessions yet.</div>';
+        return;
+      }
+      // sessions newest-first — we'll reverse for display (oldest left → newest right)
+      const cols = sessions.slice().reverse();
+
+      // Build lookup: sessionId+stationId → finding
+      const lookup = {};
+      findings.forEach(f => {
+        const key = (f.sessionId||f.session) + '_' + (f.stationId?._id||f.stationId);
+        lookup[key] = f;
+      });
+
+      wrap.innerHTML = buildTable(cols, stations, lookup);
+    } catch(err) {
+      wrap.innerHTML = `<div class="no-data">Error: ${err.message}</div>`;
+    }
+  }
+
+  function fmtDate(d) {
+    return new Date(d).toLocaleDateString('en-SG',{day:'2-digit',month:'short',year:'2-digit'});
+  }
+
+  function buildTable(sessions, stations, lookup) {
+    // Header row 1: colspan date groups (each session = 4 columns: CK, Others, New CK, —spacer)
+    let h1 = '<tr><th rowspan="2" style="text-align:left;padding-left:14px;min-width:30px">RTS No.</th>'
+           + '<th rowspan="2" style="text-align:left;min-width:160px">Location Description</th>'
+           + '<th rowspan="2" style="text-align:left;min-width:60px">Location</th>';
+
+    sessions.forEach(s => {
+      h1 += `<th class="date-th" colspan="4">${fmtDate(s.date)}</th>`;
+    });
+    h1 += '</tr>';
+
+    // Header row 2: sub-columns per session
+    let h2 = '<tr>';
+    sessions.forEach(() => {
+      h2 += '<th class="sub-th">Cockroach</th><th class="sub-th">Others</th><th class="sub-th">New<br>Cockroaches</th><th class="sub-th">📷</th>';
+    });
+    h2 += '</tr>';
+
+    // Body rows
+    let body = '';
+    stations.forEach(st => {
+      let row = `<tr>
+        <td style="font-weight:900;text-align:center;color:var(--ink)">${st.rtsNo}</td>
+        <td class="td-rts">${st.locationDescription}</td>
+        <td class="td-unit">${st.unit}</td>`;
+      sessions.forEach(s => {
+        const key = s._id + '_' + st._id;
+        const f   = lookup[key];
+        if (!f) {
+          row += '<td class="cell-zero">—</td><td class="cell-zero">—</td><td class="cell-zero">—</td><td></td>';
+          return;
+        }
+        if (f.trapStatus === 'new-trap') {
+          row += '<td class="cell-new" colspan="3">New</td><td>' + photoCell(f) + '</td>';
+          return;
+        }
+        if (f.trapStatus === 'gone') {
+          row += '<td class="cell-gone" colspan="3">Gone</td><td>' + photoCell(f) + '</td>';
+          return;
+        }
+        const ck  = f.cockroach  || 0;
+        const ot  = f.others     || 0;
+        const nck = f.newCockroaches || 0;
+        const alert = ck > 0 || nck > 0;
+        const ckCell  = `<td class="${alert ? 'cell-alert' : ck  === 0 ? 'cell-zero' : ''}">${ck  || ''}</td>`;
+        const otCell  = `<td class="${ot  === 0 ? 'cell-zero' : ''}">${ot  || ''}</td>`;
+        const nckCell = `<td class="${nck > 0 ? 'cell-alert' : nck === 0 ? 'cell-zero' : ''}">${nck || ''}</td>`;
+        row += ckCell + otCell + nckCell + '<td>' + photoCell(f) + '</td>';
+      });
+      row += '</tr>';
+      body += row;
+    });
+
+    return `<table><thead>${h1}${h2}</thead><tbody>${body}</tbody></table>`;
+  }
+
+  function photoCell(f) {
+    if (!f.photos || !f.photos.length) return '';
+    const urls = JSON.stringify(f.photos.map(p => p.url)).replace(/"/g,"'");
+    return `<span class="cell-photo" onclick="openPhotos(${urls})">📷 ${f.photos.length}</span>`;
+  }
+
+  // ── Lightbox ──────────────────────────────────────────────
+  function openPhotos(urls) {
+    lbPhotos = urls; lbIdx = 0;
+    showPhoto();
+    document.getElementById('lightbox').classList.add('open');
+    document.getElementById('photoNav').style.display = lbPhotos.length > 1 ? 'flex' : 'none';
+  }
+  function showPhoto() {
+    document.getElementById('lightboxImg').src = lbPhotos[lbIdx];
+    document.getElementById('photoCount').textContent = `${lbIdx+1} / ${lbPhotos.length}`;
+  }
+  function prevPhoto() { lbIdx = (lbIdx - 1 + lbPhotos.length) % lbPhotos.length; showPhoto(); }
+  function nextPhoto() { lbIdx = (lbIdx + 1) % lbPhotos.length; showPhoto(); }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.getElementById('lightboxImg').src = '';
+  }
+
+  init();
+</script>
+</body>
+</html>
