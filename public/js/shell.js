@@ -57,9 +57,13 @@
       icon: '🥗', label: 'Food Safety', module: 'foodsafety',
       href: '/foodsafety/', perm: 'foodsafety',
       children: [
-        { href: '/foodsafety/',               label: '🏠 Overview'  },
-        { href: '/foodsafety/report-nc.html', label: '➕ Log NC'     },
-        { href: '/foodsafety/nc-list.html',   label: '📋 View NCs'  },
+        { href: '/foodsafety/',               label: '🏠 Overview'           },
+        { href: '/foodsafety/report-nc.html', label: '➕ Log NC'              },
+        { href: '/foodsafety/nc-list.html',   label: '📋 View NCs'           },
+        { href: '/pest/',                     label: '🐭 Rat Trap Dashboard'  },
+        { href: '/pest/record.html',          label: '✏️ Record Findings'     },
+        { href: '/pest/report.html',          label: '📋 Pest Report'         },
+        { href: '/pest/stations.html',        label: '📍 RTS Stations'        },
       ],
     },
     {

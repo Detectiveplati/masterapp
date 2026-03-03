@@ -64,33 +64,14 @@
     .photo-nav{display:flex;gap:14px;align-items:center}
     .photo-nav button{background:rgba(255,255,255,.2);border:none;color:#fff;font-size:1.5rem;width:42px;height:42px;border-radius:50%;cursor:pointer;font-weight:900}
     .photo-nav span{color:#fff;font-size:0.85rem;font-weight:700}
-    @media print{header,.module-nav,nav,.controls,.legend{display:none!important}.report-table-wrap{box-shadow:none;border:none}}
+    @media print{#topnav,#sidenav,.controls,.legend{display:none!important}.report-table-wrap{box-shadow:none;border:none}}
     .module-nav{background:#fff;border-bottom:1px solid var(--border);padding:7px 24px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
     .mod-link{padding:5px 12px;border-radius:7px;background:#f4f5f7;color:var(--muted);font-size:0.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:background .15s,color .15s}
     .mod-link:hover{background:#e0e0e0;color:var(--ink)}
     .mod-link.active{background:var(--accent);color:#fff}
   </style>
 </head>
-<body>
-<header>
-  <div class="hdr-icon">📋</div>
-  <div class="hdr-text">
-    <h1>Rat Trap Surveillance Report</h1>
-    <p>Submitted inspection sessions</p>
-  </div>
-  <div class="hdr-right">
-    <button class="btn btn-grey btn-sm" onclick="window.print()">🖨️ Print</button>
-    <a href="/pest/" class="btn btn-grey btn-sm">← Back</a>
-  </div>
-</header>
-<nav class="module-nav">
-  <a href="/" class="mod-link">🏠 Hub</a>
-  <a href="/maintenance/maintenance.html" class="mod-link">🔧 Maintenance</a>
-  <a href="/templog/" class="mod-link">🌡️ Temp Log</a>
-  <a href="/procurement/" class="mod-link">🛒 Procurement</a>
-  <a href="/foodsafety/" class="mod-link">🍽️ Food Safety</a>
-  <a href="/pest/" class="mod-link active">🐭 Pest Control</a>
-</nav>
+<body data-module="foodsafety">
 <main>
   <div class="nav-links">
     <a href="/pest/" class="nav-link">📊 Dashboard</a>
@@ -279,5 +260,6 @@
 
   init();
 </script>
+<script src="/js/shell.js"></script>
 </body>
 </html>

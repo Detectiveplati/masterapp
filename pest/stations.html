@@ -64,25 +64,7 @@
     .mod-link.active{background:var(--accent);color:#fff}
   </style>
 </head>
-<body>
-<header>
-  <div class="hdr-icon">📍</div>
-  <div class="hdr-text">
-    <h1>RTS Stations</h1>
-    <p>Manage rat trap surveillance points</p>
-  </div>
-  <div class="hdr-right">
-    <a href="/pest/" class="btn btn-grey btn-sm">← Back</a>
-  </div>
-</header>
-<nav class="module-nav">
-  <a href="/" class="mod-link">🏠 Hub</a>
-  <a href="/maintenance/maintenance.html" class="mod-link">🔧 Maintenance</a>
-  <a href="/templog/" class="mod-link">🌡️ Temp Log</a>
-  <a href="/procurement/" class="mod-link">🛒 Procurement</a>
-  <a href="/foodsafety/" class="mod-link">🍽️ Food Safety</a>
-  <a href="/pest/" class="mod-link active">🐭 Pest Control</a>
-</nav>
+<body data-module="foodsafety">
 <main>
   <div class="nav-links">
     <a href="/pest/" class="nav-link">📊 Dashboard</a>
@@ -272,5 +254,6 @@
 
   init();
 </script>
+<script src="/js/shell.js"></script>
 </body>
 </html>
