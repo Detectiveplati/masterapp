@@ -13,12 +13,6 @@
       --warn:#f57f17; --alert:#c62828; --new:#1565c0; --gone:#6a1b9a;
     }
     main{max-width:960px;margin:0 auto;padding:20px 16px 60px}
-    .btn{padding:9px 18px;border:none;border-radius:9px;cursor:pointer;font-size:0.85rem;font-weight:700;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:opacity .15s}
-    .btn:disabled{opacity:.5;cursor:not-allowed}
-    .btn-green{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 3px 10px rgba(46,125,50,.25)}
-    .btn-grey{background:linear-gradient(135deg,#546e7a,#78909c);color:#fff}
-    .btn-orange{background:linear-gradient(135deg,#e65100,#ef6c00);color:#fff;box-shadow:0 3px 10px rgba(230,81,0,.2)}
-    .btn-sm{padding:6px 12px;font-size:0.78rem;border-radius:7px}
 
     /* Session info bar */
     .session-bar{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;flex-wrap:wrap;align-items:center;gap:12px;box-shadow:0 2px 8px var(--shadow)}
@@ -116,7 +110,7 @@
 
 <div class="submit-bar" id="submitBar" style="display:none">
   <div class="summary-text" id="submitSummary"></div>
-  <button class="btn btn-orange" id="submitBtn" onclick="submitSession()">✅ Submit Report</button>
+  <button class="btn btn-danger" id="submitBtn" onclick="submitSession()">✅ Submit Report</button>
 </div>
 
 <!-- Lightbox -->

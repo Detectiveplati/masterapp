@@ -225,6 +225,7 @@ body.nav-open #sidenav { transform: translateX(0); }
 body[data-module="templog"]     .sidenav-link.active { background: rgba(58,166,255,0.07);  border-left-color: #3aa6ff; color: #3aa6ff; }
 body[data-module="procurement"] .sidenav-link.active { background: rgba(39,174,96,0.07);   border-left-color: #27ae60; color: #27ae60; }
 body[data-module="foodsafety"]  .sidenav-link.active { background: rgba(22,160,133,0.07);  border-left-color: #16a085; color: #16a085; }
+body[data-module="pest"]        .sidenav-link.active { background: rgba(46,125,50,0.07);   border-left-color: #2e7d32; color: #2e7d32; }
 body[data-module="admin"]       .sidenav-link.active { background: rgba(127,90,240,0.07);  border-left-color: #7f5af0; color: #7f5af0; }
 
 .nav-icon { font-size: 1.05rem; flex-shrink: 0; }

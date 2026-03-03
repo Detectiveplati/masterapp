@@ -240,21 +240,6 @@
             margin-bottom: 12px;
         }
 
-        .btn-delete {
-            background: linear-gradient(135deg, var(--accent), #e74c3c);
-            color: white;
-            border: none;
-            border-radius: 9px;
-            padding: 10px 22px;
-            font-size: 0.88rem;
-            font-weight: 700;
-            cursor: pointer;
-            box-shadow: 0 3px 10px rgba(192,57,43,0.2);
-            transition: transform 0.15s;
-        }
-
-        .btn-delete:hover { transform: translateY(-1px); }
-
         /* Loading / error */
         #loadingState {
             text-align: center;
@@ -357,7 +342,7 @@
             <div class="panel-body">
                 <div class="danger-zone">
                     <p>Permanently delete this issue report. This cannot be undone.</p>
-                    <button class="btn-delete" onclick="deleteIssue()">🗑 Delete Issue</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteIssue()">🗑 Delete Issue</button>
                 </div>
             </div>
         </div>
