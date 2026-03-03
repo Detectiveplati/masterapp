@@ -7,19 +7,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Cache-Control" content="no-store">
   <title>Pest Control — Central Kitchen</title>
+  <link rel="stylesheet" href="/css/app.css">
   <style>
     :root {
-      --ink:#121316; --muted:#5a616c; --accent:#2e7d32; --accent2:#66bb6a;
-      --card:#fff; --border:rgba(18,19,22,0.1); --bg:#f4f5f7; --shadow:rgba(18,19,22,0.08);
       --warn:#f57f17; --alert:#c62828; --new:#1565c0;
     }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:"Bahnschrift","Trebuchet MS","Segoe UI",sans-serif;background:radial-gradient(900px 500px at 5% -5%,#d4edda,transparent 55%),radial-gradient(600px 400px at 95% 105%,#c8e6c9,transparent 55%),var(--bg);min-height:100vh}
-    header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px var(--shadow)}
-    .hdr-icon{font-size:2rem}
-    .hdr-text h1{font-size:1.15rem;font-weight:800;color:var(--ink)}
-    .hdr-text p{font-size:0.78rem;color:var(--muted)}
-    .hdr-right{margin-left:auto;display:flex;gap:8px;align-items:center}
     main{max-width:1100px;margin:0 auto;padding:28px 20px}
     .btn{padding:10px 20px;border:none;border-radius:10px;cursor:pointer;font-size:0.88rem;font-weight:700;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
     .btn-green{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 3px 10px rgba(46,125,50,0.25)}
@@ -52,13 +44,9 @@
     .btn-del{padding:6px 10px;background:rgba(198,40,40,.08);border:1px solid rgba(198,40,40,.18);color:var(--alert);border-radius:7px;font-size:0.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;flex-shrink:0}
     .btn-del:hover{background:rgba(198,40,40,.18)}
     @media(max-width:600px){main{padding:16px}.stats-row{grid-template-columns:1fr 1fr}}
-    .module-nav{background:#fff;border-bottom:1px solid var(--border);padding:7px 24px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-    .mod-link{padding:5px 12px;border-radius:7px;background:#f4f5f7;color:var(--muted);font-size:0.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:background .15s,color .15s}
-    .mod-link:hover{background:#e0e0e0;color:var(--ink)}
-    .mod-link.active{background:var(--accent);color:#fff}
   </style>
 </head>
-<body data-module="foodsafety">
+<body data-module="pest">
 <main>
   <div class="nav-links" style="margin-bottom:20px">
     <a href="/pest/" class="nav-link active">📊 Dashboard</a>

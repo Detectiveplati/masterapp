@@ -22,6 +22,7 @@
   else if (path.indexOf('/foodsafety')  === 0) module = 'foodsafety';
   else if (path.indexOf('/templog')     === 0) module = 'templog';
   else if (path.indexOf('/procurement') === 0) module = 'procurement';
+  else if (path.indexOf('/pest')        === 0) module = 'pest';
   else if (path.indexOf('/admin')       === 0) module = '__admin__';
 
   function reveal() {

@@ -30,12 +30,13 @@
 
   /* ── Module metadata ─────────────────────────────────────────── */
   var MODULE_INFO = {
-    maintenance: { label: '🔧 Maintenance' },
-    foodsafety:  { label: '🥗 Food Safety'  },
-    templog:     { label: '🌡️ Kitchen Logs' },
-    procurement: { label: '📦 Procurement'  },
-    admin:       { label: '⚙️ Admin'        },
-    'push-test': { label: '🔔 Push Test'   },
+    maintenance: { label: '🔧 Maintenance'       },
+    foodsafety:  { label: '🥗 Food Safety'        },
+    pest:        { label: '🐭 Rat Trap Surveillance' },
+    templog:     { label: '🌡️ Kitchen Logs'      },
+    procurement: { label: '📦 Procurement'        },
+    admin:       { label: '⚙️ Admin'             },
+    'push-test': { label: '🔔 Push Test'         },
   };
 
   /* ── Navigation tree ─────────────────────────────────────────── */
@@ -55,6 +56,7 @@
     },
     {
       icon: '🥗', label: 'Food Safety', module: 'foodsafety',
+      activeModules: ['foodsafety', 'pest'],
       href: '/foodsafety/', perm: 'foodsafety',
       children: [
         { href: '/foodsafety/',               label: '🏠 Overview'           },
@@ -137,7 +139,9 @@
       sideItems += '<div class="sidenav-divider"></div>';
       return;
     }
-    var isModuleActive = item.module === currentModule;
+    var isModuleActive = item.activeModules
+      ? item.activeModules.indexOf(currentModule) !== -1
+      : item.module === currentModule;
     var isLinkActive   = isPathActive(item.href);
     var cls = 'sidenav-link' + ((isModuleActive || isLinkActive) ? ' active' : '');
     var permAttr = item.perm ? ' data-perm="' + item.perm + '"' : '';

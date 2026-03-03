@@ -42,6 +42,7 @@ body[data-module="maintenance"] { --accent: #ff7a18; --accent-2: #e74c3c; }
 body[data-module="templog"]     { --accent: #3aa6ff; --accent-2: #0e7fd6; }
 body[data-module="procurement"] { --accent: #27ae60; --accent-2: #1e8449; }
 body[data-module="foodsafety"]  { --accent: #16a085; --accent-2: #1abc9c; }
+body[data-module="pest"]        { --accent: #2e7d32; --accent-2: #66bb6a; }
 body[data-module="admin"]       { --accent: #7f5af0; --accent-2: #5e3fce; }
 body[data-module="hub"]         { --accent: #ff7a18; --accent-2: #e74c3c; }
 

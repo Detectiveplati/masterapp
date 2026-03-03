@@ -7,19 +7,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Cache-Control" content="no-store">
   <title>Surveillance Report — Pest Control</title>
+  <link rel="stylesheet" href="/css/app.css">
   <style>
     :root{
-      --ink:#121316;--muted:#5a616c;--accent:#2e7d32;--accent2:#66bb6a;
-      --card:#fff;--border:rgba(18,19,22,0.1);--bg:#f4f5f7;--shadow:rgba(18,19,22,0.08);
-      --warn:#f9a825;--alert:#c62828;--new:#1565c0;--gone:#6a1b9a;
+      --warn:#f9a825; --alert:#c62828; --new:#1565c0; --gone:#6a1b9a;
     }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:"Bahnschrift","Trebuchet MS","Segoe UI",sans-serif;background:var(--bg);min-height:100vh}
-    header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px var(--shadow)}
-    .hdr-icon{font-size:1.7rem}
-    .hdr-text h1{font-size:1rem;font-weight:800;color:var(--ink)}
-    .hdr-text p{font-size:0.75rem;color:var(--muted)}
-    .hdr-right{margin-left:auto;display:flex;gap:8px;align-items:center}
     .btn{padding:9px 18px;border:none;border-radius:9px;cursor:pointer;font-size:0.85rem;font-weight:700;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
     .btn-green{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 3px 10px rgba(46,125,50,.25)}
     .btn-grey{background:linear-gradient(135deg,#546e7a,#78909c);color:#fff}
@@ -65,13 +57,9 @@
     .photo-nav button{background:rgba(255,255,255,.2);border:none;color:#fff;font-size:1.5rem;width:42px;height:42px;border-radius:50%;cursor:pointer;font-weight:900}
     .photo-nav span{color:#fff;font-size:0.85rem;font-weight:700}
     @media print{#topnav,#sidenav,.controls,.legend{display:none!important}.report-table-wrap{box-shadow:none;border:none}}
-    .module-nav{background:#fff;border-bottom:1px solid var(--border);padding:7px 24px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-    .mod-link{padding:5px 12px;border-radius:7px;background:#f4f5f7;color:var(--muted);font-size:0.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:background .15s,color .15s}
-    .mod-link:hover{background:#e0e0e0;color:var(--ink)}
-    .mod-link.active{background:var(--accent);color:#fff}
   </style>
 </head>
-<body data-module="foodsafety">
+<body data-module="pest">
 <main>
   <div class="nav-links">
     <a href="/pest/" class="nav-link">📊 Dashboard</a>
