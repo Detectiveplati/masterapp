@@ -104,6 +104,10 @@
 
     .no-data{text-align:center;padding:36px;color:var(--muted);font-style:italic}
     @media(max-width:500px){.input-row{grid-template-columns:1fr 1fr}}
+    .module-nav{background:#fff;border-bottom:1px solid var(--border);padding:7px 24px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    .mod-link{padding:5px 12px;border-radius:7px;background:#f4f5f7;color:var(--muted);font-size:0.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:background .15s,color .15s}
+    .mod-link:hover{background:#e0e0e0;color:var(--ink)}
+    .mod-link.active{background:var(--accent);color:#fff}
   </style>
 </head>
 <body>
@@ -118,6 +122,14 @@
     <a href="/pest/" class="btn btn-grey btn-sm">← Back</a>
   </div>
 </header>
+<nav class="module-nav">
+  <a href="/" class="mod-link">🏠 Hub</a>
+  <a href="/maintenance/maintenance.html" class="mod-link">🔧 Maintenance</a>
+  <a href="/templog/" class="mod-link">🌡️ Temp Log</a>
+  <a href="/procurement/" class="mod-link">🛒 Procurement</a>
+  <a href="/foodsafety/" class="mod-link">🍽️ Food Safety</a>
+  <a href="/pest/" class="mod-link active">🐭 Pest Control</a>
+</nav>
 <main>
   <div class="session-bar" id="sessionBar">
     <div>

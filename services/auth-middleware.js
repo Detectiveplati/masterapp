@@ -28,7 +28,7 @@ function signToken(user) {
       permissions: user.permissions
     },
     JWT_SECRET,
-    { expiresIn: '12h' }
+    { expiresIn: '400d' }
   );
 }
 
@@ -40,7 +40,7 @@ function setAuthCookie(res, token) {
     httpOnly: true,
     sameSite: 'lax',
     secure:   process.env.NODE_ENV === 'production',
-    maxAge:   12 * 60 * 60 * 1000 // 12 hours
+    maxAge:   400 * 24 * 60 * 60 * 1000 // 400 days — persistent until manual logout
   });
 }
 

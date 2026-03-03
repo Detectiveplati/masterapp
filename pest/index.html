@@ -52,6 +52,10 @@
     .btn-del{padding:6px 10px;background:rgba(198,40,40,.08);border:1px solid rgba(198,40,40,.18);color:var(--alert);border-radius:7px;font-size:0.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;flex-shrink:0}
     .btn-del:hover{background:rgba(198,40,40,.18)}
     @media(max-width:600px){main{padding:16px}.stats-row{grid-template-columns:1fr 1fr}}
+    .module-nav{background:#fff;border-bottom:1px solid var(--border);padding:7px 24px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    .mod-link{padding:5px 12px;border-radius:7px;background:#f4f5f7;color:var(--muted);font-size:0.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:background .15s,color .15s}
+    .mod-link:hover{background:#e0e0e0;color:var(--ink)}
+    .mod-link.active{background:var(--accent);color:#fff}
   </style>
 </head>
 <body>
@@ -65,6 +69,14 @@
     <a href="/" class="btn btn-grey" style="padding:8px 14px;font-size:0.8rem">🏠 Hub</a>
   </div>
 </header>
+<nav class="module-nav">
+  <a href="/" class="mod-link">🏠 Hub</a>
+  <a href="/maintenance/maintenance.html" class="mod-link">🔧 Maintenance</a>
+  <a href="/templog/" class="mod-link">🌡️ Temp Log</a>
+  <a href="/procurement/" class="mod-link">🛒 Procurement</a>
+  <a href="/foodsafety/" class="mod-link">🍽️ Food Safety</a>
+  <a href="/pest/" class="mod-link active">🐭 Pest Control</a>
+</nav>
 <main>
   <div class="nav-links" style="margin-bottom:20px">
     <a href="/pest/" class="nav-link active">📊 Dashboard</a>
