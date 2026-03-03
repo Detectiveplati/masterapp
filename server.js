@@ -145,6 +145,15 @@ app.use('/css',   express.static(path.join(__dirname, 'public', 'css')));
 app.use('/js',    express.static(path.join(__dirname, 'public', 'js')));
 app.use('/icons', express.static(path.join(__dirname, 'public', 'icons')));
 
+// PWA manifest and offline page — public, no auth required
+app.get('/manifest.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/manifest+json');
+  res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
+});
+app.get('/offline.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'offline.html'));
+});
+
 // Service worker — must be served from root with correct scope headers
 app.get('/sw.js', (req, res) => {
   res.setHeader('Service-Worker-Allowed', '/');

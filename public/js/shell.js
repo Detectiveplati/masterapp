@@ -12,19 +12,63 @@
 (function () {
   'use strict';
 
-  // Inject apple-touch-icon and favicon for iOS home screen / browser tab
-  (function injectIcons() {
+  // ── PWA: inject manifest, icons, iOS meta tags, and register SW ──────────
+  (function injectPWA() {
     var head = document.head;
     var iconUrl = '/icons/app-icon.png';
+
+    // Web App Manifest
+    if (!document.querySelector('link[rel="manifest"]')) {
+      var manifest = document.createElement('link');
+      manifest.rel = 'manifest'; manifest.href = '/manifest.json';
+      head.insertBefore(manifest, head.firstChild);
+    }
+
+    // Apple touch icon
     if (!document.querySelector('link[rel="apple-touch-icon"]')) {
       var ati = document.createElement('link');
       ati.rel = 'apple-touch-icon'; ati.href = iconUrl;
       head.appendChild(ati);
     }
+
+    // Favicon
     if (!document.querySelector('link[rel="icon"]')) {
       var fav = document.createElement('link');
       fav.rel = 'icon'; fav.type = 'image/png'; fav.href = iconUrl;
       head.appendChild(fav);
+    }
+
+    // iOS full-screen meta tags
+    function injectMeta(name, content) {
+      if (!document.querySelector('meta[name="' + name + '"]')) {
+        var m = document.createElement('meta');
+        m.name = name; m.content = content;
+        head.appendChild(m);
+      }
+    }
+    injectMeta('apple-mobile-web-app-capable',          'yes');
+    injectMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+    injectMeta('apple-mobile-web-app-title',            'Central Kitchen');
+    injectMeta('mobile-web-app-capable',                'yes');
+
+    // Theme color (per module accent)
+    if (!document.querySelector('meta[name="theme-color"]')) {
+      var mod = document.body ? document.body.getAttribute('data-module') : '';
+      var THEME = {
+        maintenance: '#ff7a18', foodsafety: '#16a085', pest: '#2e7d32',
+        templog: '#3aa6ff', procurement: '#27ae60', admin: '#7f5af0', hub: '#ff7a18'
+      };
+      var tc = document.createElement('meta');
+      tc.name = 'theme-color'; tc.content = THEME[mod] || '#ff7a18';
+      head.appendChild(tc);
+    }
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          .catch(function (err) { console.warn('SW registration failed:', err); });
+      });
     }
   }());
 
