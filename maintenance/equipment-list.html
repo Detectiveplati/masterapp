@@ -139,13 +139,27 @@
 
         .equipment-type {
             display: inline-block;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            background: linear-gradient(135deg, #ecf0f1, #bdc3c7);
-            color: var(--ink);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            background: #e0e0e0;
+            color: #444;
             margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+        .equipment-type.type-freezer {
+            background: linear-gradient(135deg, #1565c0, #1e88e5);
+            color: #fff;
+        }
+        .equipment-type.type-chiller {
+            background: linear-gradient(135deg, #00695c, #00897b);
+            color: #fff;
+        }
+        .equipment-type.type-warmer {
+            background: linear-gradient(135deg, #c62828, #e53935);
+            color: #fff;
         }
 
         .equipment-details {
@@ -521,6 +535,15 @@
         let issueCounts = {};
         let currentView = 'grid';
 
+        // Equipment type colour classes
+        const typeColorClass = {
+            'Walk-In Freezer': 'type-freezer',
+            'Standing Freezer': 'type-freezer',
+            'Walk-In Chiller': 'type-chiller',
+            'Standing Chiller': 'type-chiller',
+            'Warmer': 'type-warmer'
+        };
+
         // Equipment type icons
         const typeIcons = {
             'Walk-In Freezer': '🏔️',
@@ -716,7 +739,7 @@
                         </div>
                     </div>
                     
-                    <span class="equipment-type">${equipment.type}</span>
+                    <span class="equipment-type ${typeColorClass[equipment.type] || ''}">${equipment.type}</span>
                     ${issueBadge}
                     
                     <div class="equipment-details">
