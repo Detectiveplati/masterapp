@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Procurement Request 采购申请</title>
   <link rel="stylesheet" href="/css/app.css"/>
@@ -10,6 +9,14 @@
 <body data-module="procurement">
 
 <main>
+  <div class="page-header" style="max-width:680px;margin:0 auto 0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:16px 0 4px;">
+    <div>
+      <h1 id="hdr-title" style="margin:0;font-size:1.4rem;">Procurement Request</h1>
+      <p id="hdr-sub" style="margin:4px 0 0;opacity:0.65;font-size:0.9rem;">Central Kitchen · Submit a new item request</p>
+    </div>
+    <button type="button" class="lang-toggle" id="langToggle" onclick="toggleLang()">中文</button>
+  </div>
+
   <div id="msgSuccess" class="msg success" style="display:none">✅ <span class="t" data-en="Request submitted successfully!" data-zh="申请提交成功！">Request submitted successfully!</span></div>
   <div id="msgError"   class="msg error"   style="display:none">❌ <span id="errText">Failed to submit. Please try again.</span></div>
 
