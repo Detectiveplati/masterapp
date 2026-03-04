@@ -46,6 +46,12 @@
     /* Input grid */
     .input-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
     .input-group label{font-size:0.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+    .ck-stepper{display:flex;align-items:center;gap:4px}
+    .ck-stepper input[type=number]{width:70px;padding:10px 8px;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-weight:700;text-align:center;font-family:inherit;background:#fff}
+    .ck-stepper input[type=number]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(46,125,50,.1)}
+    .step-btn{width:32px;height:40px;border:1px solid var(--border);border-radius:7px;background:#f5f5f5;font-size:1.2rem;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink);line-height:1;transition:background .12s;flex-shrink:0;padding:0}
+    .step-btn:hover{background:#e0e0e0}
+    .prev-ck-label{font-size:0.68rem;color:var(--muted);margin-top:3px;font-weight:600}
     .input-group input[type=number]{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-weight:700;text-align:center;font-family:inherit;background:#fff}
     .input-group input[type=number]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(46,125,50,.1)}
 
@@ -150,6 +156,27 @@
     const { session, findings } = await r.json();
     sessionData = session;
 
+    // Fetch previous session's CK values to pre-fill counts
+    let prevCKMap = {}; // stationId string → cockroach count
+    try {
+      const sr = await fetch(`${API}/sessions`);
+      if (sr.ok) {
+        const allSessions = await sr.json(); // newest first
+        const idx = allSessions.findIndex(s => s._id === SESSION_ID);
+        if (idx !== -1 && idx < allSessions.length - 1) {
+          const prevSession = allSessions[idx + 1];
+          const pr = await fetch(`${API}/sessions/${prevSession._id}`);
+          if (pr.ok) {
+            const { findings: prevFindings } = await pr.json();
+            prevFindings.forEach(pf => {
+              const sid = pf.stationId?._id || pf.stationId;
+              if (sid) prevCKMap[String(sid)] = pf.cockroach || 0;
+            });
+          }
+        }
+      }
+    } catch(_) {}
+
     // Header
     const d = new Date(session.date);
     const label = d.toLocaleDateString('en-SG',{day:'2-digit',month:'short',year:'numeric'});
@@ -171,7 +198,7 @@
       return;
     }
 
-    grid.innerHTML = sorted.map(f => buildCard(f)).join('');
+    grid.innerHTML = sorted.map(f => buildCard(f, prevCKMap)).join('');
 
     if (session.status === 'submitted') {
       // Read-only mode — disable all inputs
@@ -183,10 +210,14 @@
     }
   }
 
-  function buildCard(f) {
+  function buildCard(f, prevCKMap) {
     const st  = f.stationId || {};
     const fid = f._id;
-    const hasData = f.cockroach > 0 || f.others > 0 || f.newCockroaches > 0;
+    const sid = String(st._id || '');
+    const prevCK = (prevCKMap && prevCKMap[sid] !== undefined) ? prevCKMap[sid] : null;
+    // Pre-fill CK from previous session if current is still 0
+    const ckVal = (f.cockroach > 0) ? f.cockroach : (prevCK !== null ? prevCK : 0);
+    const hasData = ckVal > 0 || f.others > 0 || f.newCockroaches > 0;
     const cls = hasData ? 'has-finding' : (f.trapStatus === 'new-trap' ? 'is-new' : f.trapStatus === 'gone' ? 'is-gone' : '');
     const summaryPill = hasData
       ? `<span class="pill pill-alert">🪳 ${f.cockroach}</span>`
@@ -214,8 +245,13 @@
         <div class="input-row" style="grid-template-columns:1fr 1fr">
           <div class="input-group">
             <label>🪳 Cockroach Count</label>
-            <input type="number" min="0" value="${f.cockroach||0}" id="ck-${fid}"
-              oninput="autoSave('${fid}')">
+            <div class="ck-stepper">
+              <button type="button" class="step-btn" onclick="stepCK('${fid}',-1)">−</button>
+              <input type="number" min="0" value="${ckVal}" id="ck-${fid}"
+                oninput="autoSave('${fid}')">
+              <button type="button" class="step-btn" onclick="stepCK('${fid}',1)">+</button>
+            </div>
+            ${prevCK !== null ? `<div class="prev-ck-label">Last session: ${prevCK}</div>` : ''}
           </div>
           <div class="input-group">
             <label>🐛 Others</label>
@@ -256,6 +292,15 @@
     body.classList.toggle('open');
     const chevron = document.querySelector(`#card-${fid} .card-summary span`);
     if (chevron) chevron.textContent = body.classList.contains('open') ? '▲' : '▼';
+  }
+
+  // ── CK stepper ────────────────────────────────────────────
+  function stepCK(fid, delta) {
+    const el = document.getElementById('ck-' + fid);
+    if (!el) return;
+    const cur = parseInt(el.value) || 0;
+    el.value = Math.max(0, cur + delta);
+    autoSave(fid);
   }
 
   // ── Auto-save ─────────────────────────────────────────────
