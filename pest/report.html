@@ -65,7 +65,6 @@
 <main>
   <div class="nav-links">
     <a href="/pest/" class="nav-link">📊 Dashboard</a>
-    <a href="/pest/record.html" class="nav-link">✏️ Record Findings</a>
     <a href="/pest/report.html" class="nav-link active">📋 Report</a>
     <a href="/pest/stations.html" class="nav-link">📍 Stations</a>
   </div>
@@ -82,6 +81,10 @@
     <select id="periodSel" onchange="loadReport()">
       <option value="">Current</option>
     </select>
+    <button class="btn" onclick="archivePeriod()"
+      style="margin-left:auto;background:linear-gradient(135deg,#e65100,#ff8f00);color:#fff;font-size:0.82rem;padding:8px 14px">
+      🗂️ Archive &amp; Reset All Traps
+    </button>
   </div>
 
   <div class="legend">
@@ -257,6 +260,31 @@
   function closeLightbox() {
     document.getElementById('lightbox').classList.remove('open');
     document.getElementById('lightboxImg').src = '';
+  }
+
+  // ── Archive period + reset all traps ─────────────────────────────
+  async function archivePeriod() {
+    const label = prompt(
+      'Enter a label for this archived period (e.g. "Jan–Mar 2026"):',
+      new Date().toLocaleDateString('en-SG', { month: 'short', year: 'numeric' })
+    );
+    if (!label || !label.trim()) return;
+    if (!confirm(`Archive all current sessions as "${label.trim()}" and reset all cockroach counts to 0 (new glue traps)?\n\nThis cannot be undone.`)) return;
+    try {
+      const r = await fetch(`${API}/close-period`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: label.trim() })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      alert(`✅ Archived "${data.periodLabel}" (${data.sessionCount} sessions). Report now shows the fresh current period.`);
+      await loadPeriods();
+      document.getElementById('periodSel').value = '';
+      loadReport();
+    } catch(err) {
+      alert('Archive failed: ' + err.message);
+    }
   }
 
   init();
