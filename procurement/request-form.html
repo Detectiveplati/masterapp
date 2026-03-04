@@ -14,7 +14,11 @@
       <h1 id="hdr-title" style="margin:0;font-size:1.4rem;">Procurement Request</h1>
       <p id="hdr-sub" style="margin:4px 0 0;opacity:0.65;font-size:0.9rem;">Central Kitchen · Submit a new item request</p>
     </div>
-    <button type="button" class="lang-toggle" id="langToggle" onclick="toggleLang()">中文</button>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+      <span style="font-size:0.72rem;color:#c0392b;font-weight:700;letter-spacing:0.02em;white-space:nowrap;">点击切换语言 / Switch language</span>
+      <span style="color:#c0392b;font-size:1.1rem;animation:bounce-arrow 1s infinite;">&#8681;</span>
+      <button type="button" class="lang-toggle" id="langToggle" onclick="toggleLang()">中文</button>
+    </div>
   </div>
 
   <div id="msgSuccess" class="msg success" style="display:none">✅ <span class="t" data-en="Request submitted successfully!" data-zh="申请提交成功！">Request submitted successfully!</span></div>
@@ -98,6 +102,10 @@
     background: rgba(192,57,43,0.08);
     transform: none;
     box-shadow: none;
+  }
+  @keyframes bounce-arrow {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(4px); }
   }
 </style>
 
