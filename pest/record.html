@@ -109,7 +109,10 @@
 </main>
 
 <div class="submit-bar" id="submitBar" style="display:none">
-  <div class="summary-text" id="submitSummary"></div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span class="save-dot" id="saveDot"></span>
+    <div class="summary-text" id="submitSummary"></div>
+  </div>
   <button class="btn btn-danger" id="submitBtn" onclick="submitSession()">✅ Submit Report</button>
 </div>
 
@@ -278,13 +281,16 @@
         const updated = await r.json();
         findingsMap[fid] = updated;
         setSaveDot('saved');
+      } else {
+        setSaveDot(null);
       }
     } catch(_) { setSaveDot(null); }
-    updateSubmitSummary(Object.values(findingsMap));
+    finally { updateSubmitSummary(Object.values(findingsMap)); }
   }
 
   function setSaveDot(state) {
     const el = document.getElementById('saveDot');
+    if (!el) return;
     el.className = 'save-dot' + (state ? ' '+state : '');
     clearTimeout(saveDotTimer);
     if (state === 'saved') saveDotTimer = setTimeout(() => el.className = 'save-dot', 2500);
