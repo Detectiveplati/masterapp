@@ -119,7 +119,13 @@
     <span class="save-dot" id="saveDot"></span>
     <div class="summary-text" id="submitSummary"></div>
   </div>
-  <button class="btn btn-danger" id="submitBtn" onclick="submitSession()">✅ Submit Report</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+    <button class="btn" id="archiveBtn" onclick="archivePeriod()"
+      style="background:linear-gradient(135deg,#e65100,#ff8f00);color:#fff;font-size:0.8rem;padding:8px 14px">
+      🗂️ Archive &amp; Reset All Traps
+    </button>
+    <button class="btn btn-danger" id="submitBtn" onclick="submitSession()">✅ Submit Report</button>
+  </div>
 </div>
 
 <!-- Lightbox -->
@@ -449,6 +455,32 @@
   function closeLightbox() {
     document.getElementById('lightbox').classList.remove('open');
     document.getElementById('lightboxImg').src = '';
+  }
+
+  // ── Archive period + reset all traps ─────────────────────────────
+  async function archivePeriod() {
+    const label = prompt(
+      'Enter a label for this archived period (e.g. "Jan–Mar 2026"):',
+      new Date().toLocaleDateString('en-SG', { month: 'short', year: 'numeric' })
+    );
+    if (!label || !label.trim()) return;
+    if (!confirm(`Archive all current sessions as "${label.trim()}" and reset all cockroach counts to 0 (new glue traps)?\n\nThis cannot be undone.`)) return;
+    const btn = document.getElementById('archiveBtn');
+    btn.disabled = true; btn.textContent = 'Archiving…';
+    try {
+      const r = await fetch(`${API}/close-period`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: label.trim() })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      alert(`✅ Archived "${data.periodLabel}" (${data.sessionCount} sessions). Starting fresh current period.`);
+      window.location.href = '/pest/';
+    } catch(err) {
+      alert('Archive failed: ' + err.message);
+      btn.disabled = false; btn.textContent = '🗂️ Archive & Reset All Traps';
+    }
   }
 
   // ── Submit ────────────────────────────────────────────────

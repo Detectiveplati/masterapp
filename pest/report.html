@@ -38,9 +38,10 @@
     tbody tr td{padding:4px 5px;border-bottom:1px solid rgba(18,19,22,.05);vertical-align:middle;text-align:center}
     tbody tr:last-child td{border-bottom:none}
     tbody tr:hover td{background:#f8fdf8}
-    .td-rtsno{font-weight:900;color:var(--ink);text-align:center;width:28px;padding:4px 4px;font-size:0.75rem}
-    .td-rts{font-weight:700;color:var(--ink);text-align:left;white-space:normal;min-width:110px;max-width:150px;padding-left:8px;font-size:0.73rem;line-height:1.25}
-    .td-unit{font-size:0.68rem;font-weight:700;color:var(--muted);text-align:left;padding-left:4px}
+    .td-rtsno{font-weight:900;color:var(--ink);text-align:center;width:24px;padding:4px 3px;font-size:0.73rem}
+    .td-rts{font-weight:700;color:var(--ink);text-align:left;white-space:normal;min-width:60px;max-width:80px;padding-left:6px;font-size:0.71rem;line-height:1.2}
+    .td-unit{font-size:0.65rem;font-weight:700;color:var(--muted);text-align:left;padding-left:3px;max-width:42px}
+    .sub-col{max-width:30px;min-width:22px}
     .col-sep{border-left:1px solid rgba(0,0,0,.07)}
     .cell-alert{background:rgba(255,235,59,.55)!important;font-weight:900;color:#5d4037}
     .cell-new{background:rgba(21,101,192,.12)!important;color:var(--new);font-weight:800;font-size:0.72rem}
@@ -76,6 +77,10 @@
       <option value="10" selected>10 sessions</option>
       <option value="20">20 sessions</option>
       <option value="52">All (up to 52)</option>
+    </select>
+    <label style="margin-left:10px">Period</label>
+    <select id="periodSel" onchange="loadReport()">
+      <option value="">Current</option>
     </select>
   </div>
 
@@ -115,8 +120,23 @@
       if (!user.permissions?.pest && user.role !== 'admin')
         return window.location.replace('/?access=denied');
       document.documentElement.style.visibility = '';
+      await loadPeriods();
       loadReport();
     } catch { window.location.replace('/login'); }
+  }
+
+  async function loadPeriods() {
+    try {
+      const r = await fetch(`${API}/periods`);
+      if (!r.ok) return;
+      const labels = await r.json();
+      const sel = document.getElementById('periodSel');
+      labels.forEach(lbl => {
+        const opt = document.createElement('option');
+        opt.value = lbl; opt.textContent = lbl;
+        sel.appendChild(opt);
+      });
+    } catch(_) {}
   }
 
   async function loadReport() {
@@ -152,23 +172,22 @@
 
   function buildTable(sessions, stations, lookup) {
     // sessions is oldest→newest
-    // Header row 1: fixed cols + one date-th per session (colspan 4: CK, Others, New CK, 📷)
+    // Header row 1: fixed cols + one date-th per session (colspan 3: CK, Others, New CK)
     let h1 = '<tr>'
            + '<th rowspan="2" class="td-rtsno">RTS</th>'
-           + '<th rowspan="2" style="text-align:left;padding-left:10px;font-size:0.68rem;font-weight:800;max-width:110px">Location</th>'
-           + '<th rowspan="2" style="text-align:left;padding-left:6px;font-size:0.68rem;font-weight:800;white-space:nowrap">Unit</th>';
+           + '<th rowspan="2" style="text-align:left;padding-left:6px;font-size:0.65rem;font-weight:800;max-width:80px">Location</th>'
+           + '<th rowspan="2" style="text-align:left;padding-left:4px;font-size:0.65rem;font-weight:800;white-space:nowrap;max-width:42px">Unit</th>';
     sessions.forEach(s => {
-      h1 += `<th class="date-th" colspan="4">${fmtDate(s.date)}</th>`;
+      h1 += `<th class="date-th" colspan="3">${fmtDate(s.date)}</th>`;
     });
     h1 += '</tr>';
 
-    // Header row 2: sub-columns per session
+    // Header row 2: sub-columns per session (no photo)
     let h2 = '<tr>';
     sessions.forEach(() => {
-      h2 += '<th class="sub-th col-sep">🪳 CK</th>'
-          + '<th class="sub-th">🐛 Oth</th>'
-          + '<th class="sub-th highlight-col">⬆️ New CK</th>'
-          + '<th class="sub-th">📷</th>';
+      h2 += '<th class="sub-th col-sep sub-col">🪳CK</th>'
+          + '<th class="sub-th sub-col">🐛Oth</th>'
+          + '<th class="sub-th sub-col">⬆️New</th>';
     });
     h2 += '</tr>';
 
@@ -185,30 +204,29 @@
         const isFirst = si === 0;
 
         if (!f) {
-          const cell = '<td class="cell-zero col-sep">—</td><td class="cell-zero">—</td><td class="cell-zero">—</td><td></td>';
+          const cell = '<td class="cell-zero col-sep sub-col">—</td><td class="cell-zero sub-col">—</td><td class="cell-zero sub-col">—</td>';
           // prevCK unchanged
           return cell;
         }
 
         if (f.trapStatus === 'new-trap') {
           prevCK = 0; prevWasReset = true;
-          return `<td class="cell-new col-sep" colspan="3">New</td><td>${photoCell(f)}</td>`;
+          return `<td class="cell-new col-sep" colspan="3">New</td>`;
         }
         if (f.trapStatus === 'gone') {
-          return `<td class="cell-gone col-sep" colspan="3">Gone</td><td>${photoCell(f)}</td>`;
+          return `<td class="cell-gone col-sep" colspan="3">Gone</td>`;
         }
 
         const ck  = f.cockroach || 0;
         const ot  = f.others   || 0;
-        // Auto-calculate new cockroaches = delta since last session (0 if trap was just reset)
         const newCK = isFirst ? ck : Math.max(0, ck - prevCK);
         prevCK = ck;
         prevWasReset = false;
 
-        const ckCell  = `<td class="col-sep${ck === 0 ? ' cell-zero' : ''}">${ck || ''}</td>`;
-        const otCell  = `<td class="${ot === 0 ? 'cell-zero' : ''}">${ot || ''}</td>`;
-        const nckCell = `<td class="${newCK > 0 ? 'cell-alert' : 'cell-zero'}">${newCK > 0 ? newCK : ''}</td>`;
-        return ckCell + otCell + nckCell + `<td>${photoCell(f)}</td>`;
+        const ckCell  = `<td class="col-sep sub-col${ck === 0 ? ' cell-zero' : ''}">${ck || ''}</td>`;
+        const otCell  = `<td class="sub-col${ot === 0 ? ' cell-zero' : ''}">${ot || ''}</td>`;
+        const nckCell = `<td class="sub-col${newCK > 0 ? ' cell-alert' : ' cell-zero'}">${newCK > 0 ? newCK : ''}</td>`;
+        return ckCell + otCell + nckCell;
       });
 
       let row = `<tr>
@@ -221,12 +239,6 @@
     });
 
     return `<table><thead>${h1}${h2}</thead><tbody>${body}</tbody></table>`;
-  }
-
-  function photoCell(f) {
-    if (!f.photos || !f.photos.length) return '';
-    const urls = JSON.stringify(f.photos.map(p => p.url)).replace(/"/g,"'");
-    return `<span class="cell-photo" onclick="openPhotos(${urls})">📷 ${f.photos.length}</span>`;
   }
 
   // ── Lightbox ──────────────────────────────────────────────

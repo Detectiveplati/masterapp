@@ -71,11 +71,49 @@ router.put('/stations/:id', async (req, res) => {
 // SESSIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// GET /api/pest/sessions — list sessions (newest first)
+// GET /api/pest/sessions — list sessions (newest first), optional ?period= filter
 router.get('/sessions', async (req, res) => {
     try {
-        const sessions = await PestSession.find().sort({ date: -1 });
+        const filter = {};
+        if (req.query.period !== undefined) {
+            filter.periodLabel = req.query.period; // '' for current, or label string
+        }
+        const sessions = await PestSession.find(filter).sort({ date: -1 });
         res.json(sessions);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/pest/periods — list all distinct archived period labels (non-empty)
+router.get('/periods', async (req, res) => {
+    try {
+        const labels = await PestSession.distinct('periodLabel', { periodLabel: { $ne: '' } });
+        labels.sort();
+        res.json(labels);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/pest/close-period — archive all current sessions, reset all their findings
+router.post('/close-period', async (req, res) => {
+    try {
+        const { label } = req.body;
+        if (!label || !label.trim()) return res.status(400).json({ error: 'A period label is required (e.g. "Jan–Mar 2026")' });
+        const periodLabel = label.trim();
+        // Find all current (unlabelled) sessions
+        const sessions = await PestSession.find({ periodLabel: '' });
+        if (!sessions.length) return res.status(400).json({ error: 'No current sessions to archive' });
+        const sessionIds = sessions.map(s => s._id);
+        // Tag them
+        await PestSession.updateMany({ _id: { $in: sessionIds } }, { $set: { periodLabel } });
+        // Reset all findings: cockroach=0, trapStatus='new-trap'
+        await PestFinding.updateMany(
+            { sessionId: { $in: sessionIds } },
+            { $set: { cockroach: 0, trapStatus: 'new-trap' } }
+        );
+        res.json({ ok: true, periodLabel, sessionCount: sessions.length });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -222,11 +260,15 @@ async function findDeleteFromCloudinary(publicId) {
 // REPORT (grid view — sessions × stations)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// GET /api/pest/report?limit=10 — latest N sessions full grid
+// GET /api/pest/report?limit=10&period= — latest N sessions full grid for a period
 router.get('/report', async (req, res) => {
     try {
         const limit    = Math.min(parseInt(req.query.limit, 10) || 10, 52);
-        const sessions = await PestSession.find({ status: 'submitted' })
+        const periodFilter = {};
+        if (req.query.period !== undefined) {
+            periodFilter.periodLabel = req.query.period;
+        }
+        const sessions = await PestSession.find({ status: 'submitted', ...periodFilter })
             .sort({ date: -1 }).limit(limit);
         const stations = await PestStation.find({ isActive: true }).sort({ rtsNo: 1 });
         if (!sessions.length || !stations.length) return res.json({ sessions: [], stations, findings: [] });
