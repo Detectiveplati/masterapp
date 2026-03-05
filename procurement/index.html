@@ -6,87 +6,108 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Central Kitchen Procurement</title>
   <link rel="stylesheet" href="/css/app.css"/>
+  <script src="/js/lib/dom.js"></script>
   <style>
+    /* Stats row */
     .proc-stats {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
-      margin-bottom: 6px;
+      gap: 12px;
+      margin-bottom: 16px;
     }
     .proc-stat {
-      background: var(--bg);
+      background: var(--card);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 18px 12px;
+      padding: 16px 10px;
       text-align: center;
+      box-shadow: 0 2px 6px var(--shadow);
     }
     .proc-stat .n {
       font-size: 2rem;
       font-weight: 900;
-      color: var(--accent);
+      color: var(--steel);
       line-height: 1;
       display: block;
     }
     .proc-stat .l {
-      font-size: 0.78rem;
+      font-size: 0.72rem;
       color: var(--muted);
-      font-weight: 600;
-      margin-top: 5px;
+      font-weight: 700;
+      margin-top: 4px;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
-    .proc-stat.pending .n { color: #d97706; }
-    .proc-stat.done    .n { color: var(--success); }
+    .proc-stat.s-pending .n { color: #d97706; }
+    .proc-stat.s-done    .n { color: var(--success); }
 
+    /* Pending list */
+    .pending-list { display: flex; flex-direction: column; gap: 10px; }
+    .pending-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--border);
+      border-radius: 10px;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 2px 6px var(--shadow);
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+    .pending-item:hover { transform: translateY(-2px); box-shadow: 0 6px 16px var(--shadow); }
+    .pending-item.pri-Urgent { border-left-color: #9333ea; }
+    .pending-item.pri-High   { border-left-color: #e74c3c; }
+    .pending-item.pri-Low    { border-left-color: var(--steel); }
+    .pending-item .item-main { flex: 1; min-width: 0; }
+    .pending-item .item-name { font-weight: 700; font-size: 0.95rem; color: var(--ink);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pending-item .item-meta { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+    .pending-item .item-right { display: flex; flex-direction: column; align-items: flex-end;
+      gap: 4px; white-space: nowrap; flex-shrink: 0; }
+    .badge-pri {
+      display: inline-block; border-radius: 20px;
+      padding: 2px 9px; font-size: 0.7rem; font-weight: 700; color: #fff;
+    }
+    .badge-pri.pri-Urgent { background: linear-gradient(135deg, #9333ea, #a855f7); }
+    .badge-pri.pri-High   { background: linear-gradient(135deg, #e74c3c, #ff6b6b); }
+    .badge-pri.pri-Low    { background: linear-gradient(135deg, var(--steel), #9fb4c0); }
+    .item-date { font-size: 0.72rem; color: var(--muted); }
+    .empty-state { text-align: center; padding: 32px; color: var(--muted); font-size: 0.9rem; }
+
+    /* Quick actions */
     .proc-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 20px;
+      gap: 10px;
     }
-    .proc-actions .btn-new {
+    .btn-new {
       grid-column: 1 / -1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 12px;
-      padding: 16px;
-      font-size: 1rem;
-      font-weight: 800;
-      cursor: pointer;
-      text-decoration: none;
-      transition: opacity 0.15s, transform 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: var(--accent); color: #fff; border: none; border-radius: 12px;
+      padding: 15px; font-size: 1rem; font-weight: 800; cursor: pointer;
+      text-decoration: none; transition: opacity 0.15s, transform 0.15s;
     }
-    .proc-actions .btn-new:hover { opacity: 0.9; transform: translateY(-1px); }
-    .proc-actions .btn-secondary {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      background: var(--card);
-      color: var(--ink);
-      border: 1.5px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
-      font-size: 0.9rem;
-      font-weight: 700;
-      cursor: pointer;
-      text-decoration: none;
-      transition: background 0.15s;
+    .btn-new:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-secondary {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      background: var(--card); color: var(--ink); border: 1.5px solid var(--border);
+      border-radius: 10px; padding: 11px; font-size: 0.88rem; font-weight: 700;
+      text-decoration: none; transition: background 0.15s;
     }
-    .proc-actions .btn-secondary:hover { background: var(--bg); }
+    .btn-secondary:hover { background: var(--bg); }
 
-    .qr-section {
-      text-align: center;
-      padding: 8px 0 4px;
-    }
-    .qr-section img { border-radius: 12px; border: 1px solid var(--border); max-width: 180px; }
+    /* QR */
+    .qr-section { text-align: center; padding: 8px 0 4px; }
+    .qr-section img { border-radius: 12px; border: 1px solid var(--border); max-width: 170px; }
     .qr-section p   { font-size: 0.8rem; color: var(--muted); margin: 8px 0 4px; }
     .qr-url-text    { font-size: 0.72rem; color: var(--muted); word-break: break-all; }
+
+    @media (max-width: 480px) {
+      .proc-stats { grid-template-columns: 1fr 1fr 1fr; }
+    }
   </style>
 </head>
 <body data-module="procurement">
@@ -94,31 +115,39 @@
 <main style="max-width:700px;margin:0 auto;">
 
   <!-- Stats -->
-  <div class="card" style="margin-bottom:16px;">
-    <h2 style="margin-bottom:14px;">📊 Overview</h2>
-    <div class="proc-stats">
-      <div class="proc-stat total">
-        <span class="n" id="statTotal">—</span>
-        <div class="l">Total</div>
-      </div>
-      <div class="proc-stat pending">
-        <span class="n" id="statPending">—</span>
-        <div class="l">Pending</div>
-      </div>
-      <div class="proc-stat done">
-        <span class="n" id="statDone">—</span>
-        <div class="l">Done</div>
-      </div>
+  <div class="proc-stats">
+    <div class="proc-stat">
+      <span class="n" id="statTotal">—</span>
+      <div class="l">Total</div>
+    </div>
+    <div class="proc-stat s-pending">
+      <span class="n" id="statPending">—</span>
+      <div class="l">Pending</div>
+    </div>
+    <div class="proc-stat s-done">
+      <span class="n" id="statDone">—</span>
+      <div class="l">Done</div>
     </div>
   </div>
 
-  <!-- Actions -->
+  <!-- Pending Requests -->
   <div class="card" style="margin-bottom:16px;">
-    <h2 style="margin-bottom:14px;">⚡ Quick Actions</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <h2 style="margin:0;">🕐 Pending Requests</h2>
+      <a href="/procurement/requests" style="font-size:0.82rem;color:var(--accent);font-weight:700;text-decoration:none;">View All →</a>
+    </div>
+    <div class="pending-list" id="pendingList">
+      <div class="empty-state">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="card" style="margin-bottom:16px;">
+    <h2 style="margin-bottom:12px;">⚡ Quick Actions</h2>
     <div class="proc-actions">
-      <a href="/procurement/request" class="btn-new">➕ Add New Request</a>
-      <a href="/procurement/requests" class="btn-secondary">📋 View All Requests</a>
-      <a href="/api/qr" download="procurement-qr.png" class="btn-secondary">⬇ Download QR Code</a>
+      <a href="/procurement/request" class="btn-new">➕ New Request</a>
+      <a href="/procurement/requests" class="btn-secondary">📋 All Requests</a>
+      <a href="/api/qr" download="procurement-qr.png" class="btn-secondary">⬇ Download QR</a>
     </div>
   </div>
 
@@ -135,18 +164,56 @@
 </main>
 
 <script>
-  document.getElementById('formUrl').textContent = `${window.location.origin}/procurement/request`;
+  document.getElementById('formUrl').textContent = window.location.origin + '/procurement/request';
 
-  async function loadStats() {
-    try {
-      const all = await fetch('/api/requests', { credentials: 'include' }).then(r => r.json());
-      document.getElementById('statTotal').textContent   = all.length;
-      document.getElementById('statPending').textContent = all.filter(r => r.status === 'Pending').length;
-      document.getElementById('statDone').textContent    = all.filter(r => r.status === 'Done').length;
-    } catch(_) {}
+  function fmtDate(str) {
+    if (!str) return '—';
+    return new Date(str).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
-  loadStats();
+
+  async function loadData() {
+    try {
+      // Fetch all requests; filter in JS so we can populate both stats and pending list.
+      const all = await fetch('/api/requests', { credentials: 'include' }).then(r => r.json());
+
+      // Stats
+      const pending = all.filter(r => r.status === 'Pending');
+      document.getElementById('statTotal').textContent   = all.length;
+      document.getElementById('statPending').textContent = pending.length;
+      document.getElementById('statDone').textContent    = all.filter(r => r.status === 'Done').length;
+
+      // Pending list — sort Urgent first, then High, then Low; newest within each priority
+      const PRIO = { Urgent: 0, High: 1, Low: 2 };
+      pending.sort((a, b) => (PRIO[a.priority] ?? 1) - (PRIO[b.priority] ?? 1) || new Date(b.createdAt) - new Date(a.createdAt));
+
+      const list = document.getElementById('pendingList');
+      if (!pending.length) {
+        list.innerHTML = '<div class="empty-state">✅ No pending requests — all clear!</div>';
+        return;
+      }
+
+      list.innerHTML = pending.map(r => {
+        const meta = [r.requestorName, r.department].filter(Boolean).join(' · ');
+        const needed = r.dateNeeded ? `Needed: ${escHtml(r.dateNeeded)}` : `Submitted: ${fmtDate(r.createdAt)}`;
+        return `
+          <a href="/procurement/request/${r._id}" class="pending-item pri-${escHtml(r.priority)}">
+            <div class="item-main">
+              <div class="item-name">${escHtml(r.itemNameEn)}${r.itemNameZh ? ' <span style="font-weight:400;color:var(--muted);">' + escHtml(r.itemNameZh) + '</span>' : ''}</div>
+              <div class="item-meta">${escHtml(meta)}${r.quantity ? ' &nbsp;·&nbsp; Qty: ' + escHtml(r.quantity) + (r.unit ? ' ' + escHtml(r.unit) : '') : ''}</div>
+            </div>
+            <div class="item-right">
+              <span class="badge-pri pri-${escHtml(r.priority)}">${escHtml(r.priority)}</span>
+              <span class="item-date">${escHtml(needed)}</span>
+            </div>
+          </a>`;
+      }).join('');
+    } catch (e) {
+      document.getElementById('pendingList').innerHTML = '<div class="empty-state" style="color:var(--accent);">Failed to load requests.</div>';
+    }
+  }
+
+  loadData();
 </script>
-  <script src="/js/shell.js"></script>
+<script src="/js/shell.js"></script>
 </body>
 </html>
