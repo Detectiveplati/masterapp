@@ -363,22 +363,37 @@
   function parseCsvRows(text) {
     const lines = text.trim().split(/\r?\n/);
     if (lines.length < 2) return [];
-    // Expected header order:
-    // Entity, Employee Name, Previous Cert Date, Start Date, Expiry Date, Refresher, Remarks, Cancelled, Cancellation Reason
+
+    // Parse header row to map columns by name (case-insensitive, trimmed)
+    // This handles both the original spreadsheet (which has a Validity column)
+    // and our import template — column ORDER does not matter.
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    function col(row, ...names) {
+      for (const name of names) {
+        const idx = headers.findIndex(h => h === name);
+        if (idx !== -1) return (row[idx] || '').trim();
+      }
+      return '';
+    }
+
     const rows = [];
     for (let i = 1; i < lines.length; i++) {
       const cols = lines[i].split(',').map(c => c.trim());
-      if (!cols[0] && !cols[1]) continue; // skip blank lines
+      const entity = col(cols, 'entity');
+      const name   = col(cols, 'employee name', 'name');
+      if (!entity && !name) continue; // skip blank lines
+
+      // 'validity' column is computed — intentionally ignored during import
       rows.push({
-        businessEntity:     cols[0] || '',
-        employeeName:       cols[1] || '',
-        previousCertDate:   parseDate(cols[2]),
-        startDate:          parseDate(cols[3]),
-        expiryDate:         parseDate(cols[4]),
-        isRefresher:        (cols[5] || '').toLowerCase() === 'yes',
-        remarks:            cols[6] || '',
-        isCancelled:        (cols[7] || '').toLowerCase() === 'yes',
-        cancellationReason: cols[8] || '',
+        businessEntity:     entity,
+        employeeName:       name,
+        previousCertDate:   parseDate(col(cols, 'previous cert date', 'prev cert date', 'prev cert')),
+        startDate:          parseDate(col(cols, 'start date')),
+        expiryDate:         parseDate(col(cols, 'expiry date', 'expiry')),
+        isRefresher:        col(cols, 'refresher').toLowerCase() === 'yes',
+        remarks:            col(cols, 'remarks'),
+        isCancelled:        col(cols, 'cancelled', 'canceled').toLowerCase() === 'yes',
+        cancellationReason: col(cols, 'cancellation reason', 'cancel reason'),
       });
       // Auto-calculate expiry if not provided
       const last = rows[rows.length - 1];
