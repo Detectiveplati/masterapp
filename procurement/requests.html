@@ -140,9 +140,48 @@
     /* Filters compact */
     .filters { padding: 10px 16px; }
     .filters input, .filters select { font-size: 0.82rem; padding: 6px 10px; }
+
+    /* ── Print / PDF ── */
+    .print-only { display: none; }
+    #print-header { display: none; }
+
+    body.print .filters,
+    body.print .no-print    { display: none !important; }
+    body.print #topnav,
+    body.print #sidenav     { display: none !important; }
+    body.print main         { padding: 0 !important; }
+    body.print .print-only  { display: block; }
+    body.print #print-header { display: flex !important; }
+    body.print .done-cb,
+    body.print .del-btn     { display: none !important; }
+    body.print .req-row     { break-inside: avoid; box-shadow: none; border-left-width: 3px; }
+    body.print .stats-grid  { display: none; }
+
+    @media print {
+      #topnav, #sidenav, #nav-toggle { display: none !important; }
+      body { margin: 0 !important; padding: 0 !important; }
+      .filters, .no-print { display: none !important; }
+      #print-header { display: flex !important; }
+      .print-only { display: block !important; }
+      .done-cb, .del-btn { display: none !important; }
+      .stats-grid { display: none !important; }
+      .req-row { break-inside: avoid; box-shadow: none !important; border-left-width: 3px; }
+      .req-list { gap: 4px; }
+      .req-row { padding: 7px 10px; }
+      .req-name { font-size: 0.88rem; }
+      .req-meta { font-size: 0.72rem; }
+    }
   </style>
 </head>
 <body data-module="procurement">
+
+<!-- Print-only header -->
+<div id="print-header" style="display:none;align-items:center;gap:12px;padding:10px 16px 6px;border-bottom:2px solid #ccc;margin-bottom:10px;">
+  <div>
+    <div style="font-size:1.15rem;font-weight:700;">📦 Procurement — All Requests</div>
+    <div id="print-subtitle" style="font-size:0.75rem;color:#555;margin-top:2px;"></div>
+  </div>
+</div>
 
 <main>
   <!-- Stats -->
@@ -166,6 +205,7 @@
       <option value="Done">Done</option>
     </select>
     <button class="btn btn-outline btn-sm" onclick="loadRequests()">🔄 Refresh</button>
+    <button class="btn btn-outline btn-sm no-print" onclick="printPDF()">🖨 Print / PDF</button>
   </div>
 
   <div class="req-list" id="requestsList">
@@ -300,6 +340,22 @@
   function escHtml(str) {
     if (!str) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function printPDF() {
+    // Update print subtitle with current filter info
+    const search = document.getElementById('searchInput').value.trim();
+    const status = document.getElementById('filterStatus').value;
+    const parts = [];
+    if (status) parts.push(`Status: ${status}`);
+    if (search) parts.push(`Search: "${search}"`);
+    const now = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    parts.push(`Printed: ${now}`);
+    document.getElementById('print-subtitle').textContent = parts.join('  |  ');
+
+    document.body.classList.add('print');
+    window.print();
+    window.addEventListener('afterprint', () => document.body.classList.remove('print'), { once: true });
   }
 
   let searchTimer;
