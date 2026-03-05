@@ -191,10 +191,14 @@
   <div class="modal-box">
     <h3>📥 Import CSV</h3>
     <p>
-      Paste CSV content below or select a file. Required columns:<br>
-      <code>Entity, Employee Name, Previous Cert Date, Start Date, Expiry Date, Refresher, Remarks, Cancelled, Cancellation Reason</code><br>
-      Dates: <code>DD-MMM-YYYY</code> or <code>YYYY-MM-DD</code>. Refresher / Cancelled: <code>Yes</code> / <code>No</code>.
+      Download the template, fill it in, then paste or upload the file below.<br>
+      Columns: <code>Entity, Employee Name, Previous Cert Date, Start Date, Expiry Date, Refresher, Remarks, Cancelled, Cancellation Reason</code><br>
+      Dates: <code>DD-MMM-YYYY</code> or <code>YYYY-MM-DD</code>. Refresher / Cancelled: <code>Yes</code> / <code>No</code>.<br>
+      <strong>Expiry Date may be left blank</strong> — it will be auto-calculated (Refresher Yes = +10 yrs, No = +5 yrs from Start Date).
     </p>
+    <div style="margin-bottom:10px;">
+      <button class="btn btn-outline btn-sm" onclick="downloadTemplate()">⬇️ Download Template</button>
+    </div>
     <input type="file" id="csv-file" accept=".csv" style="margin-bottom:8px;" onchange="handleCsvFile(this)">
     <textarea id="csv-text" placeholder="Or paste CSV text here…" oninput="previewCsv()"></textarea>
     <div id="csv-preview"></div>
@@ -334,6 +338,14 @@
     reader.readAsText(input.files[0]);
   }
 
+  /* ── Expiry auto-calculation ── */
+  function calcExpiry(startDate, isRefresher) {
+    if (!startDate) return null;
+    const d = new Date(startDate);
+    d.setFullYear(d.getFullYear() + (isRefresher ? 10 : 5));
+    return d;
+  }
+
   function parseDate(str) {
     if (!str || str.trim() === '-' || str.trim() === '') return null;
     // Try DD-MMM-YYYY (e.g. 19-Mar-2021)
@@ -368,6 +380,11 @@
         isCancelled:        (cols[7] || '').toLowerCase() === 'yes',
         cancellationReason: cols[8] || '',
       });
+      // Auto-calculate expiry if not provided
+      const last = rows[rows.length - 1];
+      if (!last.expiryDate && last.startDate) {
+        last.expiryDate = calcExpiry(last.startDate, last.isRefresher);
+      }
     }
     return rows;
   }
@@ -403,6 +420,21 @@
     } finally {
       btn.disabled = false; btn.textContent = 'Import';
     }
+  }
+
+  /* ── Download CSV template ── */
+  function downloadTemplate() {
+    const header = 'Entity,Employee Name,Previous Cert Date,Start Date,Expiry Date,Refresher,Remarks,Cancelled,Cancellation Reason';
+    const sample = 'Central Kitchen,John Doe,15-Jan-2018,15-Jan-2023,,No,L1 Pending renewal,,\nCentral Kitchen,Jane Smith,,01-Mar-2025,,Yes,,,\n';
+    const csv = header + '\n' + sample;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'fhc-import-template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   /* ── Search / filter debounce ── */

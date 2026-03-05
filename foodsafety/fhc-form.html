@@ -96,7 +96,7 @@
         </div>
 
         <div class="form-group">
-          <label for="expiryDate">Expiry Date *</label>
+          <label for="expiryDate">Expiry Date * <span style="font-size:0.73rem;color:var(--muted);font-weight:400;">(auto-calculated from Start Date)</span></label>
           <input type="date" id="expiryDate" required>
         </div>
 
@@ -173,6 +173,24 @@
 
   document.getElementById('expiryDate').addEventListener('change', updateValidityPreview);
   document.getElementById('isCancelled').addEventListener('change', updateValidityPreview);
+
+  /* ── Auto-calculate expiry from start date + refresher ── */
+  function autoCalcExpiry() {
+    const startVal = document.getElementById('startDate').value;
+    if (!startVal) return;
+    const isRefresher = document.getElementById('isRefresher').checked;
+    const d = new Date(startVal);
+    if (isNaN(d.getTime())) return;
+    d.setFullYear(d.getFullYear() + (isRefresher ? 10 : 5));
+    const yyyy = d.getFullYear();
+    const mm   = String(d.getMonth() + 1).padStart(2, '0');
+    const dd   = String(d.getDate()).padStart(2, '0');
+    document.getElementById('expiryDate').value = `${yyyy}-${mm}-${dd}`;
+    updateValidityPreview();
+  }
+
+  document.getElementById('startDate').addEventListener('change', autoCalcExpiry);
+  document.getElementById('isRefresher').addEventListener('change', autoCalcExpiry);
 
   function toggleCancelReason() {
     const checked = document.getElementById('isCancelled').checked;
