@@ -107,6 +107,27 @@ When adding print/PDF export to a page, follow the pattern established in `templ
 
 ---
 
+---
+
+## Adding a New Top-Level Module — Required Checklist
+
+When a **brand-new top-level module** is created (e.g. a new section with its own `data-module` value and permission key), the following steps are **mandatory**:
+
+1. **Hub card** (`index.html`): Add a `<a class="hub-card <module>" data-perm="<perm>" href="/<module>/">` entry inside `.hub-grid`. Match the style of existing cards — icon, title, description, `.lock-note`, `.go-btn`.
+
+2. **MODULE_INFO** (`public/js/shell.js`): Add an entry to the `MODULE_INFO` object:
+   ```js
+   <module>: { label: '🔠 Module Label' },
+   ```
+
+3. **NAV entry** (`public/js/shell.js`): Add an entry to the `NAV` array with `icon`, `label`, `module`, `href`, `perm`, and `children[]` sub-links. Place it above the first `{ divider: true }` before Admin.
+
+4. **Sub-module rule**: If the feature is a sub-section *within* an existing module (e.g. a new page inside Food Safety), do **not** add a hub card or top-level NAV entry. Instead:
+   - Add a card to the parent module's index page (e.g. `foodsafety/index.html`)
+   - Add a child link to the parent's NAV `children[]` array in `shell.js`
+
+---
+
 ## Intentional Design Decisions — Do Not Reverse
 
 Some behaviours exist **by design**. Before "fixing" anything that looks wrong, check this list and check the source file for a `<!-- INTENTIONAL -->` or `// INTENTIONAL` comment.

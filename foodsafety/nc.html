@@ -4,9 +4,25 @@
   <meta charset="UTF-8">
   <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Food Safety NC - Central Kitchen</title>
+  <title>NC Reports — Food Safety</title>
   <link rel="stylesheet" href="/css/app.css">
   <style>
+    .page-header {
+      max-width: 860px;
+      margin: 0 auto 28px;
+      padding: 0 4px;
+    }
+    .page-header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0 0 6px;
+    }
+    .page-header p {
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin: 0;
+    }
     .module-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -36,12 +52,8 @@
       height: 4px;
       border-radius: 16px 16px 0 0;
     }
-    .module-card.nc::before     { background: linear-gradient(90deg, var(--accent), #e74c3c); }
-    .module-card.nc .card-go    { color: var(--accent); }
-    .module-card.pest::before    { background: linear-gradient(90deg, #2e7d32, #66bb6a); }
-    .module-card.pest .card-go   { color: #2e7d32; }
-    .module-card.cert::before    { background: linear-gradient(90deg, #1565c0, #42a5f5); }
-    .module-card.cert .card-go   { color: #1565c0; }
+    .module-card.report::before { background: linear-gradient(90deg, var(--accent), #e74c3c); }
+    .module-card.view::before   { background: linear-gradient(90deg, var(--accent-2), #e67e22); }
     .module-card:hover { transform: translateY(-5px); box-shadow: 0 14px 36px rgba(0,0,0,0.12); }
     .module-card .card-icon { font-size: 2.4rem; line-height: 1; }
     .module-card h2 { font-size: 1.25rem; font-weight: 700; color: var(--ink); margin: 0; }
@@ -54,45 +66,32 @@
     }
     .module-card.report .card-go { color: var(--accent); }
     .module-card.view   .card-go { color: var(--accent-2); }
-    .btn-secondary {
-      background: linear-gradient(135deg, #7f8c8d, #95a5a6);
-      color: white; border: none; border-radius: 10px; padding: 11px 22px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer; font-weight: 600;
-      text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
-      font-size: 0.95rem;
-    }
     @media (max-width: 600px) { .module-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body data-module="foodsafety">
 
-
   <main>
+    <div class="page-header">
+      <h1>📋 Non-Conformance Reports</h1>
+      <p>Log new food safety incidents or browse existing NC records.</p>
+    </div>
     <div class="module-grid">
-      <a class="module-card nc" href="/foodsafety/nc">
+      <a class="module-card report" href="/foodsafety/report-nc.html">
+        <div class="card-icon">➕</div>
+        <h2>Log NC</h2>
+        <p>Submit a new food safety non-conformance report for any kitchen unit.</p>
+        <div class="card-go">New Report →</div>
+      </a>
+      <a class="module-card view" href="/foodsafety/nc-list.html">
         <div class="card-icon">📋</div>
-        <h2>Non-Conformance Reports</h2>
-        <p>Log new food safety non-conformances and browse all open or resolved reports across kitchen units.</p>
-        <div class="card-go">Open NC Reports →</div>
-      </a>
-      <a class="module-card pest" href="/pest/">
-        <div class="card-icon">🐭</div>
-        <h2>Rat Trap Surveillance</h2>
-        <p>Record findings, manage trap stations, and view weekly pest control inspection reports.</p>
-        <div class="card-go">Open Module →</div>
-      </a>
-      <a class="module-card cert" href="/foodsafety/fhc">
-        <div class="card-icon">📜</div>
-        <h2>Employee Certification &amp; Licence Tracker</h2>
-        <p>Track food handler certificates, monitor expiry dates, and flag upcoming renewals.</p>
-        <div class="card-go">View Tracker →</div>
+        <h2>View NCs</h2>
+        <p>Browse all open and resolved non-conformance reports. Filter by unit or status.</p>
+        <div class="card-go">View All →</div>
       </a>
     </div>
   </main>
 
-  <footer>
-    <p>&copy; 2026 Central Kitchen | <a href="/">Hub</a> | <a href="/maintenance/maintenance.html">Maintenance</a></p>
-  </footer>
   <script src="/js/shell.js"></script>
 </body>
 </html>
