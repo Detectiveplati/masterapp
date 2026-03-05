@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Cert &amp; Licence — Food Safety</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/lib/dom.js"></script>
+  <script src="/js/lib/http.js"></script>
+  <style>
+    .form-wrap {
+      max-width: 680px; margin: 0 auto; padding: 0 12px 40px;
+    }
+    .form-card {
+      background: linear-gradient(180deg, var(--card), #fffbf9);
+      border: 1px solid var(--border); border-radius: 12px;
+      padding: 28px 28px 24px;
+      box-shadow: 0 2px 10px var(--shadow);
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 0.8rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.04em; }
+    input[type="text"], input[type="date"], select, textarea {
+      padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 0.9rem; font-family: inherit; color: var(--ink);
+      background: var(--card); transition: border-color .15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--accent);
+    }
+    .toggle-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0;
+    }
+    .toggle-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+    .toggle-row label { font-size: 0.88rem; font-weight: 600;
+      text-transform: none; letter-spacing: 0; color: var(--ink); margin: 0; }
+    #cancel-reason-wrap { display: none; }
+    .validity-preview {
+      padding: 10px 14px; border-radius: 8px; font-size: 0.82rem;
+      font-weight: 700; margin-top: 4px; display: none;
+    }
+    .validity-preview.valid    { background: rgba(39,174,96,.1); color: #1e8449; border: 1px solid rgba(39,174,96,.25); }
+    .validity-preview.expiring { background: rgba(230,126,34,.1); color: #c05c00; border: 1px solid rgba(230,126,34,.25); }
+    .validity-preview.invalid  { background: rgba(192,57,43,.08); color: #c0392b; border: 1px solid rgba(192,57,43,.2); }
+    .form-footer { display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
+    .msg { padding: 10px 14px; border-radius: 8px; font-size: 0.85rem;
+      font-weight: 600; margin-bottom: 14px; display: none; }
+    .msg.success { background: rgba(39,174,96,.1); color: #1e8449; border: 1px solid rgba(39,174,96,.25); }
+    .msg.error   { background: rgba(192,57,43,.08); color: #c0392b; border: 1px solid rgba(192,57,43,.2); }
+    .page-header { display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    @media (max-width: 580px) { .form-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body data-module="foodsafety">
+<div class="form-wrap">
+
+  <div class="page-header">
+    <h1 id="page-title" style="margin:0;font-size:1.25rem;">🪪 Add Certificate Record</h1>
+    <a href="/foodsafety/fhc" class="btn btn-outline btn-sm">← Back to List</a>
+  </div>
+
+  <div id="msg-success" class="msg success"></div>
+  <div id="msg-error"   class="msg error"></div>
+
+  <div class="form-card">
+    <form id="fhc-form" novalidate>
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label for="businessEntity">Business Entity *</label>
+          <input type="text" id="businessEntity" placeholder="e.g. CK" required maxlength="20">
+        </div>
+
+        <div class="form-group">
+          <label for="employeeName">Employee Name *</label>
+          <input type="text" id="employeeName" placeholder="Full name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="previousCertDate">Previous Cert Date</label>
+          <input type="date" id="previousCertDate">
+        </div>
+
+        <div class="form-group">
+          <label for="startDate">Start Date *</label>
+          <input type="date" id="startDate" required>
+        </div>
+
+        <div class="form-group">
+          <label for="expiryDate">Expiry Date *</label>
+          <input type="date" id="expiryDate" required>
+        </div>
+
+        <div class="form-group" style="justify-content:flex-end;">
+          <label>&nbsp;</label>
+          <div id="validity-preview" class="validity-preview"></div>
+        </div>
+
+        <div class="form-group full">
+          <div class="toggle-row">
+            <input type="checkbox" id="isRefresher">
+            <label for="isRefresher">This is a refresher course</label>
+          </div>
+        </div>
+
+        <div class="form-group full">
+          <div class="toggle-row">
+            <input type="checkbox" id="isCancelled" onchange="toggleCancelReason()">
+            <label for="isCancelled">Certificate cancelled / revoked</label>
+          </div>
+        </div>
+
+        <div class="form-group full" id="cancel-reason-wrap">
+          <label for="cancellationReason">Cancellation Reason</label>
+          <input type="text" id="cancellationReason" placeholder="e.g. Cancelled due to food poisoning">
+        </div>
+
+        <div class="form-group full">
+          <label for="remarks">Remarks</label>
+          <input type="text" id="remarks" placeholder="e.g. L1, Pending renewal…">
+        </div>
+
+      </div><!-- /.form-grid -->
+
+      <div class="form-footer">
+        <button type="submit" id="submit-btn" class="btn btn-primary">💾 Save Record</button>
+        <button type="button" class="btn btn-outline" onclick="window.location.href='/foodsafety/fhc'">Cancel</button>
+        <button type="button" id="delete-btn" class="btn btn-outline"
+          style="display:none;color:var(--accent);border-color:var(--accent);"
+          onclick="deleteRecord()">🗑 Delete</button>
+      </div>
+    </form>
+  </div>
+
+</div><!-- /.form-wrap -->
+
+<script>
+  const editId = window.location.pathname.split('/').pop();
+  const isEdit = editId && editId !== 'new' && editId.length === 24;
+
+  /* ── Validity preview as user picks dates ── */
+  function updateValidityPreview() {
+    const expiry    = document.getElementById('expiryDate').value;
+    const cancelled = document.getElementById('isCancelled').checked;
+    const preview   = document.getElementById('validity-preview');
+    if (!expiry) { preview.style.display = 'none'; return; }
+
+    const now  = new Date(); now.setHours(0,0,0,0);
+    const soon = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
+    const exp  = new Date(expiry);
+
+    preview.style.display = 'block';
+    if (cancelled || exp < now) {
+      preview.className = 'validity-preview invalid';
+      preview.textContent = '❌ Not Valid';
+    } else if (exp < soon) {
+      preview.className = 'validity-preview expiring';
+      preview.textContent = '⚠️ Expiring Soon';
+    } else {
+      preview.className = 'validity-preview valid';
+      preview.textContent = '✅ Valid';
+    }
+  }
+
+  document.getElementById('expiryDate').addEventListener('change', updateValidityPreview);
+  document.getElementById('isCancelled').addEventListener('change', updateValidityPreview);
+
+  function toggleCancelReason() {
+    const checked = document.getElementById('isCancelled').checked;
+    document.getElementById('cancel-reason-wrap').style.display = checked ? 'flex' : 'none';
+    updateValidityPreview();
+  }
+
+  /* ── Load existing record for edit ── */
+  async function loadRecord() {
+    try {
+      const r = await apiFetch(`/api/fhc/${editId}`).then(res => {
+        if (!res.ok) throw new Error('Record not found');
+        return res.json();
+      });
+      document.getElementById('page-title').textContent = `✏️ Edit: ${r.employeeName}`;
+      document.title = `Edit — ${r.employeeName}`;
+      document.getElementById('businessEntity').value  = r.businessEntity || '';
+      document.getElementById('employeeName').value    = r.employeeName   || '';
+      document.getElementById('startDate').value       = r.startDate  ? r.startDate.slice(0,10)  : '';
+      document.getElementById('expiryDate').value      = r.expiryDate ? r.expiryDate.slice(0,10) : '';
+      document.getElementById('previousCertDate').value = r.previousCertDate ? r.previousCertDate.slice(0,10) : '';
+      document.getElementById('isRefresher').checked  = !!r.isRefresher;
+      document.getElementById('isCancelled').checked  = !!r.isCancelled;
+      document.getElementById('cancellationReason').value = r.cancellationReason || '';
+      document.getElementById('remarks').value         = r.remarks || '';
+      toggleCancelReason();
+      updateValidityPreview();
+      document.getElementById('delete-btn').style.display = 'inline-flex';
+      document.getElementById('submit-btn').textContent = '💾 Update Record';
+    } catch (err) {
+      showMsg('error', 'Could not load record: ' + err.message);
+    }
+  }
+
+  /* ── Form submit ── */
+  document.getElementById('fhc-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    const payload = {
+      businessEntity:     document.getElementById('businessEntity').value.trim(),
+      employeeName:       document.getElementById('employeeName').value.trim(),
+      startDate:          document.getElementById('startDate').value,
+      expiryDate:         document.getElementById('expiryDate').value,
+      previousCertDate:   document.getElementById('previousCertDate').value || null,
+      isRefresher:        document.getElementById('isRefresher').checked,
+      isCancelled:        document.getElementById('isCancelled').checked,
+      cancellationReason: document.getElementById('cancellationReason').value.trim(),
+      remarks:            document.getElementById('remarks').value.trim(),
+    };
+
+    if (!payload.businessEntity || !payload.employeeName || !payload.startDate || !payload.expiryDate) {
+      showMsg('error', 'Please fill in all required fields.');
+      btn.disabled = false; btn.textContent = orig;
+      return;
+    }
+
+    try {
+      const url    = isEdit ? `/api/fhc/${editId}` : '/api/fhc';
+      const method = isEdit ? 'PATCH' : 'POST';
+      const res    = await apiFetch(url, { method, body: JSON.stringify(payload) });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
+      const saved = await res.json();
+      showMsg('success', isEdit ? 'Record updated.' : 'Record created.');
+      if (!isEdit) {
+        setTimeout(() => { window.location.href = `/foodsafety/fhc/${saved._id}`; }, 800);
+      }
+    } catch (err) {
+      showMsg('error', err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = orig;
+    }
+  });
+
+  /* ── Delete ── */
+  async function deleteRecord() {
+    const name = document.getElementById('employeeName').value;
+    if (!confirm(`Delete record for ${name}? This cannot be undone.`)) return;
+    try {
+      await apiFetch(`/api/fhc/${editId}`, { method: 'DELETE' });
+      window.location.href = '/foodsafety/fhc';
+    } catch (err) {
+      showMsg('error', 'Delete failed: ' + err.message);
+    }
+  }
+
+  /* ── Message helpers ── */
+  function showMsg(type, text) {
+    const el = document.getElementById(`msg-${type}`);
+    el.textContent = text; el.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (type === 'success') setTimeout(() => { el.style.display = 'none'; }, 4000);
+  }
+
+  if (isEdit) loadRecord();
+</script>
+<script src="/js/shell.js"></script>
+</body>
+</html>

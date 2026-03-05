@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Certification &amp; Licence Tracker — Food Safety</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/lib/dom.js"></script>
+  <script src="/js/lib/http.js"></script>
+  <style>
+    .page-toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      align-items: center; margin-bottom: 14px;
+    }
+    .page-toolbar input, .page-toolbar select {
+      font-size: 0.82rem; padding: 7px 11px;
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--card); color: var(--ink);
+      font-family: inherit;
+    }
+    .page-toolbar input { flex: 1; min-width: 160px; }
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px; margin-bottom: 16px;
+    }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 12px; text-align: center;
+      box-shadow: 0 2px 6px var(--shadow);
+    }
+    .stat-card .num { font-size: 1.9rem; font-weight: 800; line-height: 1; }
+    .stat-card .lbl { font-size: 0.72rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; }
+    .stat-card.s-total   .num { color: var(--steel); }
+    .stat-card.s-valid   .num { color: var(--success); }
+    .stat-card.s-expiring .num { color: #e67e22; }
+    .stat-card.s-invalid  .num { color: var(--accent); }
+
+    /* Table */
+    .tbl-wrap { overflow-x: auto; border-radius: 10px;
+      border: 1px solid var(--border); box-shadow: 0 2px 8px var(--shadow); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    thead tr { background: #1565c0; color: #fff; }
+    thead th { padding: 9px 10px; font-size: 0.72rem; font-weight: 700;
+      text-align: left; letter-spacing: 0.03em; white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f5f7fa; }
+    tbody td { padding: 9px 10px; vertical-align: middle; color: var(--ink); }
+    .td-name { font-weight: 700; }
+    .td-actions { white-space: nowrap; display: flex; gap: 6px; }
+
+    /* Validity badges */
+    .badge-valid    { background: rgba(39,174,96,.12); color: #1e8449;
+      border: 1px solid rgba(39,174,96,.3); border-radius: 20px;
+      padding: 3px 10px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+    .badge-expiring { background: rgba(230,126,34,.12); color: #c05c00;
+      border: 1px solid rgba(230,126,34,.3); border-radius: 20px;
+      padding: 3px 10px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+    .badge-invalid  { background: rgba(192,57,43,.10); color: #c0392b;
+      border: 1px solid rgba(192,57,43,.25); border-radius: 20px;
+      padding: 3px 10px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+
+    .btn-icon { background: none; border: none; cursor: pointer;
+      padding: 4px 7px; border-radius: 6px; font-size: 0.85rem;
+      color: var(--muted); transition: background .15s, color .15s; }
+    .btn-icon:hover { background: rgba(0,0,0,.06); color: var(--ink); }
+    .btn-icon.del:hover { background: rgba(192,57,43,.08); color: var(--accent); }
+
+    /* CSV modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.5); z-index: 900;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--card); border-radius: 14px;
+      padding: 28px 28px 24px; max-width: 560px; width: 95%;
+      box-shadow: 0 12px 40px rgba(0,0,0,.2);
+    }
+    .modal-box h3 { margin: 0 0 6px; font-size: 1.1rem; }
+    .modal-box p  { margin: 0 0 14px; font-size: 0.82rem; color: var(--muted); }
+    .modal-box textarea {
+      width: 100%; height: 180px; font-size: 0.75rem;
+      font-family: 'Courier New', monospace; border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px; resize: vertical; box-sizing: border-box;
+      color: var(--ink); background: #fafafa;
+    }
+    .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+    #csv-preview { font-size: 0.78rem; color: var(--muted); margin-top: 8px;
+      background: #f5f7fa; border-radius: 6px; padding: 8px 10px; display: none; }
+
+    /* Print */
+    .print-only  { display: none; }
+    #print-header { display: none; }
+    body.print .page-toolbar,
+    body.print .no-print    { display: none !important; }
+    body.print #topnav,
+    body.print #sidenav     { display: none !important; }
+    body.print .print-only  { display: block; }
+    body.print #print-header { display: flex !important; }
+    body.print .btn-icon,
+    body.print .td-actions  { display: none !important; }
+    body.print .stats-row   { display: none; }
+    body.print .tbl-wrap    { box-shadow: none; border-color: #ccc; }
+    @media print {
+      #topnav, #sidenav, #nav-toggle { display: none !important; }
+      .page-toolbar, .no-print, .btn-icon, .td-actions, .stats-row { display: none !important; }
+      #print-header { display: flex !important; }
+      .print-only   { display: block !important; }
+      .tbl-wrap     { box-shadow: none; }
+      table         { font-size: 0.7rem; }
+      thead tr      { background: #1565c0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+    @media (max-width: 600px) {
+      .stats-row { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body data-module="foodsafety">
+
+<!-- Print-only header -->
+<div id="print-header" style="display:none;align-items:center;gap:12px;padding:10px 16px 8px;border-bottom:2px solid #ccc;margin-bottom:12px;">
+  <div>
+    <div style="font-size:1.1rem;font-weight:700;">🪪 Employee Certification &amp; Licence Tracker</div>
+    <div id="print-subtitle" style="font-size:0.75rem;color:#555;margin-top:2px;"></div>
+  </div>
+</div>
+
+<main>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+    <h1 style="margin:0;font-size:1.3rem;">🪪 Employee Certification &amp; Licence Tracker</h1>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;" class="no-print">
+      <a href="/foodsafety/fhc/new" class="btn btn-primary btn-sm">➕ Add Record</a>
+      <button class="btn btn-outline btn-sm" onclick="openCsvModal()">📥 Import CSV</button>
+      <button class="btn btn-outline btn-sm" onclick="printPDF()">🖨 Print / PDF</button>
+      <a href="/foodsafety/" class="btn btn-outline btn-sm">← Back</a>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card s-total">  <div class="num" id="st-total">—</div><div class="lbl">Total</div></div>
+    <div class="stat-card s-valid">  <div class="num" id="st-valid">—</div><div class="lbl">Valid</div></div>
+    <div class="stat-card s-expiring"><div class="num" id="st-expiring">—</div><div class="lbl">Expiring ≤60d</div></div>
+    <div class="stat-card s-invalid"> <div class="num" id="st-invalid">—</div><div class="lbl">Not Valid</div></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="page-toolbar no-print">
+    <input id="search" type="text" placeholder="🔍 Search employee…">
+    <select id="filterEntity"><option value="">All Entities</option></select>
+    <select id="filterValidity">
+      <option value="">All Validity</option>
+      <option value="valid">Valid</option>
+      <option value="expiring">Expiring Soon</option>
+      <option value="invalid">Not Valid</option>
+    </select>
+    <button class="btn btn-outline btn-sm" onclick="loadRecords()">🔄 Refresh</button>
+  </div>
+
+  <!-- Table -->
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Entity</th>
+          <th>Employee Name</th>
+          <th>Prev Cert</th>
+          <th>Start Date</th>
+          <th>Expiry Date</th>
+          <th>Refresher</th>
+          <th>Validity</th>
+          <th>Remarks</th>
+          <th class="no-print">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tbl-body">
+        <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted);">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p id="empty-msg" style="display:none;text-align:center;padding:30px;color:var(--muted);">No records found.</p>
+</main>
+
+<!-- CSV Import Modal -->
+<div class="modal-overlay" id="csvModal">
+  <div class="modal-box">
+    <h3>📥 Import CSV</h3>
+    <p>
+      Paste CSV content below or select a file. Required columns:<br>
+      <code>Entity, Employee Name, Previous Cert Date, Start Date, Expiry Date, Refresher, Remarks, Cancelled, Cancellation Reason</code><br>
+      Dates: <code>DD-MMM-YYYY</code> or <code>YYYY-MM-DD</code>. Refresher / Cancelled: <code>Yes</code> / <code>No</code>.
+    </p>
+    <input type="file" id="csv-file" accept=".csv" style="margin-bottom:8px;" onchange="handleCsvFile(this)">
+    <textarea id="csv-text" placeholder="Or paste CSV text here…" oninput="previewCsv()"></textarea>
+    <div id="csv-preview"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline btn-sm" onclick="closeCsvModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="csv-import-btn" onclick="doImport()">Import</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let allRecords = [];
+
+  /* ── Helpers ── */
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  function validityBadge(v, cancelReason) {
+    if (v === 'valid')    return `<span class="badge-valid">✅ Valid</span>`;
+    if (v === 'expiring') return `<span class="badge-expiring">⚠️ Expiring Soon</span>`;
+    const reason = cancelReason ? `<br><small style="font-size:0.68rem;opacity:.8;">${escHtml(cancelReason)}</small>` : '';
+    return `<span class="badge-invalid">❌ Not Valid</span>${reason}`;
+  }
+
+  /* ── Stats ── */
+  function updateStats(data) {
+    document.getElementById('st-total').textContent    = data.length;
+    document.getElementById('st-valid').textContent    = data.filter(r => r.validityStatus === 'valid').length;
+    document.getElementById('st-expiring').textContent = data.filter(r => r.validityStatus === 'expiring').length;
+    document.getElementById('st-invalid').textContent  = data.filter(r => r.validityStatus === 'invalid').length;
+  }
+
+  /* ── Load entities for filter ── */
+  async function loadEntities() {
+    try {
+      const entities = await apiFetch('/api/fhc/entities').then(r => r.json());
+      const sel = document.getElementById('filterEntity');
+      entities.forEach(e => {
+        const opt = document.createElement('option');
+        opt.value = e; opt.textContent = e;
+        sel.appendChild(opt);
+      });
+    } catch (_) {}
+  }
+
+  /* ── Load & render records ── */
+  async function loadRecords() {
+    const qs = [];
+    const search   = document.getElementById('search').value.trim();
+    const entity   = document.getElementById('filterEntity').value;
+    const validity = document.getElementById('filterValidity').value;
+    if (search)   qs.push(`search=${encodeURIComponent(search)}`);
+    if (entity)   qs.push(`entity=${encodeURIComponent(entity)}`);
+    if (validity) qs.push(`validity=${encodeURIComponent(validity)}`);
+
+    const body = document.getElementById('tbl-body');
+    body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--muted);">Loading…</td></tr>`;
+
+    try {
+      const data = await apiFetch(`/api/fhc${qs.length ? '?' + qs.join('&') : ''}`).then(r => r.json());
+      allRecords = data;
+      renderTable(data);
+      updateStats(data);
+    } catch (err) {
+      body.innerHTML = `<tr><td colspan="9" style="color:red;padding:20px;">Failed: ${escHtml(err.message)}</td></tr>`;
+    }
+  }
+
+  function renderTable(records) {
+    const body = document.getElementById('tbl-body');
+    if (!records.length) {
+      body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted);">No records match.</td></tr>`;
+      return;
+    }
+    body.innerHTML = records.map(r => `
+      <tr id="row-${r._id}">
+        <td>${escHtml(r.businessEntity)}</td>
+        <td class="td-name">${escHtml(r.employeeName)}</td>
+        <td>${fmtDate(r.previousCertDate)}</td>
+        <td>${fmtDate(r.startDate)}</td>
+        <td>${fmtDate(r.expiryDate)}</td>
+        <td>${r.isRefresher ? 'Yes' : 'No'}</td>
+        <td>${validityBadge(r.validityStatus, r.isCancelled ? r.cancellationReason : '')}</td>
+        <td>${escHtml(r.remarks || '')}</td>
+        <td class="no-print">
+          <div class="td-actions">
+            <a class="btn-icon" href="/foodsafety/fhc/${r._id}" title="Edit">✏️</a>
+            <button class="btn-icon del" onclick="deleteRecord('${r._id}', '${escHtml(r.employeeName)}')" title="Delete">🗑</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  async function deleteRecord(id, name) {
+    if (!confirm(`Delete record for ${name}?`)) return;
+    try {
+      await apiFetch(`/api/fhc/${id}`, { method: 'DELETE' });
+      document.getElementById(`row-${id}`)?.remove();
+      allRecords = allRecords.filter(r => r._id !== id);
+      updateStats(allRecords);
+    } catch (err) { alert('Delete failed: ' + err.message); }
+  }
+
+  /* ── Print / PDF ── */
+  function printPDF() {
+    const validity = document.getElementById('filterValidity').value;
+    const entity   = document.getElementById('filterEntity').value;
+    const parts    = [];
+    if (entity)   parts.push(`Entity: ${entity}`);
+    if (validity) parts.push(`Filter: ${validity}`);
+    parts.push(`Printed: ${new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}`);
+    document.getElementById('print-subtitle').textContent = parts.join('  |  ');
+    document.body.classList.add('print');
+    window.print();
+    window.addEventListener('afterprint', () => document.body.classList.remove('print'), { once: true });
+  }
+
+  /* ── CSV Import ── */
+  function openCsvModal()  { document.getElementById('csvModal').classList.add('open'); }
+  function closeCsvModal() {
+    document.getElementById('csvModal').classList.remove('open');
+    document.getElementById('csv-text').value = '';
+    document.getElementById('csv-preview').style.display = 'none';
+    document.getElementById('csv-file').value = '';
+  }
+
+  function handleCsvFile(input) {
+    if (!input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('csv-text').value = e.target.result;
+      previewCsv();
+    };
+    reader.readAsText(input.files[0]);
+  }
+
+  function parseDate(str) {
+    if (!str || str.trim() === '-' || str.trim() === '') return null;
+    // Try DD-MMM-YYYY (e.g. 19-Mar-2021)
+    const months = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
+    const dmy = str.trim().match(/^(\d{1,2})[-\/\s]([A-Za-z]+)[-\/\s](\d{4})$/);
+    if (dmy) {
+      const m = months[dmy[2].toLowerCase().slice(0,3)];
+      if (m !== undefined) return new Date(+dmy[3], m, +dmy[1]);
+    }
+    // Fallback — let JS parse (handles YYYY-MM-DD etc.)
+    const d = new Date(str.trim());
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function parseCsvRows(text) {
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) return [];
+    // Expected header order:
+    // Entity, Employee Name, Previous Cert Date, Start Date, Expiry Date, Refresher, Remarks, Cancelled, Cancellation Reason
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.trim());
+      if (!cols[0] && !cols[1]) continue; // skip blank lines
+      rows.push({
+        businessEntity:     cols[0] || '',
+        employeeName:       cols[1] || '',
+        previousCertDate:   parseDate(cols[2]),
+        startDate:          parseDate(cols[3]),
+        expiryDate:         parseDate(cols[4]),
+        isRefresher:        (cols[5] || '').toLowerCase() === 'yes',
+        remarks:            cols[6] || '',
+        isCancelled:        (cols[7] || '').toLowerCase() === 'yes',
+        cancellationReason: cols[8] || '',
+      });
+    }
+    return rows;
+  }
+
+  function previewCsv() {
+    const text    = document.getElementById('csv-text').value;
+    const preview = document.getElementById('csv-preview');
+    if (!text.trim()) { preview.style.display = 'none'; return; }
+    const rows = parseCsvRows(text);
+    preview.style.display = 'block';
+    preview.textContent   = `Parsed ${rows.length} row(s). First: ${rows[0] ? rows[0].employeeName || '—' : '—'}`;
+  }
+
+  async function doImport() {
+    const text = document.getElementById('csv-text').value;
+    const records = parseCsvRows(text);
+    if (!records.length) { alert('No parseable rows found. Check the format.'); return; }
+
+    const btn = document.getElementById('csv-import-btn');
+    btn.disabled = true; btn.textContent = 'Importing…';
+
+    try {
+      const res  = await apiFetch('/api/fhc/import-csv', {
+        method: 'POST', body: JSON.stringify({ records })
+      }).then(r => r.json());
+      const msg = `Imported ${res.inserted} record(s).${res.skipped ? ` Skipped ${res.skipped} (errors).` : ''}`;
+      alert(msg);
+      closeCsvModal();
+      await loadEntities();
+      loadRecords();
+    } catch (err) {
+      alert('Import failed: ' + err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Import';
+    }
+  }
+
+  /* ── Search / filter debounce ── */
+  let searchTimer;
+  document.getElementById('search').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(loadRecords, 350);
+  });
+  document.getElementById('filterEntity').addEventListener('change', loadRecords);
+  document.getElementById('filterValidity').addEventListener('change', loadRecords);
+
+  document.getElementById('csvModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('csvModal')) closeCsvModal();
+  });
+
+  /* ── Init ── */
+  loadEntities();
+  loadRecords();
+</script>
+<script src="/js/shell.js"></script>
+</body>
+</html>

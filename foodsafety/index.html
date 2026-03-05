@@ -40,6 +40,8 @@
     .module-card.view::before    { background: linear-gradient(90deg, var(--accent-2), #e67e22); }
     .module-card.pest::before    { background: linear-gradient(90deg, #2e7d32, #66bb6a); }
     .module-card.pest .card-go   { color: #2e7d32; }
+    .module-card.cert::before    { background: linear-gradient(90deg, #1565c0, #42a5f5); }
+    .module-card.cert .card-go   { color: #1565c0; }
     .module-card:hover { transform: translateY(-5px); box-shadow: 0 14px 36px rgba(0,0,0,0.12); }
     .module-card .card-icon { font-size: 2.4rem; line-height: 1; }
     .module-card h2 { font-size: 1.25rem; font-weight: 700; color: var(--ink); margin: 0; }
@@ -84,6 +86,12 @@
         <h2>Rat Trap Surveillance</h2>
         <p>Record findings, manage trap stations, and view weekly pest control inspection reports.</p>
         <div class="card-go">Open Module →</div>
+      </a>
+      <a class="module-card cert" href="/foodsafety/fhc">
+        <div class="card-icon">🪦</div>
+        <h2>Employee Certification &amp; Licence Tracker</h2>
+        <p>Track food handler certificates, monitor expiry dates, and flag upcoming renewals.</p>
+        <div class="card-go">View Tracker →</div>
       </a>
     </div>
   </main>

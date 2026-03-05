@@ -161,10 +161,14 @@ app.get('/sw.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'sw.js'));
 });
 
-// Food Safety NC — requires 'foodsafety' permission
+// Food Safety — requires 'foodsafety' permission
 app.use('/foodsafety', requirePageAccess('foodsafety'), express.static(path.join(__dirname, 'foodsafety'), noCacheHtml));
 app.get('/foodsafety', requirePageAccess('foodsafety'), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'index.html')));
 app.get('/foodsafety/index.html', requirePageAccess('foodsafety'), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'index.html')));
+// Employee Cert & Licence Tracker pages — must be before the catch-all below
+app.get('/foodsafety/fhc',        requirePageAccess('foodsafety'), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'fhc.html')));
+app.get('/foodsafety/fhc/new',    requirePageAccess('foodsafety'), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'fhc-form.html')));
+app.get('/foodsafety/fhc/:id',    requirePageAccess('foodsafety'), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'fhc-form.html')));
 app.get(/^\/foodsafety(?!\/uploads)(\/.*)?$/, requirePageAccess('foodsafety'), (req, res) => {
     res.sendFile(path.join(__dirname, 'foodsafety', 'index.html'));
 });
