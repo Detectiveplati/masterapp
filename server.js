@@ -202,48 +202,11 @@ app.get('/procurement/request',     requirePageAccess('procurement'), (req, res)
 app.get('/procurement/requests',    requirePageAccess('procurement'), (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'requests.html')));
 app.get('/procurement/request/:id', requirePageAccess('procurement'), (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'request-detail.html')));
 
-// ─── Auth & Admin API Routes ──────────────────────────────────────────────────
-const authRoutes  = require('./routes/auth');
-const adminRoutes = require('./routes/admin');
-app.use('/api/auth',  authRoutes);
-app.use('/api/admin', adminRoutes);
-
-// ─── Maintenance API Routes ──────────────────────────────────────────────────
-// Food Safety NC API Routes
-const foodsafetyRoutes = require('./routes/foodsafety');
-app.use('/api/foodsafety', foodsafetyRoutes);
-
-const equipmentRoutes          = require('./routes/equipment');
-const maintenanceRoutes        = require('./routes/maintenance');
-const issuesRoutes             = require('./routes/issues');
-const equipmentIssuesRoutes    = require('./routes/equipmentIssues');
-const areasRoutes              = require('./routes/areas');
-const reportsRoutes            = require('./routes/reports');
-const notificationsRoutes      = require('./routes/notifications');
-const seedRoutes               = require('./routes/seed');
-
-app.use('/api/equipment',        equipmentRoutes);
-app.use('/api/equipment-issues', equipmentIssuesRoutes);
-app.use('/api/maintenance',      maintenanceRoutes);
-app.use('/api/records',          maintenanceRoutes);  // legacy
-app.use('/api/issues',           issuesRoutes);
-app.use('/api/areas',            areasRoutes);
-app.use('/api/reports',          reportsRoutes);
-app.use('/api/notifications',    notificationsRoutes);
-app.use('/api/seed',             seedRoutes);
-
-// Push notifications
-const pushRoutes = require('./routes/push');
-const sendPushToPermission = pushRoutes.sendPushToPermission;
-app.use('/api/push', pushRoutes);
-
-// ─── Pest Control API Routes ──────────────────────────────────────────────────
-const pestRoutes = require('./routes/pest');
-app.use('/api/pest', pestRoutes);
-
-// ─── Procurement API Routes ──────────────────────────────────────────────────
-const procurementRequestsRoutes = require('./routes/procurementRequests');
-app.use('/api/requests', procurementRequestsRoutes);
+// ─── API Routes ──────────────────────────────────────────────────────────────
+// All routes are declared in routes/index.js — add new modules there, not here.
+const apiRouter            = require('./routes');
+const sendPushToPermission = apiRouter.sendPushToPermission;
+app.use('/api', apiRouter);
 
 // QR code for procurement request form — auto-detects host (works on Railway)
 app.get('/api/qr', async (req, res) => {

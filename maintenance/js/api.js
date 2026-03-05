@@ -15,6 +15,17 @@ const _base = (_port && _port !== '80' && _port !== '443')
     : `${window.location.protocol}//${window.location.hostname}`;
 const API_BASE = `${_base}/api`;
 
+/**
+ * fetch() wrapper that always sends the auth cookie.
+ * Required for all API calls — the server uses requireAuth middleware.
+ * @param {string} url
+ * @param {RequestInit} [options]
+ * @returns {Promise<Response>}
+ */
+function authFetch(url, options = {}) {
+    return fetch(url, { ...options, credentials: 'include' });
+}
+
 // ========== EQUIPMENT API ==========
 
 /**
@@ -24,7 +35,7 @@ const API_BASE = `${_base}/api`;
  */
 async function getAllEquipment() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/equipment`);
+        const response = await authFetch(`${API_BASE_URL}/api/equipment`);
         if (!response.ok) throw new Error('Failed to fetch equipment');
         return await response.json();
     } catch (error) {
@@ -35,7 +46,7 @@ async function getAllEquipment() {
 
 async function getEquipment(id) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/equipment/${id}`);
+        const response = await authFetch(`${API_BASE_URL}/api/equipment/${id}`);
         if (!response.ok) throw new Error('Failed to fetch equipment');
         return await response.json();
     } catch (error) {
@@ -46,7 +57,7 @@ async function getEquipment(id) {
 
 async function createEquipment(name, type, status) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/equipment`, {
+        const response = await authFetch(`${API_BASE_URL}/api/equipment`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -63,7 +74,7 @@ async function createEquipment(name, type, status) {
 
 async function updateEquipment(id, updates) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/equipment/${id}`, {
+        const response = await authFetch(`${API_BASE_URL}/api/equipment/${id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
@@ -80,7 +91,7 @@ async function updateEquipment(id, updates) {
 
 async function deleteEquipment(id) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/equipment/${id}`, {
+        const response = await authFetch(`${API_BASE_URL}/api/equipment/${id}`, {
             method: 'DELETE'
         });
         if (!response.ok) throw new Error('Failed to delete equipment');
@@ -95,7 +106,7 @@ async function deleteEquipment(id) {
 
 async function getAllMaintenanceRecords() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/records`);
+        const response = await authFetch(`${API_BASE_URL}/api/records`);
         if (!response.ok) throw new Error('Failed to fetch maintenance records');
         return await response.json();
     } catch (error) {
@@ -106,7 +117,7 @@ async function getAllMaintenanceRecords() {
 
 async function getMaintenanceRecordsByEquipment(equipmentId) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/records/equipment/${equipmentId}`);
+        const response = await authFetch(`${API_BASE_URL}/api/records/equipment/${equipmentId}`);
         if (!response.ok) throw new Error('Failed to fetch maintenance records');
         return await response.json();
     } catch (error) {
@@ -117,7 +128,7 @@ async function getMaintenanceRecordsByEquipment(equipmentId) {
 
 async function getMaintenanceRecord(id) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/records/${id}`);
+        const response = await authFetch(`${API_BASE_URL}/api/records/${id}`);
         if (!response.ok) throw new Error('Failed to fetch maintenance record');
         return await response.json();
     } catch (error) {
@@ -128,7 +139,7 @@ async function getMaintenanceRecord(id) {
 
 async function createMaintenanceRecord(equipmentId, activity, date, notes = '', performedBy = '') {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/records`, {
+        const response = await authFetch(`${API_BASE_URL}/api/records`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -145,7 +156,7 @@ async function createMaintenanceRecord(equipmentId, activity, date, notes = '', 
 
 async function updateMaintenanceRecord(id, updates) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/records/${id}`, {
+        const response = await authFetch(`${API_BASE_URL}/api/records/${id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
@@ -162,7 +173,7 @@ async function updateMaintenanceRecord(id, updates) {
 
 async function deleteMaintenanceRecord(id) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/records/${id}`, {
+        const response = await authFetch(`${API_BASE_URL}/api/records/${id}`, {
             method: 'DELETE'
         });
         if (!response.ok) throw new Error('Failed to delete maintenance record');
