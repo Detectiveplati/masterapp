@@ -207,7 +207,13 @@
 
     const labels = readings.map(r => new Date(r.recordedAt).toLocaleString('en-MY', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
     const data   = readings.map(r => r.value);
-    const colors = readings.map(r => r.flagged ? 'rgba(198,40,40,0.8)' : 'rgba(39,174,96,0.8)');
+    const buffer = unit ? (unit.warningBuffer || 2) : 2;
+    const colors = readings.map(r => {
+      if (r.flagged) return 'rgba(198,40,40,0.9)';
+      if (r.value < unit.criticalMin + buffer || r.value > unit.criticalMax - buffer)
+        return 'rgba(230,81,0,0.85)';
+      return 'rgba(46,125,50,0.8)';
+    });
 
     chartReadings = readings;
     if (chartInst) chartInst.destroy();
@@ -271,7 +277,89 @@
             },
             pan:  { enabled: true, mode: 'x' },
             limits: { x: { minRange: 2 } }
-          }
+          },
+          annotation: unit ? {
+            annotations: {
+              // ── Safe zone (inside warning buffer) ──────────────
+              safeZone: {
+                type: 'box',
+                yMin: unit.criticalMin + buffer,
+                yMax: unit.criticalMax - buffer,
+                backgroundColor: 'rgba(46,125,50,0.07)',
+                borderWidth: 0,
+                drawTime: 'beforeDatasetsDraw'
+              },
+              // ── Warning bands (near limits) ────────────────────
+              warnLow: {
+                type: 'box',
+                yMin: unit.criticalMin,
+                yMax: unit.criticalMin + buffer,
+                backgroundColor: 'rgba(230,81,0,0.09)',
+                borderWidth: 0,
+                drawTime: 'beforeDatasetsDraw'
+              },
+              warnHigh: {
+                type: 'box',
+                yMin: unit.criticalMax - buffer,
+                yMax: unit.criticalMax,
+                backgroundColor: 'rgba(230,81,0,0.09)',
+                borderWidth: 0,
+                drawTime: 'beforeDatasetsDraw'
+              },
+              // ── Critical limit lines ───────────────────────────
+              lineMin: {
+                type: 'line',
+                yMin: unit.criticalMin, yMax: unit.criticalMin,
+                borderColor: '#1565c0',
+                borderWidth: 2,
+                borderDash: [5, 4],
+                label: {
+                  content: '\u25bc Min ' + unit.criticalMin + '°C',
+                  display: true, position: 'start',
+                  backgroundColor: 'rgba(21,101,192,0.85)',
+                  color: '#fff',
+                  font: { size: 10, weight: 'bold' },
+                  padding: { x: 6, y: 3 },
+                  borderRadius: 4
+                }
+              },
+              lineMax: {
+                type: 'line',
+                yMin: unit.criticalMax, yMax: unit.criticalMax,
+                borderColor: '#c62828',
+                borderWidth: 2,
+                borderDash: [5, 4],
+                label: {
+                  content: '\u25b2 Max ' + unit.criticalMax + '°C',
+                  display: true, position: 'start',
+                  backgroundColor: 'rgba(198,40,40,0.85)',
+                  color: '#fff',
+                  font: { size: 10, weight: 'bold' },
+                  padding: { x: 6, y: 3 },
+                  borderRadius: 4
+                }
+              },
+              // ── Target temperature line ────────────────────────
+              ...(unit.targetTemp != null ? {
+                lineTarget: {
+                  type: 'line',
+                  yMin: unit.targetTemp, yMax: unit.targetTemp,
+                  borderColor: 'rgba(46,125,50,0.7)',
+                  borderWidth: 1.5,
+                  borderDash: [3, 5],
+                  label: {
+                    content: '\u25cf Target ' + unit.targetTemp + '°C',
+                    display: true, position: 'end',
+                    backgroundColor: 'rgba(46,125,50,0.8)',
+                    color: '#fff',
+                    font: { size: 10 },
+                    padding: { x: 6, y: 3 },
+                    borderRadius: 4
+                  }
+                }
+              } : {})
+            }
+          } : {}
         },
         scales: {
           y: {
@@ -282,89 +370,7 @@
             ticks: { maxTicksLimit: 10, maxRotation: 0 },
             grid: { display: false }
           }
-        },
-        annotation: unit ? {
-          annotations: {
-            // ── Safe zone (inside warning buffer) ──────────────
-            safeZone: {
-              type: 'box',
-              yMin: unit.criticalMin + (unit.warningBuffer || 2),
-              yMax: unit.criticalMax - (unit.warningBuffer || 2),
-              backgroundColor: 'rgba(46,125,50,0.07)',
-              borderWidth: 0,
-              drawTime: 'beforeDatasetsDraw'
-            },
-            // ── Warning bands (near limits) ────────────────────
-            warnLow: {
-              type: 'box',
-              yMin: unit.criticalMin,
-              yMax: unit.criticalMin + (unit.warningBuffer || 2),
-              backgroundColor: 'rgba(230,81,0,0.09)',
-              borderWidth: 0,
-              drawTime: 'beforeDatasetsDraw'
-            },
-            warnHigh: {
-              type: 'box',
-              yMin: unit.criticalMax - (unit.warningBuffer || 2),
-              yMax: unit.criticalMax,
-              backgroundColor: 'rgba(230,81,0,0.09)',
-              borderWidth: 0,
-              drawTime: 'beforeDatasetsDraw'
-            },
-            // ── Critical limit lines ───────────────────────────
-            lineMin: {
-              type: 'line',
-              yMin: unit.criticalMin, yMax: unit.criticalMin,
-              borderColor: '#1565c0',
-              borderWidth: 1.5,
-              borderDash: [5, 4],
-              label: {
-                content: 'Min ' + unit.criticalMin + '°C',
-                display: true, position: 'start',
-                backgroundColor: 'rgba(21,101,192,0.82)',
-                color: '#fff',
-                font: { size: 10, weight: 'bold' },
-                padding: { x: 6, y: 3 },
-                borderRadius: 4
-              }
-            },
-            lineMax: {
-              type: 'line',
-              yMin: unit.criticalMax, yMax: unit.criticalMax,
-              borderColor: '#c62828',
-              borderWidth: 1.5,
-              borderDash: [5, 4],
-              label: {
-                content: 'Max ' + unit.criticalMax + '°C',
-                display: true, position: 'start',
-                backgroundColor: 'rgba(198,40,40,0.82)',
-                color: '#fff',
-                font: { size: 10, weight: 'bold' },
-                padding: { x: 6, y: 3 },
-                borderRadius: 4
-              }
-            },
-            // ── Target temperature line ────────────────────────
-            ...(unit.targetTemp != null ? {
-              lineTarget: {
-                type: 'line',
-                yMin: unit.targetTemp, yMax: unit.targetTemp,
-                borderColor: 'rgba(46,125,50,0.65)',
-                borderWidth: 1.5,
-                borderDash: [3, 5],
-                label: {
-                  content: 'Target ' + unit.targetTemp + '°C',
-                  display: true, position: 'end',
-                  backgroundColor: 'rgba(46,125,50,0.78)',
-                  color: '#fff',
-                  font: { size: 10 },
-                  padding: { x: 6, y: 3 },
-                  borderRadius: 4
-                }
-              }
-            } : {})
-          }
-        } : {}
+        }
       }
     });
 
