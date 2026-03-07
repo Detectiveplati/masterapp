@@ -81,7 +81,7 @@
       <div class="grid-form">
         <div class="fg"><label>Name <span style="color:#c62828">*</span></label><input id="uName" type="text" placeholder="e.g. Blast Freezer 1"></div>
         <div class="fg"><label>Type <span style="color:#c62828">*</span></label>
-          <select id="uType">
+          <select id="uType" onchange="applyTypeDefaults('u')">
             <option value="freezer">🧊 Freezer</option>
             <option value="chiller">❄️ Chiller</option>
             <option value="warmer">🔥 Warmer</option>
@@ -93,6 +93,7 @@
         <div class="fg"><label>Critical Max (°C) <span style="color:#c62828">*</span></label><input id="uMax" type="number" step="0.1" placeholder="-15"></div>
         <div class="fg"><label>Warning Buffer (°C)</label><input id="uBuffer" type="number" step="0.1" value="2" placeholder="2"></div>
         <div class="fg"><label>Target Temp (°C)</label><input id="uTarget" type="number" step="0.1" placeholder="-20"></div>
+        <div class="fg"><label>Alert Threshold (min)</label><input id="uThreshold" type="number" value="0" min="0" placeholder="0 = immediate"></div>
         <div class="fg"><label>Notes</label><input id="uNotes" type="text" placeholder="Optional"></div>
       </div>
       <div id="unitNotice" class="notice"></div>
@@ -145,6 +146,7 @@
         Generate synthetic temperature readings so the dashboard and charts are functional before physical devices arrive.
         All sample readings are tagged <code>isSample: true</code> and excluded from compliance reports.
         Re-running replaces existing sample data for the selected unit.
+        <strong>Note:</strong> If no device exists for a unit, one will be created automatically.
       </p>
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
         <div class="fg"><label>Unit (blank = all)</label><select id="sampleUnit"><option value="">All Units</option></select></div>
@@ -153,6 +155,25 @@
         <button class="btn btn-primary" onclick="generateSample()">▶️ Generate Sample Data</button>
       </div>
       <div id="sampleStatus" class="notice"></div>
+    </div>
+
+    <div class="section-card">
+      <h2>🔴 Live Simulation</h2>
+      <p style="color:var(--muted);font-size:0.88rem;margin-bottom:18px">
+        Injects one real-time reading per active unit every <em>N</em> minutes — simulates live IoT data so you can test
+        alerts and the dashboard without hardware. Use the <strong>Trigger Excursion</strong> option to force a selected
+        unit into critical temperature range to test push notifications.
+      </p>
+      <div id="simStatusBanner" style="display:none;padding:10px 14px;border-radius:8px;font-size:0.88rem;font-weight:700;margin-bottom:14px;background:rgba(39,174,96,.12);color:#2e7d32">⚡ Live simulation is running</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+        <div class="fg"><label>Interval (min)</label><input id="simInterval" type="number" value="2" min="1" max="60" style="width:80px"></div>
+        <div class="fg"><label>Trigger excursion on unit (optional)</label>
+          <select id="simExcUnit"><option value="">— normal temps —</option></select>
+        </div>
+        <button class="btn btn-primary" id="simStartBtn" onclick="startSim()">▶️ Start Live Sim</button>
+        <button class="btn btn-outline" id="simStopBtn" onclick="stopSim()" style="display:none">⏹️ Stop</button>
+      </div>
+      <div id="simNotice" class="notice"></div>
     </div>
 
     <div class="section-card sample-card">
@@ -169,14 +190,20 @@
     <input type="hidden" id="euId">
     <div class="grid-form">
       <div class="fg"><label>Name</label><input id="euName" type="text"></div>
-      <div class="fg"><label>Type</label><select id="euType">
-        <option value="freezer">🧊 Freezer</option><option value="chiller">❄️ Chiller</option><option value="warmer">🔥 Warmer</option><option value="ambient">🌡️ Ambient</option>
-      </select></div>
+      <div class="fg"><label>Type</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="euType" style="flex:1">
+            <option value="freezer">🧣 Freezer</option><option value="chiller">❄️ Chiller</option><option value="warmer">🔥 Warmer</option><option value="ambient">🌡️ Ambient</option>
+          </select>
+          <button type="button" class="btn btn-outline btn-sm" onclick="applyTypeDefaults('eu')" title="Fill standard temperature limits for this type">📊 Defaults</button>
+        </div>
+      </div>
       <div class="fg"><label>Location</label><input id="euLocation" type="text"></div>
       <div class="fg"><label>Critical Min (°C)</label><input id="euMin" type="number" step="0.1"></div>
       <div class="fg"><label>Critical Max (°C)</label><input id="euMax" type="number" step="0.1"></div>
       <div class="fg"><label>Warning Buffer (°C)</label><input id="euBuffer" type="number" step="0.1"></div>
       <div class="fg"><label>Target Temp (°C)</label><input id="euTarget" type="number" step="0.1"></div>
+      <div class="fg"><label>Alert Threshold (min)</label><input id="euThreshold" type="number" min="0" placeholder="0 = notify immediately"></div>
       <div class="fg"><label>Notes</label><input id="euNotes" type="text"></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
@@ -196,6 +223,47 @@
   let currentUser = null;
   let units = [], devices = [];
 
+  // Standard temperature limits per equipment type.
+  // Sources: UK FSA, FDA Food Code 2022, EU Food Hygiene Regulation 852/2004.
+  //
+  // FREEZER:  -18°C is the FSA/FDA target. Food safety risk begins above -12°C
+  //           (thawing starts, bacteria become active). Using -12°C as the critical
+  //           high and -15°C as the warning (-12 - 3°C buffer) means a standard
+  //           door opening (typical temp rise to -14–-16°C) only triggers a warning,
+  //           not a critical alarm. -25°C critical low covers compressor failure.
+  //
+  // CHILLER:  FSA danger zone starts at 8°C — this is the legal/practical
+  //           intervention threshold. 5°C is the recommended operating TARGET,
+  //           not the critical limit. Warning fires at 6°C (8 - 2°C buffer),
+  //           giving staff a head-up before the critical limit is hit.
+  //           Critical low -2°C covers freezing risk for produce/dairy.
+  //
+  // WARMER:   UK law (Food Safety (Temperature Control) Regulations) requires
+  //           hot holding at ≥63°C. Using 63°C as the critical low is legally
+  //           sound; warning fires at 68°C (63 + 5°C buffer). Critical high at
+  //           90°C covers quality/safety risk from overheating.
+  //
+  // alertThresholdMinutes defaults are set per-type to reflect normal operation:
+  //   Freezer/Chiller: 20 min — door openings typically recover within 5–10 min.
+  //   Warmer: 15 min — shorter window as hot-holding is a legal CCP.
+  const TYPE_DEFAULTS = {
+    freezer: { criticalMin: -25, criticalMax: -12, targetTemp: -18, warningBuffer: 3, alertThresholdMinutes: 20 },
+    chiller: { criticalMin:  -2, criticalMax:   8, targetTemp:   3, warningBuffer: 2, alertThresholdMinutes: 20 },
+    warmer:  { criticalMin:  63, criticalMax:  90, targetTemp:  75, warningBuffer: 5, alertThresholdMinutes: 15 },
+    ambient: null // no standard limits
+  };
+
+  function applyTypeDefaults(prefix) {
+    const type = document.getElementById(prefix + 'Type').value;
+    const d = TYPE_DEFAULTS[type];
+    if (!d) return; // ambient — no defaults
+    document.getElementById(prefix + 'Min').value       = d.criticalMin;
+    document.getElementById(prefix + 'Max').value       = d.criticalMax;
+    document.getElementById(prefix + 'Target').value    = d.targetTemp;
+    document.getElementById(prefix + 'Buffer').value    = d.warningBuffer;
+    document.getElementById(prefix + 'Threshold').value = d.alertThresholdMinutes;
+  }
+
   async function init() {
     try {
       const r = await apiFetch('/api/auth/me');
@@ -206,6 +274,7 @@
       document.documentElement.style.visibility = '';
       if (user.role === 'admin') {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+        loadSimStatus();
       }
       await Promise.all([loadUnits(), loadDevices()]);
     } catch { window.location.replace('/login'); }
@@ -254,9 +323,12 @@
   }
 
   function populateUnitSelectors() {
-    ['dUnit','sampleUnit'].forEach(id => {
+    ['dUnit','sampleUnit','simExcUnit'].forEach(id => {
       const sel = document.getElementById(id);
-      const existingOptions = id === 'sampleUnit' ? '<option value="">All Units</option>' : '<option value="">Select unit…</option>';
+      if (!sel) return;
+      const existingOptions = (id === 'sampleUnit') ? '<option value="">All Units</option>'
+                            : (id === 'simExcUnit') ? '<option value="">— normal temps —</option>'
+                            : '<option value="">Select unit…</option>';
       sel.innerHTML = existingOptions + units.map(u => `<option value="${u._id}">${escHtml(u.name)}</option>`).join('');
     });
   }
@@ -277,13 +349,15 @@
           criticalMin:   min, criticalMax: max,
           warningBuffer: parseFloat(document.getElementById('uBuffer').value) || 2,
           targetTemp:    document.getElementById('uTarget').value !== '' ? parseFloat(document.getElementById('uTarget').value) : undefined,
-          notes:         document.getElementById('uNotes').value.trim()
+          notes:         document.getElementById('uNotes').value.trim(),
+          alertThresholdMinutes: parseInt(document.getElementById('uThreshold').value) || 0
         })
       });
       if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
       showNotice('unitNotice', 'ok', '✅ Unit added!');
       ['uName','uLocation','uMin','uMax','uTarget','uNotes'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('uBuffer').value = '2';
+      document.getElementById('uThreshold').value = '0';
       await loadUnits();
     } catch (err) { showNotice('unitNotice', 'err', '❌ ' + err.message); }
   }
@@ -300,6 +374,7 @@
     document.getElementById('euMax').value     = u.criticalMax;
     document.getElementById('euBuffer').value  = u.warningBuffer ?? 2;
     document.getElementById('euTarget').value  = u.targetTemp ?? '';
+    document.getElementById('euThreshold').value = u.alertThresholdMinutes ?? 0;
     document.getElementById('euNotes').value   = u.notes || '';
     document.getElementById('euActive').checked = u.active;
     document.getElementById('euNotice').style.display = 'none';
@@ -320,7 +395,8 @@
           warningBuffer: parseFloat(document.getElementById('euBuffer').value) || 2,
           targetTemp:    document.getElementById('euTarget').value !== '' ? parseFloat(document.getElementById('euTarget').value) : null,
           notes:         document.getElementById('euNotes').value.trim(),
-          active:        document.getElementById('euActive').checked
+          active:        document.getElementById('euActive').checked,
+          alertThresholdMinutes: parseInt(document.getElementById('euThreshold').value) || 0
         })
       });
       if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
@@ -403,6 +479,7 @@
 
   async function loadPurgeList() {
     if (!units.length) { const r = await apiFetch(API + '/units'); units = await r.json(); }
+    populateUnitSelectors(); // keep sim / sample selects in sync
     document.getElementById('purgeList').innerHTML = units.map(u => `
       <div class="sample-row">
         <div>
@@ -420,6 +497,55 @@
     showNotice('sampleStatus', 'ok', `🗑️ Deleted ${d.deleted} sample readings for "${name}"`);
   }
 
+  // ── Live Simulation ──────────────────────────────────────────────
+  async function loadSimStatus() {
+    try {
+      const r = await apiFetch(API + '/sim/status');
+      const s = await r.json();
+      setSimUI(s.active, s.intervalMinutes, s.excursionUnitId);
+    } catch (_) {}
+  }
+
+  function setSimUI(active, intervalMinutes, excursionUnitId) {
+    document.getElementById('simStatusBanner').style.display = active ? 'block' : 'none';
+    document.getElementById('simStartBtn').style.display = active ? 'none' : '';
+    document.getElementById('simStopBtn').style.display = active ? '' : 'none';
+    if (active) {
+      document.getElementById('simInterval').value = intervalMinutes || 2;
+      if (excursionUnitId) document.getElementById('simExcUnit').value = excursionUnitId;
+    }
+  }
+
+  async function startSim() {
+    const intervalMinutes = parseInt(document.getElementById('simInterval').value) || 2;
+    const excursionUnitId = document.getElementById('simExcUnit').value || null;
+    const btn = document.getElementById('simStartBtn');
+    btn.disabled = true; btn.textContent = 'Starting…';
+    try {
+      const r = await apiFetch(API + '/sim/start', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ intervalMinutes, excursionUnitId })
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      setSimUI(true, intervalMinutes, excursionUnitId);
+      showNotice('simNotice', 'ok', `⚡ Sim started — reading every ${intervalMinutes} min${excursionUnitId ? ', excursion active' : ''}`);
+    } catch (err) { showNotice('simNotice', 'err', '❌ ' + err.message); }
+    finally { btn.disabled = false; btn.textContent = '▶️ Start Live Sim'; }
+  }
+
+  async function stopSim() {
+    const btn = document.getElementById('simStopBtn');
+    btn.disabled = true; btn.textContent = 'Stopping…';
+    try {
+      await apiFetch(API + '/sim/stop', { method: 'POST' });
+      setSimUI(false);
+      showNotice('simNotice', 'ok', '⏹️ Live simulation stopped');
+    } catch (err) { showNotice('simNotice', 'err', '❌ ' + err.message); }
+    finally { btn.disabled = false; btn.textContent = '⏹️ Stop'; }
+  }
+
+  applyTypeDefaults('u'); // pre-fill Add Unit form with freezer defaults on load
   init();
 </script>
 <script src="/js/shell.js"></script>

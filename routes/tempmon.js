@@ -96,8 +96,8 @@ router.get('/units/:id', requireAuth, async (req, res) => {
 // POST /api/tempmon/units
 router.post('/units', requireAuth, async (req, res) => {
   try {
-    const { name, type, location, criticalMin, criticalMax, warningBuffer, targetTemp, notes } = req.body;
-    const unit = new TempMonUnit({ name, type, location, criticalMin, criticalMax, warningBuffer, targetTemp, notes });
+    const { name, type, location, criticalMin, criticalMax, warningBuffer, targetTemp, notes, alertThresholdMinutes } = req.body;
+    const unit = new TempMonUnit({ name, type, location, criticalMin, criticalMax, warningBuffer, targetTemp, notes, alertThresholdMinutes });
     await unit.save();
     console.log('✓ [TempMon] Created unit:', name);
     res.status(201).json(unit);
@@ -109,7 +109,7 @@ router.post('/units', requireAuth, async (req, res) => {
 // PUT /api/tempmon/units/:id
 router.put('/units/:id', requireAuth, async (req, res) => {
   try {
-    const fields = ['name', 'type', 'location', 'criticalMin', 'criticalMax', 'warningBuffer', 'targetTemp', 'notes', 'active'];
+    const fields = ['name', 'type', 'location', 'criticalMin', 'criticalMax', 'warningBuffer', 'targetTemp', 'notes', 'active', 'alertThresholdMinutes'];
     const update = {};
     fields.forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
     const unit = await TempMonUnit.findByIdAndUpdate(req.params.id, { $set: update }, { new: true, runValidators: true });
@@ -235,7 +235,7 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
       // Alert logic
       const alertType = evaluateAlertType(value, unit);
       if (alertType) {
-        const created = await maybeCreateAlert(unit, device, reading._id, alertType, value);
+        const created = await maybeCreateOrNotifyAlert(unit, device, reading._id, alertType, value);
         if (created) results.alerts++;
       } else {
         // Value back in range — auto-resolve open warning/critical alerts for this unit
@@ -261,24 +261,56 @@ function evaluateAlertType(value, unit) {
   return null;
 }
 
-async function maybeCreateAlert(unit, device, readingId, type, value) {
-  // Avoid duplicate open alerts — one per type per unit
-  const existing = await TempMonAlert.findOne({ unit: unit._id, type, status: { $in: ['open', 'acknowledged'] } });
-  if (existing) return false;
+async function maybeCreateOrNotifyAlert(unit, device, readingId, type, value) {
+  const thresholdMs = (unit.alertThresholdMinutes || 0) * 60 * 1000;
 
-  const alert = new TempMonAlert({ unit: unit._id, device: device._id, reading: readingId, type, value });
+  // Check for an existing open/acknowledged alert of the same type for this unit
+  const existing = await TempMonAlert.findOne({ unit: unit._id, type, status: { $in: ['open', 'acknowledged'] } });
+
+  if (existing) {
+    // Alert already exists — check if threshold duration has now been exceeded and push not yet sent
+    if (!existing.pushSentAt && thresholdMs > 0) {
+      const alertAgeMs = Date.now() - new Date(existing.createdAt).getTime();
+      if (alertAgeMs >= thresholdMs) {
+        await TempMonAlert.updateOne({ _id: existing._id }, { pushSentAt: new Date(), notificationSent: true });
+        const isCritical = type.startsWith('critical_');
+        const emoji = isCritical ? '🔴' : '🟡';
+        const label = buildAlertLabel(type, value, unit);
+        sendPush(`${emoji} ${unit.name}: ${label}`,
+          `Temperature has been out of range for ${unit.alertThresholdMinutes}+ min. Check the unit.`,
+          '/tempmon/alerts.html');
+        console.log(`✓ [TempMon] Push sent (threshold met ${unit.alertThresholdMinutes}min): ${type} for "${unit.name}" at ${value}°C`);
+      }
+    }
+    return false;
+  }
+
+  // No existing alert — create one
+  const sendImmediately = thresholdMs === 0;
+  const alert = new TempMonAlert({
+    unit: unit._id, device: device._id, reading: readingId, type, value,
+    pushSentAt:       sendImmediately ? new Date() : null,
+    notificationSent: sendImmediately
+  });
   await alert.save();
 
-  const isCritical = type.startsWith('critical_');
-  const emoji = isCritical ? '🔴' : '🟡';
-  const label = type === 'critical_high' ? `CRITICAL HIGH — ${value}°C (max ${unit.criticalMax}°C)`
-              : type === 'critical_low'  ? `CRITICAL LOW — ${value}°C (min ${unit.criticalMin}°C)`
-              : type === 'warning_high'  ? `Warning — temperature rising to ${value}°C`
-              :                            `Warning — temperature dropping to ${value}°C`;
-
-  sendPush(`${emoji} ${unit.name}: ${label}`, `Check the unit immediately. Alert created.`, '/tempmon/alerts.html');
-  console.log(`✓ [TempMon] Alert created: ${type} for "${unit.name}" at ${value}°C`);
+  if (sendImmediately) {
+    const isCritical = type.startsWith('critical_');
+    const emoji = isCritical ? '🔴' : '🟡';
+    sendPush(`${emoji} ${unit.name}: ${buildAlertLabel(type, value, unit)}`,
+      `Check the unit immediately. Alert created.`, '/tempmon/alerts.html');
+    console.log(`✓ [TempMon] Alert + push: ${type} for "${unit.name}" at ${value}°C`);
+  } else {
+    console.log(`✓ [TempMon] Alert created (push pending ${unit.alertThresholdMinutes}min threshold): ${type} for "${unit.name}" at ${value}°C`);
+  }
   return true;
+}
+
+function buildAlertLabel(type, value, unit) {
+  return type === 'critical_high' ? `CRITICAL HIGH — ${value}°C (max ${unit.criticalMax}°C)`
+       : type === 'critical_low'  ? `CRITICAL LOW — ${value}°C (min ${unit.criticalMin}°C)`
+       : type === 'warning_high'  ? `Warning — temperature rising to ${value}°C`
+       :                            `Warning — temperature dropping to ${value}°C`;
 }
 
 async function autoResolveAlerts(unitId) {
@@ -692,6 +724,112 @@ router.get('/reports/compliance', requireAuth, async (req, res) => {
 // SAMPLE DATA GENERATOR
 // ═══════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════
+// LIVE SIMULATION ENGINE
+// Injects one realistic reading per active unit on a configurable
+// interval. Admin-only. Useful when physical IoT devices aren't yet
+// on-site. Readings are tagged isSample:true.
+// ═══════════════════════════════════════════════════════════════════
+
+async function simTick() {
+  try {
+    const units = await TempMonUnit.find({ active: true }).lean();
+    for (const unit of units) {
+      // Ensure a sample device exists — auto-create if needed
+      let device = await TempMonDevice.findOne({ unit: unit._id, active: true }).lean();
+      if (!device) {
+        device = await TempMonDevice.create({
+          unit: unit._id, deviceId: `SIM_${unit._id}`,
+          label: 'Simulation Device', active: true
+        });
+        console.log(`✓ [TempMon] Auto-created sim device for unit: ${unit.name}`);
+      }
+
+      const target = unit.targetTemp != null ? unit.targetTemp : (unit.criticalMin + unit.criticalMax) / 2;
+      const range  = (unit.criticalMax - unit.criticalMin) / 6;
+
+      // Check if this unit has a planned excursion active in sim config
+      const excursionActive =
+        global._tempmonSimConfig?.excursionUnitId?.toString() === unit._id.toString() &&
+        global._tempmonSimConfig?.excursionActive;
+
+      let value;
+      if (excursionActive) {
+        const breach = unit.type === 'warmer'
+          ? unit.criticalMax + 1 + Math.random() * 4
+          : unit.criticalMin - 1 - Math.random() * 4;
+        value = Math.round(breach * 10) / 10;
+      } else {
+        const u1 = Math.random(), u2 = Math.random();
+        const z  = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+        value = Math.round((target + z * range) * 10) / 10;
+        const lo = unit.criticalMin + (unit.warningBuffer || 2) + 0.5;
+        const hi = unit.criticalMax - (unit.warningBuffer || 2) - 0.5;
+        value = Math.max(lo, Math.min(hi, value));
+      }
+
+      const flagged = value < unit.criticalMin || value > unit.criticalMax;
+      const reading = await TempMonReading.create({
+        device: device._id, unit: unit._id,
+        value, recordedAt: new Date(), receivedAt: new Date(),
+        gatewayId: 'SIM', flagged, isSample: true
+      });
+
+      await TempMonDevice.updateOne({ _id: device._id }, { lastSeenAt: new Date() });
+      await closeOfflineAlertIfOpen(device._id);
+
+      const alertType = evaluateAlertType(value, unit);
+      if (alertType) {
+        await maybeCreateOrNotifyAlert(unit, device, reading._id, alertType, value);
+      } else {
+        await autoResolveAlerts(unit._id);
+      }
+    }
+    console.log(`✓ [TempMon] Sim tick — ${units.length} unit(s) updated`);
+  } catch (err) {
+    console.error('✗ [TempMon] Sim tick error:', err.message);
+  }
+}
+
+// GET /api/tempmon/sim/status
+router.get('/sim/status', requireAuth, async (req, res) => {
+  res.json({
+    active:        !!global._tempmonSimActive,
+    intervalMinutes: global._tempmonSimConfig?.intervalMinutes || 2,
+    excursionUnitId: global._tempmonSimConfig?.excursionUnitId || null,
+    excursionActive: global._tempmonSimConfig?.excursionActive || false
+  });
+});
+
+// POST /api/tempmon/sim/start
+router.post('/sim/start', requireAuth, async (req, res) => {
+  if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { intervalMinutes = 2, excursionUnitId = null } = req.body;
+  const ms = Math.max(1, intervalMinutes) * 60 * 1000;
+
+  if (global._tempmonSimInterval) clearInterval(global._tempmonSimInterval);
+  global._tempmonSimConfig  = { intervalMinutes, excursionUnitId, excursionActive: !!excursionUnitId };
+  global._tempmonSimActive  = true;
+  global._tempmonSimInterval = setInterval(simTick, ms);
+
+  // Fire first tick immediately so there's no wait
+  simTick().catch(() => {});
+
+  console.log(`✓ [TempMon] Live sim started — interval: ${intervalMinutes}min, excursion unit: ${excursionUnitId || 'none'}`);
+  res.json({ ok: true, intervalMinutes, excursionUnitId });
+});
+
+// POST /api/tempmon/sim/stop
+router.post('/sim/stop', requireAuth, async (req, res) => {
+  if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  if (global._tempmonSimInterval) clearInterval(global._tempmonSimInterval);
+  global._tempmonSimActive   = false;
+  global._tempmonSimInterval = null;
+  global._tempmonSimConfig   = null;
+  console.log('✓ [TempMon] Live sim stopped');
+  res.json({ ok: true });
+});
+
 // POST /api/tempmon/sample-data — admin only
 router.post('/sample-data', requireAuth, async (req, res) => {
   try {
@@ -707,8 +845,16 @@ router.post('/sample-data', requireAuth, async (req, res) => {
     let totalInserted = 0;
 
     for (const unit of units) {
-      const devices = await TempMonDevice.find({ unit: unit._id, active: true });
-      if (devices.length === 0) continue;
+      let devices = await TempMonDevice.find({ unit: unit._id, active: true });
+      // Auto-create a sample device if the unit has none — allows testing without real hardware
+      if (devices.length === 0) {
+        const sampleDevice = await TempMonDevice.create({
+          unit: unit._id, deviceId: `SAMPLE_${unit._id}`,
+          label: 'Sample Device', active: true
+        });
+        devices = [sampleDevice];
+        console.log(`✓ [TempMon] Auto-created sample device for unit: ${unit.name}`);
+      }
 
       const now       = new Date();
       const startTime = new Date(now - hours * 60 * 60 * 1000);
@@ -826,11 +972,51 @@ async function checkOfflineDevices() {
   }
 }
 
-// Start the cron only once (guard against hot-reload double-start)
+// Start offline-check cron only once (guard against hot-reload double-start)
 if (!global._tempmonOfflineCronStarted) {
   global._tempmonOfflineCronStarted = true;
   setInterval(checkOfflineDevices, 5 * 60 * 1000);
   console.log('✓ [TempMon] Device offline cron started (5-min interval)');
+}
+
+// Also run a periodic check for pending push notifications (alerts waiting on threshold)
+// Runs every 60 seconds so threshold-based pushes fire within ~1 min of being due.
+async function checkPendingPushes() {
+  try {
+    // Find open alerts that haven't had a push sent yet
+    const pending = await TempMonAlert.find({
+      pushSentAt: null,
+      status:     { $in: ['open', 'acknowledged'] },
+      type:       { $in: ['critical_high', 'critical_low', 'warning_high', 'warning_low'] }
+    }).populate('unit').lean();
+
+    for (const alert of pending) {
+      const unit = alert.unit;
+      if (!unit) continue;
+      const thresholdMs = (unit.alertThresholdMinutes || 0) * 60 * 1000;
+      if (thresholdMs === 0) continue; // immediate alerts — handled at creation time
+
+      const alertAgeMs = Date.now() - new Date(alert.createdAt).getTime();
+      if (alertAgeMs >= thresholdMs) {
+        await TempMonAlert.updateOne({ _id: alert._id }, { pushSentAt: new Date(), notificationSent: true });
+        const isCritical = alert.type.startsWith('critical_');
+        const emoji = isCritical ? '🔴' : '🟡';
+        const label = buildAlertLabel(alert.type, alert.value, unit);
+        sendPush(`${emoji} ${unit.name}: ${label}`,
+          `Temperature has been out of range for ${unit.alertThresholdMinutes}+ min. Check the unit.`,
+          '/tempmon/alerts.html');
+        console.log(`✓ [TempMon] Pending push fired (threshold): ${alert.type} for "${unit.name}"`);
+      }
+    }
+  } catch (err) {
+    console.error('✗ [TempMon] Pending push check error:', err.message);
+  }
+}
+
+if (!global._tempmonPushCronStarted) {
+  global._tempmonPushCronStarted = true;
+  setInterval(checkPendingPushes, 60 * 1000); // every minute
+  console.log('✓ [TempMon] Pending push cron started (1-min interval)');
 }
 
 module.exports = router;

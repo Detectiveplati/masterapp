@@ -55,6 +55,13 @@ Temperature-controlled equipment (freezers, chillers, warmers) are CCPs in a cen
   targetTemp:     Number,             // ideal operating temp (for display)
   active:         Boolean,  default:true
   notes:          String
+  alertThresholdMinutes: Number, default:0
+  // 0 = fire push notification immediately on first critical reading.
+  // >0 = the unit must remain at critical temperature for this many consecutive
+  //      minutes before the push notification is sent. This prevents false
+  //      positives caused by brief door openings during normal kitchen operation
+  //      (e.g. chefs loading warmers or blast chillers).
+  //      Recommended: 20–30 min for kitchen equipment.
   // timestamps: true
 }
 ```
@@ -107,6 +114,8 @@ Temperature-controlled equipment (freezers, chillers, warmers) are CCPs in a cen
   resolvedAt:  Date
   correctiveAction: ObjectId → TempMonCorrectiveAction
   notificationSent: Boolean, default: false
+  pushSentAt:       Date, default: null
+  // null = push has not yet been sent (waiting for threshold duration)
   // timestamps: true
 }
 ```
@@ -243,21 +252,43 @@ The gateway POSTs JSON to `POST /api/tempmon/ingest`:
 ### Alert Trigger Logic (server-side, in the ingest handler)
 ```
 For each reading received:
-  1. Look up device → unit (with criticalMin/Max, warningBuffer)
-  2. Save ColdChainReading document
+  1. Look up device → unit (with criticalMin/Max, warningBuffer, alertThresholdMinutes)
+  2. Save TempMonReading document
   3. Update device.lastSeenAt and device.batteryPct
-  4. Evaluate:
+  4. Evaluate alert type:
        if value < criticalMin         → type = 'critical_low'
        if value > criticalMax         → type = 'critical_high'
        if value < criticalMin + buffer→ type = 'warning_low'
        if value > criticalMax - buffer→ type = 'warning_high'
   5. If alert type determined:
-       - Check for existing OPEN alert of same type for same unit (avoid duplicates)
-       - If none exists: create TempMonAlert, fire push notification
+       a. Check for existing OPEN alert of same type for same unit (avoid duplicates)
+       b. If none exists:
+            - Create TempMonAlert with pushSentAt = null (pending)
+            - If alertThresholdMinutes == 0: send push immediately, set pushSentAt = now
+            - If alertThresholdMinutes > 0: do NOT send push yet — wait for threshold
+       c. If alert already exists and pushSentAt is null:
+            - Calculate alert age = now – alert.createdAt
+            - If age ≥ alertThresholdMinutes × 60s: send push, set pushSentAt = now
   6. If value now IN range and there is an open warning/critical alert:
        - Auto-resolve the alert (status = 'resolved', resolvedAt = now)
          with a system note "Temperature returned to normal range automatically"
+       - NO push notification was ever sent if temp recovered before threshold —
+         this eliminates false positives from brief door openings.
 ```
+
+### Timed Threshold Design Rationale
+> During normal kitchen operation, a blast chiller door may be opened for 5–10 minutes
+> while chefs load product. This causes a transient temperature rise that resolves
+> itself once the door is closed. With `alertThresholdMinutes = 25`, no push notification
+> fires unless the temperature remains critical for 25 consecutive minutes, which
+> indicates a genuine equipment fault or a prolonged food safety risk.
+>
+> The alert record is **still created** immediately (for audit purposes) — only the
+> push notification delivery is deferred. If the temperature recovers before the
+> threshold is met, the alert is auto-resolved and the push is never sent.
+
+A background cron (`setInterval`, every 60 seconds) checks all open alerts with
+`pushSentAt: null` and fires the deferred push notification once the threshold age is met.
 
 ### Offline / Device-Offline Detection
 A cron job (scheduled via `setInterval` at server start, every 5 minutes) checks:
@@ -283,6 +314,17 @@ Reuse existing `services/notification-service.js` and `PushSubscription` model.
 
 Notifications go to all users with `tempmon` permission (same pattern as pest/maintenance alerts).
 
+### Timed Threshold — No False Positives
+Each unit has an `alertThresholdMinutes` setting (default `0` = immediate).
+
+| Setting | Behaviour |
+|---|---|
+| `0` | Push fires on the first critical reading (legacy / lab use) |
+| `20` | Push fires only after 20 consecutive minutes at critical temp |
+| `30` | Recommended for blast chillers and warmers in active kitchen service |
+
+The alert record is created immediately regardless of threshold (for audit trail). If the temperature recovers before the threshold, the alert auto-resolves with no push sent.
+
 ---
 
 ## 7. Sample Data Generator (`POST /api/tempmon/sample-data`)
@@ -299,6 +341,33 @@ Admin-only endpoint that back-fills realistic synthetic readings so the UI is fu
 
 ### Purge Endpoint
 `DELETE /api/tempmon/sample-data/:unitId` — removes all `isSample: true` readings for a unit.
+
+### Auto-Device Creation
+If a unit has no registered device, the sample data generator automatically creates a
+`SAMPLE_<unitId>` placeholder device so testing can begin immediately without manual device setup.
+The same auto-creation applies to the live simulation engine.
+
+---
+
+## 7b. Live Simulation Engine
+
+A server-side tick engine for testing in production-like conditions before physical IoT
+devices arrive on-site.
+
+### Endpoints (admin only)
+| Method | Path | Description |
+|---|---|---|
+| `GET`  | `/sim/status`  | Returns `{ active, intervalMinutes, excursionUnitId, excursionActive }` |
+| `POST` | `/sim/start`   | Start sim. Body: `{ intervalMinutes: 2, excursionUnitId }` |
+| `POST` | `/sim/stop`    | Stop sim |
+
+### Behaviour
+- Each tick injects one realistic reading per active unit using box-muller normal distribution.
+- Readings tagged `isSample: true` — excluded from compliance reports.
+- **Excursion mode**: set `excursionUnitId` to force one unit into critical temperature range, allowing push notification threshold testing without waiting for a real fault.
+- First tick fires immediately on start (no delay before first reading).
+- Sim state persists in `global._tempmonSimConfig` per server process.
+- Sim status is visible in the Setup → Sample Data tab.
 
 ---
 

@@ -19,7 +19,8 @@ const TempMonAlertSchema = new mongoose.Schema({
   resolvedAt:       { type: Date,   default: null },
   resolveNote:      { type: String, default: '' },     // e.g. "Temperature returned to normal range automatically"
   correctiveAction: { type: mongoose.Schema.Types.ObjectId, ref: 'TempMonCorrectiveAction', default: null },
-  notificationSent: { type: Boolean, default: false }
+  notificationSent: { type: Boolean, default: false },
+  pushSentAt:       { type: Date,    default: null }   // null = push not yet sent (pending threshold)
 }, { timestamps: true });
 
 TempMonAlertSchema.index({ status: 1, unit: 1 });
