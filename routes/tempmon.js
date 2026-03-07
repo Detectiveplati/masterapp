@@ -533,7 +533,7 @@ router.get('/calibrations/due', requireAuth, async (req, res) => {
 });
 
 // POST /api/tempmon/calibrations (multipart — optional cert upload)
-router.post('/calibrations', requireAuth, memUpload.single('certificate'), async (req, res) => {
+router.post('/calibrations', requireAuth, memUpload('certificate'), async (req, res) => {
   try {
     const { deviceId, calibratedBy, calibratedAt, referenceTemp, readingBefore,
             readingAfter, offsetApplied, nextDueDate, notes } = req.body;
