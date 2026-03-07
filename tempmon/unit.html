@@ -10,6 +10,8 @@
   <script src="/js/lib/dom.js"></script>
   <script src="/js/lib/http.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2/hammer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2/dist/chartjs-plugin-zoom.min.js"></script>
   <style>
     main { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
     .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 700; font-size: 0.88rem; text-decoration: none; margin-bottom: 18px; }
@@ -37,7 +39,8 @@
     .limit-badge.max  { background: rgba(198,40,40,.1);   color: #c62828; }
     .limit-badge.tgt  { background: rgba(46,125,50,.1);   color: #2e7d32; }
     /* Chart */
-    .chart-wrap { position: relative; height: 280px; }
+    .chart-wrap { position: relative; height: 320px; }
+    .chart-hint { font-size: 0.76rem; color: var(--muted); margin-top: 8px; text-align: center; }
     /* Readings table */
     .readings-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     .readings-table th { padding: 9px 12px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); border-bottom: 2px solid var(--border); text-align: left; font-weight: 800; }
@@ -92,9 +95,11 @@
       <label>From <input type="date" id="fromDate"></label>
       <label>To   <input type="date" id="toDate"></label>
       <button class="btn btn-primary btn-sm" onclick="loadChart()">Apply</button>
+      <button class="btn btn-outline btn-sm" id="resetZoomBtn" onclick="resetZoom()" style="display:none">🔍 Reset Zoom</button>
       <a id="exportBtn" href="#" class="btn btn-outline btn-sm" style="margin-left:auto" onclick="exportCSV(event)">⬇️ Export CSV</a>
     </div>
     <div class="chart-wrap"><canvas id="tempChart"></canvas></div>
+    <div class="chart-hint">🖱️ Drag to zoom into a time range &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Click <strong>Reset Zoom</strong> to restore</div>
   </div>
 
   <!-- Alerts -->
@@ -129,7 +134,8 @@
   const API   = '/api/tempmon';
   const unitId = new URLSearchParams(location.search).get('id');
   let unit     = null;
-  let chartInst = null;
+  let chartInst    = null;
+  let chartReadings = [];   // kept for tooltip access
 
   if (!unitId) { alert('No unit ID specified.'); location.href = '/tempmon/'; }
 
@@ -196,7 +202,9 @@
     const data   = readings.map(r => r.value);
     const colors = readings.map(r => r.flagged ? 'rgba(198,40,40,0.8)' : 'rgba(39,174,96,0.8)');
 
+    chartReadings = readings;
     if (chartInst) chartInst.destroy();
+    document.getElementById('resetZoomBtn').style.display = 'none';
     const ctx = document.getElementById('tempChart').getContext('2d');
     chartInst = new Chart(ctx, {
       type: 'line',
@@ -209,6 +217,7 @@
           backgroundColor: 'rgba(39,174,96,0.08)',
           pointBackgroundColor: colors,
           pointRadius: readings.length > 200 ? 0 : 3,
+          pointHoverRadius: 5,
           tension: 0.3,
           fill: true
         }]
@@ -216,9 +225,46 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: ctx => ctx.parsed.y.toFixed(1) + '°C' } }
+          tooltip: {
+            backgroundColor: 'rgba(20,20,30,0.88)',
+            padding: 10,
+            callbacks: {
+              title: items => {
+                const rd = chartReadings[items[0].dataIndex];
+                return rd ? new Date(rd.recordedAt).toLocaleString() : '';
+              },
+              label: item => {
+                const rd = chartReadings[item.dataIndex];
+                if (!rd) return item.parsed.y.toFixed(1) + '°C';
+                const val    = rd.value.toFixed(1) + '°C';
+                const isWarn = !rd.flagged &&
+                  (rd.value < unit.criticalMin + (unit.warningBuffer || 2) ||
+                   rd.value > unit.criticalMax - (unit.warningBuffer || 2));
+                const badge  = rd.flagged ? '⚠️ Out of range' : isWarn ? '🟡 Warning zone' : '✅ In range';
+                const extras = rd.isSample ? ' · (sample)' : '';
+                return [' 🌡  ' + val, ' ' + badge + extras];
+              }
+            }
+          },
+          zoom: {
+            zoom: {
+              drag: {
+                enabled:         true,
+                backgroundColor: 'rgba(2,136,209,0.12)',
+                borderColor:     'rgba(2,136,209,0.55)',
+                borderWidth:     1
+              },
+              wheel:  { enabled: true },
+              pinch:  { enabled: true },
+              mode:   'x',
+              onZoom: () => { document.getElementById('resetZoomBtn').style.display = ''; }
+            },
+            pan:  { enabled: true, mode: 'x' },
+            limits: { x: { minRange: 2 } }
+          }
         },
         scales: {
           y: {
@@ -229,13 +275,7 @@
             ticks: { maxTicksLimit: 10, maxRotation: 0 },
             grid: { display: false }
           }
-        },
-        annotation: unit ? {
-          annotations: [
-            { type: 'line', yMin: unit.criticalMin, yMax: unit.criticalMin, borderColor: '#1565c0', borderWidth: 1.5, borderDash: [4,4], label: { content: 'Min ' + unit.criticalMin + '°C', display: true, position: 'end', font: { size: 10 } } },
-            { type: 'line', yMin: unit.criticalMax, yMax: unit.criticalMax, borderColor: '#c62828', borderWidth: 1.5, borderDash: [4,4], label: { content: 'Max ' + unit.criticalMax + '°C', display: true, position: 'end', font: { size: 10 } } }
-          ]
-        } : {}
+        }
       }
     });
 
@@ -250,6 +290,11 @@
             <td>${rd.flagged ? '<span class="flag">⚠️ Out of range</span>' : '✅'} ${rd.isSample ? '<span class="sample-tag">(sample)</span>' : ''}</td>
           </tr>`).join('')
       : '<tr><td colspan="4" class="no-data">No readings in selected range</td></tr>';
+  }
+
+  function resetZoom() {
+    if (chartInst) chartInst.resetZoom();
+    document.getElementById('resetZoomBtn').style.display = 'none';
   }
 
   async function loadAlerts() {
