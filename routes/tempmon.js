@@ -733,7 +733,9 @@ router.get('/reports/compliance', requireAuth, async (req, res) => {
 
 async function simTick() {
   try {
-    const units = await TempMonUnit.find({ active: true }).lean();
+    const allUnits = await TempMonUnit.find({ active: true }).lean();
+    const disabledIds = (global._tempmonSimConfig?.disabledUnitIds || []).map(String);
+    const units = allUnits.filter(u => !disabledIds.includes(u._id.toString()));
     for (const unit of units) {
       // Ensure a sample device exists — auto-create if needed
       let device = await TempMonDevice.findOne({ unit: unit._id, active: true }).lean();
@@ -748,16 +750,14 @@ async function simTick() {
       const target = unit.targetTemp != null ? unit.targetTemp : (unit.criticalMin + unit.criticalMax) / 2;
       const range  = (unit.criticalMax - unit.criticalMin) / 6;
 
-      // Check if this unit has a planned excursion active in sim config
+      // Check if this unit is in out-of-range (excursion) mode
       const excursionUnitIds = global._tempmonSimConfig?.excursionUnitIds || [];
       const excursionActive  = excursionUnitIds.includes(unit._id.toString());
 
       let value;
       if (excursionActive) {
-        const breach = unit.type === 'warmer'
-          ? unit.criticalMax + 1 + Math.random() * 4
-          : unit.criticalMin - 1 - Math.random() * 4;
-        value = Math.round(breach * 10) / 10;
+        // Always breach HIGH (above criticalMax) regardless of unit type
+        value = Math.round((unit.criticalMax + 1 + Math.random() * 4) * 10) / 10;
       } else {
         const u1 = Math.random(), u2 = Math.random();
         const z  = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
@@ -784,7 +784,7 @@ async function simTick() {
         await autoResolveAlerts(unit._id);
       }
     }
-    console.log(`✓ [TempMon] Sim tick — ${units.length} unit(s) updated`);
+    console.log(`✓ [TempMon] Sim tick — ${units.length}/${allUnits.length} unit(s) active`);
   } catch (err) {
     console.error('✗ [TempMon] Sim tick error:', err.message);
   }
@@ -795,26 +795,30 @@ router.get('/sim/status', requireAuth, async (req, res) => {
   res.json({
     active:           !!global._tempmonSimActive,
     intervalMinutes:  global._tempmonSimConfig?.intervalMinutes || 2,
-    excursionUnitIds: global._tempmonSimConfig?.excursionUnitIds || []
+    excursionUnitIds: global._tempmonSimConfig?.excursionUnitIds || [],
+    disabledUnitIds:  global._tempmonSimConfig?.disabledUnitIds  || []
   });
 });
 
 // POST /api/tempmon/sim/start
 router.post('/sim/start', requireAuth, async (req, res) => {
   if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const { intervalMinutes = 2, excursionUnitIds = [] } = req.body;
+  const { intervalMinutes = 2, excursionUnitIds = [], disabledUnitIds = [] } = req.body;
   const ms = Math.max(1, intervalMinutes) * 60 * 1000;
 
   if (global._tempmonSimInterval) clearInterval(global._tempmonSimInterval);
-  global._tempmonSimConfig  = { intervalMinutes, excursionUnitIds: excursionUnitIds.map(String) };
+  global._tempmonSimConfig  = {
+    intervalMinutes,
+    excursionUnitIds: excursionUnitIds.map(String),
+    disabledUnitIds:  disabledUnitIds.map(String)
+  };
   global._tempmonSimActive  = true;
   global._tempmonSimInterval = setInterval(simTick, ms);
 
-  // Fire first tick immediately so there's no wait
   simTick().catch(() => {});
 
-  console.log(`✓ [TempMon] Live sim started — interval: ${intervalMinutes}min, excursion units: ${excursionUnitIds.length}`);
-  res.json({ ok: true, intervalMinutes, excursionUnitIds });
+  console.log(`✓ [TempMon] Live sim started — interval: ${intervalMinutes}min, excursion: ${excursionUnitIds.length}, disabled: ${disabledUnitIds.length}`);
+  res.json({ ok: true, intervalMinutes, excursionUnitIds, disabledUnitIds });
 });
 
 // POST /api/tempmon/sim/stop
@@ -828,22 +832,29 @@ router.post('/sim/stop', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/tempmon/sim/unit/:unitId/mode — toggle a unit's sim mode on the fly { mode: 'normal'|'critical' }
+// POST /api/tempmon/sim/unit/:unitId/mode — toggle a unit's sim mode on the fly { mode: 'disabled'|'normal'|'critical' }
 router.post('/sim/unit/:unitId/mode', requireAuth, async (req, res) => {
   if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   if (!global._tempmonSimActive) return res.status(400).json({ error: 'Simulation not running' });
   const { mode } = req.body;
   const unitId = req.params.unitId;
-  if (!global._tempmonSimConfig) global._tempmonSimConfig = { excursionUnitIds: [] };
-  const ids = global._tempmonSimConfig.excursionUnitIds || [];
-  if (mode === 'critical') {
-    if (!ids.includes(unitId)) ids.push(unitId);
-    global._tempmonSimConfig.excursionUnitIds = ids;
-  } else {
-    global._tempmonSimConfig.excursionUnitIds = ids.filter(id => id !== unitId);
-  }
+  if (!global._tempmonSimConfig) global._tempmonSimConfig = { excursionUnitIds: [], disabledUnitIds: [] };
+  const excIds  = global._tempmonSimConfig.excursionUnitIds || [];
+  const disIds  = global._tempmonSimConfig.disabledUnitIds  || [];
+
+  // Remove from both lists first, then add to correct list
+  global._tempmonSimConfig.excursionUnitIds = excIds.filter(id => id !== unitId);
+  global._tempmonSimConfig.disabledUnitIds  = disIds.filter(id => id !== unitId);
+
+  if (mode === 'critical')  global._tempmonSimConfig.excursionUnitIds.push(unitId);
+  if (mode === 'disabled')  global._tempmonSimConfig.disabledUnitIds.push(unitId);
+
   console.log(`✓ [TempMon] Sim unit ${unitId} → ${mode}`);
-  res.json({ ok: true, excursionUnitIds: global._tempmonSimConfig.excursionUnitIds });
+  res.json({
+    ok: true,
+    excursionUnitIds: global._tempmonSimConfig.excursionUnitIds,
+    disabledUnitIds:  global._tempmonSimConfig.disabledUnitIds
+  });
 });
 
 // POST /api/tempmon/sample-data — admin only

@@ -332,8 +332,9 @@
     });
     // Rebuild sim unit table whenever unit list changes
     const excursionUnitIds = Object.entries(simUnitModes).filter(([, m]) => m === 'critical').map(([id]) => id);
+    const disabledUnitIds  = Object.entries(simUnitModes).filter(([, m]) => m === 'disabled').map(([id]) => id);
     const simRunning = document.getElementById('simStopBtn').style.display !== 'none';
-    renderSimUnitTable(excursionUnitIds, simRunning);
+    renderSimUnitTable(excursionUnitIds, disabledUnitIds, simRunning);
   }
 
   async function addUnit() {
@@ -501,50 +502,61 @@
   }
 
   // ── Live Simulation ──────────────────────────────────────────────
-  const simUnitModes = {}; // unitId → 'normal'|'critical' (staged before start)
+  // Per-unit mode: 'disabled' | 'normal' | 'critical'
+  const simUnitModes = {};
 
   async function loadSimStatus() {
     try {
       const r = await apiFetch(API + '/sim/status');
       const s = await r.json();
-      setSimUI(s.active, s.intervalMinutes, s.excursionUnitIds || []);
+      setSimUI(s.active, s.intervalMinutes, s.excursionUnitIds || [], s.disabledUnitIds || []);
     } catch (_) {}
   }
 
-  function setSimUI(active, intervalMinutes, excursionUnitIds = []) {
+  function setSimUI(active, intervalMinutes, excursionUnitIds = [], disabledUnitIds = []) {
     document.getElementById('simStatusBanner').style.display = active ? 'block' : 'none';
     document.getElementById('simStartBtn').style.display     = active ? 'none'  : '';
     document.getElementById('simStopBtn').style.display      = active ? ''      : 'none';
     if (active) document.getElementById('simInterval').value = intervalMinutes || 2;
-    renderSimUnitTable(excursionUnitIds, active);
+    renderSimUnitTable(excursionUnitIds, disabledUnitIds, active);
   }
 
-  function renderSimUnitTable(excursionUnitIds = [], simRunning = false) {
+  function renderSimUnitTable(excursionUnitIds = [], disabledUnitIds = [], simRunning = false) {
     const wrap = document.getElementById('simUnitTable');
     if (!units.length) {
       wrap.innerHTML = '<div style="color:var(--muted);font-size:0.85rem">No active units. Add a unit in the Units tab first.</div>';
       return;
     }
-    // Sync incoming server excursion list into staging map
-    excursionUnitIds.map(String).forEach(id => { simUnitModes[id] = 'critical'; });
+    // Sync server state into local staging map
+    units.forEach(u => {
+      const id = u._id.toString();
+      if (disabledUnitIds.map(String).includes(id))       simUnitModes[id] = 'disabled';
+      else if (excursionUnitIds.map(String).includes(id)) simUnitModes[id] = 'critical';
+      else if (!simUnitModes[id])                         simUnitModes[id] = 'normal';
+    });
 
     const rows = units.map(u => {
-      const isCritical = simUnitModes[u._id] === 'critical' ||
-                         excursionUnitIds.map(String).includes(u._id.toString());
-      if (!simUnitModes[u._id]) simUnitModes[u._id] = 'normal';
+      const mode = simUnitModes[u._id] || 'normal';
       const icon = { freezer: '🧊', chiller: '❄️', warmer: '🔥', ambient: '🌡️' }[u.type] || '🌡️';
+      const btn = (label, val, bg, fg) =>
+        `<button onclick="toggleUnitMode('${u._id}','${val}')"
+          style="padding:5px 13px;font-size:0.79rem;font-weight:700;cursor:pointer;border:none;
+          background:${mode === val ? bg : '#f5f5f5'};color:${mode === val ? fg : 'var(--muted)'}">${label}</button>`;
       return `<tr style="border-bottom:1px solid var(--border)">
         <td style="padding:10px 14px;font-weight:700">${icon} ${escHtml(u.name)}</td>
         <td style="padding:10px 14px;color:var(--muted);font-size:0.82rem;text-transform:capitalize">${u.type}</td>
-        <td style="padding:10px 14px" id="simlatest-${u._id}"><span style="color:var(--muted);font-size:0.82rem">—</span></td>
+        <td style="padding:10px 14px" id="simlatest-${u._id}">
+          ${mode === 'disabled'
+            ? '<span style="color:var(--muted);font-size:0.8rem">⏸ Paused</span>'
+            : '<span style="color:var(--muted);font-size:0.82rem">—</span>'}
+        </td>
         <td style="padding:10px 14px">
           <div style="display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
-            <button onclick="toggleUnitMode('${u._id}','normal')"
-              style="padding:5px 14px;font-size:0.8rem;font-weight:700;cursor:pointer;border:none;
-              background:${!isCritical ? '#2e7d32' : '#f5f5f5'};color:${!isCritical ? '#fff' : 'var(--muted)'}">✅ Normal</button>
-            <button onclick="toggleUnitMode('${u._id}','critical')"
-              style="padding:5px 14px;font-size:0.8rem;font-weight:700;cursor:pointer;border:none;border-left:1px solid var(--border);
-              background:${isCritical ? '#c62828' : '#f5f5f5'};color:${isCritical ? '#fff' : 'var(--muted)'}">⚠️ Out of Range</button>
+            ${btn('⏸ Off',      'disabled', '#616161', '#fff')}
+            <span style="border-left:1px solid var(--border)"></span>
+            ${btn('✅ Normal',   'normal',   '#2e7d32', '#fff')}
+            <span style="border-left:1px solid var(--border)"></span>
+            ${btn('⚠️ Out of Range', 'critical', '#c62828', '#fff')}
           </div>
         </td>
       </tr>`;
@@ -567,6 +579,7 @@
 
   async function refreshSimLatestTemps() {
     for (const u of units) {
+      if ((simUnitModes[u._id] || 'normal') === 'disabled') continue;
       try {
         const r    = await apiFetch(API + '/readings/' + u._id + '?limit=1');
         const data = await r.json();
@@ -597,23 +610,26 @@
       } catch (_) {}
     }
     const excursionUnitIds = Object.entries(simUnitModes).filter(([, m]) => m === 'critical').map(([id]) => id);
-    renderSimUnitTable(excursionUnitIds, simRunning);
+    const disabledUnitIds  = Object.entries(simUnitModes).filter(([, m]) => m === 'disabled').map(([id]) => id);
+    renderSimUnitTable(excursionUnitIds, disabledUnitIds, simRunning);
   }
 
   async function startSim() {
     const intervalMinutes  = parseInt(document.getElementById('simInterval').value) || 2;
     const excursionUnitIds = Object.entries(simUnitModes).filter(([, m]) => m === 'critical').map(([id]) => id);
+    const disabledUnitIds  = Object.entries(simUnitModes).filter(([, m]) => m === 'disabled').map(([id]) => id);
     const btn = document.getElementById('simStartBtn');
     btn.disabled = true; btn.textContent = 'Starting…';
     try {
       const r = await apiFetch(API + '/sim/start', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intervalMinutes, excursionUnitIds })
+        body: JSON.stringify({ intervalMinutes, excursionUnitIds, disabledUnitIds })
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error);
-      setSimUI(true, intervalMinutes, excursionUnitIds);
-      showNotice('simNotice', 'ok', `⚡ Sim started — every ${intervalMinutes} min · ${excursionUnitIds.length} unit(s) in out-of-range mode`);
+      const activeCount = units.length - disabledUnitIds.length;
+      setSimUI(true, intervalMinutes, excursionUnitIds, disabledUnitIds);
+      showNotice('simNotice', 'ok', `⚡ Sim started — every ${intervalMinutes} min · ${activeCount} unit(s) active · ${excursionUnitIds.length} out-of-range`);
     } catch (err) { showNotice('simNotice', 'err', '❌ ' + err.message); }
     finally { btn.disabled = false; btn.textContent = '▶️ Start Live Sim'; }
   }
@@ -624,7 +640,7 @@
     try {
       await apiFetch(API + '/sim/stop', { method: 'POST' });
       Object.keys(simUnitModes).forEach(k => { simUnitModes[k] = 'normal'; });
-      setSimUI(false, null, []);
+      setSimUI(false, null, [], []);
       showNotice('simNotice', 'ok', '⏹️ Live simulation stopped');
     } catch (err) { showNotice('simNotice', 'err', '❌ ' + err.message); }
     finally { btn.disabled = false; btn.textContent = '⏹️ Stop'; }
