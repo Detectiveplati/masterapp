@@ -201,6 +201,11 @@ app.use('/pest', requirePageAccess('pest'), express.static(path.join(__dirname, 
 app.get('/pest',       requirePageAccess('pest'), (req, res) => res.sendFile(path.join(__dirname, 'pest', 'index.html')));
 app.get('/pest/',      requirePageAccess('pest'), (req, res) => res.sendFile(path.join(__dirname, 'pest', 'index.html')));
 
+// Equipment Temperature Monitoring — requires 'tempmon' permission
+app.use('/tempmon', requirePageAccess('tempmon'), express.static(path.join(__dirname, 'tempmon'), noCacheHtml));
+app.get('/tempmon',  requirePageAccess('tempmon'), (req, res) => res.sendFile(path.join(__dirname, 'tempmon', 'index.html')));
+app.get('/tempmon/', requirePageAccess('tempmon'), (req, res) => res.sendFile(path.join(__dirname, 'tempmon', 'index.html')));
+
 // Procurement — requires 'procurement' permission
 app.use('/procurement', requirePageAccess('procurement'), express.static(path.join(__dirname, 'procurement'), noCacheHtml));
 app.get('/procurement',             requirePageAccess('procurement'), (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'index.html')));
