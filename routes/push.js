@@ -112,7 +112,7 @@ async function sendPushToAll({ title, message, url = '/' }) {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: sub.keys },
         payload,
-        { TTL: 3600 }
+        { TTL: 259200 } // 3 days — gives APNs time to deliver to sleeping/suspended iOS devices
       );
       sent++;
     } catch (err) {
@@ -157,7 +157,7 @@ async function sendPushToPermission(permission, { title, message, url = '/' }) {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: sub.keys },
         payload,
-        { TTL: 3600 }
+        { TTL: 259200 } // 3 days — gives APNs time to deliver to sleeping/suspended iOS devices
       );
       sent++;
     } catch (err) {
