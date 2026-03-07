@@ -126,6 +126,28 @@
   </div>
 </div>
 
+<!-- Threshold Edit Modal -->
+<div class="modal-overlay" id="threshModal" onclick="if(event.target===this)closeThresh()">
+  <div class="modal-box" style="width:min(96vw,400px)">
+    <h3>⏱️ Push Notification Threshold</h3>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:16px">
+      Set how long a temperature must remain in the critical zone before a push notification is sent.
+      Set to <strong>0</strong> to notify immediately on every breach.
+    </p>
+    <input type="hidden" id="threshUnitId">
+    <input type="hidden" id="threshAlertId">
+    <div class="fg">
+      <label>Notify after (minutes) &nbsp;<span style="color:var(--muted);font-weight:400;font-size:0.8rem">0 = immediately</span></label>
+      <input type="number" id="threshMinutes" min="0" max="120" step="1" placeholder="e.g. 20" style="width:100%">
+    </div>
+    <div id="threshErr" style="color:#c62828;font-size:0.82rem;display:none;margin-bottom:8px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeThresh()">Cancel</button>
+      <button class="btn btn-primary" id="threshSaveBtn" onclick="saveThreshold()">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const API = '/api/tempmon';
   let currentUser = null;
@@ -210,6 +232,13 @@
               · <span class="badge-status ${sCls}">${a.status.toUpperCase()}</span>
               ${a.acknowledgedBy ? `· Acked by ${escHtml(a.acknowledgedBy)}` : ''}
               ${a.resolvedBy     ? `· Resolved by ${escHtml(a.resolvedBy)}`   : ''}
+              ${a.unit && a.status !== 'resolved' ? `
+              <br><span style="display:inline-flex;align-items:center;gap:6px;margin-top:5px;font-size:0.77rem">
+                ⏱️ Push notification after:
+                <strong id="thresh-lbl-${a._id}">${a.unit.alertThresholdMinutes > 0 ? a.unit.alertThresholdMinutes + ' min' : 'Immediately'}</strong>
+                <button class="btn btn-sm btn-outline" style="padding:2px 9px;font-size:0.72rem;border-width:1px"
+                  onclick="openThresholdEdit('${a.unit._id}','${a._id}',${a.unit.alertThresholdMinutes || 0})">&#x270F; Edit</button>
+              </span>` : ''}
             </div>
           </div>
           <div class="alert-actions">${actions.join('')}</div>
@@ -289,6 +318,51 @@
       document.getElementById('caErr').style.display = 'block';
     } finally {
       document.getElementById('caSaveBtn').disabled = false;
+    }
+  }
+
+  function openThresholdEdit(unitId, alertId, currentMinutes) {
+    document.getElementById('threshUnitId').value   = unitId;
+    document.getElementById('threshAlertId').value  = alertId;
+    document.getElementById('threshMinutes').value  = currentMinutes;
+    document.getElementById('threshErr').style.display = 'none';
+    document.getElementById('threshModal').classList.add('open');
+    setTimeout(() => document.getElementById('threshMinutes').focus(), 50);
+  }
+  function closeThresh() { document.getElementById('threshModal').classList.remove('open'); }
+
+  async function saveThreshold() {
+    const unitId  = document.getElementById('threshUnitId').value;
+    const alertId = document.getElementById('threshAlertId').value;
+    const minutes = parseInt(document.getElementById('threshMinutes').value);
+    if (isNaN(minutes) || minutes < 0) {
+      document.getElementById('threshErr').textContent = 'Enter a number ≥ 0.';
+      document.getElementById('threshErr').style.display = 'block';
+      return;
+    }
+    document.getElementById('threshSaveBtn').disabled = true;
+    try {
+      const r = await apiFetch('/api/tempmon/units/' + unitId, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alertThresholdMinutes: minutes })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      // Update label in page without full reload
+      const lbl = document.getElementById('thresh-lbl-' + alertId);
+      if (lbl) lbl.textContent = minutes > 0 ? minutes + ' min' : 'Immediately';
+      // Also update any other alerts for the same unit
+      document.querySelectorAll('[id^="thresh-lbl-"]').forEach(el => {
+        const row = el.closest('.alert-row');
+        if (row && row.querySelector(`[onclick*="'${unitId}'"]`)) {
+          el.textContent = minutes > 0 ? minutes + ' min' : 'Immediately';
+        }
+      });
+      closeThresh();
+    } catch (err) {
+      document.getElementById('threshErr').textContent = err.message;
+      document.getElementById('threshErr').style.display = 'block';
+    } finally {
+      document.getElementById('threshSaveBtn').disabled = false;
     }
   }
 

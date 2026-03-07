@@ -160,18 +160,19 @@
     <div class="section-card">
       <h2>🔴 Live Simulation</h2>
       <p style="color:var(--muted);font-size:0.88rem;margin-bottom:18px">
-        Injects one real-time reading per active unit every <em>N</em> minutes — simulates live IoT data so you can test
-        alerts and the dashboard without hardware. Use the <strong>Trigger Excursion</strong> option to force a selected
-        unit into critical temperature range to test push notifications.
+        Injects one real-time reading per active unit every <em>N</em> minutes — simulates live IoT data without hardware.
+        Set each unit to <strong>Normal</strong> (within acceptable range) or <strong>Out&nbsp;of&nbsp;Range</strong>
+        (critical breach) independently to test alerts and push notifications per device.
       </p>
       <div id="simStatusBanner" style="display:none;padding:10px 14px;border-radius:8px;font-size:0.88rem;font-weight:700;margin-bottom:14px;background:rgba(39,174,96,.12);color:#2e7d32">⚡ Live simulation is running</div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
-        <div class="fg"><label>Interval (min)</label><input id="simInterval" type="number" value="2" min="1" max="60" style="width:80px"></div>
-        <div class="fg"><label>Trigger excursion on unit (optional)</label>
-          <select id="simExcUnit"><option value="">— normal temps —</option></select>
-        </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+        <div class="fg" style="margin:0"><label>Interval (min)</label><input id="simInterval" type="number" value="2" min="1" max="60" style="width:80px"></div>
         <button class="btn btn-primary" id="simStartBtn" onclick="startSim()">▶️ Start Live Sim</button>
         <button class="btn btn-outline" id="simStopBtn" onclick="stopSim()" style="display:none">⏹️ Stop</button>
+        <button class="btn btn-outline btn-sm" id="simRefreshBtn" onclick="refreshSimLatestTemps()" style="margin-left:auto">🔄 Refresh Readings</button>
+      </div>
+      <div id="simUnitTable" style="margin-bottom:14px">
+        <div style="color:var(--muted);font-size:0.85rem;font-style:italic">Loading units…</div>
       </div>
       <div id="simNotice" class="notice"></div>
     </div>
@@ -323,14 +324,16 @@
   }
 
   function populateUnitSelectors() {
-    ['dUnit','sampleUnit','simExcUnit'].forEach(id => {
+    ['dUnit', 'sampleUnit'].forEach(id => {
       const sel = document.getElementById(id);
       if (!sel) return;
-      const existingOptions = (id === 'sampleUnit') ? '<option value="">All Units</option>'
-                            : (id === 'simExcUnit') ? '<option value="">— normal temps —</option>'
-                            : '<option value="">Select unit…</option>';
-      sel.innerHTML = existingOptions + units.map(u => `<option value="${u._id}">${escHtml(u.name)}</option>`).join('');
+      const placeholder = (id === 'sampleUnit') ? '<option value="">All Units</option>' : '<option value="">Select unit…</option>';
+      sel.innerHTML = placeholder + units.map(u => `<option value="${u._id}">${escHtml(u.name)}</option>`).join('');
     });
+    // Rebuild sim unit table whenever unit list changes
+    const excursionUnitIds = Object.entries(simUnitModes).filter(([, m]) => m === 'critical').map(([id]) => id);
+    const simRunning = document.getElementById('simStopBtn').style.display !== 'none';
+    renderSimUnitTable(excursionUnitIds, simRunning);
   }
 
   async function addUnit() {
@@ -498,38 +501,119 @@
   }
 
   // ── Live Simulation ──────────────────────────────────────────────
+  const simUnitModes = {}; // unitId → 'normal'|'critical' (staged before start)
+
   async function loadSimStatus() {
     try {
       const r = await apiFetch(API + '/sim/status');
       const s = await r.json();
-      setSimUI(s.active, s.intervalMinutes, s.excursionUnitId);
+      setSimUI(s.active, s.intervalMinutes, s.excursionUnitIds || []);
     } catch (_) {}
   }
 
-  function setSimUI(active, intervalMinutes, excursionUnitId) {
+  function setSimUI(active, intervalMinutes, excursionUnitIds = []) {
     document.getElementById('simStatusBanner').style.display = active ? 'block' : 'none';
-    document.getElementById('simStartBtn').style.display = active ? 'none' : '';
-    document.getElementById('simStopBtn').style.display = active ? '' : 'none';
-    if (active) {
-      document.getElementById('simInterval').value = intervalMinutes || 2;
-      if (excursionUnitId) document.getElementById('simExcUnit').value = excursionUnitId;
+    document.getElementById('simStartBtn').style.display     = active ? 'none'  : '';
+    document.getElementById('simStopBtn').style.display      = active ? ''      : 'none';
+    if (active) document.getElementById('simInterval').value = intervalMinutes || 2;
+    renderSimUnitTable(excursionUnitIds, active);
+  }
+
+  function renderSimUnitTable(excursionUnitIds = [], simRunning = false) {
+    const wrap = document.getElementById('simUnitTable');
+    if (!units.length) {
+      wrap.innerHTML = '<div style="color:var(--muted);font-size:0.85rem">No active units. Add a unit in the Units tab first.</div>';
+      return;
+    }
+    // Sync incoming server excursion list into staging map
+    excursionUnitIds.map(String).forEach(id => { simUnitModes[id] = 'critical'; });
+
+    const rows = units.map(u => {
+      const isCritical = simUnitModes[u._id] === 'critical' ||
+                         excursionUnitIds.map(String).includes(u._id.toString());
+      if (!simUnitModes[u._id]) simUnitModes[u._id] = 'normal';
+      const icon = { freezer: '🧊', chiller: '❄️', warmer: '🔥', ambient: '🌡️' }[u.type] || '🌡️';
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:10px 14px;font-weight:700">${icon} ${escHtml(u.name)}</td>
+        <td style="padding:10px 14px;color:var(--muted);font-size:0.82rem;text-transform:capitalize">${u.type}</td>
+        <td style="padding:10px 14px" id="simlatest-${u._id}"><span style="color:var(--muted);font-size:0.82rem">—</span></td>
+        <td style="padding:10px 14px">
+          <div style="display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
+            <button onclick="toggleUnitMode('${u._id}','normal')"
+              style="padding:5px 14px;font-size:0.8rem;font-weight:700;cursor:pointer;border:none;
+              background:${!isCritical ? '#2e7d32' : '#f5f5f5'};color:${!isCritical ? '#fff' : 'var(--muted)'}">✅ Normal</button>
+            <button onclick="toggleUnitMode('${u._id}','critical')"
+              style="padding:5px 14px;font-size:0.8rem;font-weight:700;cursor:pointer;border:none;border-left:1px solid var(--border);
+              background:${isCritical ? '#c62828' : '#f5f5f5'};color:${isCritical ? '#fff' : 'var(--muted)'}">⚠️ Out of Range</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    wrap.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:0.88rem;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <thead style="background:#f8f8f8">
+          <tr>
+            <th style="padding:9px 14px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:800">Unit</th>
+            <th style="padding:9px 14px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:800">Type</th>
+            <th style="padding:9px 14px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:800">Latest Reading</th>
+            <th style="padding:9px 14px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:800">Simulation Mode</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    refreshSimLatestTemps();
+  }
+
+  async function refreshSimLatestTemps() {
+    for (const u of units) {
+      try {
+        const r    = await apiFetch(API + '/readings/' + u._id + '?limit=1');
+        const data = await r.json();
+        const el   = document.getElementById('simlatest-' + u._id);
+        if (!el) continue;
+        if (data.length) {
+          const rd  = data[0];
+          const col = rd.flagged ? '#c62828' : '#2e7d32';
+          const ts  = new Date(rd.recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          el.innerHTML = `<span style="font-weight:700;color:${col}">${rd.value.toFixed(1)}°C</span>
+            <span style="font-size:0.75rem;color:var(--muted);margin-left:5px">${ts}${rd.isSample ? ' · sim' : ''}</span>`;
+        } else {
+          el.innerHTML = '<span style="color:var(--muted);font-size:0.82rem">No data yet</span>';
+        }
+      } catch (_) {}
     }
   }
 
+  async function toggleUnitMode(unitId, mode) {
+    simUnitModes[unitId] = mode;
+    const simRunning = document.getElementById('simStopBtn').style.display !== 'none';
+    if (simRunning) {
+      try {
+        await apiFetch(API + '/sim/unit/' + unitId + '/mode', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode })
+        });
+      } catch (_) {}
+    }
+    const excursionUnitIds = Object.entries(simUnitModes).filter(([, m]) => m === 'critical').map(([id]) => id);
+    renderSimUnitTable(excursionUnitIds, simRunning);
+  }
+
   async function startSim() {
-    const intervalMinutes = parseInt(document.getElementById('simInterval').value) || 2;
-    const excursionUnitId = document.getElementById('simExcUnit').value || null;
+    const intervalMinutes  = parseInt(document.getElementById('simInterval').value) || 2;
+    const excursionUnitIds = Object.entries(simUnitModes).filter(([, m]) => m === 'critical').map(([id]) => id);
     const btn = document.getElementById('simStartBtn');
     btn.disabled = true; btn.textContent = 'Starting…';
     try {
       const r = await apiFetch(API + '/sim/start', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intervalMinutes, excursionUnitId })
+        body: JSON.stringify({ intervalMinutes, excursionUnitIds })
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error);
-      setSimUI(true, intervalMinutes, excursionUnitId);
-      showNotice('simNotice', 'ok', `⚡ Sim started — reading every ${intervalMinutes} min${excursionUnitId ? ', excursion active' : ''}`);
+      setSimUI(true, intervalMinutes, excursionUnitIds);
+      showNotice('simNotice', 'ok', `⚡ Sim started — every ${intervalMinutes} min · ${excursionUnitIds.length} unit(s) in out-of-range mode`);
     } catch (err) { showNotice('simNotice', 'err', '❌ ' + err.message); }
     finally { btn.disabled = false; btn.textContent = '▶️ Start Live Sim'; }
   }
@@ -539,7 +623,8 @@
     btn.disabled = true; btn.textContent = 'Stopping…';
     try {
       await apiFetch(API + '/sim/stop', { method: 'POST' });
-      setSimUI(false);
+      Object.keys(simUnitModes).forEach(k => { simUnitModes[k] = 'normal'; });
+      setSimUI(false, null, []);
       showNotice('simNotice', 'ok', '⏹️ Live simulation stopped');
     } catch (err) { showNotice('simNotice', 'err', '❌ ' + err.message); }
     finally { btn.disabled = false; btn.textContent = '⏹️ Stop'; }

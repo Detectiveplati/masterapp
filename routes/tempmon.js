@@ -406,7 +406,7 @@ router.get('/alerts', requireAuth, async (req, res) => {
       if (to)   query.createdAt.$lte = new Date(to);
     }
     const alerts = await TempMonAlert.find(query)
-      .populate('unit', 'name type criticalMin criticalMax')
+      .populate('unit', 'name type criticalMin criticalMax alertThresholdMinutes')
       .populate('device', 'deviceId label')
       .populate('correctiveAction')
       .sort({ createdAt: -1 })
@@ -749,9 +749,8 @@ async function simTick() {
       const range  = (unit.criticalMax - unit.criticalMin) / 6;
 
       // Check if this unit has a planned excursion active in sim config
-      const excursionActive =
-        global._tempmonSimConfig?.excursionUnitId?.toString() === unit._id.toString() &&
-        global._tempmonSimConfig?.excursionActive;
+      const excursionUnitIds = global._tempmonSimConfig?.excursionUnitIds || [];
+      const excursionActive  = excursionUnitIds.includes(unit._id.toString());
 
       let value;
       if (excursionActive) {
@@ -794,29 +793,28 @@ async function simTick() {
 // GET /api/tempmon/sim/status
 router.get('/sim/status', requireAuth, async (req, res) => {
   res.json({
-    active:        !!global._tempmonSimActive,
-    intervalMinutes: global._tempmonSimConfig?.intervalMinutes || 2,
-    excursionUnitId: global._tempmonSimConfig?.excursionUnitId || null,
-    excursionActive: global._tempmonSimConfig?.excursionActive || false
+    active:           !!global._tempmonSimActive,
+    intervalMinutes:  global._tempmonSimConfig?.intervalMinutes || 2,
+    excursionUnitIds: global._tempmonSimConfig?.excursionUnitIds || []
   });
 });
 
 // POST /api/tempmon/sim/start
 router.post('/sim/start', requireAuth, async (req, res) => {
   if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const { intervalMinutes = 2, excursionUnitId = null } = req.body;
+  const { intervalMinutes = 2, excursionUnitIds = [] } = req.body;
   const ms = Math.max(1, intervalMinutes) * 60 * 1000;
 
   if (global._tempmonSimInterval) clearInterval(global._tempmonSimInterval);
-  global._tempmonSimConfig  = { intervalMinutes, excursionUnitId, excursionActive: !!excursionUnitId };
+  global._tempmonSimConfig  = { intervalMinutes, excursionUnitIds: excursionUnitIds.map(String) };
   global._tempmonSimActive  = true;
   global._tempmonSimInterval = setInterval(simTick, ms);
 
   // Fire first tick immediately so there's no wait
   simTick().catch(() => {});
 
-  console.log(`✓ [TempMon] Live sim started — interval: ${intervalMinutes}min, excursion unit: ${excursionUnitId || 'none'}`);
-  res.json({ ok: true, intervalMinutes, excursionUnitId });
+  console.log(`✓ [TempMon] Live sim started — interval: ${intervalMinutes}min, excursion units: ${excursionUnitIds.length}`);
+  res.json({ ok: true, intervalMinutes, excursionUnitIds });
 });
 
 // POST /api/tempmon/sim/stop
@@ -828,6 +826,24 @@ router.post('/sim/stop', requireAuth, async (req, res) => {
   global._tempmonSimConfig   = null;
   console.log('✓ [TempMon] Live sim stopped');
   res.json({ ok: true });
+});
+
+// POST /api/tempmon/sim/unit/:unitId/mode — toggle a unit's sim mode on the fly { mode: 'normal'|'critical' }
+router.post('/sim/unit/:unitId/mode', requireAuth, async (req, res) => {
+  if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  if (!global._tempmonSimActive) return res.status(400).json({ error: 'Simulation not running' });
+  const { mode } = req.body;
+  const unitId = req.params.unitId;
+  if (!global._tempmonSimConfig) global._tempmonSimConfig = { excursionUnitIds: [] };
+  const ids = global._tempmonSimConfig.excursionUnitIds || [];
+  if (mode === 'critical') {
+    if (!ids.includes(unitId)) ids.push(unitId);
+    global._tempmonSimConfig.excursionUnitIds = ids;
+  } else {
+    global._tempmonSimConfig.excursionUnitIds = ids.filter(id => id !== unitId);
+  }
+  console.log(`✓ [TempMon] Sim unit ${unitId} → ${mode}`);
+  res.json({ ok: true, excursionUnitIds: global._tempmonSimConfig.excursionUnitIds });
 });
 
 // POST /api/tempmon/sample-data — admin only
