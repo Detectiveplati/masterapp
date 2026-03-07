@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Setup — Temp Monitor</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/lib/dom.js"></script>
+  <script src="/js/lib/http.js"></script>
+  <style>
+    main { max-width: 1000px; margin: 0 auto; padding: 28px 20px; }
+    .nav-links { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
+    .nav-link { padding: 8px 14px; border-radius: 8px; background: #f0f0f0; color: var(--muted); font-size: 0.82rem; font-weight: 700; text-decoration: none; transition: background .15s; }
+    .nav-link:hover { background: #e0e0e0; color: var(--ink); }
+    .nav-link.active { background: var(--accent); color: #fff; }
+    .section-card { background: linear-gradient(180deg, var(--card), #fffbf9); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 2px 6px var(--shadow); padding: 22px 24px; margin-bottom: 22px; }
+    .section-card h2 { font-size: 1.05rem; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    /* Tabs */
+    .tab-bar { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin-bottom: 24px; }
+    .tab-btn { padding: 10px 20px; font-size: 0.9rem; font-weight: 700; cursor: pointer; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; color: var(--muted); font-family: inherit; transition: color .15s; }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-panel { display: none; } .tab-panel.active { display: block; }
+    /* Forms */
+    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .fg { display: flex; flex-direction: column; gap: 5px; }
+    .fg label { font-size: 0.82rem; font-weight: 700; color: var(--ink); }
+    .fg input, .fg select, .fg textarea { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-family: inherit; }
+    .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 700; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2, #27ae60)); color: #fff; }
+    .btn-outline  { background: #fff; border: 2px solid var(--accent); color: var(--accent); }
+    .btn-sm       { padding: 5px 11px; font-size: 0.78rem; }
+    .btn-danger   { background: rgba(198,40,40,.08); border: 1px solid rgba(198,40,40,.2); color: #c62828; }
+    .btn-grey     { background: #f0f0f0; color: var(--muted); }
+    /* Tables */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .data-table th { padding: 9px 12px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); border-bottom: 2px solid var(--border); text-align: left; font-weight: 800; }
+    .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--ink); vertical-align: middle; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .type-badge { border-radius: 20px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700; }
+    .type-freezer { background: rgba(21,101,192,.1); color: #1565c0; }
+    .type-chiller { background: rgba(39,174,96,.1);  color: #2e7d32; }
+    .type-warmer  { background: rgba(230,81,0,.1);   color: #e65100; }
+    .type-ambient { background: rgba(90,97,108,.1);  color: var(--muted); }
+    .inactive-row td { opacity: .5; }
+    /* Sample data */
+    .sample-card { background: rgba(255,193,7,.06); border: 1px solid rgba(255,193,7,.3); border-radius: 12px; padding: 18px 20px; }
+    .sample-card h3 { font-size: 0.95rem; font-weight: 800; margin-bottom: 10px; }
+    .sample-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,.06); flex-wrap: wrap; }
+    .sample-row:last-child { border-bottom: none; }
+    .notice { padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; margin-top: 12px; display: none; }
+    .notice.ok  { background: rgba(39,174,96,.1); color: #2e7d32; }
+    .notice.err { background: rgba(198,40,40,.1); color: #c62828; }
+    .no-data { text-align: center; padding: 30px; color: var(--muted); font-style: italic; }
+    @media (max-width: 600px) { main { padding: 16px; } .grid-form { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body data-module="tempmon">
+<main>
+  <div class="nav-links">
+    <a href="/tempmon/" class="nav-link">📡 Live Dashboard</a>
+    <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
+    <a href="/tempmon/report.html" class="nav-link">📊 Compliance Report</a>
+    <a href="/tempmon/calibration.html" class="nav-link">🔧 Calibration</a>
+    <a href="/tempmon/setup.html" class="nav-link active">⚙️ Setup</a>
+  </div>
+
+  <h1 style="font-size:1.4rem;font-weight:900;margin-bottom:22px">⚙️ Setup</h1>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('units')">🏭 Units</button>
+    <button class="tab-btn" onclick="switchTab('devices')">📡 Devices</button>
+    <button class="tab-btn admin-only" onclick="switchTab('sample')" style="display:none">🧪 Sample Data</button>
+  </div>
+
+  <!-- ── UNITS TAB ─────────────────────────────────────── -->
+  <div id="tab-units" class="tab-panel active">
+    <div class="section-card">
+      <h2>➕ Add Unit</h2>
+      <div class="grid-form">
+        <div class="fg"><label>Name <span style="color:#c62828">*</span></label><input id="uName" type="text" placeholder="e.g. Blast Freezer 1"></div>
+        <div class="fg"><label>Type <span style="color:#c62828">*</span></label>
+          <select id="uType">
+            <option value="freezer">🧊 Freezer</option>
+            <option value="chiller">❄️ Chiller</option>
+            <option value="warmer">🔥 Warmer</option>
+            <option value="ambient">🌡️ Ambient</option>
+          </select>
+        </div>
+        <div class="fg"><label>Location</label><input id="uLocation" type="text" placeholder="e.g. Prep Kitchen — Cold Room A"></div>
+        <div class="fg"><label>Critical Min (°C) <span style="color:#c62828">*</span></label><input id="uMin" type="number" step="0.1" placeholder="-25"></div>
+        <div class="fg"><label>Critical Max (°C) <span style="color:#c62828">*</span></label><input id="uMax" type="number" step="0.1" placeholder="-15"></div>
+        <div class="fg"><label>Warning Buffer (°C)</label><input id="uBuffer" type="number" step="0.1" value="2" placeholder="2"></div>
+        <div class="fg"><label>Target Temp (°C)</label><input id="uTarget" type="number" step="0.1" placeholder="-20"></div>
+        <div class="fg"><label>Notes</label><input id="uNotes" type="text" placeholder="Optional"></div>
+      </div>
+      <div id="unitNotice" class="notice"></div>
+      <button class="btn btn-primary" onclick="addUnit()">➕ Add Unit</button>
+    </div>
+
+    <div class="section-card">
+      <h2>🏭 Configured Units</h2>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Name</th><th>Type</th><th>Location</th><th>Range</th><th>Target</th><th>Status</th><th></th></tr></thead>
+          <tbody id="unitsBody"><tr><td colspan="7" class="no-data">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DEVICES TAB ─────────────────────────────────────── -->
+  <div id="tab-devices" class="tab-panel">
+    <div class="section-card">
+      <h2>➕ Register Device</h2>
+      <div class="grid-form">
+        <div class="fg"><label>Unit <span style="color:#c62828">*</span></label><select id="dUnit"><option value="">Select unit…</option></select></div>
+        <div class="fg"><label>Device ID <span style="color:#c62828">*</span></label><input id="dDeviceId" type="text" placeholder="Hardware MAC / token e.g. TH-A1B2C3"></div>
+        <div class="fg"><label>Label</label><input id="dLabel" type="text" placeholder="e.g. Probe A — Top shelf"></div>
+        <div class="fg"><label>Firmware version</label><input id="dFirmware" type="text" placeholder="e.g. v1.2.0"></div>
+        <div class="fg"><label>Expected interval (min)</label><input id="dInterval" type="number" value="5" min="1"></div>
+        <div class="fg"><label>Calibration interval (days)</label><input id="dCalInterval" type="number" value="180" min="1"></div>
+      </div>
+      <div id="deviceNotice" class="notice"></div>
+      <button class="btn btn-primary" onclick="addDevice()">📡 Register Device</button>
+    </div>
+
+    <div class="section-card">
+      <h2>📡 Registered Devices</h2>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Device ID</th><th>Label</th><th>Unit</th><th>Battery</th><th>Last Seen</th><th>Calibration Due</th><th>Status</th><th></th></tr></thead>
+          <tbody id="devicesBody"><tr><td colspan="8" class="no-data">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SAMPLE DATA TAB (admin only) ──────────────────────── -->
+  <div id="tab-sample" class="tab-panel">
+    <div class="section-card">
+      <h2>🧪 Sample Data Generator</h2>
+      <p style="color:var(--muted);font-size:0.88rem;margin-bottom:18px">
+        Generate synthetic temperature readings so the dashboard and charts are functional before physical devices arrive.
+        All sample readings are tagged <code>isSample: true</code> and excluded from compliance reports.
+        Re-running replaces existing sample data for the selected unit.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+        <div class="fg"><label>Unit (blank = all)</label><select id="sampleUnit"><option value="">All Units</option></select></div>
+        <div class="fg"><label>Hours back</label><input id="sampleHours" type="number" value="72" min="1" max="720" style="width:80px"></div>
+        <div class="fg"><label>Interval (min)</label><input id="sampleInterval" type="number" value="5" min="1" max="60" style="width:80px"></div>
+        <button class="btn btn-primary" onclick="generateSample()">▶️ Generate Sample Data</button>
+      </div>
+      <div id="sampleStatus" class="notice"></div>
+    </div>
+
+    <div class="section-card sample-card">
+      <h3>🗑️ Purge Sample Data by Unit</h3>
+      <div id="purgeList"><div class="no-data">Loading units…</div></div>
+    </div>
+  </div>
+</main>
+
+<!-- Edit Unit Modal -->
+<div id="editUnitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeEditUnit()">
+  <div style="background:#fff;border-radius:16px;padding:28px 24px;width:min(96vw,520px);max-height:90vh;overflow-y:auto">
+    <h3 style="font-size:1.05rem;font-weight:800;margin-bottom:18px">✏️ Edit Unit</h3>
+    <input type="hidden" id="euId">
+    <div class="grid-form">
+      <div class="fg"><label>Name</label><input id="euName" type="text"></div>
+      <div class="fg"><label>Type</label><select id="euType">
+        <option value="freezer">🧊 Freezer</option><option value="chiller">❄️ Chiller</option><option value="warmer">🔥 Warmer</option><option value="ambient">🌡️ Ambient</option>
+      </select></div>
+      <div class="fg"><label>Location</label><input id="euLocation" type="text"></div>
+      <div class="fg"><label>Critical Min (°C)</label><input id="euMin" type="number" step="0.1"></div>
+      <div class="fg"><label>Critical Max (°C)</label><input id="euMax" type="number" step="0.1"></div>
+      <div class="fg"><label>Warning Buffer (°C)</label><input id="euBuffer" type="number" step="0.1"></div>
+      <div class="fg"><label>Target Temp (°C)</label><input id="euTarget" type="number" step="0.1"></div>
+      <div class="fg"><label>Notes</label><input id="euNotes" type="text"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <input type="checkbox" id="euActive" style="width:16px;height:16px">
+      <label style="font-size:0.88rem;font-weight:700">Active</label>
+    </div>
+    <div id="euNotice" class="notice"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-grey" onclick="closeEditUnit()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditUnit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = '/api/tempmon';
+  let currentUser = null;
+  let units = [], devices = [];
+
+  async function init() {
+    try {
+      const r = await apiFetch('/api/auth/me');
+      const { user } = await r.json();
+      if (!user.permissions?.tempmon && user.role !== 'admin')
+        return window.location.replace('/?access=denied');
+      currentUser = user;
+      document.documentElement.style.visibility = '';
+      if (user.role === 'admin') {
+        document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+      }
+      await Promise.all([loadUnits(), loadDevices()]);
+    } catch { window.location.replace('/login'); }
+  }
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab-btn').forEach((b, i) => {
+      const tabs = ['units','devices','sample'];
+      b.classList.toggle('active', tabs[i] === name);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    if (name === 'sample') loadPurgeList();
+  }
+
+  function showNotice(id, type, msg) {
+    const el = document.getElementById(id);
+    el.className = 'notice ' + type; el.textContent = msg; el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 4000);
+  }
+
+  // ── Units ───────────────────────────────────────────────────────
+  async function loadUnits() {
+    const r  = await apiFetch(API + '/units?allActive=true');
+    // Also load inactive units by fetching all without filter (units endpoint only returns active, so we do a separate all-units call via devices workaround — just use the active list for now)
+    units = await r.json();
+    renderUnits();
+    populateUnitSelectors();
+  }
+
+  function renderUnits() {
+    const tbody = document.getElementById('unitsBody');
+    if (!units.length) { tbody.innerHTML = '<tr><td colspan="7" class="no-data">No units yet.</td></tr>'; return; }
+    tbody.innerHTML = units.map(u => {
+      const typeCls = 'type-' + u.type;
+      return `<tr class="${u.active ? '' : 'inactive-row'}">
+        <td><strong>${escHtml(u.name)}</strong></td>
+        <td><span class="type-badge ${typeCls}">${u.type}</span></td>
+        <td>${escHtml(u.location || '—')}</td>
+        <td>${u.criticalMin}°C – ${u.criticalMax}°C</td>
+        <td>${u.targetTemp != null ? u.targetTemp + '°C' : '—'}</td>
+        <td>${u.active ? '<span style="color:#2e7d32;font-weight:700">Active</span>' : '<span style="color:var(--muted)">Inactive</span>'}</td>
+        <td><button class="btn btn-outline btn-sm" onclick="openEditUnit('${u._id}')">✏️</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function populateUnitSelectors() {
+    ['dUnit','sampleUnit'].forEach(id => {
+      const sel = document.getElementById(id);
+      const existingOptions = id === 'sampleUnit' ? '<option value="">All Units</option>' : '<option value="">Select unit…</option>';
+      sel.innerHTML = existingOptions + units.map(u => `<option value="${u._id}">${escHtml(u.name)}</option>`).join('');
+    });
+  }
+
+  async function addUnit() {
+    const name = document.getElementById('uName').value.trim();
+    const type = document.getElementById('uType').value;
+    const min  = parseFloat(document.getElementById('uMin').value);
+    const max  = parseFloat(document.getElementById('uMax').value);
+    if (!name || isNaN(min) || isNaN(max)) return showNotice('unitNotice', 'err', 'Name, Critical Min and Critical Max are required.');
+    if (min >= max) return showNotice('unitNotice', 'err', 'Critical Min must be less than Critical Max.');
+    try {
+      const r = await apiFetch(API + '/units', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name, type,
+          location:      document.getElementById('uLocation').value.trim(),
+          criticalMin:   min, criticalMax: max,
+          warningBuffer: parseFloat(document.getElementById('uBuffer').value) || 2,
+          targetTemp:    document.getElementById('uTarget').value !== '' ? parseFloat(document.getElementById('uTarget').value) : undefined,
+          notes:         document.getElementById('uNotes').value.trim()
+        })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      showNotice('unitNotice', 'ok', '✅ Unit added!');
+      ['uName','uLocation','uMin','uMax','uTarget','uNotes'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('uBuffer').value = '2';
+      await loadUnits();
+    } catch (err) { showNotice('unitNotice', 'err', '❌ ' + err.message); }
+  }
+
+  // Edit Unit Modal
+  function openEditUnit(id) {
+    const u = units.find(x => x._id === id);
+    if (!u) return;
+    document.getElementById('euId').value      = id;
+    document.getElementById('euName').value    = u.name;
+    document.getElementById('euType').value    = u.type;
+    document.getElementById('euLocation').value= u.location || '';
+    document.getElementById('euMin').value     = u.criticalMin;
+    document.getElementById('euMax').value     = u.criticalMax;
+    document.getElementById('euBuffer').value  = u.warningBuffer ?? 2;
+    document.getElementById('euTarget').value  = u.targetTemp ?? '';
+    document.getElementById('euNotes').value   = u.notes || '';
+    document.getElementById('euActive').checked = u.active;
+    document.getElementById('euNotice').style.display = 'none';
+    document.getElementById('editUnitModal').style.display = 'flex';
+  }
+  function closeEditUnit() { document.getElementById('editUnitModal').style.display = 'none'; }
+  async function saveEditUnit() {
+    const id = document.getElementById('euId').value;
+    try {
+      const r = await apiFetch(API + '/units/' + id, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:          document.getElementById('euName').value.trim(),
+          type:          document.getElementById('euType').value,
+          location:      document.getElementById('euLocation').value.trim(),
+          criticalMin:   parseFloat(document.getElementById('euMin').value),
+          criticalMax:   parseFloat(document.getElementById('euMax').value),
+          warningBuffer: parseFloat(document.getElementById('euBuffer').value) || 2,
+          targetTemp:    document.getElementById('euTarget').value !== '' ? parseFloat(document.getElementById('euTarget').value) : null,
+          notes:         document.getElementById('euNotes').value.trim(),
+          active:        document.getElementById('euActive').checked
+        })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      closeEditUnit();
+      await loadUnits();
+    } catch (err) {
+      const ne = document.getElementById('euNotice');
+      ne.className = 'notice err'; ne.textContent = '❌ ' + err.message; ne.style.display = 'block';
+    }
+  }
+
+  // ── Devices ─────────────────────────────────────────────────────
+  async function loadDevices() {
+    const r = await apiFetch(API + '/devices');
+    devices = await r.json();
+    const tbody = document.getElementById('devicesBody');
+    if (!devices.length) { tbody.innerHTML = '<tr><td colspan="8" class="no-data">No devices yet.</td></tr>'; return; }
+    tbody.innerHTML = devices.map(d => {
+      const dueDays = d.calibrationDue ? Math.ceil((new Date(d.calibrationDue) - Date.now()) / 86400000) : null;
+      const dueStr  = d.calibrationDue ? (dueDays <= 30 ? `⚠️ ${dueDays}d` : new Date(d.calibrationDue).toLocaleDateString()) : '—';
+      return `<tr class="${d.active ? '' : 'inactive-row'}">
+        <td><code style="font-size:0.8rem">${escHtml(d.deviceId)}</code></td>
+        <td>${escHtml(d.label || '—')}</td>
+        <td>${d.unit ? escHtml(d.unit.name) : '—'}</td>
+        <td>${d.batteryPct != null ? d.batteryPct + '%' : '—'}</td>
+        <td style="font-size:0.78rem">${d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleString() : 'Never'}</td>
+        <td style="font-size:0.78rem;${dueDays != null && dueDays <= 30 ? 'color:#c62828;font-weight:700' : ''}">${dueStr}</td>
+        <td>${d.active ? '<span style="color:#2e7d32;font-weight:700">Active</span>' : '<span style="color:var(--muted)">Inactive</span>'}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="decommission('${d._id}')">Decommission</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function addDevice() {
+    const unit     = document.getElementById('dUnit').value;
+    const deviceId = document.getElementById('dDeviceId').value.trim();
+    if (!unit || !deviceId) return showNotice('deviceNotice', 'err', 'Unit and Device ID are required.');
+    try {
+      const r = await apiFetch(API + '/devices', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          unit, deviceId,
+          label:                   document.getElementById('dLabel').value.trim(),
+          firmware:                document.getElementById('dFirmware').value.trim(),
+          expectedIntervalMinutes: parseInt(document.getElementById('dInterval').value) || 5,
+          calibrationIntervalDays: parseInt(document.getElementById('dCalInterval').value) || 180
+        })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      showNotice('deviceNotice', 'ok', '✅ Device registered!');
+      ['dDeviceId','dLabel','dFirmware'].forEach(id => document.getElementById(id).value = '');
+      await loadDevices();
+    } catch (err) { showNotice('deviceNotice', 'err', '❌ ' + err.message); }
+  }
+
+  async function decommission(id) {
+    if (!confirm('Decommission this device? It will no longer report.')) return;
+    await apiFetch(API + '/devices/' + id, { method: 'DELETE' });
+    await loadDevices();
+  }
+
+  // ── Sample Data ─────────────────────────────────────────────────
+  async function generateSample() {
+    const unitId   = document.getElementById('sampleUnit').value;
+    const hours    = parseInt(document.getElementById('sampleHours').value) || 72;
+    const interval = parseInt(document.getElementById('sampleInterval').value) || 5;
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = 'Generating…';
+    try {
+      const r = await apiFetch(API + '/sample-data', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unitId: unitId || undefined, hours, intervalMinutes: interval })
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      showNotice('sampleStatus', 'ok', `✅ Generated ${d.inserted} sample readings!`);
+    } catch (err) { showNotice('sampleStatus', 'err', '❌ ' + err.message); }
+    finally { btn.disabled = false; btn.textContent = '▶️ Generate Sample Data'; }
+  }
+
+  async function loadPurgeList() {
+    if (!units.length) { const r = await apiFetch(API + '/units'); units = await r.json(); }
+    document.getElementById('purgeList').innerHTML = units.map(u => `
+      <div class="sample-row">
+        <div>
+          <div style="font-weight:700">${escHtml(u.name)}</div>
+          <div style="font-size:0.78rem;color:var(--muted)">${u.type}</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="purgeSample('${u._id}', '${escHtml(u.name)}')">🗑️ Clear Sample Data</button>
+      </div>`).join('') || '<div class="no-data">No units</div>';
+  }
+
+  async function purgeSample(unitId, name) {
+    if (!confirm('Delete all sample readings for "' + name + '"?')) return;
+    const r = await apiFetch(API + '/sample-data/' + unitId, { method: 'DELETE' });
+    const d = await r.json();
+    showNotice('sampleStatus', 'ok', `🗑️ Deleted ${d.deleted} sample readings for "${name}"`);
+  }
+
+  init();
+</script>
+<script src="/js/shell.js"></script>
+</body>
+</html>

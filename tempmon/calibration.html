@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Calibration — Temp Monitor</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/lib/dom.js"></script>
+  <script src="/js/lib/http.js"></script>
+  <style>
+    main { max-width: 1000px; margin: 0 auto; padding: 28px 20px; }
+    .nav-links { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
+    .nav-link { padding: 8px 14px; border-radius: 8px; background: #f0f0f0; color: var(--muted); font-size: 0.82rem; font-weight: 700; text-decoration: none; transition: background .15s; }
+    .nav-link:hover { background: #e0e0e0; color: var(--ink); }
+    .nav-link.active { background: var(--accent); color: #fff; }
+    .section-card { background: linear-gradient(180deg, var(--card), #fffbf9); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 2px 6px var(--shadow); padding: 22px 24px; margin-bottom: 22px; }
+    .section-card h2 { font-size: 1.05rem; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .fg { display: flex; flex-direction: column; gap: 5px; }
+    .fg label { font-size: 0.82rem; font-weight: 700; color: var(--ink); }
+    .fg input, .fg select, .fg textarea { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-family: inherit; }
+    .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 700; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2, #27ae60)); color: #fff; }
+    .btn-outline  { background: #fff; border: 2px solid var(--accent); color: var(--accent); }
+    .btn-sm       { padding: 5px 11px; font-size: 0.78rem; }
+    /* Due panel */
+    .due-card { background: rgba(230,81,0,.06); border: 1px solid rgba(230,81,0,.25); border-radius: 12px; padding: 18px 20px; margin-bottom: 22px; }
+    .due-card h3 { font-size: 0.95rem; font-weight: 800; color: #e65100; margin-bottom: 12px; }
+    .due-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(230,81,0,.12); flex-wrap: wrap; gap: 8px; font-size: 0.88rem; }
+    .due-row:last-child { border-bottom: none; }
+    .due-info { font-weight: 700; }
+    .due-sub  { font-size: 0.78rem; color: var(--muted); }
+    /* Table */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .data-table th { padding: 9px 12px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); border-bottom: 2px solid var(--border); text-align: left; font-weight: 800; }
+    .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--ink); vertical-align: middle; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .notice { padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; margin-top: 12px; display: none; }
+    .notice.ok  { background: rgba(39,174,96,.1);  color: #2e7d32; }
+    .notice.err { background: rgba(198,40,40,.1);  color: #c62828; }
+    .no-data { text-align: center; padding: 30px; color: var(--muted); font-style: italic; }
+    .cert-link { color: var(--accent); font-size: 0.8rem; text-decoration: none; font-weight: 700; }
+    .cert-link:hover { text-decoration: underline; }
+    /* Print */
+    .print-header { display: none; }
+    @media print {
+      .nav-links, .due-card .btn, .section-card:first-of-type { display: none !important; }
+      .print-header { display: block; margin-bottom: 24px; }
+      .print-header h2 { font-size: 1.3rem; }
+    }
+    @media (max-width: 600px) { main { padding: 16px; } .grid-form { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body data-module="tempmon">
+<main>
+  <div class="print-header"><h2>🔧 Temp Monitor — Calibration Records</h2><p id="printSubtitle" style="color:var(--muted)"></p></div>
+
+  <div class="nav-links">
+    <a href="/tempmon/" class="nav-link">📡 Live Dashboard</a>
+    <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
+    <a href="/tempmon/report.html" class="nav-link">📊 Compliance Report</a>
+    <a href="/tempmon/calibration.html" class="nav-link active">🔧 Calibration</a>
+    <a href="/tempmon/setup.html" class="nav-link">⚙️ Setup</a>
+  </div>
+
+  <!-- Due Panel -->
+  <div class="due-card" id="duePanel" style="display:none">
+    <h3>⚠️ Calibration Due (within 30 days)</h3>
+    <div id="dueList"></div>
+  </div>
+
+  <!-- Log Form -->
+  <div class="section-card">
+    <h2>➕ Log Calibration Event</h2>
+    <div class="grid-form">
+      <div class="fg" style="grid-column:1/-1"><label>Device <span style="color:#c62828">*</span></label><select id="calDevice"><option value="">Select device…</option></select></div>
+      <div class="fg"><label>Calibrated By <span style="color:#c62828">*</span></label><input type="text" id="calBy" placeholder="Your name"></div>
+      <div class="fg"><label>Calibration Date <span style="color:#c62828">*</span></label><input type="date" id="calDate"></div>
+      <div class="fg"><label>Reference Temp (°C)</label><input type="number" step="0.01" id="calRefTemp" placeholder="e.g. 0.00 (ice point)"></div>
+      <div class="fg"><label>Reading Before (°C)</label><input type="number" step="0.01" id="calBefore" placeholder="Device before calibration"></div>
+      <div class="fg"><label>Reading After (°C)</label><input type="number"  step="0.01" id="calAfter"  placeholder="Device after calibration"></div>
+      <div class="fg"><label>Offset Applied (°C)</label><input type="number" step="0.01" id="calOffset" value="0"></div>
+      <div class="fg"><label>Next Due Date</label><input type="date" id="calNextDue"></div>
+      <div class="fg"><label>Calibration Certificate (optional)</label><input type="file" id="calCert" accept=".pdf,.jpg,.jpeg,.png"></div>
+      <div class="fg" style="grid-column:1/-1"><label>Notes</label><input type="text" id="calNotes" placeholder="Optional notes"></div>
+    </div>
+    <div id="calNotice" class="notice"></div>
+    <button class="btn btn-primary" onclick="logCalibration()">💾 Save Calibration Record</button>
+  </div>
+
+  <!-- History -->
+  <div class="section-card">
+    <h2>
+      <span>📋 Calibration History</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="histDevice" onchange="loadHistory()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:inherit">
+          <option value="">All Devices</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="printPDF()">🖨️ Print</button>
+      </div>
+    </h2>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Device</th><th>Calibrated By</th><th>Ref Temp</th><th>Before</th><th>After</th><th>Offset</th><th>Next Due</th><th>Cert</th></tr></thead>
+        <tbody id="calBody"><tr><td colspan="9" class="no-data">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+  const API = '/api/tempmon';
+  let devices = [];
+
+  // Default date to today
+  document.getElementById('calDate').value = new Date().toISOString().slice(0, 10);
+
+  async function init() {
+    try {
+      const r = await apiFetch('/api/auth/me');
+      const { user } = await r.json();
+      if (!user.permissions?.tempmon && user.role !== 'admin')
+        return window.location.replace('/?access=denied');
+      document.documentElement.style.visibility = '';
+      await Promise.all([loadDevices(), loadDue(), loadHistory()]);
+    } catch { window.location.replace('/login'); }
+  }
+
+  async function loadDevices() {
+    const r = await apiFetch(API + '/devices');
+    devices = (await r.json()).filter(d => d.active);
+    ['calDevice','histDevice'].forEach(id => {
+      const sel = document.getElementById(id);
+      const extra = id === 'histDevice' ? '<option value="">All Devices</option>' : '<option value="">Select device…</option>';
+      sel.innerHTML = extra + devices.map(d =>
+        `<option value="${d._id}">${escHtml(d.label || d.deviceId)} ${d.unit ? '— ' + escHtml(d.unit.name) : ''}</option>`
+      ).join('');
+    });
+  }
+
+  async function loadDue() {
+    const r = await apiFetch(API + '/calibrations/due');
+    const due = await r.json();
+    if (!due.length) return;
+    document.getElementById('duePanel').style.display = 'block';
+    document.getElementById('dueList').innerHTML = due.map(d => {
+      const dueDays = d.calibrationDue ? Math.ceil((new Date(d.calibrationDue) - Date.now()) / 86400000) : null;
+      const dueStr  = d.calibrationDue ? (dueDays <= 0 ? '⚠️ OVERDUE' : 'Due in ' + dueDays + ' day' + (dueDays === 1 ? '' : 's')) : 'Never calibrated';
+      return `<div class="due-row">
+        <div>
+          <div class="due-info">${escHtml(d.label || d.deviceId)}</div>
+          <div class="due-sub">${d.unit ? escHtml(d.unit.name) : '—'} · ${escHtml(d.deviceId)}</div>
+        </div>
+        <span style="font-weight:700;color:#e65100">${dueStr}</span>
+      </div>`;
+    }).join('');
+  }
+
+  async function loadHistory() {
+    const deviceId = document.getElementById('histDevice').value;
+    const url = API + '/calibrations' + (deviceId ? '?deviceId=' + deviceId : '');
+    const r = await apiFetch(url);
+    const cals = await r.json();
+    const tbody = document.getElementById('calBody');
+    if (!cals.length) { tbody.innerHTML = '<tr><td colspan="9" class="no-data">No calibration records yet.</td></tr>'; return; }
+    tbody.innerHTML = cals.map(c => `
+      <tr>
+        <td>${new Date(c.calibratedAt).toLocaleDateString()}</td>
+        <td>${c.device ? escHtml(c.device.label || c.device.deviceId) : '—'}</td>
+        <td>${escHtml(c.calibratedBy)}</td>
+        <td>${c.referenceTemp != null ? c.referenceTemp + '°C' : '—'}</td>
+        <td>${c.readingBefore != null ? c.readingBefore + '°C' : '—'}</td>
+        <td>${c.readingAfter  != null ? c.readingAfter  + '°C' : '—'}</td>
+        <td>${c.offsetApplied != null ? (c.offsetApplied >= 0 ? '+' : '') + c.offsetApplied + '°C' : '—'}</td>
+        <td style="font-size:0.78rem">${c.nextDueDate ? new Date(c.nextDueDate).toLocaleDateString() : '—'}</td>
+        <td>${c.certificate ? `<a href="${escHtml(c.certificate)}" target="_blank" class="cert-link">📄 View</a>` : '—'}</td>
+      </tr>`).join('');
+  }
+
+  function showNotice(id, type, msg) {
+    const el = document.getElementById(id);
+    el.className = 'notice ' + type; el.textContent = msg; el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 5000);
+  }
+
+  async function logCalibration() {
+    const deviceId  = document.getElementById('calDevice').value;
+    const calBy     = document.getElementById('calBy').value.trim();
+    const calDate   = document.getElementById('calDate').value;
+    if (!deviceId || !calBy || !calDate) return showNotice('calNotice', 'err', 'Device, Calibrated By and Date are required.');
+
+    const formData = new FormData();
+    formData.append('deviceId',    deviceId);
+    formData.append('calibratedBy',calBy);
+    formData.append('calibratedAt',calDate);
+    formData.append('referenceTemp',document.getElementById('calRefTemp').value);
+    formData.append('readingBefore',document.getElementById('calBefore').value);
+    formData.append('readingAfter', document.getElementById('calAfter').value);
+    formData.append('offsetApplied',document.getElementById('calOffset').value || '0');
+    formData.append('nextDueDate',  document.getElementById('calNextDue').value);
+    formData.append('notes',        document.getElementById('calNotes').value.trim());
+    const certFile = document.getElementById('calCert').files[0];
+    if (certFile) formData.append('certificate', certFile);
+
+    const btn = event.target; btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const r = await fetch(API + '/calibrations', { method: 'POST', body: formData, credentials: 'include' });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      showNotice('calNotice', 'ok', '✅ Calibration record saved!');
+      ['calBy','calRefTemp','calBefore','calAfter','calNotes'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('calOffset').value = '0';
+      document.getElementById('calNextDue').value = '';
+      document.getElementById('calCert').value = '';
+      document.getElementById('calDate').value = new Date().toISOString().slice(0, 10);
+      await Promise.all([loadDue(), loadHistory()]);
+    } catch (err) { showNotice('calNotice', 'err', '❌ ' + err.message); }
+    finally { btn.disabled = false; btn.textContent = '💾 Save Calibration Record'; }
+  }
+
+  function printPDF() {
+    document.getElementById('printSubtitle').textContent = 'Calibration Log · Generated ' + new Date().toLocaleString();
+    document.body.classList.add('print');
+    window.print();
+    window.addEventListener('afterprint', () => document.body.classList.remove('print'), { once: true });
+  }
+
+  init();
+</script>
+<script src="/js/shell.js"></script>
+</body>
+</html>

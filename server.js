@@ -47,7 +47,7 @@ async function seedAdmin() {
                 passwordHash: 'admin123',
                 displayName:  'Administrator',
                 role:         'admin',
-                permissions:  { maintenance: true, foodsafety: true, templog: true, procurement: true, pest: true }
+                permissions:  { maintenance: true, foodsafety: true, templog: true, procurement: true, pest: true, tempmon: true }
             });
             await admin.save();
             console.log('✓ [Auth] Default admin created — username: admin / password: admin123');

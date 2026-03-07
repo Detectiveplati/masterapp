@@ -40,6 +40,9 @@ router.use('/push',             pushRouter);
 // Pest Control
 router.use('/pest',             require('./pest'));
 
+// Equipment Temperature Monitoring
+router.use('/tempmon',          require('./tempmon'));
+
 // Procurement
 router.use('/requests',         require('./procurementRequests'));
 

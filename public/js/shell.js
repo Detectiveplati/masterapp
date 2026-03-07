@@ -81,6 +81,7 @@
     procurement: { label: '📦 Procurement'        },
     admin:       { label: '⚙️ Admin'             },
     'push-test': { label: '🔔 Push Test'         },
+    tempmon:     { label: '🌡️ Temp Monitor'         },
   };
 
   /* ── Navigation tree ─────────────────────────────────────────── */
@@ -129,6 +130,17 @@
         { href: '/procurement/',         label: '🏠 Overview'     },
         { href: '/procurement/requests', label: '📊 All Requests' },
         { href: '/procurement/request',  label: '➕ New Request'  },
+      ],
+    },
+    {
+      icon: '🌡️', label: 'Temp Monitor', module: 'tempmon',
+      href: '/tempmon/', perm: 'tempmon',
+      children: [
+        { href: '/tempmon/',                    label: '📡 Live Dashboard'    },
+        { href: '/tempmon/alerts.html',         label: '🔴 Alerts'            },
+        { href: '/tempmon/report.html',         label: '📊 Compliance Report' },
+        { href: '/tempmon/calibration.html',    label: '🔧 Calibration'       },
+        { href: '/tempmon/setup.html',          label: '⚙️ Setup'              },
       ],
     },
     { divider: true },

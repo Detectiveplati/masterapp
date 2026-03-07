@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Compliance Report — Temp Monitor</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/lib/dom.js"></script>
+  <script src="/js/lib/http.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    main { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+    .nav-links { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
+    .nav-link { padding: 8px 14px; border-radius: 8px; background: #f0f0f0; color: var(--muted); font-size: 0.82rem; font-weight: 700; text-decoration: none; transition: background .15s; }
+    .nav-link:hover { background: #e0e0e0; color: var(--ink); }
+    .nav-link.active { background: var(--accent); color: #fff; }
+    /* Controls */
+    .controls-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
+    .controls-bar select, .controls-bar input[type=date] { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.86rem; font-family: inherit; }
+    .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 700; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2, #27ae60)); color: #fff; }
+    .btn-outline  { background: #fff; border: 2px solid var(--accent); color: var(--accent); }
+    /* Summary row */
+    .summary-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 22px; }
+    .stat-card { background: linear-gradient(180deg, var(--card), #fffbf9); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 2px 6px var(--shadow); padding: 16px 18px; }
+    .stat-card .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+    .stat-card .value { font-size: 1.6rem; font-weight: 900; color: var(--ink); }
+    .stat-card.ok-card  .value { color: #2e7d32; }
+    .stat-card.bad-card .value { color: #c62828; }
+    /* Section cards */
+    .section-card { background: linear-gradient(180deg, var(--card), #fffbf9); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 2px 6px var(--shadow); padding: 22px 24px; margin-bottom: 22px; }
+    .section-card h2 { font-size: 1.05rem; font-weight: 800; margin-bottom: 16px; }
+    /* Table */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .data-table th { padding: 9px 12px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); border-bottom: 2px solid var(--border); text-align: left; font-weight: 800; }
+    .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--ink); vertical-align: middle; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .no-data { text-align: center; padding: 30px; color: var(--muted); font-style: italic; }
+    .compliance-bar { height: 8px; border-radius: 4px; background: #e0e0e0; overflow: hidden; min-width: 120px; }
+    .compliance-fill { height: 100%; border-radius: 4px; }
+    .chart-wrap { position: relative; height: 320px; }
+    /* Print */
+    #print-header { display: none; }
+    body.print .controls-bar, body.print .nav-links { display: none; }
+    body.print #print-header { display: block; margin-bottom: 20px; }
+    @media print {
+      .controls-bar, .nav-links { display: none !important; }
+      #print-header { display: block !important; margin-bottom: 20px; }
+    }
+    @media (max-width: 600px) { main { padding: 16px; } .controls-bar { flex-direction: column; align-items: stretch; } }
+  </style>
+</head>
+<body data-module="tempmon">
+<main>
+  <div id="print-header">
+    <h2 style="font-size:1.3rem;margin-bottom:4px">🌡️ Equipment Temperature — Compliance Report</h2>
+    <p id="printSubtitle" style="color:var(--muted);font-size:0.9rem"></p>
+  </div>
+
+  <div class="nav-links">
+    <a href="/tempmon/" class="nav-link">📡 Live Dashboard</a>
+    <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
+    <a href="/tempmon/report.html" class="nav-link active">📊 Compliance Report</a>
+    <a href="/tempmon/calibration.html" class="nav-link">🔧 Calibration</a>
+    <a href="/tempmon/setup.html" class="nav-link">⚙️ Setup</a>
+  </div>
+
+  <div class="controls-bar">
+    <select id="periodPreset" onchange="applyPreset()">
+      <option value="7">Last 7 days</option>
+      <option value="30" selected>Last 30 days</option>
+      <option value="90">Last 90 days</option>
+      <option value="custom">Custom range</option>
+    </select>
+    <span id="customDates" style="display:none;gap:8px;align-items:center">
+      <input type="date" id="fromDate">
+      <span style="color:var(--muted)">→</span>
+      <input type="date" id="toDate">
+    </span>
+    <button class="btn btn-primary" onclick="loadReport()">📊 Generate Report</button>
+    <button class="btn btn-outline" onclick="printPDF()">🖨️ Print / PDF</button>
+  </div>
+
+  <!-- Summary stats -->
+  <div class="summary-row" id="summaryRow">
+    <div class="stat-card"><div class="label">Total Readings</div><div class="value" id="statTotal">—</div></div>
+    <div class="stat-card ok-card"><div class="label">In Range</div><div class="value" id="statInRange">—</div></div>
+    <div class="stat-card bad-card"><div class="label">Excursions</div><div class="value" id="statExc">—</div></div>
+    <div class="stat-card"><div class="label">Compliance</div><div class="value" id="statPct">—</div></div>
+    <div class="stat-card bad-card"><div class="label">Open Alerts</div><div class="value" id="statAlerts">—</div></div>
+  </div>
+
+  <!-- Compliance chart -->
+  <div class="section-card">
+    <h2>📈 Daily Compliance (%)</h2>
+    <div class="chart-wrap"><canvas id="complianceChart"></canvas></div>
+  </div>
+
+  <!-- Per-unit table -->
+  <div class="section-card">
+    <h2>🗂️ Per-Unit Summary</h2>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Unit</th><th>Type</th><th>Location</th><th>Readings</th><th>Excursions</th><th>Compliance</th><th>Avg Temp</th><th>Min</th><th>Max</th></tr></thead>
+        <tbody id="unitBody"><tr><td colspan="9" class="no-data">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Alert summary -->
+  <div class="section-card">
+    <h2>🔴 Alert Summary</h2>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Unit</th><th>Type</th><th>Status</th><th>Opened</th><th>Resolved</th><th>CA Logged</th></tr></thead>
+        <tbody id="alertBody"><tr><td colspan="6" class="no-data">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+  const API = '/api/tempmon';
+  let complianceChartInst = null;
+
+  function applyPreset() {
+    const v = document.getElementById('periodPreset').value;
+    document.getElementById('customDates').style.display = v === 'custom' ? 'flex' : 'none';
+    if (v !== 'custom') {
+      const to  = new Date();
+      const from = new Date(to - v * 86400000);
+      document.getElementById('fromDate').value = from.toISOString().slice(0,10);
+      document.getElementById('toDate').value   = to.toISOString().slice(0,10);
+    }
+  }
+  applyPreset();
+
+  function getRange() {
+    return { from: document.getElementById('fromDate').value, to: document.getElementById('toDate').value };
+  }
+
+  async function init() {
+    try {
+      const r = await apiFetch('/api/auth/me');
+      const { user } = await r.json();
+      if (!user.permissions?.tempmon && user.role !== 'admin') return window.location.replace('/?access=denied');
+      document.documentElement.style.visibility = '';
+      await loadReport();
+    } catch { window.location.replace('/login'); }
+  }
+
+  async function loadReport() {
+    const { from, to } = getRange();
+    if (!from || !to) return;
+    document.getElementById('unitBody').innerHTML  = '<tr><td colspan="9" class="no-data">Loading…</td></tr>';
+    document.getElementById('alertBody').innerHTML = '<tr><td colspan="6" class="no-data">Loading…</td></tr>';
+
+    const [compRes, dailyRes, alertsRes] = await Promise.all([
+      apiFetch(API + '/reports/compliance?from=' + from + '&to=' + to),
+      apiFetch(API + '/reports/daily?from=' + from + '&to=' + to),
+      apiFetch(API + '/alerts?status=all&from=' + from + '&to=' + to + '&limit=200'),
+    ]);
+
+    const compData  = await compRes.json();
+    const dailyData = await dailyRes.json();
+    const alerts    = await alertsRes.json();
+
+    renderSummary(compData, alerts);
+    renderChart(dailyData);
+    renderUnitTable(compData);
+    renderAlertTable(alerts);
+  }
+
+  function renderSummary(compData, alerts) {
+    let total = 0, inRange = 0;
+    compData.forEach(u => { total += (u.totalReadings||0); inRange += (u.inRangeReadings||0); });
+    const exc  = total - inRange;
+    const pct  = total ? ((inRange/total)*100).toFixed(1) : '—';
+    const openAlerts = Array.isArray(alerts) ? alerts.filter(a => a.status === 'open').length : '—';
+    document.getElementById('statTotal').textContent   = total.toLocaleString();
+    document.getElementById('statInRange').textContent = inRange.toLocaleString();
+    document.getElementById('statExc').textContent     = exc.toLocaleString();
+    document.getElementById('statPct').textContent     = total ? pct + '%' : '—';
+    document.getElementById('statAlerts').textContent  = openAlerts;
+  }
+
+  function renderChart(dailyData) {
+    const labels = []; const values = [];
+    if (Array.isArray(dailyData)) {
+      dailyData.sort((a,b) => a._id > b._id ? 1 : -1).forEach(d => {
+        labels.push(d._id);
+        const pct = d.totalReadings ? ((d.inRangeReadings / d.totalReadings) * 100) : null;
+        values.push(pct != null ? Math.round(pct*10)/10 : null);
+      });
+    }
+    if (complianceChartInst) complianceChartInst.destroy();
+    complianceChartInst = new Chart(document.getElementById('complianceChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Compliance %',
+          data: values,
+          backgroundColor: values.map(v => v == null ? '#ccc' : v >= 95 ? 'rgba(39,174,96,.7)' : v >= 80 ? 'rgba(255,152,0,.8)' : 'rgba(198,40,40,.7)'),
+          borderRadius: 5,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min: 0, max: 100, ticks: { callback: v => v + '%' }, grid: { color: 'rgba(0,0,0,.05)' } },
+          x: { grid: { display: false }, ticks: { maxRotation: 45 } }
+        }
+      }
+    });
+  }
+
+  function complianceBar(pct) {
+    const color = pct >= 95 ? '#27ae60' : pct >= 80 ? '#ff9800' : '#e53935';
+    return `<div class="compliance-bar"><div class="compliance-fill" style="width:${pct.toFixed(1)}%;background:${color}"></div></div>
+            <span style="font-size:0.8rem;margin-left:6px;color:${color};font-weight:700">${pct.toFixed(1)}%</span>`;
+  }
+
+  function renderUnitTable(compData) {
+    const tbody = document.getElementById('unitBody');
+    if (!compData.length) { tbody.innerHTML = '<tr><td colspan="9" class="no-data">No data for selected period.</td></tr>'; return; }
+    tbody.innerHTML = compData.map(u => {
+      const pct = u.totalReadings ? (u.inRangeReadings / u.totalReadings) * 100 : null;
+      return `<tr>
+        <td><a href="/tempmon/unit.html?id=${encodeURIComponent(u.unitId||u._id)}" style="font-weight:700;color:var(--accent);text-decoration:none">${escHtml(u.unitName || '—')}</a></td>
+        <td style="text-transform:capitalize">${escHtml(u.unitType||'—')}</td>
+        <td>${escHtml(u.location||'—')}</td>
+        <td>${(u.totalReadings||0).toLocaleString()}</td>
+        <td style="color:${(u.totalReadings-u.inRangeReadings)>0?'#c62828':'var(--ink)'}">${((u.totalReadings||0)-(u.inRangeReadings||0)).toLocaleString()}</td>
+        <td style="display:flex;align-items:center;gap:6px">${pct != null ? complianceBar(pct) : '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${u.avgTemp != null ? u.avgTemp.toFixed(1) + '°C' : '—'}</td>
+        <td>${u.minTemp != null ? u.minTemp.toFixed(1) + '°C' : '—'}</td>
+        <td>${u.maxTemp != null ? u.maxTemp.toFixed(1) + '°C' : '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function alertTypeLabel(type) {
+    return { critical_high:'🔥 Critical High', critical_low:'🧊 Critical Low', warning_high:'⚠️ Warn High', warning_low:'⚠️ Warn Low', device_offline:'📵 Device Offline' }[type] || type;
+  }
+
+  function renderAlertTable(alerts) {
+    const tbody = document.getElementById('alertBody');
+    if (!Array.isArray(alerts) || !alerts.length)
+      { tbody.innerHTML = '<tr><td colspan="6" class="no-data">No alerts in selected period.</td></tr>'; return; }
+    tbody.innerHTML = alerts.slice(0, 100).map(a => `
+      <tr>
+        <td>${a.unit ? escHtml(a.unit.name) : '—'}</td>
+        <td>${alertTypeLabel(a.type)}</td>
+        <td style="text-transform:capitalize">${escHtml(a.status)}</td>
+        <td style="font-size:0.8rem">${new Date(a.triggeredAt).toLocaleString()}</td>
+        <td style="font-size:0.8rem">${a.resolvedAt ? new Date(a.resolvedAt).toLocaleString() : '—'}</td>
+        <td>${a.correctiveAction ? '✅' : '—'}</td>
+      </tr>`).join('');
+    if (alerts.length > 100)
+      tbody.innerHTML += `<tr><td colspan="6" style="text-align:center;color:var(--muted);font-size:0.8rem;padding:10px">Showing 100 of ${alerts.length} alerts</td></tr>`;
+  }
+
+  function printPDF() {
+    const { from, to } = getRange();
+    document.getElementById('printSubtitle').textContent = 'Period: ' + from + ' → ' + to + ' · Generated ' + new Date().toLocaleString();
+    document.body.classList.add('print');
+    window.print();
+    window.addEventListener('afterprint', () => document.body.classList.remove('print'), { once: true });
+  }
+
+  init();
+</script>
+<script src="/js/shell.js"></script>
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Temp Monitor — Central Kitchen</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/lib/dom.js"></script>
+  <script src="/js/lib/http.js"></script>
+  <style>
+    main { max-width: 1200px; margin: 0 auto; padding: 28px 20px; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+    .page-header h1 { font-size: 1.4rem; font-weight: 900; color: var(--ink); margin: 0; }
+    .nav-links { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
+    .nav-link { padding: 8px 14px; border-radius: 8px; background: #f0f0f0; color: var(--muted); font-size: 0.82rem; font-weight: 700; text-decoration: none; transition: background .15s; }
+    .nav-link:hover { background: #e0e0e0; color: var(--ink); }
+    .nav-link.active { background: var(--accent); color: #fff; }
+    /* Summary bar */
+    .summary-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 16px; box-shadow: 0 3px 12px var(--shadow); }
+    .stat-card .val { font-size: 2rem; font-weight: 900; color: var(--accent); }
+    .stat-card .lbl { font-size: 0.75rem; color: var(--muted); margin-top: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-card.danger .val { color: #c62828; }
+    .stat-card.warn   .val { color: #e65100; }
+    .stat-card.ok     .val { color: #2e7d32; }
+    /* Units grid */
+    .units-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+    .unit-card { background: linear-gradient(180deg, var(--card), #fffbf9); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 2px 6px var(--shadow); padding: 20px 18px; cursor: pointer; transition: box-shadow .15s, border-color .15s; text-decoration: none; color: inherit; display: block; }
+    .unit-card:hover { box-shadow: 0 4px 18px var(--shadow); border-color: var(--accent); }
+    .unit-card.in-range  { border-left: 4px solid #2e7d32; }
+    .unit-card.warning   { border-left: 4px solid #e65100; }
+    .unit-card.critical  { border-left: 4px solid #c62828; }
+    .unit-card.offline   { border-left: 4px solid #9e9e9e; opacity: .75; }
+    .unit-card.no-data   { border-left: 4px solid #bdbdbd; }
+    .unit-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+    .unit-icon { font-size: 1.8rem; }
+    .unit-name { font-size: 1rem; font-weight: 800; color: var(--ink); }
+    .unit-location { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+    .unit-temp { font-size: 2.6rem; font-weight: 900; line-height: 1; margin: 8px 0 4px; }
+    .temp-in-range  { color: #2e7d32; }
+    .temp-warning   { color: #e65100; }
+    .temp-critical  { color: #c62828; }
+    .temp-offline   { color: #9e9e9e; }
+    .temp-nodata    { color: #bdbdbd; }
+    .unit-limits { font-size: 0.78rem; color: var(--muted); margin-bottom: 8px; }
+    .unit-minmax { display: flex; gap: 10px; font-size: 0.8rem; color: var(--muted); margin-bottom: 8px; }
+    .unit-minmax span { background: #f5f5f5; border-radius: 4px; padding: 2px 7px; font-weight: 600; }
+    .unit-meta { display: flex; align-items: center; justify-content: space-between; font-size: 0.76rem; color: var(--muted); }
+    .unit-alert-badge { background: rgba(198,40,40,.1); color: #c62828; border-radius: 20px; padding: 2px 9px; font-weight: 700; font-size: 0.72rem; }
+    .battery { display: inline-flex; align-items: center; gap: 3px; }
+    .no-data { text-align: center; padding: 60px; color: var(--muted); font-style: italic; grid-column: 1/-1; }
+    .refresh-info { font-size: 0.78rem; color: var(--muted); text-align: right; }
+    @media (max-width: 600px) { main { padding: 16px; } .unit-temp { font-size: 2rem; } }
+  </style>
+</head>
+<body data-module="tempmon">
+<main>
+  <div class="page-header">
+    <h1>🌡️ Equipment Temp Monitor</h1>
+    <span class="refresh-info" id="lastRefresh">Refreshing every 30s</span>
+  </div>
+
+  <div class="nav-links">
+    <a href="/tempmon/" class="nav-link active">📡 Live Dashboard</a>
+    <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
+    <a href="/tempmon/report.html" class="nav-link">📊 Compliance Report</a>
+    <a href="/tempmon/calibration.html" class="nav-link">🔧 Calibration</a>
+    <a href="/tempmon/setup.html" class="nav-link">⚙️ Setup</a>
+  </div>
+
+  <div class="summary-bar">
+    <div class="stat-card ok">   <div class="val" id="statTotal">—</div><div class="lbl">Total Units</div></div>
+    <div class="stat-card ok">   <div class="val" id="statInRange">—</div><div class="lbl">In Range</div></div>
+    <div class="stat-card danger"><div class="val" id="statOutRange">—</div><div class="lbl">Out of Range</div></div>
+    <div class="stat-card warn">  <div class="val" id="statAlerts">—</div><div class="lbl">Open Alerts</div></div>
+    <div class="stat-card warn">  <div class="val" id="statOffline">—</div><div class="lbl">Offline Devices</div></div>
+  </div>
+
+  <div class="units-grid" id="unitsGrid">
+    <div class="no-data">Loading…</div>
+  </div>
+</main>
+
+<script>
+  const API = '/api/tempmon';
+  let refreshTimer = null;
+  let currentUser  = null;
+
+  async function init() {
+    try {
+      const r = await apiFetch('/api/auth/me');
+      const { user } = await r.json();
+      if (!user.permissions?.tempmon && user.role !== 'admin')
+        return window.location.replace('/?access=denied');
+      currentUser = user;
+      document.documentElement.style.visibility = '';
+      load();
+      refreshTimer = setInterval(load, 30000);
+    } catch { window.location.replace('/login'); }
+  }
+
+  const TYPE_ICONS = { freezer: '🧊', chiller: '❄️', warmer: '🔥', ambient: '🌡️' };
+
+  function tempClass(unit, reading) {
+    if (!reading) return 'no-data';
+    const v = reading.value;
+    if (reading.flagged) {
+      return v > unit.criticalMax ? 'critical' : 'critical';
+    }
+    const buf = unit.warningBuffer || 2;
+    if (v < unit.criticalMin + buf || v > unit.criticalMax - buf) return 'warning';
+    return 'in-range';
+  }
+
+  function tempTextClass(cls) {
+    return { 'in-range': 'temp-in-range', 'warning': 'temp-warning', 'critical': 'temp-critical', 'offline': 'temp-offline', 'no-data': 'temp-nodata' }[cls] || 'temp-nodata';
+  }
+
+  function relativeTime(date) {
+    if (!date) return 'never';
+    const diff = Math.round((Date.now() - new Date(date)) / 1000);
+    if (diff < 60)   return diff + 's ago';
+    if (diff < 3600) return Math.round(diff / 60) + 'm ago';
+    if (diff < 86400)return Math.round(diff / 3600) + 'h ago';
+    return Math.round(diff / 86400) + 'd ago';
+  }
+
+  async function load() {
+    try {
+      const [unitsRes, dashRes] = await Promise.all([
+        apiFetch(API + '/units'),
+        apiFetch(API + '/dashboard')
+      ]);
+      const units = await unitsRes.json();
+      const dash  = await dashRes.json();
+
+      // Summary bar
+      document.getElementById('statTotal').textContent    = dash.totalUnits;
+      document.getElementById('statAlerts').textContent   = dash.openAlerts;
+      document.getElementById('statOffline').textContent  = dash.offlineDevices;
+      document.getElementById('statOutRange').textContent = dash.unitsOutOfRange;
+      document.getElementById('statInRange').textContent  = Math.max(0, dash.totalUnits - dash.unitsOutOfRange);
+      document.getElementById('lastRefresh').textContent  = 'Updated ' + relativeTime(new Date());
+
+      if (!units.length) {
+        document.getElementById('unitsGrid').innerHTML = `<div class="no-data">No units configured yet.<br><a href="/tempmon/setup.html" style="color:var(--accent);font-weight:700">⚙️ Add your first unit →</a></div>`;
+        return;
+      }
+
+      document.getElementById('unitsGrid').innerHTML = units.map(u => {
+        const r      = u.latestReading;
+        const cls    = r ? tempClass(u, r) : (u.openAlerts ? 'critical' : 'no-data');
+        const tCls   = tempTextClass(cls);
+        const tempStr = r ? r.value.toFixed(1) + '°C' : '—';
+        const icon   = TYPE_ICONS[u.type] || '🌡️';
+        const alertBadge = u.openAlerts > 0 ? `<span class="unit-alert-badge">⚠️ ${u.openAlerts} alert${u.openAlerts > 1 ? 's' : ''}</span>` : '';
+        return `
+          <a class="unit-card ${escHtml(cls)}" href="/tempmon/unit.html?id=${escHtml(u._id)}">
+            <div class="unit-top">
+              <div>
+                <div class="unit-icon">${icon}</div>
+                <div class="unit-name">${escHtml(u.name)}</div>
+                ${u.location ? `<div class="unit-location">${escHtml(u.location)}</div>` : ''}
+              </div>
+              ${alertBadge}
+            </div>
+            <div class="unit-temp ${tCls}">${tempStr}</div>
+            <div class="unit-limits">Range: ${u.criticalMin}°C – ${u.criticalMax}°C</div>
+            ${r ? `<div class="unit-minmax"><span>📍 ${relativeTime(r.recordedAt)}</span></div>` : '<div class="unit-minmax"><span style="color:#bbb">No readings yet</span></div>'}
+            <div class="unit-meta">
+              <span>${escHtml(u.type.charAt(0).toUpperCase() + u.type.slice(1))}</span>
+              <span style="font-size:0.72rem">${u._id}</span>
+            </div>
+          </a>`;
+      }).join('');
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  init();
+</script>
+<script src="/js/shell.js"></script>
+</body>
+</html>
