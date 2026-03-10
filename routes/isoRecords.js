@@ -22,11 +22,11 @@ function computeStatus(record) {
     (now.getFullYear() - filed.getFullYear()) * 12 +
     (now.getMonth()    - filed.getMonth());
 
-  // Daily forms are physically filed monthly, so previous month is still on-time.
+  // Deadline is the last day of each month. Filed this month = Up to Date; anything older = Late.
   if (frequency === 'Daily' || frequency === 'Monthly') {
-    if (monthsDiff <= 1) return 'Up to Date';
-    if (monthsDiff === 2) return '1 Month Late';
-    return `${monthsDiff - 1} Months Late`;
+    if (monthsDiff <= 0) return 'Up to Date';
+    if (monthsDiff === 1) return '1 Month Late';
+    return `${monthsDiff} Months Late`;
   }
 
   return 'Not Filed';
