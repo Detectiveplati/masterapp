@@ -150,6 +150,12 @@
     .note-dot.resolved   { background: #43a047; }
     .ep-comment { margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
 
+    /* ── Comment column ── */
+    .comment-cell { max-width: 200px; }
+    .comment-cell .cell-val { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; color: var(--muted); font-size: 0.82rem; }
+    .comment-cell .cell-val.has-comment { color: var(--ink); }
+    .inline-textarea { width: 100%; padding: 5px 8px; border: 1.5px solid var(--accent); border-radius: 6px; font-size: 0.82rem; font-family: inherit; background: #fff; box-shadow: 0 0 0 3px rgba(21,101,192,.1); resize: none; min-height: 56px; }
+
     @media (max-width: 768px) {
       main { padding: 16px; }
       .action-row { flex-direction: column; align-items: stretch; }
@@ -281,6 +287,13 @@
     'Others':                                '📦'
   };
   var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // Last day of previous month as YYYY-MM-DD (used as default date for newly filed records)
+  function lastMonthEndDateStr() {
+    var d = new Date();
+    d.setDate(0); // day 0 = last day of previous month
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
 
   // ── State ────────────────────────────────────────────────────────────────────
   var allRecords    = [];
@@ -416,7 +429,7 @@
     });
 
     var deptKeys = Object.keys(grouped).sort(function(a, b) { return a.localeCompare(b); });
-    var colCount = hideDept ? 7 : 8;
+    var colCount = hideDept ? 8 : 9;
     var rowNum   = 0;
     var rows     = '';
 
@@ -428,6 +441,7 @@
       sorted.forEach(function(rec) {
         rowNum++;
         var sel = rec._id === selectedRecordId ? ' row-selected' : '';
+        var commentClass = rec.comment ? 'has-comment' : '';
         rows += '<tr class="data-row' + sel + '" data-id="' + escHtml(rec._id) + '">' +
           '<td style="color:var(--muted);font-size:0.8rem">' + rowNum + '</td>' +
           '<td class="editable-cell" data-id="' + escHtml(rec._id) + '" data-field="recordName" title="Click to edit">' +
@@ -444,9 +458,11 @@
             'data-rawdate="' + escHtml(toDateInput(rec.latestDateFiled)) + '" title="Click to edit">' +
             '<span class="cell-val">' + fmtDateShort(rec.latestDateFiled) + '</span></td>' +
           '<td><span class="' + getBadgeClass(rec.status) + '">' + escHtml(rec.status) + '</span></td>' +
+          '<td class="editable-cell comment-cell" data-id="' + escHtml(rec._id) + '" data-field="comment" title="Click to edit comment">' +
+            '<span class="cell-val ' + commentClass + '">' + escHtml(rec.comment || '—') + '</span></td>' +
           '<td><div style="display:flex;gap:5px">' +
             '<button class="btn-filed" ' +
-              'onclick="event.stopPropagation();markFiledToday(\'' + escHtml(rec._id) + '\')">✓ Filed Today</button>' +
+              'onclick="event.stopPropagation();markFiledToday(\'' + escHtml(rec._id) + '\')">✓ Mark Filed</button>' +
             '<button class="btn-del" ' +
               'onclick="event.stopPropagation();deleteRecord(\'' + escHtml(rec._id) + '\')">🗑️</button>' +
           '</div></td>' +
@@ -464,6 +480,7 @@
           '<th>Frequency</th>' +
           '<th>Latest Date Filed</th>' +
           '<th>Status</th>' +
+          '<th>Comments</th>' +
           '<th>Actions</th>' +
         '</tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
@@ -528,11 +545,24 @@
       el.addEventListener('keydown', function(e) { if (e.key === 'Escape') { e.preventDefault(); cancelInlineEdit(); } });
       el.addEventListener('blur', function() { cancelInlineEdit(); });
 
+    } else if (field === 'comment') {
+      el = document.createElement('textarea');
+      el.className = 'inline-textarea';
+      el.value = currentValue;
+      el.rows = 3;
+      el.placeholder = 'Enter comment…';
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmInlineEdit(recordId, field, el.value.trim()); }
+        if (e.key === 'Escape') { e.preventDefault(); cancelInlineEdit(); }
+      });
+      el.addEventListener('blur', function() { confirmInlineEdit(recordId, field, el.value.trim()); });
+
     } else if (field === 'latestDateFiled') {
       el = document.createElement('input');
       el.type = 'date';
       el.className = 'inline-input';
-      el.value = currentValue;
+      // Pre-fill with last month's end when no date is set
+      el.value = currentValue || lastMonthEndDateStr();
       el.addEventListener('blur', function() { confirmInlineEdit(recordId, field, el.value); });
       el.addEventListener('keydown', function(e) {
         if (e.key === 'Enter')  { e.preventDefault(); confirmInlineEdit(recordId, field, el.value); }
@@ -668,7 +698,7 @@
       '<div class="form-group"><label>Person in Charge</label>' +
         '<select class="form-control" id="epPic">' + empOptions + '</select></div>' +
       '<div class="form-group"><label>Latest Date Filed</label>' +
-        '<input type="date" class="form-control" id="epDate" value="' + escHtml(toDateInput(rec.latestDateFiled)) + '"></div>' +
+        '<input type="date" class="form-control" id="epDate" value="' + escHtml(toDateInput(rec.latestDateFiled) || lastMonthEndDateStr()) + '"></div>' +
       '<div class="ep-comment">' +
         '<div class="form-group" style="margin-bottom:8px"><label>Note / Missing Entry</label>' +
           '<textarea class="form-control" id="epComment" rows="3" placeholder="Add a note about missing entries or follow-ups…" style="resize:vertical;min-height:72px">' + escHtml(rec.comment || '') + '</textarea></div>' +
@@ -683,7 +713,7 @@
       '</div>' +
       '<div class="ep-footer">' +
         '<button class="btn btn-primary" onclick="saveEditPanel(\'' + escHtml(rec._id) + '\')">💾 Save Changes</button>' +
-        '<button class="btn btn-outline" onclick="markFiledToday(\'' + escHtml(rec._id) + '\')">✓ Filed Today</button>' +
+        '<button class="btn btn-outline" onclick="markFiledToday(\'' + escHtml(rec._id) + '\')">✓ Mark Filed</button>' +
         '<button class="btn btn-secondary" onclick="closeEditPanel()">Close</button>' +
       '</div>';
   }

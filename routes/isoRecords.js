@@ -272,14 +272,18 @@ router.put('/:id', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// PUT /api/iso-records/:id/filedtoday — stamp today's date
+// PUT /api/iso-records/:id/filedtoday — stamp last month's last day
 // ---------------------------------------------------------------------------
 router.put('/:id/filedtoday', async (req, res) => {
   try {
     if (!isValidId(req.params.id)) return res.status(400).json({ message: 'Invalid record ID' });
+    // "Filed today" means the batch was filed now but belongs to last month
+    const lastDayPrevMonth = new Date();
+    lastDayPrevMonth.setDate(0); // day 0 of current month = last day of previous month
+    lastDayPrevMonth.setHours(0, 0, 0, 0);
     const record = await IsoRecord.findByIdAndUpdate(
       req.params.id,
-      { latestDateFiled: new Date() },
+      { latestDateFiled: lastDayPrevMonth },
       { new: true }
     );
     if (!record) return res.status(404).json({ message: 'Record not found' });
