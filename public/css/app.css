@@ -45,6 +45,7 @@ body[data-module="procurement"] { --accent: #27ae60; --accent-2: #1e8449; }
 body[data-module="foodsafety"]  { --accent: #16a085; --accent-2: #1abc9c; }
 body[data-module="admin"]       { --accent: #7f5af0; --accent-2: #5e3fce; }
 body[data-module="tempmon"]     { --accent: #0288d1; --accent-2: #0277bd; }
+body[data-module="iso"]         { --accent: #1565c0; --accent-2: #0d47a1; }
 body[data-module="hub"]         { --accent: #ff7a18; --accent-2: #e74c3c; }
 
 
@@ -387,6 +388,7 @@ section h2 {
 .hub-card.admin::before       { background: linear-gradient(90deg, var(--clr-admin), #5e3fce); }
 .hub-card.pest::before        { background: linear-gradient(90deg, var(--clr-pest), #66bb6a); }
 .hub-card.tempmon::before     { background: linear-gradient(90deg, var(--clr-tempmon), #29b6f6); }
+.hub-card.iso::before         { background: linear-gradient(90deg, #1565c0, #0d47a1); }
 
 .hub-card.maintenance .go-btn { color: var(--clr-maintenance); }
 .hub-card.templog .go-btn     { color: var(--clr-templog); }
@@ -395,6 +397,7 @@ section h2 {
 .hub-card.admin .go-btn       { color: var(--clr-admin); }
 .hub-card.pest .go-btn        { color: var(--clr-pest); }
 .hub-card.tempmon .go-btn     { color: var(--clr-tempmon); }
+.hub-card.iso .go-btn         { color: #1565c0; }
 
 .module-card.report::before { background: linear-gradient(90deg, var(--accent), #e74c3c); }
 .module-card.view::before   { background: linear-gradient(90deg, var(--accent-2), #e67e22); }

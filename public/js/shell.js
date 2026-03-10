@@ -82,6 +82,7 @@
     admin:       { label: '⚙️ Admin'             },
     'push-test': { label: '🔔 Push Test'         },
     tempmon:     { label: '🌡️ Temp Monitor'         },
+    iso:         { label: '📂 ISO Records'            },
   };
 
   /* ── Navigation tree ─────────────────────────────────────────── */
@@ -141,6 +142,13 @@
         { href: '/tempmon/report.html',         label: '📊 Compliance Report' },
         { href: '/tempmon/calibration.html',    label: '🔧 Calibration'       },
         { href: '/tempmon/setup.html',          label: '⚙️ Setup'              },
+      ],
+    },
+    {
+      icon: '📂', label: 'ISO Records', module: 'iso',
+      href: '/iso/', perm: 'iso',
+      children: [
+        { href: '/iso/', label: '📋 Records Keeper' },
       ],
     },
     { divider: true },

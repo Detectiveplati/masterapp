@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>ISO Records — Central Kitchen</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/lib/dom.js"></script>
+  <script src="/js/lib/http.js"></script>
+  <style>
+    body[data-module="iso"] { --accent: #1565c0; --accent-2: #0d47a1; }
+
+    main { max-width: 1300px; margin: 0 auto; padding: 28px 20px; }
+
+    /* ── Page header ── */
+    .page-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .page-hdr h1 { font-size: 1.35rem; font-weight: 900; color: var(--ink); }
+
+    /* ── Summary cards ── */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 18px; box-shadow: 0 3px 12px var(--shadow); cursor: pointer; transition: box-shadow .15s; }
+    .stat-card:hover { box-shadow: 0 4px 18px rgba(21,101,192,.15); }
+    .stat-card .val { font-size: 2.2rem; font-weight: 900; color: var(--accent); }
+    .stat-card.green .val { color: var(--success); }
+    .stat-card.red   .val { color: var(--danger); }
+    .stat-card .lbl { font-size: 0.78rem; color: var(--muted); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* ── Category tabs ── */
+    .cat-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .cat-tab { background: var(--card); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 16px; cursor: pointer; font-family: inherit; font-size: 0.88rem; text-align: left; transition: border-color .15s, box-shadow .15s; min-width: 170px; }
+    .cat-tab:hover { border-color: var(--accent); }
+    .cat-tab.active { border-color: var(--accent); background: rgba(21,101,192,.06); box-shadow: 0 2px 8px rgba(21,101,192,.12); }
+    .cat-tab .t-title { font-weight: 800; color: var(--ink); margin-bottom: 4px; white-space: nowrap; }
+    .cat-tab.active .t-title { color: var(--accent); }
+    .cat-tab .t-stats { display: flex; gap: 10px; font-size: 0.75rem; }
+    .t-total { color: var(--muted); font-weight: 600; }
+    .t-up    { color: var(--success); font-weight: 700; }
+    .t-late  { color: var(--danger); font-weight: 700; }
+
+    /* ── Action row ── */
+    .action-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+    .filter-input  { padding: 9px 13px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-family: inherit; flex: 1; min-width: 160px; background: var(--card); }
+    .filter-select { padding: 9px 13px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-family: inherit; background: var(--card); min-width: 140px; }
+    .filter-input:focus, .filter-select:focus { outline: none; border-color: var(--accent); }
+
+    /* ── Section card ── */
+    .section-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 4px 16px var(--shadow); margin-bottom: 24px; overflow: hidden; }
+
+    /* ── Records table ── */
+    .records-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .records-table th { padding: 11px 14px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); border-bottom: 2px solid var(--border); text-align: left; white-space: nowrap; background: var(--card); }
+    .records-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .records-table tr:last-child td { border-bottom: none; }
+    .records-table tr.data-row { cursor: pointer; }
+    .records-table tr.data-row:hover td { background: #f9f9fb; }
+    .records-table tr.row-selected td { background: rgba(21,101,192,.06); }
+    .dept-row td { background: var(--bg); font-size: 0.78rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 7px 14px; }
+
+    /* ── Inline editing ── */
+    .editable-cell { cursor: pointer; }
+    .editable-cell .cell-val { display: block; }
+    .editable-cell:hover .cell-val { text-decoration: underline dotted var(--accent); color: var(--accent); }
+    .inline-input, .inline-select { width: 100%; padding: 5px 8px; border: 1.5px solid var(--accent); border-radius: 6px; font-size: 0.88rem; font-family: inherit; background: #fff; box-shadow: 0 0 0 3px rgba(21,101,192,.1); }
+    .inline-input:focus, .inline-select:focus { outline: none; }
+
+    /* ── Status badges ── */
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.73rem; font-weight: 700; white-space: nowrap; }
+    .badge-green  { background: rgba(39,174,96,.12);  color: #1a7a46; }
+    .badge-grey   { background: rgba(90,97,108,.12);  color: var(--muted); }
+    .badge-orange { background: rgba(217,119,6,.12);  color: #b45309; }
+    .badge-red    { background: rgba(192,57,43,.12);  color: #c0392b; }
+
+    /* ── Row action buttons ── */
+    .btn-filed { padding: 4px 10px; background: rgba(21,101,192,.08); border: 1px solid rgba(21,101,192,.2); color: var(--accent); border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
+    .btn-filed:hover { background: rgba(21,101,192,.15); }
+    .btn-del { padding: 4px 10px; background: rgba(192,57,43,.08); border: 1px solid rgba(192,57,43,.18); color: var(--danger); border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .btn-del:hover { background: rgba(192,57,43,.15); }
+
+    /* ── Shared buttons ── */
+    .btn { padding: 10px 18px; border: none; border-radius: 10px; cursor: pointer; font-size: 0.88rem; font-weight: 700; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary   { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; box-shadow: 0 3px 10px rgba(21,101,192,.25); }
+    .btn-outline   { background: #fff; border: 2px solid var(--accent); color: var(--accent); }
+    .btn-secondary { background: #f0f0f0; border: none; color: var(--muted); }
+    .btn-danger    { background: rgba(192,57,43,.1); border: 1px solid rgba(192,57,43,.2); color: var(--danger); }
+    .btn-sm { padding: 6px 12px; font-size: 0.82rem; }
+
+    .no-data { text-align: center; padding: 40px; color: var(--muted); font-style: italic; }
+    .loading { text-align: center; padding: 40px; color: var(--muted); }
+
+    /* ── Edit panel (right drawer) ── */
+    #editOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 500; }
+    #editOverlay.open { display: block; }
+    #editPanel {
+      position: fixed; top: var(--topnav-h); right: 0; bottom: 0;
+      width: min(480px, 100vw); background: var(--card);
+      box-shadow: -4px 0 24px rgba(0,0,0,.15); overflow-y: auto;
+      z-index: 501; transform: translateX(100%); transition: transform .25s ease;
+      padding: 28px 24px;
+    }
+    #editPanel.open { transform: translateX(0); }
+    .ep-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 22px; gap: 12px; }
+    .ep-hdr h2 { font-size: 1rem; font-weight: 900; color: var(--ink); line-height: 1.4; }
+    .ep-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--muted); padding: 4px 8px; border-radius: 6px; flex-shrink: 0; }
+    .ep-close:hover { background: var(--bg); }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 0.78rem; font-weight: 700; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .03em; }
+    .form-control { width: 100%; padding: 10px 13px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-family: inherit; background: var(--card); }
+    .form-control:focus { outline: none; border-color: var(--accent); }
+    .form-control[disabled] { background: var(--bg); color: var(--muted); cursor: default; }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .ep-footer { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+    /* ── Modals ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 600; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: var(--card); border-radius: 16px; width: 100%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 16px 48px rgba(0,0,0,.2); }
+    .modal-box.modal-sm { max-width: 440px; }
+    .modal-hdr { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .modal-hdr h2 { font-size: 1rem; font-weight: 900; color: var(--ink); }
+    .modal-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--muted); padding: 4px 8px; border-radius: 6px; }
+    .modal-close:hover { background: var(--bg); }
+    .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+    .modal-footer { padding: 14px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
+
+    /* ── Manage Records table ── */
+    .manage-tbl { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+    .manage-tbl th { padding: 9px 10px; font-size: 0.73rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); border-bottom: 2px solid var(--border); text-align: left; }
+    .manage-tbl td { padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .manage-tbl tr:last-child td { border-bottom: none; }
+    .manage-input { width: 100%; padding: 6px 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; font-family: inherit; background: var(--card); }
+    .manage-input:focus { outline: none; border-color: var(--accent); }
+    .manage-add { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+    .manage-add h3 { font-size: 0.9rem; font-weight: 800; color: var(--ink); margin-bottom: 12px; }
+    .manage-add-grid { display: grid; grid-template-columns: 1fr 1fr 130px; gap: 10px; align-items: end; }
+
+    /* ── Employee list ── */
+    .emp-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .emp-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: #fafafa; }
+    .emp-name { font-weight: 600; }
+
+    /* ── Error banner ── */
+    .error-banner { background: rgba(192,57,43,.08); border: 1px solid rgba(192,57,43,.2); border-radius: 10px; padding: 12px 16px; color: var(--danger); font-size: 0.88rem; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+    .error-banner button { background: none; border: none; cursor: pointer; color: var(--danger); font-size: 1rem; padding: 0; }
+
+    @media (max-width: 768px) {
+      main { padding: 16px; }
+      .action-row { flex-direction: column; align-items: stretch; }
+      .filter-input, .filter-select { width: 100%; }
+      .form-row-2 { grid-template-columns: 1fr; }
+      .manage-add-grid { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 540px) {
+      .stats-row { grid-template-columns: 1fr; }
+      .cat-tabs { flex-direction: column; }
+    }
+  </style>
+</head>
+<body data-module="iso">
+<main>
+
+  <div id="errorBanner" class="error-banner" style="display:none">
+    <span id="errorMsg"></span>
+    <button onclick="clearError()">✕</button>
+  </div>
+
+  <div class="page-hdr">
+    <h1>📂 ISO Records Keeper</h1>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-secondary" onclick="openEmpModal()">👥 Employees</button>
+      <button class="btn btn-primary" onclick="exportRecords()">📥 Export .xlsx</button>
+    </div>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="stats-row">
+    <div class="stat-card" onclick="setStatusFilter('')" title="Show all records">
+      <div class="val" id="statTotal">—</div>
+      <div class="lbl">Total Records</div>
+    </div>
+    <div class="stat-card green" onclick="setStatusFilter('Up to Date')" title="Filter: Up to Date">
+      <div class="val" id="statUpToDate">—</div>
+      <div class="lbl">Up to Date</div>
+    </div>
+    <div class="stat-card red" onclick="setStatusFilter('Overdue')" title="Filter: Overdue / Not Filed">
+      <div class="val" id="statOverdue">—</div>
+      <div class="lbl">Overdue / Not Filed</div>
+    </div>
+  </div>
+
+  <!-- Category tabs -->
+  <div class="cat-tabs" id="catTabs"></div>
+
+  <!-- Filters + Manage -->
+  <div class="action-row">
+    <input type="text" class="filter-input" id="filterSearch" placeholder="Search record name…" oninput="onSearchInput(this.value)">
+    <select class="filter-select" id="filterDept" onchange="onDeptFilter(this.value)">
+      <option value="">All Departments</option>
+    </select>
+    <select class="filter-select" id="filterStatus" onchange="onStatusFilter(this.value)">
+      <option value="">All Statuses</option>
+      <option value="Up to Date">Up to Date</option>
+      <option value="Late">Late</option>
+      <option value="Not Filed">Not Filed</option>
+    </select>
+    <button class="btn btn-secondary" onclick="clearFilters()">✕ Clear</button>
+    <button class="btn btn-outline" onclick="openManageModal()">⚙️ Manage Records</button>
+  </div>
+
+  <!-- Records table -->
+  <div class="section-card">
+    <div id="tableContainer" style="overflow-x:auto">
+      <div class="loading">Loading…</div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Edit panel overlay (click outside to close) -->
+<div id="editOverlay" onclick="closeEditPanel()"></div>
+
+<!-- Edit panel drawer -->
+<div id="editPanel">
+  <div class="ep-hdr">
+    <h2 id="epTitle">Edit Record</h2>
+    <button class="ep-close" onclick="closeEditPanel()" title="Close">✕</button>
+  </div>
+  <div id="epBody"></div>
+</div>
+
+<!-- Manage Records Modal -->
+<div class="modal-overlay" id="manageModal" onclick="if(event.target===this)closeManageModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-hdr">
+      <h2 id="manageTitle">Manage Records</h2>
+      <button class="modal-close" onclick="closeManageModal()">✕</button>
+    </div>
+    <div class="modal-body" id="manageBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeManageModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Employees Modal -->
+<div class="modal-overlay" id="empModal" onclick="if(event.target===this)closeEmpModal()">
+  <div class="modal-box modal-sm" onclick="event.stopPropagation()">
+    <div class="modal-hdr">
+      <h2>Manage Employees</h2>
+      <button class="modal-close" onclick="closeEmpModal()">✕</button>
+    </div>
+    <div class="modal-body" id="empBody"></div>
+    <div class="modal-footer">
+      <input type="text" class="filter-input" id="empNameInput" placeholder="Employee name…"
+        style="flex:1;min-width:0" onkeydown="if(event.key==='Enter')addEmployee()">
+      <button class="btn btn-primary" onclick="addEmployee()">Add</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Constants ────────────────────────────────────────────────────────────────
+  var CATEGORIES = [
+    'Cooking Temperature Logs',
+    'Units (Multiple Locations)',
+    'Fruits & Vegetables (06-15/16/17/27)',
+    'Others'
+  ];
+  var CAT_ICONS = {
+    'Cooking Temperature Logs':              '🌡️',
+    'Units (Multiple Locations)':            '🏢',
+    'Fruits & Vegetables (06-15/16/17/27)':  '🥗',
+    'Others':                                '📦'
+  };
+  var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // ── State ────────────────────────────────────────────────────────────────────
+  var allRecords    = [];
+  var allEmployees  = [];
+  var currentCategory = 'Cooking Temperature Logs';
+  var filters = { search: '', department: '', status: '' };
+  var selectedRecordId = null;
+  var editingCell   = null;  // { recordId, field, td, origInner }
+  var isSavingCell  = false;
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  function fmtDateShort(d) {
+    if (!d) return '—';
+    var dt = new Date(d);
+    return String(dt.getDate()).padStart(2,'0') + ' ' + MONTHS_SHORT[dt.getMonth()] + ' ' + dt.getFullYear();
+  }
+
+  function toDateInput(d) {
+    if (!d) return '';
+    var dt = new Date(d);
+    return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+  }
+
+  function getBadgeClass(status) {
+    if (status === 'Up to Date') return 'badge badge-green';
+    if (status === 'Not Filed')  return 'badge badge-grey';
+    var m = status.match(/^(\d+) Month/);
+    if (m) return parseInt(m[1]) >= 2 ? 'badge badge-red' : 'badge badge-orange';
+    return 'badge badge-orange';
+  }
+
+  function showError(msg) {
+    document.getElementById('errorMsg').textContent = msg;
+    document.getElementById('errorBanner').style.display = 'flex';
+  }
+
+  function clearError() {
+    document.getElementById('errorBanner').style.display = 'none';
+  }
+
+  function getCatStats(cat) {
+    var recs = allRecords.filter(function(r) { return r.category === cat; });
+    return {
+      total:   recs.length,
+      up:      recs.filter(function(r) { return r.status === 'Up to Date'; }).length,
+      late:    recs.filter(function(r) { return r.status !== 'Up to Date'; }).length
+    };
+  }
+
+  function getFilteredRecords() {
+    return allRecords.filter(function(r) {
+      if (r.category !== currentCategory) return false;
+      if (filters.search && r.recordName.toLowerCase().indexOf(filters.search.toLowerCase()) === -1) return false;
+      if (filters.department && r.department !== filters.department) return false;
+      if (filters.status === 'Up to Date' && r.status !== 'Up to Date') return false;
+      if (filters.status === 'Late' && r.status.indexOf('Late') === -1) return false;
+      if (filters.status === 'Not Filed' && r.status !== 'Not Filed') return false;
+      if (filters.status === 'Overdue' && r.status === 'Up to Date') return false;
+      return true;
+    });
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+  function renderAll() {
+    renderSummaryCards();
+    renderCategoryTabs();
+    renderFilterDepts();
+    renderTable();
+    if (selectedRecordId) {
+      var rec = allRecords.find(function(r) { return r._id === selectedRecordId; });
+      if (rec) renderEditPanel(rec);
+      else closeEditPanel();
+    }
+  }
+
+  function renderSummaryCards() {
+    var visible = allRecords.filter(function(r) { return r.category === currentCategory; });
+    var total   = visible.length;
+    var up      = visible.filter(function(r) { return r.status === 'Up to Date'; }).length;
+    var overdue = visible.filter(function(r) { return r.status !== 'Up to Date'; }).length;
+    document.getElementById('statTotal').textContent    = total;
+    document.getElementById('statUpToDate').textContent = up;
+    document.getElementById('statOverdue').textContent  = overdue;
+  }
+
+  function renderCategoryTabs() {
+    var el = document.getElementById('catTabs');
+    el.innerHTML = CATEGORIES.map(function(cat) {
+      var s      = getCatStats(cat);
+      var active = cat === currentCategory ? ' active' : '';
+      var icon   = CAT_ICONS[cat] || '📄';
+      return '<button class="cat-tab' + active + '" data-cat="' + escHtml(cat) + '" onclick="switchCategory(this.dataset.cat)">' +
+        '<div class="t-title">' + icon + ' ' + escHtml(cat) + '</div>' +
+        '<div class="t-stats">' +
+          '<span class="t-total">' + s.total + ' total</span>' +
+          '<span class="t-up">' + s.up + ' ✓</span>' +
+          '<span class="t-late">' + s.late + ' ⚠</span>' +
+        '</div>' +
+      '</button>';
+    }).join('');
+  }
+
+  function renderFilterDepts() {
+    var sel     = document.getElementById('filterDept');
+    var current = sel.value;
+    var depts   = allRecords
+      .filter(function(r) { return r.category === currentCategory; })
+      .map(function(r) { return r.department; })
+      .filter(Boolean);
+    depts = [...new Set(depts)].sort();
+    sel.innerHTML = '<option value="">All Departments</option>' +
+      depts.map(function(d) {
+        return '<option value="' + escHtml(d) + '"' + (d === current ? ' selected' : '') + '>' + escHtml(d) + '</option>';
+      }).join('');
+  }
+
+  function renderTable() {
+    var container  = document.getElementById('tableContainer');
+    var recs       = getFilteredRecords();
+    var hideDept   = currentCategory === 'Cooking Temperature Logs';
+
+    if (recs.length === 0) {
+      container.innerHTML = '<div class="no-data">No records match the current filters.</div>';
+      return;
+    }
+
+    // Group by department
+    var grouped = {};
+    recs.forEach(function(r) {
+      var key = hideDept ? '__all__' : (r.department || 'Unassigned');
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(r);
+    });
+
+    var deptKeys = Object.keys(grouped).sort(function(a, b) { return a.localeCompare(b); });
+    var colCount = hideDept ? 7 : 8;
+    var rowNum   = 0;
+    var rows     = '';
+
+    deptKeys.forEach(function(dept) {
+      if (!hideDept) {
+        rows += '<tr class="dept-row"><td colspan="' + colCount + '">Department / Unit: ' + escHtml(dept) + '</td></tr>';
+      }
+      var sorted = grouped[dept].slice().sort(function(a, b) { return a.recordName.localeCompare(b.recordName); });
+      sorted.forEach(function(rec) {
+        rowNum++;
+        var sel = rec._id === selectedRecordId ? ' row-selected' : '';
+        rows += '<tr class="data-row' + sel + '" data-id="' + escHtml(rec._id) + '">' +
+          '<td style="color:var(--muted);font-size:0.8rem">' + rowNum + '</td>' +
+          '<td class="editable-cell" data-id="' + escHtml(rec._id) + '" data-field="recordName" title="Click to edit">' +
+            '<span class="cell-val">' + escHtml(rec.recordName) + '</span></td>' +
+          (hideDept ? '' : '<td class="editable-cell" data-id="' + escHtml(rec._id) + '" data-field="department" title="Click to edit">' +
+            '<span class="cell-val">' + escHtml(rec.department || '—') + '</span></td>') +
+          '<td class="editable-cell" data-id="' + escHtml(rec._id) + '" data-field="personInCharge" title="Click to edit">' +
+            '<span class="cell-val">' + escHtml(rec.personInCharge || '—') + '</span></td>' +
+          '<td class="editable-cell" data-id="' + escHtml(rec._id) + '" data-field="frequency" title="Click to edit">' +
+            '<span class="cell-val">' + escHtml(rec.frequency) + '</span></td>' +
+          '<td class="editable-cell" data-id="' + escHtml(rec._id) + '" data-field="latestDateFiled" ' +
+            'data-rawdate="' + escHtml(toDateInput(rec.latestDateFiled)) + '" title="Click to edit">' +
+            '<span class="cell-val">' + fmtDateShort(rec.latestDateFiled) + '</span></td>' +
+          '<td><span class="' + getBadgeClass(rec.status) + '">' + escHtml(rec.status) + '</span></td>' +
+          '<td><div style="display:flex;gap:5px">' +
+            '<button class="btn-filed" ' +
+              'onclick="event.stopPropagation();markFiledToday(\'' + escHtml(rec._id) + '\')">✓ Filed Today</button>' +
+            '<button class="btn-del" ' +
+              'onclick="event.stopPropagation();deleteRecord(\'' + escHtml(rec._id) + '\')">🗑️</button>' +
+          '</div></td>' +
+        '</tr>';
+      });
+    });
+
+    container.innerHTML =
+      '<table class="records-table">' +
+        '<thead><tr>' +
+          '<th>#</th>' +
+          '<th>Record Name</th>' +
+          (hideDept ? '' : '<th>Department</th>') +
+          '<th>Person in Charge</th>' +
+          '<th>Frequency</th>' +
+          '<th>Latest Date Filed</th>' +
+          '<th>Status</th>' +
+          '<th>Actions</th>' +
+        '</tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>';
+
+    // Row click → open edit panel (not on action/editable cells)
+    container.querySelectorAll('tr.data-row').forEach(function(tr) {
+      tr.addEventListener('click', function(e) {
+        if (e.target.closest('.editable-cell') || e.target.closest('.btn-filed') || e.target.closest('.btn-del')) return;
+        var id = tr.dataset.id;
+        if (id === selectedRecordId) { closeEditPanel(); return; }
+        var rec = allRecords.find(function(r) { return r._id === id; });
+        if (rec) openEditPanel(rec);
+      });
+    });
+
+    // Editable cell click → inline edit
+    container.querySelectorAll('td.editable-cell').forEach(function(td) {
+      td.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var id    = td.dataset.id;
+        var field = td.dataset.field;
+        var rec   = allRecords.find(function(r) { return r._id === id; });
+        if (!rec) return;
+        var rawVal = field === 'latestDateFiled'
+          ? (td.dataset.rawdate || '')
+          : (rec[field] || '');
+        startInlineEdit(td, id, field, rawVal);
+      });
+    });
+  }
+
+  // ── Inline editing ───────────────────────────────────────────────────────────
+  function startInlineEdit(td, recordId, field, currentValue) {
+    if (editingCell) {
+      if (editingCell.td === td) return; // same cell — ignore
+      editingCell.td.innerHTML = editingCell.origInner; // restore previous cell
+      editingCell = null;
+    }
+    editingCell = { recordId: recordId, field: field, td: td, origInner: td.innerHTML };
+
+    var el;
+
+    if (field === 'personInCharge') {
+      el = document.createElement('select');
+      el.className = 'inline-select';
+      el.innerHTML = '<option value="">— Select —</option>' +
+        allEmployees.map(function(e) {
+          return '<option value="' + escHtml(e.name) + '"' + (e.name === currentValue ? ' selected' : '') + '>' + escHtml(e.name) + '</option>';
+        }).join('');
+      el.addEventListener('change', function() { confirmInlineEdit(recordId, field, el.value); });
+      el.addEventListener('keydown', function(e) { if (e.key === 'Escape') { e.preventDefault(); cancelInlineEdit(); } });
+      el.addEventListener('blur', function() { cancelInlineEdit(); });
+
+    } else if (field === 'frequency') {
+      el = document.createElement('select');
+      el.className = 'inline-select';
+      el.innerHTML =
+        '<option value="Daily"'   + (currentValue === 'Daily'   ? ' selected' : '') + '>Daily</option>' +
+        '<option value="Monthly"' + (currentValue === 'Monthly' ? ' selected' : '') + '>Monthly</option>';
+      el.addEventListener('change', function() { confirmInlineEdit(recordId, field, el.value); });
+      el.addEventListener('keydown', function(e) { if (e.key === 'Escape') { e.preventDefault(); cancelInlineEdit(); } });
+      el.addEventListener('blur', function() { cancelInlineEdit(); });
+
+    } else if (field === 'latestDateFiled') {
+      el = document.createElement('input');
+      el.type = 'date';
+      el.className = 'inline-input';
+      el.value = currentValue;
+      el.addEventListener('blur', function() { confirmInlineEdit(recordId, field, el.value); });
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter')  { e.preventDefault(); confirmInlineEdit(recordId, field, el.value); }
+        if (e.key === 'Escape') { e.preventDefault(); cancelInlineEdit(); }
+      });
+
+    } else {
+      // recordName, department — text input: Enter to save, Escape to cancel
+      el = document.createElement('input');
+      el.type = 'text';
+      el.className = 'inline-input';
+      el.value = currentValue;
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter')  { e.preventDefault(); confirmInlineEdit(recordId, field, el.value); }
+        if (e.key === 'Escape') { e.preventDefault(); cancelInlineEdit(); }
+      });
+      // Blur cancels (does not save) for text inputs — press Enter to save
+      el.addEventListener('blur', function() { cancelInlineEdit(); });
+    }
+
+    td.innerHTML = '';
+    td.appendChild(el);
+    el.focus();
+    if (el.tagName === 'INPUT' && el.type === 'text') el.select();
+  }
+
+  function cancelInlineEdit() {
+    if (!editingCell) return;
+    var td       = editingCell.td;
+    var origInner = editingCell.origInner;
+    editingCell  = null;
+    td.innerHTML = origInner;
+  }
+
+  async function confirmInlineEdit(recordId, field, value) {
+    if (!editingCell || editingCell.recordId !== recordId || editingCell.field !== field) return;
+    if (isSavingCell) return;
+    isSavingCell = true;
+    editingCell  = null;
+    try {
+      var r = await apiFetch('/api/iso-records/' + recordId, {
+        method: 'PUT',
+        body: JSON.stringify({ [field]: value })
+      });
+      if (!r.ok) { var d = await r.json(); throw new Error(d.message || 'Save failed'); }
+      var updated = await r.json();
+      var idx = allRecords.findIndex(function(x) { return x._id === recordId; });
+      if (idx !== -1) allRecords[idx] = updated;
+      renderAll();
+    } catch (err) {
+      showError('Failed to save: ' + err.message);
+      renderAll();
+    } finally {
+      isSavingCell = false;
+    }
+  }
+
+  // ── Category + Filter controls ───────────────────────────────────────────────
+  function switchCategory(cat) {
+    if (editingCell) cancelInlineEdit();
+    currentCategory = cat;
+    filters = { search: '', department: '', status: '' };
+    selectedRecordId = null;
+    closeEditPanel();
+    document.getElementById('filterSearch').value  = '';
+    document.getElementById('filterStatus').value  = '';
+    renderAll();
+  }
+
+  function setStatusFilter(status) {
+    filters.status = status;
+    document.getElementById('filterStatus').value = (status === 'Overdue') ? '' : status;
+    renderSummaryCards();
+    renderTable();
+  }
+
+  function onSearchInput(val) { filters.search = val; renderTable(); }
+  function onDeptFilter(val)  { filters.department = val; renderTable(); }
+  function onStatusFilter(val){ filters.status = val; renderTable(); }
+
+  function clearFilters() {
+    filters = { search: '', department: '', status: '' };
+    document.getElementById('filterSearch').value = '';
+    document.getElementById('filterDept').value   = '';
+    document.getElementById('filterStatus').value = '';
+    renderTable();
+  }
+
+  // ── Edit panel ────────────────────────────────────────────────────────────────
+  function openEditPanel(rec) {
+    selectedRecordId = rec._id;
+    renderEditPanel(rec);
+    document.getElementById('editOverlay').classList.add('open');
+    document.getElementById('editPanel').classList.add('open');
+  }
+
+  function closeEditPanel() {
+    selectedRecordId = null;
+    document.getElementById('editOverlay').classList.remove('open');
+    document.getElementById('editPanel').classList.remove('open');
+    document.querySelectorAll('tr.data-row.row-selected').forEach(function(tr) {
+      tr.classList.remove('row-selected');
+    });
+  }
+
+  function renderEditPanel(rec) {
+    document.getElementById('epTitle').textContent = rec.recordName;
+
+    var empOptions = '<option value="">— Select Employee —</option>' +
+      allEmployees.map(function(e) {
+        return '<option value="' + escHtml(e.name) + '"' + (e.name === rec.personInCharge ? ' selected' : '') + '>' + escHtml(e.name) + '</option>';
+      }).join('');
+
+    var catOptions = CATEGORIES.map(function(c) {
+      return '<option value="' + escHtml(c) + '"' + (c === rec.category ? ' selected' : '') + '>' + escHtml(c) + '</option>';
+    }).join('');
+
+    document.getElementById('epBody').innerHTML =
+      '<div class="form-row-2">' +
+        '<div class="form-group"><label>Record Name</label>' +
+          '<input type="text" class="form-control" value="' + escHtml(rec.recordName) + '" disabled></div>' +
+        '<div class="form-group"><label>Department</label>' +
+          '<input type="text" class="form-control" value="' + escHtml(rec.department || '') + '" disabled></div>' +
+      '</div>' +
+      '<div class="form-row-2">' +
+        '<div class="form-group"><label>Frequency</label>' +
+          '<input type="text" class="form-control" value="' + escHtml(rec.frequency) + '" disabled></div>' +
+        '<div class="form-group"><label>Status</label>' +
+          '<div style="padding-top:6px"><span class="' + getBadgeClass(rec.status) + '">' + escHtml(rec.status) + '</span></div></div>' +
+      '</div>' +
+      '<div class="form-group"><label>Category</label>' +
+        '<select class="form-control" id="epCategory">' + catOptions + '</select></div>' +
+      '<div class="form-group"><label>Person in Charge</label>' +
+        '<select class="form-control" id="epPic">' + empOptions + '</select></div>' +
+      '<div class="form-group"><label>Latest Date Filed</label>' +
+        '<input type="date" class="form-control" id="epDate" value="' + escHtml(toDateInput(rec.latestDateFiled)) + '"></div>' +
+      '<div class="ep-footer">' +
+        '<button class="btn btn-primary" onclick="saveEditPanel(\'' + escHtml(rec._id) + '\')">💾 Save Changes</button>' +
+        '<button class="btn btn-outline" onclick="markFiledToday(\'' + escHtml(rec._id) + '\')">✓ Filed Today</button>' +
+        '<button class="btn btn-secondary" onclick="closeEditPanel()">Close</button>' +
+      '</div>';
+  }
+
+  async function saveEditPanel(recordId) {
+    var pic  = document.getElementById('epPic').value;
+    var date = document.getElementById('epDate').value;
+    var cat  = document.getElementById('epCategory').value;
+    try {
+      var r = await apiFetch('/api/iso-records/' + recordId, {
+        method: 'PUT',
+        body: JSON.stringify({ personInCharge: pic, latestDateFiled: date || null, category: cat })
+      });
+      if (!r.ok) { var d = await r.json(); throw new Error(d.message || 'Save failed'); }
+      var updated = await r.json();
+      var idx = allRecords.findIndex(function(x) { return x._id === recordId; });
+      if (idx !== -1) allRecords[idx] = updated;
+      renderAll();
+    } catch (err) {
+      showError('Save failed: ' + err.message);
+    }
+  }
+
+  // ── Mark Filed Today ──────────────────────────────────────────────────────────
+  async function markFiledToday(recordId) {
+    try {
+      var r = await apiFetch('/api/iso-records/' + recordId + '/filedtoday', { method: 'PUT' });
+      if (!r.ok) throw new Error('Failed to mark as filed');
+      var updated = await r.json();
+      var idx = allRecords.findIndex(function(x) { return x._id === recordId; });
+      if (idx !== -1) allRecords[idx] = updated;
+      renderAll();
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  // ── Delete Record ─────────────────────────────────────────────────────────────
+  async function deleteRecord(recordId) {
+    if (!confirm('Delete this record? This cannot be undone.')) return;
+    try {
+      var r = await apiFetch('/api/iso-records/' + recordId, { method: 'DELETE' });
+      if (!r.ok) throw new Error('Delete failed');
+      allRecords = allRecords.filter(function(x) { return x._id !== recordId; });
+      if (selectedRecordId === recordId) closeEditPanel();
+      renderAll();
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  // ── Export ────────────────────────────────────────────────────────────────────
+  function exportRecords() {
+    window.location.href = '/api/iso-records/export';
+  }
+
+  // ── Manage Records Modal ──────────────────────────────────────────────────────
+  function openManageModal() {
+    renderManageModal();
+    document.getElementById('manageModal').classList.add('open');
+  }
+
+  function closeManageModal() {
+    document.getElementById('manageModal').classList.remove('open');
+  }
+
+  function renderManageModal() {
+    var catRecs = allRecords.filter(function(r) { return r.category === currentCategory; });
+    document.getElementById('manageTitle').textContent = 'Manage Records — ' + currentCategory;
+
+    var depts = catRecs.map(function(r) { return (r.department || '').trim(); }).filter(Boolean);
+    depts = [...new Set(depts)].sort();
+    var deptOptHtml = depts.map(function(d) {
+      return '<option value="' + escHtml(d) + '">' + escHtml(d) + '</option>';
+    }).join('');
+
+    var catOptHtml = CATEGORIES.map(function(c) {
+      return '<option value="' + escHtml(c) + '">' + escHtml(c) + '</option>';
+    }).join('');
+
+    var tableRows = catRecs.map(function(rec) {
+      return '<tr>' +
+        '<td><input type="text" class="manage-input" data-id="' + escHtml(rec._id) + '" data-field="recordName" value="' + escHtml(rec.recordName) + '"></td>' +
+        '<td><select class="manage-input" data-id="' + escHtml(rec._id) + '" data-field="category">' +
+          CATEGORIES.map(function(c) { return '<option value="' + escHtml(c) + '"' + (c === rec.category ? ' selected' : '') + '>' + escHtml(c) + '</option>'; }).join('') +
+        '</select></td>' +
+        '<td><input type="text" class="manage-input" data-id="' + escHtml(rec._id) + '" data-field="department" value="' + escHtml(rec.department || '') + '" placeholder="Dept / Unit"></td>' +
+        '<td><select class="manage-input" data-id="' + escHtml(rec._id) + '" data-field="frequency">' +
+          '<option value="Daily"'   + (rec.frequency === 'Daily'   ? ' selected' : '') + '>Daily</option>' +
+          '<option value="Monthly"' + (rec.frequency === 'Monthly' ? ' selected' : '') + '>Monthly</option>' +
+        '</select></td>' +
+        '<td style="white-space:nowrap">' +
+          '<button class="btn btn-primary btn-sm" onclick="saveManageRow(\'' + escHtml(rec._id) + '\')">Save</button> ' +
+          '<button class="btn btn-danger btn-sm" onclick="deleteMgmtRecord(\'' + escHtml(rec._id) + '\')">Delete</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
+    document.getElementById('manageBody').innerHTML =
+      '<div style="overflow-x:auto">' +
+        '<table class="manage-tbl">' +
+          '<thead><tr><th>Record Name</th><th>Category</th><th>Department / Unit</th><th>Frequency</th><th>Actions</th></tr></thead>' +
+          '<tbody id="manageTbody">' + tableRows + '</tbody>' +
+        '</table>' +
+      '</div>' +
+      '<div class="manage-add">' +
+        '<h3>➕ Add New Record</h3>' +
+        '<div id="manageErr" style="color:var(--danger);font-size:0.82rem;margin-bottom:8px;display:none"></div>' +
+        '<div class="manage-add-grid">' +
+          '<input type="text" class="manage-input" id="newRecordName" placeholder="Record Name *">' +
+          '<select class="manage-input" id="newDeptSel">' +
+            '<option value="">Select or type department…</option>' +
+            deptOptHtml +
+            '<option value="__new__">Add New…</option>' +
+          '</select>' +
+          '<select class="manage-input" id="newFreq"><option value="Daily">Daily</option><option value="Monthly">Monthly</option></select>' +
+        '</div>' +
+        '<div id="newDeptWrap" style="display:none;margin-top:8px">' +
+          '<input type="text" class="manage-input" id="newDeptInput" placeholder="New Department / Unit" style="max-width:320px">' +
+        '</div>' +
+        '<div style="margin-top:12px"><button class="btn btn-primary btn-sm" onclick="addManageRecord()">Add Record</button></div>' +
+      '</div>';
+
+    document.getElementById('newDeptSel').addEventListener('change', function() {
+      document.getElementById('newDeptWrap').style.display = this.value === '__new__' ? 'block' : 'none';
+    });
+  }
+
+  async function saveManageRow(recordId) {
+    var row = document.querySelector('#manageTbody [data-id="' + recordId + '"][data-field="recordName"]');
+    if (!row) return;
+    var tr = row.closest('tr');
+    function val(field) { return tr.querySelector('[data-field="' + field + '"]').value; }
+    var rName = val('recordName').trim();
+    if (!rName) { alert('Record name is required.'); return; }
+    try {
+      var r = await apiFetch('/api/iso-records/' + recordId, {
+        method: 'PUT',
+        body: JSON.stringify({ recordName: rName, category: val('category'), department: val('department').trim(), frequency: val('frequency') })
+      });
+      if (!r.ok) { var d = await r.json(); throw new Error(d.message || 'Save failed'); }
+      var updated = await r.json();
+      var idx = allRecords.findIndex(function(x) { return x._id === recordId; });
+      if (idx !== -1) allRecords[idx] = updated;
+      renderAll();
+      renderManageModal();
+    } catch (err) {
+      showError('Save failed: ' + err.message);
+    }
+  }
+
+  async function deleteMgmtRecord(recordId) {
+    if (!confirm('Delete this record?')) return;
+    try {
+      var r = await apiFetch('/api/iso-records/' + recordId, { method: 'DELETE' });
+      if (!r.ok) throw new Error('Delete failed');
+      allRecords = allRecords.filter(function(x) { return x._id !== recordId; });
+      if (selectedRecordId === recordId) closeEditPanel();
+      renderAll();
+      renderManageModal();
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  async function addManageRecord() {
+    var rName   = document.getElementById('newRecordName').value.trim();
+    var deptSel = document.getElementById('newDeptSel').value;
+    var dept    = deptSel === '__new__'
+      ? document.getElementById('newDeptInput').value.trim()
+      : deptSel;
+    var freq    = document.getElementById('newFreq').value;
+    var errEl   = document.getElementById('manageErr');
+    if (!rName) { errEl.textContent = 'Record name is required.'; errEl.style.display = 'block'; return; }
+    try {
+      errEl.style.display = 'none';
+      var r = await apiFetch('/api/iso-records', {
+        method: 'POST',
+        body: JSON.stringify({ recordName: rName, category: currentCategory, department: dept, frequency: freq })
+      });
+      if (!r.ok) { var d = await r.json(); throw new Error(d.message || 'Failed to add'); }
+      var created = await r.json();
+      allRecords.push(created);
+      renderAll();
+      renderManageModal();
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+    }
+  }
+
+  // ── Employees Modal ───────────────────────────────────────────────────────────
+  function openEmpModal() {
+    renderEmpModal();
+    document.getElementById('empModal').classList.add('open');
+  }
+
+  function closeEmpModal() {
+    document.getElementById('empModal').classList.remove('open');
+  }
+
+  function renderEmpModal() {
+    var body = document.getElementById('empBody');
+    if (!allEmployees.length) {
+      body.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px">No employees added yet.</p>';
+      return;
+    }
+    body.innerHTML = '<ul class="emp-list">' +
+      allEmployees.map(function(e) {
+        return '<li class="emp-item">' +
+          '<span class="emp-name">' + escHtml(e.name) + '</span>' +
+          '<button class="btn btn-danger btn-sm" onclick="removeEmployee(\'' + escHtml(e._id) + '\')">Remove</button>' +
+          '</li>';
+      }).join('') +
+      '</ul>';
+  }
+
+  async function addEmployee() {
+    var input = document.getElementById('empNameInput');
+    var name  = input.value.trim();
+    if (!name) return;
+    try {
+      var r = await apiFetch('/api/iso-employees', { method: 'POST', body: JSON.stringify({ name: name }) });
+      if (!r.ok) { var d = await r.json(); throw new Error(d.message || 'Failed'); }
+      var emp = await r.json();
+      allEmployees.push(emp);
+      input.value = '';
+      renderEmpModal();
+    } catch (err) {
+      showError('Failed to add employee: ' + err.message);
+    }
+  }
+
+  async function removeEmployee(empId) {
+    if (!confirm('Remove this employee?')) return;
+    try {
+      var r = await apiFetch('/api/iso-employees/' + empId, { method: 'DELETE' });
+      if (!r.ok) throw new Error('Failed to remove');
+      allEmployees = allEmployees.filter(function(e) { return e._id !== empId; });
+      renderEmpModal();
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  // ── Data loading ──────────────────────────────────────────────────────────────
+  async function loadAll() {
+    try {
+      var results = await Promise.all([
+        apiFetch('/api/iso-records'),
+        apiFetch('/api/iso-employees')
+      ]);
+      if (!results[0].ok) throw new Error('Failed to load records');
+      if (!results[1].ok) throw new Error('Failed to load employees');
+      allRecords   = await results[0].json();
+      allEmployees = await results[1].json();
+      renderAll();
+    } catch (err) {
+      showError('Could not load data: ' + err.message);
+      document.getElementById('tableContainer').innerHTML = '<div class="no-data">Failed to load. Is the server running?</div>';
+    }
+  }
+
+  loadAll();
+</script>
+<script src="/js/shell.js"></script>
+</body>
+</html>

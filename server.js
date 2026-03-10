@@ -206,6 +206,11 @@ app.use('/tempmon', requirePageAccess('tempmon'), express.static(path.join(__dir
 app.get('/tempmon',  requirePageAccess('tempmon'), (req, res) => res.sendFile(path.join(__dirname, 'tempmon', 'index.html')));
 app.get('/tempmon/', requirePageAccess('tempmon'), (req, res) => res.sendFile(path.join(__dirname, 'tempmon', 'index.html')));
 
+// ISO Records Keeper — requires 'iso' permission
+app.use('/iso', requirePageAccess('iso'), express.static(path.join(__dirname, 'iso'), noCacheHtml));
+app.get('/iso',  requirePageAccess('iso'), (req, res) => res.sendFile(path.join(__dirname, 'iso', 'index.html')));
+app.get('/iso/', requirePageAccess('iso'), (req, res) => res.sendFile(path.join(__dirname, 'iso', 'index.html')));
+
 // Procurement — requires 'procurement' permission
 app.use('/procurement', requirePageAccess('procurement'), express.static(path.join(__dirname, 'procurement'), noCacheHtml));
 app.get('/procurement',             requirePageAccess('procurement'), (req, res) => res.sendFile(path.join(__dirname, 'procurement', 'index.html')));

@@ -46,6 +46,10 @@ router.use('/tempmon',          require('./tempmon'));
 // Procurement
 router.use('/requests',         require('./procurementRequests'));
 
+// ISO Records Keeper
+router.use('/iso-records',      require('./isoRecords'));
+router.use('/iso-employees',    require('./isoEmployees'));
+
 // Re-export sendPushToPermission so server.js can use it for the templog push trigger
 router.sendPushToPermission = pushRouter.sendPushToPermission;
 
