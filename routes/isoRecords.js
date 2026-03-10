@@ -87,9 +87,20 @@ const SEED_RECORDS = [
 async function seedIfEmpty() {
   try {
     const count = await IsoRecord.countDocuments();
+    // Last day of previous month (e.g. Feb 28 when run in March)
+    const prevMonthEnd = new Date();
+    prevMonthEnd.setDate(0);
+    prevMonthEnd.setHours(0, 0, 0, 0);
     if (count === 0) {
-      await IsoRecord.insertMany(SEED_RECORDS);
+      await IsoRecord.insertMany(SEED_RECORDS.map(r => ({ ...r, latestDateFiled: prevMonthEnd })));
       console.log(`✓ [ISO Records] Seeded ${SEED_RECORDS.length} default records`);
+    } else {
+      // One-time backfill: set any unfiled records to last month's end date
+      const nullCount = await IsoRecord.countDocuments({ latestDateFiled: null });
+      if (nullCount > 0) {
+        await IsoRecord.updateMany({ latestDateFiled: null }, { $set: { latestDateFiled: prevMonthEnd } });
+        console.log(`✓ [ISO Records] Backfilled ${nullCount} records with last month's date`);
+      }
     }
   } catch (err) {
     console.error('✗ [ISO Records] Seed error:', err.message);
@@ -237,7 +248,7 @@ router.put('/:id', async (req, res) => {
   try {
     if (!isValidId(req.params.id)) return res.status(400).json({ message: 'Invalid record ID' });
 
-    const { personInCharge, latestDateFiled, frequency, category, recordName, department } = req.body;
+    const { personInCharge, latestDateFiled, frequency, category, recordName, department, comment, commentResolved } = req.body;
     const update = {};
     if (personInCharge  !== undefined) update.personInCharge  = personInCharge || '';
     if (latestDateFiled !== undefined) update.latestDateFiled = latestDateFiled || null;
@@ -245,6 +256,11 @@ router.put('/:id', async (req, res) => {
     if (category        !== undefined) update.category        = category;
     if (recordName      !== undefined) update.recordName      = recordName;
     if (department      !== undefined) update.department      = department;
+    if (comment         !== undefined) {
+      update.comment = comment;
+      if (!comment) update.commentResolved = false; // clear resolved when note is cleared
+    }
+    if (commentResolved !== undefined) update.commentResolved = commentResolved;
 
     const record = await IsoRecord.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
     if (!record) return res.status(404).json({ message: 'Record not found' });

@@ -144,6 +144,12 @@
     .error-banner { background: rgba(192,57,43,.08); border: 1px solid rgba(192,57,43,.2); border-radius: 10px; padding: 12px 16px; color: var(--danger); font-size: 0.88rem; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
     .error-banner button { background: none; border: none; cursor: pointer; color: var(--danger); font-size: 1rem; padding: 0; }
 
+    /* ── Note / comment indicator ── */
+    .note-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-left:6px; vertical-align:middle; }
+    .note-dot.unresolved { background: #ef8c00; }
+    .note-dot.resolved   { background: #43a047; }
+    .ep-comment { margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
+
     @media (max-width: 768px) {
       main { padding: 16px; }
       .action-row { flex-direction: column; align-items: stretch; }
@@ -425,7 +431,9 @@
         rows += '<tr class="data-row' + sel + '" data-id="' + escHtml(rec._id) + '">' +
           '<td style="color:var(--muted);font-size:0.8rem">' + rowNum + '</td>' +
           '<td class="editable-cell" data-id="' + escHtml(rec._id) + '" data-field="recordName" title="Click to edit">' +
-            '<span class="cell-val">' + escHtml(rec.recordName) + '</span></td>' +
+            '<span class="cell-val">' + escHtml(rec.recordName) +
+            (rec.comment ? '<span class="note-dot ' + (rec.commentResolved ? 'resolved' : 'unresolved') + '" title="' + escHtml(rec.comment) + '"></span>' : '') +
+            '</span></td>' +
           (hideDept ? '' : '<td class="editable-cell" data-id="' + escHtml(rec._id) + '" data-field="department" title="Click to edit">' +
             '<span class="cell-val">' + escHtml(rec.department || '—') + '</span></td>') +
           '<td class="editable-cell" data-id="' + escHtml(rec._id) + '" data-field="personInCharge" title="Click to edit">' +
@@ -661,6 +669,18 @@
         '<select class="form-control" id="epPic">' + empOptions + '</select></div>' +
       '<div class="form-group"><label>Latest Date Filed</label>' +
         '<input type="date" class="form-control" id="epDate" value="' + escHtml(toDateInput(rec.latestDateFiled)) + '"></div>' +
+      '<div class="ep-comment">' +
+        '<div class="form-group" style="margin-bottom:8px"><label>Note / Missing Entry</label>' +
+          '<textarea class="form-control" id="epComment" rows="3" placeholder="Add a note about missing entries or follow-ups…" style="resize:vertical;min-height:72px">' + escHtml(rec.comment || '') + '</textarea></div>' +
+        (rec.comment
+          ? '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
+              '<button class="btn ' + (rec.commentResolved ? 'btn-secondary' : 'btn-outline') + '" data-id="' + escHtml(rec._id) + '" data-resolved="' + (rec.commentResolved ? '1' : '0') + '" onclick="toggleResolve(this)">' +
+                (rec.commentResolved ? '↩ Reopen' : '✓ Mark Resolved') +
+              '</button>' +
+              '<span class="badge ' + (rec.commentResolved ? 'badge-green' : 'badge-orange') + '">' + (rec.commentResolved ? 'Resolved' : 'Unresolved') + '</span>' +
+            '</div>'
+          : '') +
+      '</div>' +
       '<div class="ep-footer">' +
         '<button class="btn btn-primary" onclick="saveEditPanel(\'' + escHtml(rec._id) + '\')">💾 Save Changes</button>' +
         '<button class="btn btn-outline" onclick="markFiledToday(\'' + escHtml(rec._id) + '\')">✓ Filed Today</button>' +
@@ -673,9 +693,10 @@
     var date = document.getElementById('epDate').value;
     var cat  = document.getElementById('epCategory').value;
     try {
+      var comment = document.getElementById('epComment').value;
       var r = await apiFetch('/api/iso-records/' + recordId, {
         method: 'PUT',
-        body: JSON.stringify({ personInCharge: pic, latestDateFiled: date || null, category: cat })
+        body: JSON.stringify({ personInCharge: pic, latestDateFiled: date || null, category: cat, comment: comment })
       });
       if (!r.ok) { var d = await r.json(); throw new Error(d.message || 'Save failed'); }
       var updated = await r.json();
@@ -684,6 +705,25 @@
       renderAll();
     } catch (err) {
       showError('Save failed: ' + err.message);
+    }
+  }
+
+  // ── Toggle Comment Resolved ─────────────────────────────────────────────────
+  async function toggleResolve(btn) {
+    var recordId        = btn.dataset.id;
+    var currentResolved = btn.dataset.resolved === '1';
+    try {
+      var r = await apiFetch('/api/iso-records/' + recordId, {
+        method: 'PUT',
+        body: JSON.stringify({ commentResolved: !currentResolved })
+      });
+      if (!r.ok) throw new Error('Failed to update');
+      var updated = await r.json();
+      var idx = allRecords.findIndex(function(x) { return x._id === recordId; });
+      if (idx !== -1) allRecords[idx] = updated;
+      renderAll();
+    } catch (err) {
+      showError(err.message);
     }
   }
 

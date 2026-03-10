@@ -8,7 +8,9 @@ const IsoRecordSchema = new mongoose.Schema(
     category:        { type: String, default: 'Others' },
     personInCharge:  { type: String, default: '' },
     frequency:       { type: String, enum: ['Daily', 'Monthly'], required: true },
-    latestDateFiled: { type: Date, default: null }
+    latestDateFiled: { type: Date, default: null },
+    comment:         { type: String, default: '' },
+    commentResolved: { type: Boolean, default: false }
   },
   { timestamps: true }
 );
