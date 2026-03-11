@@ -15,6 +15,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const mongoose = require('mongoose');
 const { MongoClient, ServerApiVersion } = require('mongodb');
+const net = require('net');
 const path = require('path');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -561,12 +562,19 @@ app.post('/templog/api/equipment-temp/readings', requireTemplogDb, async (req, r
     }
 });
 
-const LORA_SUPPORTED_MODELS = ['TAG08B', 'TAG08L', 'TAG09'];
+const LORA_SUPPORTED_MODELS = ['TAG07', 'TAG08B', 'TAG08L', 'TAG09'];
 
 function normalizeLoraModel(value) {
     const model = String(value || '').trim().toUpperCase();
-    if (model === 'TAG08(B-L)' || model === 'TAG08') return 'TAG08B';
+    if (!model) return '';
+    if (model === 'TAG08(B-L)' || model === 'TAG08' || model === 'TAG08B-L') return 'TAG08B';
+    if (model === 'TAG08L') return 'TAG08L';
     if (model === 'TAG09') return 'TAG09';
+    if (model === 'TAG07') return 'TAG07';
+    // SDK HardwareType may include full strings like "TAG08B" or "TAG08(B-L)"
+    if (model.startsWith('TAG08')) return model.includes('L') ? 'TAG08L' : 'TAG08B';
+    if (model.startsWith('TAG09')) return 'TAG09';
+    if (model.startsWith('TAG07')) return 'TAG07';
     return model;
 }
 
@@ -581,8 +589,16 @@ function parseRecordedAt(value) {
         const d = new Date(ms);
         return isNaN(d.getTime()) ? new Date() : d;
     }
-    const numeric = Number(value);
-    if (Number.isFinite(numeric) && String(value).trim().match(/^\d+$/)) {
+    const str = String(value).trim();
+    // Handle compact YYMMDDHHmmss format from gateway RTC e.g. "260311022033" = 2026-03-11 02:20:33 UTC
+    const compact = str.match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+    if (compact) {
+        const [, yy, mo, dd, hh, mm, ss] = compact;
+        const d = new Date(Date.UTC(2000 + parseInt(yy, 10), parseInt(mo, 10) - 1, parseInt(dd, 10), parseInt(hh, 10), parseInt(mm, 10), parseInt(ss, 10)));
+        return isNaN(d.getTime()) ? new Date() : d;
+    }
+    const numeric = Number(str);
+    if (Number.isFinite(numeric) && str.match(/^\d+$/)) {
         const ms = numeric > 1e12 ? numeric : numeric * 1000;
         const d = new Date(ms);
         return isNaN(d.getTime()) ? new Date() : d;
@@ -602,39 +618,70 @@ function pickFirst(obj, keys) {
 function extractLoraSensorRows(payload) {
     const rows = [];
     const sourceRoot = payload && typeof payload === 'object' ? payload : {};
-    const listCandidates = [
-        sourceRoot.readings,
-        sourceRoot.sensors,
-        sourceRoot.SensorList,
-        sourceRoot.data,
-        sourceRoot.items,
-        Array.isArray(payload) ? payload : null
-    ].filter(Array.isArray);
 
-    const inputRows = listCandidates.length > 0 ? listCandidates[0] : [sourceRoot];
+    // The HTTP gateway wraps sensor data in payload.data.tag07 (or tag08b, tag09, etc.)
+    // The key name ("tag07") encodes the sensor model type.
+    // Collect ALL tag* arrays — a single payload may contain multiple model types.
+    const tagGroups = []; // [{rows, model}]
+    const dataBlob = sourceRoot.data;
+    if (dataBlob && typeof dataBlob === 'object' && !Array.isArray(dataBlob)) {
+        for (const [k, v] of Object.entries(dataBlob)) {
+            if (Array.isArray(v) && /^tag/i.test(k)) {
+                tagGroups.push({ rows: v, model: normalizeLoraModel(k) });
+            }
+        }
+    }
 
-    for (const row of inputRows) {
+    // Fall back to top-level array candidates ONLY if the payload has no data{} envelope.
+    // If data{} was present but had no tag* arrays, this is a gateway heartbeat/status
+    // message (e.g. data:{alert,gsm,bat}) — do NOT treat sn/imei as a sensor ID.
+    const hasDataEnvelope = dataBlob && typeof dataBlob === 'object' && !Array.isArray(dataBlob);
+    if (tagGroups.length === 0 && !hasDataEnvelope) {
+        const candidates = [
+            sourceRoot.TagList, sourceRoot.SensorList,
+            sourceRoot.tagList, sourceRoot.taglist,
+            sourceRoot.tags,    sourceRoot.readings,
+            sourceRoot.sensors, sourceRoot.items,
+            Array.isArray(payload) ? payload : null
+        ].filter(Array.isArray);
+        if (candidates.length > 0) tagGroups.push({ rows: candidates[0], model: '' });
+    }
+
+    for (const group of tagGroups) {
+        const inferredModel = group.model;
+        for (const row of group.rows) {
         if (!row || typeof row !== 'object') continue;
-        const sensorId = normalizeSensorId(pickFirst(row, ['sensorId', 'sensorID', 'sensor_id', 'SN', 'sn', 'tagId', 'deviceId', 'mac']));
+        // HTTP: sensor ID = 'id'; SDK/TCP: 'SN'; others: 'sensorId', 'sn', etc.
+        const sensorId = normalizeSensorId(
+            pickFirst(row, ['id', 'sensorId', 'sensorID', 'sensor_id', 'SN', 'sn', 'tagId', 'deviceId', 'mac'])
+        );
         const rawTemp = pickFirst(row, ['temp', 'temperature', 'Temperature', 'Temp', 'T']);
         const temp = Number(rawTemp);
-        if (!sensorId || !Number.isFinite(temp)) continue;
+        if (!sensorId) continue;
 
-        const humidityValue = pickFirst(row, ['humidity', 'Humidity', 'H']);
+        // HTTP: 'humi'; SDK/TCP: 'Humidity'
+        const humidityValue = pickFirst(row, ['humi', 'humidity', 'Humidity', 'H']);
         const humidity = Number(humidityValue);
         const rssiValue = pickFirst(row, ['rssi', 'RSSI']);
         const rssi = Number(rssiValue);
-        const model = normalizeLoraModel(pickFirst(row, ['model', 'deviceModel', 'tagModel']) || sourceRoot.model);
+        const model = normalizeLoraModel(
+            pickFirst(row, ['model', 'deviceModel', 'tagModel', 'HardwareType', 'hardwareType', 'TagType'])
+        ) || inferredModel;
 
         rows.push({
             sensorId,
-            temp,
-            humidity: Number.isFinite(humidity) ? humidity : null,
+            temp: Number.isFinite(temp) ? temp : null,
+            // SDK: Humidity == -1000 means not present/null
+            humidity: Number.isFinite(humidity) && humidity !== -1000 ? humidity : null,
             rssi: Number.isFinite(rssi) ? rssi : null,
             model: model || '',
-            recordedAt: parseRecordedAt(pickFirst(row, ['recordedAt', 'time', 'timestamp', 'rtc', 'RTC']) || sourceRoot.recordedAt || sourceRoot.time || sourceRoot.timestamp),
+            recordedAt: parseRecordedAt(
+                pickFirst(row, ['recordedAt', 'time', 'timestamp', 'rtc', 'RTC'])
+                || sourceRoot.rtc || sourceRoot.RTC || sourceRoot.recordedAt
+            ),
             raw: row
         });
+        }
     }
     return rows;
 }
@@ -683,7 +730,7 @@ app.post('/templog/api/lora/devices', requireTemplogDb, async (req, res) => {
 
         if (!sensorId) return res.status(400).json({ error: 'sensorId is required' });
         if (!EQUIPMENT_TEMPERATURES.includes(equipment)) return res.status(400).json({ error: 'Invalid equipment mapping' });
-        if (!LORA_SUPPORTED_MODELS.includes(model)) return res.status(400).json({ error: 'Unsupported model. Use TAG08B/TAG08L/TAG09' });
+        if (!LORA_SUPPORTED_MODELS.includes(model)) return res.status(400).json({ error: 'Unsupported model. Use TAG07/TAG08B/TAG08L/TAG09' });
 
         const now = new Date();
         const doc = {
@@ -693,7 +740,6 @@ app.post('/templog/api/lora/devices', requireTemplogDb, async (req, res) => {
             alias,
             notes,
             enabled: req.body.enabled !== false,
-            createdAt: now,
             updatedAt: now
         };
 
@@ -721,7 +767,7 @@ app.put('/templog/api/lora/devices/:sensorId', requireTemplogDb, async (req, res
         const update = { updatedAt: new Date() };
         if (req.body.model !== undefined) {
             const model = normalizeLoraModel(req.body.model);
-            if (!LORA_SUPPORTED_MODELS.includes(model)) return res.status(400).json({ error: 'Unsupported model' });
+            if (model && !LORA_SUPPORTED_MODELS.includes(model)) return res.status(400).json({ error: 'Unsupported model' });
             update.model = model;
         }
         if (req.body.equipment !== undefined) {
@@ -765,6 +811,23 @@ app.delete('/templog/api/lora/devices/:sensorId', requireTemplogDb, async (req, 
 });
 
 /**
+ * GET /templog/api/lora/tcp-config
+ * Returns the TCP connection details to display in the gateway UI.
+ * On Railway, LORA_TCP_PROXY_HOST/PORT override the browser hostname.
+ */
+app.get('/templog/api/lora/tcp-config', requirePageAccess('tempmon'), (req, res) => {
+    const proxyHost = process.env.LORA_TCP_PROXY_HOST || '';
+    const proxyPort = parseInt(process.env.LORA_TCP_PROXY_PORT || '0', 10);
+    const internalPort = LORA_TCP_PORT;
+    if (proxyHost && proxyPort) {
+        res.json({ host: proxyHost, port: proxyPort, via: 'railway-proxy' });
+    } else {
+        // Local / LAN — client will use its own logic for host; just send port
+        res.json({ host: null, port: internalPort, via: 'direct' });
+    }
+});
+
+/**
  * GET /templog/api/lora/events
  * Recent raw gateway receive records for troubleshooting
  */
@@ -784,6 +847,129 @@ app.get('/templog/api/lora/events', requireTemplogDb, async (req, res) => {
 });
 
 /**
+ * GET /templog/api/lora/status
+ * Returns live status for all registered devices — latest reading, last seen, battery, signal
+ */
+app.get('/templog/api/lora/status', requireTemplogDb, async (req, res) => {
+    try {
+        const devices = await req.templogDb.collection('lora_devices').find({}).toArray();
+        if (!devices.length) return res.json([]);
+
+        // Scan recent gateway events to find latest reading per sensor
+        const scanLimit = Math.max(50, Math.min(1000, parseInt(req.query.scan || '500', 10)));
+        const events = await req.templogDb.collection('lora_gateway_events')
+            .find({})
+            .sort({ receivedAt: -1 })
+            .limit(scanLimit)
+            .toArray();
+
+        // Build map: sensorId -> latest data from raw payload
+        const latest = new Map();
+        for (const ev of events) {
+            const data = ev.payload && ev.payload.data ? ev.payload.data : {};
+            for (const [k, v] of Object.entries(data)) {
+                if (!Array.isArray(v) || !/^tag/i.test(k)) continue;
+                for (const s of v) {
+                    if (!s || !s.id) continue;
+                    const sid = normalizeSensorId(s.id);
+                    if (latest.has(sid)) continue; // already have newer
+                    latest.set(sid, {
+                        temp: s.temp,
+                        humidity: s.humi != null ? s.humi : null,
+                        battery: s.bat != null ? s.bat : null,
+                        rssi: s.rssi != null ? s.rssi : null,
+                        lastSeen: ev.receivedAt,
+                        tagKey: k
+                    });
+                }
+            }
+        }
+
+        const result = devices.map(d => {
+            const sid = normalizeSensorId(d.sensorId);
+            const live = latest.get(sid);
+            const lastSeen = live ? new Date(live.lastSeen) : null;
+            const ageMs = lastSeen ? Date.now() - lastSeen.getTime() : null;
+            let status = 'offline';
+            if (ageMs !== null) {
+                if (ageMs < 10 * 60 * 1000) status = 'active';
+                else if (ageMs < 30 * 60 * 1000) status = 'delayed';
+            }
+            return {
+                sensorId: d.sensorId,
+                model: d.model,
+                equipment: d.equipment,
+                alias: d.alias || '',
+                enabled: d.enabled,
+                status,
+                temp: live ? live.temp : null,
+                humidity: live ? live.humidity : null,
+                battery: live ? live.battery : null,
+                rssi: live ? live.rssi : null,
+                lastSeen: live ? live.lastSeen : null
+            };
+        });
+        res.json(result);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * GET /templog/api/lora/discover
+ * Scans recent gateway events and returns sensor IDs seen but not yet registered
+ */
+app.get('/templog/api/lora/discover', requireTemplogDb, async (req, res) => {
+    try {
+        const scanLimit = Math.max(10, Math.min(500, parseInt(req.query.scan || '200', 10)));
+        const hours = Math.max(1, Math.min(720, parseFloat(req.query.hours || '24')));
+        const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+        const events = await req.templogDb.collection('lora_gateway_events')
+            .find({ unmatchedCount: { $gt: 0 }, receivedAt: { $gte: since } })
+            .sort({ receivedAt: -1 })
+            .limit(scanLimit)
+            .toArray();
+
+        // Aggregate unmatched sensors: keep latest reading per sensorId
+        const byId = new Map();
+        for (const ev of events) {
+            for (const u of (ev.unmatched || [])) {
+                if (!u.sensorId) continue;
+                const existing = byId.get(u.sensorId);
+                const evTime = new Date(ev.receivedAt).getTime();
+                if (!existing || evTime > existing.lastSeen) {
+                    byId.set(u.sensorId, {
+                        sensorId:  u.sensorId,
+                        model:     u.model || '',
+                        lastTemp:  u.temp,
+                        lastSeen:  ev.receivedAt,
+                        gatewayId: ev.gatewayId || '',
+                        seenCount: (existing ? existing.seenCount : 0) + 1
+                    });
+                } else {
+                    existing.seenCount++;
+                }
+            }
+        }
+
+        // Exclude already-registered sensor IDs
+        const registered = await req.templogDb.collection('lora_devices')
+            .find({}, { projection: { sensorId: 1 } }).toArray();
+        const registeredIds = new Set(registered.map(r => normalizeSensorId(r.sensorId)));
+
+        const unregistered = [...byId.values()]
+            .filter(s => !registeredIds.has(normalizeSensorId(s.sensorId)))
+            .sort((a, b) => new Date(b.lastSeen) - new Date(a.lastSeen));
+
+        res.json({ sensors: unregistered, scannedEvents: events.length });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
  * POST /templog/api/lora/receive
  * HTTP entrypoint for LoRa WiFi gateway payloads
  */
@@ -796,15 +982,36 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
         const sensorRows = extractLoraSensorRows(payload);
         const now = new Date();
 
-        const devices = await req.templogDb.collection('lora_devices').find({ enabled: true }).toArray();
-        const map = new Map(devices.map(d => [normalizeSensorId(d.sensorId), d]));
+        const devices = await req.templogDb.collection('lora_devices').find({}).toArray();
+        const enabledMap = new Map(
+            devices
+                .filter(d => d.enabled !== false)
+                .map(d => [normalizeSensorId(d.sensorId), d])
+        );
+        const allMap = new Map(devices.map(d => [normalizeSensorId(d.sensorId), d]));
         const mappedReadings = [];
         const unmatched = [];
 
         for (const row of sensorRows) {
-            const mapped = map.get(row.sensorId);
+            const mapped = enabledMap.get(row.sensorId);
+            if (!Number.isFinite(row.temp)) {
+                unmatched.push({
+                    sensorId: row.sensorId,
+                    temp: null,
+                    model: row.model || '',
+                    reason: 'invalid_temp',
+                    recordedAt: row.recordedAt
+                });
+                continue;
+            }
             if (!mapped) {
-                unmatched.push({ sensorId: row.sensorId, temp: row.temp, model: row.model || '', recordedAt: row.recordedAt });
+                unmatched.push({
+                    sensorId: row.sensorId,
+                    temp: row.temp,
+                    model: row.model || '',
+                    reason: allMap.has(row.sensorId) ? 'disabled' : 'unregistered',
+                    recordedAt: row.recordedAt
+                });
                 continue;
             }
             mappedReadings.push({
@@ -813,7 +1020,7 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
                 source: 'lora-http-gateway',
                 gatewayId,
                 sensorId: row.sensorId,
-                model: row.model || mapped.model || '',
+                model: mapped.model || row.model || '',
                 humidity: row.humidity,
                 rssi: row.rssi,
                 recordedAt: row.recordedAt,
@@ -1092,4 +1299,275 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`   ⚙️  Admin Panel           → http://localhost:${PORT}/admin/`);
     console.log(`   💚 Health Check          → http://localhost:${PORT}/api/health`);
     console.log(`\n   Access from tablet: http://<your-ip>:${PORT}\n`);
+});
+
+// ─── LoRa Gateway TCP Server ──────────────────────────────────────────────────
+// Handles binary TCP/IP connections from RD07 WiFi LoRa Gateway
+// Configure in TZConfig.exe: Data Transfer Protocol = TCP/IP, IP = <server-ip>, Port = LORA_TCP_PORT
+// Protocol: TZONE LoRa Gateway WiFi TCP Communication v2.0
+//   Frame: FF FF [LEN_H LEN_L] [CMD_H CMD_L] [PAYLOAD...] [XOR_CHECKSUM]
+//   LEN = bytes from CMD_H onwards including checksum
+//   Checksum = XOR of bytes from CMD_H through last payload byte
+
+const LORA_TCP_PORT = parseInt(process.env.LORA_TCP_PORT || '4001', 10);
+
+// Parse a 4-byte BCD sensor ID (e.g. 0x09 0x24 0x01 0x27 → "09240127")
+function parseBcdSensorId(buf, offset) {
+    let id = '';
+    for (let i = 0; i < 4; i++) {
+        const b = buf[offset + i];
+        id += ((b >> 4) & 0x0F).toString() + (b & 0x0F).toString();
+    }
+    return id;
+}
+
+// Parse 2-byte big-endian temperature (bit15=fault, bit14=negative, bits13-0=val*10)
+function parseTcpTemp(hi, lo) {
+    const raw = (hi << 8) | lo;
+    if (raw & 0x8000) return null; // sensor fault
+    const neg = !!(raw & 0x4000);
+    const val = (raw & 0x3FFF) / 10.0;
+    return neg ? -val : val;
+}
+
+// Parse one binary tag record. isTag08B controls whether humidity is 1 or 2 bytes.
+// Per TZONE TCP protocol v2.0: TAG09/TAG07/08 (type 01) = 17 bytes, TAG08B (type 04) = 18 bytes.
+function parseTcpTagRecord(buf, offset, isTag08B) {
+    const needed = isTag08B ? 18 : 17;
+    if (buf.length - offset < needed) return null;
+    const id       = parseBcdSensorId(buf, offset);       // 4 B
+    const status   = buf[offset + 4];                     // 1 B
+    const batMv    = (buf[offset + 5] << 8) | buf[offset + 6]; // 2 B big-endian mV
+    const battery  = batMv / 1000.0;
+    const temp     = parseTcpTemp(buf[offset + 7], buf[offset + 8]); // 2 B
+    let humidity   = null;
+    let rssiOff;
+    if (isTag08B) {
+        const hr = (buf[offset + 9] << 8) | buf[offset + 10]; // 2 B, unit 0.1%
+        humidity = hr / 10.0;
+        rssiOff = offset + 11;
+    } else {
+        const hb = buf[offset + 9]; // 1 B, 0xFF = not present (TAG09)
+        humidity = (hb === 0xFF) ? null : hb;
+        rssiOff = offset + 10;
+    }
+    const rssiRaw  = buf[rssiOff];                         // 1 B abs dBm
+    const rssi     = -rssiRaw;
+    // RTC: 6 B YY MM DD HH mm ss each byte = BCD (0x26 → 38? No — treat as plain hex digits)
+    // Using BCD interpretation: 0x26 = 20+6 = 26 (year 2026)
+    const rtcOff   = rssiOff + 1;
+    const rtcParts = [];
+    for (let i = 0; i < 6; i++) {
+        const b = buf[rtcOff + i];
+        rtcParts.push(((b >> 4) * 10 + (b & 0xF)).toString().padStart(2, '0'));
+    }
+    const rtcStr = rtcParts.join(''); // YYMMDDHHmmss
+    return {
+        record: { id, temp, humidity, rssi, battery, status, rtc: rtcStr },
+        bytesConsumed: needed
+    };
+}
+
+// Ingest parsed TCP tag records into the database (reuses existing lora logic)
+async function ingestTcpTagRecords(gatewayImei, tags, tagModel) {
+    if (!templogDb) {
+        console.warn('[TCP] DB not ready — discarding', tags.length, 'tag records');
+        return;
+    }
+    const now = new Date();
+    const payload = {
+        source: 'lora-tcp',
+        imei: gatewayImei,
+        data: { [tagModel.toLowerCase()]: tags.map(t => ({
+            id: t.id, temp: t.temp, humi: t.humidity, rssi: t.rssi,
+            bat: t.battery, sta: t.status, rtc: t.rtc
+        })) }
+    };
+    const gatewayId = String(gatewayImei || '').trim();
+    const sensorRows = extractLoraSensorRows(payload);
+    const devices = await templogDb.collection('lora_devices').find({}).toArray();
+    const enabledMap = new Map(
+        devices.filter(d => d.enabled !== false)
+               .map(d => [normalizeSensorId(d.sensorId), d])
+    );
+    const allMap = new Map(devices.map(d => [normalizeSensorId(d.sensorId), d]));
+    const mappedReadings = [];
+    const unmatched = [];
+    for (const row of sensorRows) {
+        const mapped = enabledMap.get(row.sensorId);
+        if (!Number.isFinite(row.temp)) {
+            unmatched.push({ sensorId: row.sensorId, reason: 'invalid_temp' });
+            continue;
+        }
+        if (!mapped) {
+            unmatched.push({
+                sensorId: row.sensorId, temp: row.temp, model: row.model || '',
+                reason: allMap.has(row.sensorId) ? 'disabled' : 'unregistered'
+            });
+            continue;
+        }
+        mappedReadings.push({
+            equipment: mapped.equipment, temp: row.temp,
+            source: 'lora-tcp-gateway', gatewayId, sensorId: row.sensorId,
+            model: mapped.model || row.model || '',
+            humidity: row.humidity, rssi: row.rssi,
+            recordedAt: row.recordedAt, createdAt: now
+        });
+    }
+    let ingested = 0;
+    if (mappedReadings.length) {
+        try {
+            const result = await ingestEquipmentReadings({ templogDb }, mappedReadings);
+            ingested = result.count;
+        } catch (e) { console.error('[TCP] ingest error:', e.message); }
+    }
+    await templogDb.collection('lora_gateway_events').insertOne({
+        gatewayId, sensorCount: sensorRows.length, ingestedCount: ingested,
+        unmatchedCount: unmatched.length, unmatched, payload,
+        receivedAt: now, proto: 'tcp'
+    });
+    console.log(`[TCP] gw=${gatewayId} sensors=${sensorRows.length} ingested=${ingested} unmatched=${unmatched.length}`);
+}
+
+// Process accumulated buffer.
+// TZONE RD07 TCP frame format (v2.0 protocol):
+//   TZ(2) + LEN(2) + payload(LEN bytes) + CRLF(2)
+//   payload: $$(2) + HW_TYPE(2=0406) + FW(4) + IMEI(8) + RTC(6) + Res1(2)
+//          + DevDataLen(2) + DevData(DevDataLen)
+//          + TagDataLen(2) + [TagType(1)+NumRec(1)+RecLen(1)+Records(X)] when TagDataLen>0
+//          + MsgID(2) + CRC16(2)
+// NOTE: ALL frames use the same layout — sensor data vs heartbeat is determined
+//       by TagDataLen field (0 = heartbeat/status only, >0 = sensor records present).
+// Server ACK (ASCII): @ACK,{msgId}#\r\n
+async function processTcpBuffer(socket, state) {
+    let buf = state.buffer;
+    let i = 0;
+    while (i + 6 <= buf.length) {
+        // Find TZ frame start: 0x54 ("T"), 0x5A ("Z")
+        if (buf[i] !== 0x54 || buf[i + 1] !== 0x5A) { i++; continue; }
+        if (buf.length - i < 4) break; // can't read LEN yet
+        const payloadLen = (buf[i + 2] << 8) | buf[i + 3];
+        const totalLen = 4 + payloadLen + 2; // TZ(2) + LEN(2) + payload + CRLF(2)
+        if (buf.length - i < totalLen) break; // incomplete — wait for more data
+
+        // Verify CRLF terminator
+        if (buf[i + totalLen - 2] !== 0x0D || buf[i + totalLen - 1] !== 0x0A) {
+            i++; continue;
+        }
+
+        const payload = buf.slice(i + 4, i + 4 + payloadLen);
+
+        // Payload must begin with $$ (24 24)
+        if (payload.length < 26 || payload[0] !== 0x24 || payload[1] !== 0x24) {
+            i += totalLen; continue;
+        }
+
+        // Parse IMEI once per connection (8 bytes BCD at payload[8..15])
+        if (!state.imei) {
+            const b = payload.slice(8, 16);
+            let id = (b[0] & 0xF).toString();
+            for (let j = 1; j < 8; j++) id += ((b[j] >> 4) & 0xF).toString() + (b[j] & 0xF).toString();
+            state.imei = id;
+        }
+
+        // FW version: payload[4]=major (0x03→3), payload[5]=minor (0x16→22 decimal)
+        const fwStr = `${payload[4]}.${payload[5].toString().padStart(2, '0')}`;
+
+        // Device data block (contains gateway battery / power voltage)
+        const devDataLen = (payload[24] << 8) | payload[25];
+        let batV = null, extV = null;
+        if (devDataLen >= 8 && payload.length >= 26 + devDataLen) {
+            // Battery at devData[4-5], PowerVol at devData[6-7], unit: 10 mV → /100 for V
+            batV = ((payload[30] << 8) | payload[31]) / 100;
+            extV = ((payload[32] << 8) | payload[33]) / 100;
+        }
+
+        // Tag data section starts right after device data
+        const tagBase = 26 + devDataLen;
+        if (payload.length < tagBase + 2) { i += totalLen; continue; }
+        const tagDataLen = (payload[tagBase] << 8) | payload[tagBase + 1];
+
+        // Message ID is 4 bytes from end of payload (MsgID 2B + CRC16 2B)
+        const msgId = ((payload[payloadLen - 4] << 8) | payload[payloadLen - 3]) || 0;
+
+        if (tagDataLen > 0) {
+            // ── Frame with sensor tag records ──────────────────────────────
+            // Tag section: TagType(1) + NumRecords(1) + RecordLen(1) + Records(tagDataLen bytes)
+            if (payload.length < tagBase + 2 + 3) {
+                i += totalLen; continue; // incomplete tag header
+            }
+            const tagType = payload[tagBase + 2]; // 01=TAG07/08/09, 04=TAG08B
+            const numRec  = payload[tagBase + 3];
+            const recLen  = payload[tagBase + 4];
+            const recsOff = tagBase + 5;
+            const isTag08B = (tagType === 0x04);
+
+            console.log(`[TCP] sensor frame IMEI=${state.imei||'?'} tagType=0x${tagType.toString(16)} numRec=${numRec} recLen=${recLen}`);
+
+            const tags = [];
+            if (payload.length >= recsOff + numRec * recLen) {
+                for (let r = 0; r < numRec; r++) {
+                    const rec = parseTcpTagRecord(payload, recsOff + r * recLen, isTag08B);
+                    if (rec) {
+                        console.log(`[TCP]   tag id=${rec.record.id} temp=${rec.record.temp}°C humi=${rec.record.humidity} bat=${rec.record.battery}V rssi=${rec.record.rssi}dBm`);
+                        tags.push(rec.record);
+                    }
+                }
+            } else {
+                // Not enough bytes — log raw for diagnosis
+                console.log(`[TCP] tag raw: ${payload.slice(recsOff).toString('hex').toUpperCase().match(/.{1,2}/g).join(' ')}`);
+            }
+
+            if (tags.length) {
+                const model = isTag08B ? 'TAG08B' : 'TAG09';
+                ingestTcpTagRecords(state.imei || '', tags, model).catch(e =>
+                    console.error('[TCP] ingest error:', e.message)
+                );
+            }
+        } else {
+            // ── Heartbeat / status frame (no sensor data) ──────────────────
+            console.log(`[TCP] heartbeat IMEI=${state.imei||'?'} FW=${fwStr} bat=${batV}V ext=${extV}V`);
+            if (templogDb) {
+                templogDb.collection('lora_gateway_events').insertOne({
+                    gatewayId: state.imei || socket.remoteAddress,
+                    sensorCount: 0, ingestedCount: 0, unmatchedCount: 0, unmatched: [],
+                    payload: { source: 'lora-tcp', imei: state.imei || '', fw: fwStr,
+                               data: { bat: batV, exvol: extV } },
+                    receivedAt: new Date(), proto: 'tcp'
+                }).catch(e => console.error('[TCP] DB heartbeat error:', e.message));
+            }
+        }
+
+        // ACK (ASCII per protocol spec): @ACK,{msgId}#\r\n
+        socket.write(`@ACK,${msgId}#\r\n`);
+
+        i += totalLen;
+    }
+    state.buffer = buf.slice(i);
+}
+
+const loraTcpServer = net.createServer((socket) => {
+    const remote = `${socket.remoteAddress}:${socket.remotePort}`;
+    console.log(`[TCP] LoRa gateway connected: ${remote}`);
+    const state = { buffer: Buffer.alloc(0), imei: '' };
+
+    // Send RTC sync immediately on connect (UTC time, required by protocol)
+    const nowUtc = new Date();
+    const rtcSync = nowUtc.toISOString().replace('T', ' ').slice(0, 19);
+    socket.write(`@UTC,${rtcSync}#\r\n`);
+
+    socket.on('data', (chunk) => {
+        state.buffer = Buffer.concat([state.buffer, chunk]);
+        processTcpBuffer(socket, state).catch(e => console.error('[TCP] process error:', e.message));
+    });
+
+    socket.on('end',   () => console.log(`[TCP] gateway disconnected: ${remote}`));
+    socket.on('error', (err) => console.warn(`[TCP] socket error (${remote}): ${err.message}`));
+});
+
+loraTcpServer.on('error', (err) => console.error('[TCP] server error:', err.message));
+
+loraTcpServer.listen(LORA_TCP_PORT, '0.0.0.0', () => {
+    console.log(`📡 LoRa TCP server listening on port ${LORA_TCP_PORT}`);
+    console.log(`   TZConfig → Data Transfer Protocol: TCP/IP, Port: ${LORA_TCP_PORT}`);
 });

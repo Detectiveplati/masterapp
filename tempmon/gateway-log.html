@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Gateway Raw Log — Temp Monitor</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/lib/dom.js"></script>
+  <script src="/js/lib/http.js"></script>
+  <style>
+    main { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+    .nav-links { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
+    .nav-link { padding: 8px 14px; border-radius: 8px; background: #f0f0f0; color: var(--muted); font-size: 0.82rem; font-weight: 700; text-decoration: none; transition: background .15s; }
+    .nav-link:hover { background: #e0e0e0; color: var(--ink); }
+    .nav-link.active { background: var(--accent); color: #fff; }
+    .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 700; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2, #27ae60)); color: #fff; }
+    .btn-outline  { background: #fff; border: 2px solid var(--accent); color: var(--accent); }
+    .btn-sm       { padding: 5px 11px; font-size: 0.78rem; }
+
+    /* Log feed */
+    #logFeed { font-family: 'Consolas', 'Courier New', monospace; font-size: 0.82rem; line-height: 1.7; }
+
+    .event-block {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .event-header {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+      padding: 10px 16px;
+      background: #f7f7f7;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+    }
+    .event-header:hover { background: #efefef; }
+    .event-time { font-weight: 800; font-size: 0.83rem; color: var(--ink); }
+    .ev-badge {
+      border-radius: 20px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700;
+    }
+    .badge-gw   { background: rgba(21,101,192,.1); color: #1565c0; }
+    .badge-ok   { background: rgba(39,174,96,.1);  color: #2e7d32; }
+    .badge-warn { background: rgba(255,152,0,.15); color: #e65100; }
+    .badge-err  { background: rgba(198,40,40,.1);  color: #c62828; }
+    .badge-hb   { background: rgba(120,120,120,.1); color: #555; }
+
+    .event-body { padding: 14px 16px; display: none; }
+    .event-body.open { display: block; }
+
+    /* Sensor cards inside event */
+    .sensor-row {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+      padding: 8px 12px; border-radius: 8px; margin-bottom: 6px;
+      background: #fff; border: 1px solid var(--border);
+      font-size: 0.82rem;
+    }
+    .sensor-row.unmatched { border-color: #ffcc80; background: #fff8e1; }
+    .sensor-id { font-weight: 800; font-family: monospace; font-size: 0.88rem; min-width: 90px; }
+    .sensor-model { font-size: 0.72rem; font-weight: 700; color: #1565c0; background: rgba(21,101,192,.08); border-radius: 12px; padding: 1px 7px; }
+    .field { color: var(--muted); font-size: 0.78rem; }
+    .field span { color: var(--ink); font-weight: 700; }
+    .tag-key { font-size: 0.72rem; background: #f0f4ff; color: #3949ab; border-radius: 4px; padding: 1px 5px; font-family: monospace; }
+
+    /* Raw JSON toggle */
+    .raw-toggle { font-size: 0.75rem; color: var(--muted); cursor: pointer; text-decoration: underline; margin-top: 8px; display: inline-block; }
+    .raw-json { display: none; margin-top: 8px; background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 12px 14px; white-space: pre-wrap; word-break: break-all; font-size: 0.76rem; max-height: 300px; overflow-y: auto; }
+    .raw-json.open { display: block; }
+
+    .no-data { text-align:center; padding: 40px; color: var(--muted); font-style: italic; }
+    .toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+    .toolbar select, .toolbar input { padding: 7px 11px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; font-family: inherit; }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #bdbdbd; display:inline-block; }
+    .live-dot.on { background: #4caf50; box-shadow: 0 0 0 3px rgba(76,175,80,.2); animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{box-shadow:0 0 0 3px rgba(76,175,80,.2)} 50%{box-shadow:0 0 0 6px rgba(76,175,80,.05)} }
+    .last-updated { font-size:0.75rem; color:var(--muted); }
+    .diag-card { border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; background:#fff; }
+    .diag-title { font-size:0.9rem; font-weight:800; margin-bottom:8px; }
+    .diag-summary { font-size:0.8rem; color:var(--muted); margin-bottom:10px; }
+    .diag-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+    .diag-table th, .diag-table td { border-bottom:1px solid var(--border); padding:8px 6px; text-align:left; }
+    .diag-table th { font-size:0.72rem; text-transform:uppercase; color:var(--muted); letter-spacing:.04em; }
+    .diag-status-ok { color:#2e7d32; font-weight:700; }
+    .diag-status-warn { color:#e65100; font-weight:700; }
+    .diag-status-err { color:#c62828; font-weight:700; }
+  </style>
+</head>
+<body data-module="tempmon">
+<main>
+  <div class="nav-links">
+    <a href="/tempmon/" class="nav-link">📡 Live Dashboard</a>
+    <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
+    <a href="/tempmon/report.html" class="nav-link">📊 Compliance Report</a>
+    <a href="/tempmon/calibration.html" class="nav-link">🔧 Calibration</a>
+    <a href="/tempmon/setup.html" class="nav-link">⚙️ Setup</a>
+    <a href="/tempmon/gateway.html" class="nav-link">📶 LoRa Gateway</a>
+    <a href="/tempmon/gateway-log.html" class="nav-link active">🪵 Raw Log</a>
+  </div>
+
+  <h1 style="font-size:1.4rem;font-weight:900;margin-bottom:6px">🪵 Gateway Raw Log</h1>
+  <p style="font-size:0.85rem;color:var(--muted);margin-bottom:20px">
+    Every payload the gateway has sent to this server — decoded. Click any row to expand. Unmatched = sensor not yet registered.
+  </p>
+
+  <div class="toolbar">
+    <span class="live-dot" id="liveDot"></span>
+    <button class="btn btn-primary btn-sm" onclick="loadLog()">🔄 Refresh</button>
+    <label style="font-size:0.82rem;font-weight:700">Show last
+      <select id="limitSel" onchange="loadLog()">
+        <option value="25">25 events</option>
+        <option value="50" selected>50 events</option>
+        <option value="100">100 events</option>
+        <option value="200">200 events</option>
+      </select>
+    </label>
+    <label style="font-size:0.82rem;font-weight:700">Filter sensor ID:
+      <input id="filterInput" type="text" placeholder="e.g. 09240127" style="width:140px" oninput="applyFilter()">
+    </label>
+    <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:700;cursor:pointer">
+      <input type="checkbox" id="autoRefreshChk" onchange="toggleAuto()"> Auto-refresh (10s)
+    </label>
+    <span class="last-updated" id="lastUpdated"></span>
+  </div>
+
+  <div class="diag-card">
+    <div class="diag-title">🔍 Live Sensor Scan <span style="font-size:0.72rem;font-weight:400;color:var(--muted);margin-left:6px">active in last 30s</span></div>
+    <div class="diag-summary" id="diagSummary">Scanning…</div>
+    <div style="overflow-x:auto">
+      <table class="diag-table">
+        <thead>
+          <tr>
+            <th>Sensor ID</th>
+            <th>Tag Type</th>
+            <th>Registered</th>
+            <th>Temp</th>
+            <th>Humidity</th>
+            <th>Battery</th>
+            <th>RSSI</th>
+            <th>Last Seen</th>
+          </tr>
+        </thead>
+        <tbody id="diagBody">
+          <tr><td colspan="8" class="no-data" style="padding:18px">Scanning…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="logFeed"><div class="no-data">Loading…</div></div>
+</main>
+
+<script>
+  let allEvents = [];
+  let registeredDevices = [];
+  let autoTimer = null;
+
+  async function init() {
+    try {
+      const r = await apiFetch('/api/auth/me');
+      const { user } = await r.json();
+      if (!user.permissions?.tempmon && user.role !== 'admin')
+        return window.location.replace('/?access=denied');
+      document.documentElement.style.visibility = '';
+      await loadRegisteredDevices();
+      await loadLog();
+    } catch { window.location.replace('/login'); }
+  }
+
+  async function loadRegisteredDevices() {
+    try {
+      const r = await apiFetch('/templog/api/lora/devices');
+      registeredDevices = await r.json();
+    } catch {
+      registeredDevices = [];
+    }
+  }
+
+  async function loadLog() {
+    const dot = document.getElementById('liveDot');
+    dot.classList.remove('on');
+    const limit = document.getElementById('limitSel').value;
+    try {
+      await loadRegisteredDevices();
+      const r = await apiFetch(`/templog/api/lora/events?limit=${limit}`);
+      allEvents = await r.json();
+      applyFilter();
+      renderCoverage();
+      document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+      dot.classList.add('on');
+      setTimeout(() => dot.classList.remove('on'), 3000);
+    } catch (err) {
+      document.getElementById('logFeed').innerHTML = `<div class="no-data" style="color:#c62828">Failed to load: ${escHtml(err.message)}</div>`;
+    }
+  }
+
+  function renderCoverage() {
+    const body = document.getElementById('diagBody');
+    const summary = document.getElementById('diagSummary');
+    const now = Date.now();
+    const cutoff = now - 30 * 1000;
+
+    // Find most-recent occurrence of each sensor across all loaded events
+    const latestById = new Map();
+    for (const ev of allEvents) {
+      const evTime = new Date(ev.receivedAt).getTime();
+      const data = (ev && ev.payload && ev.payload.data) || {};
+      for (const [key, arr] of Object.entries(data)) {
+        if (!Array.isArray(arr) || !/^tag/i.test(key)) continue;
+        for (const s of arr) {
+          if (!s) continue;
+          const sid = String(s.id || s.sensorId || '').trim().toUpperCase();
+          if (!sid) continue;
+          const existing = latestById.get(sid);
+          if (!existing || existing.seenAt < evTime) {
+            latestById.set(sid, { tagKey: key, seenAt: evTime, temp: s.temp, humi: s.humi, bat: s.bat, rssi: s.rssi });
+          }
+        }
+      }
+    }
+
+    // Keep only sensors seen in the last 30 seconds
+    const activeSensors = [];
+    for (const [sid, info] of latestById.entries()) {
+      if (info.seenAt >= cutoff) activeSensors.push({ sid, ...info });
+    }
+    activeSensors.sort((a, b) => b.seenAt - a.seenAt);
+
+    // Build set of registered sensor IDs for lookup
+    const registeredSet = new Set(
+      (registeredDevices || []).map(d => String(d.sensorId || '').trim().toUpperCase())
+    );
+
+    // Replay/stuck-frame detection
+    const frameCounts = new Map();
+    for (const ev of allEvents.slice(0, 20)) {
+      const p = ev.payload || {};
+      const data = (p.data || {});
+      let firstId = '';
+      for (const v of Object.values(data)) {
+        if (!Array.isArray(v)) continue;
+        const hit = v.find(x => x && x.id);
+        if (hit && hit.id) { firstId = String(hit.id).toUpperCase(); break; }
+      }
+      const key = [String(ev.gatewayId || ''), String(p.sn || ''), String(p.rtc || ''), firstId].join('|');
+      frameCounts.set(key, (frameCounts.get(key) || 0) + 1);
+    }
+    const worstRepeat = Math.max(0, ...frameCounts.values());
+    const replayWarn = worstRepeat >= 4
+      ? ` | ⚠️ Replay/stuck frame detected (${worstRepeat}× same SN/RTC/ID)` : '';
+
+    if (!activeSensors.length) {
+      summary.textContent = `No sensors detected in the last 30s — press a tag button to see it here.${replayWarn}`;
+      body.innerHTML = '<tr><td colspan="8" class="no-data" style="padding:18px">Scanning… press a tag to detect it.</td></tr>';
+      return;
+    }
+
+    summary.textContent = `${activeSensors.length} sensor${activeSensors.length !== 1 ? 's' : ''} active in last 30s${replayWarn}`;
+
+    body.innerHTML = activeSensors.map(r => {
+      const isReg = registeredSet.has(r.sid);
+      const ageSec = Math.round((now - r.seenAt) / 1000);
+      return `
+        <tr>
+          <td><code>${escHtml(r.sid)}</code></td>
+          <td><code style="font-size:0.75rem;background:#f0f4ff;color:#3949ab;border-radius:4px;padding:1px 5px">${escHtml(r.tagKey)}</code></td>
+          <td>${isReg ? '<span class="diag-status-ok">✅ Yes</span>' : '<span class="diag-status-warn">⚠️ No — register it</span>'}</td>
+          <td>${r.temp != null ? `${r.temp}°C` : '—'}</td>
+          <td>${r.humi != null ? `${r.humi}%` : '—'}</td>
+          <td>${r.bat  != null ? `${r.bat}V`  : '—'}</td>
+          <td>${r.rssi != null ? `${r.rssi} dBm` : '—'}</td>
+          <td>${ageSec}s ago</td>
+        </tr>`;
+    }).join('');
+  }
+
+  function applyFilter() {
+    const q = document.getElementById('filterInput').value.trim().toUpperCase();
+    const events = q
+      ? allEvents.filter(ev => {
+          const haystack = JSON.stringify(ev.payload || '').toUpperCase() +
+                           (ev.gatewayId || '').toUpperCase() +
+                           JSON.stringify(ev.unmatched || '').toUpperCase();
+          return haystack.includes(q);
+        })
+      : allEvents;
+    renderLog(events);
+  }
+
+  function renderLog(events) {
+    const feed = document.getElementById('logFeed');
+    if (!events.length) {
+      feed.innerHTML = '<div class="no-data">No events found.</div>';
+      return;
+    }
+    feed.innerHTML = events.map((ev, i) => renderEvent(ev, i)).join('');
+  }
+
+  function renderEvent(ev, idx) {
+    const payload = ev.payload || {};
+    const data = payload.data || {};
+    const time = new Date(ev.receivedAt);
+
+    // Collect all tag groups from data (tag07, tag08b, tag09, etc.)
+    const tagGroups = [];
+    for (const [k, v] of Object.entries(data)) {
+      if (Array.isArray(v) && /^tag/i.test(k)) tagGroups.push({ key: k, sensors: v });
+    }
+
+    const totalSensors = ev.sensorCount || 0;
+    const ingested = ev.ingestedCount || 0;
+    const unmatched = ev.unmatchedCount || 0;
+    const isHeartbeat = totalSensors === 0;
+    const hasUnmatched = unmatched > 0;
+
+    // Header badges
+    let headerBadges = `<span class="ev-badge badge-gw">${escHtml(ev.gatewayId || 'unknown GW')}</span>`;
+    if (isHeartbeat) {
+      headerBadges += `<span class="ev-badge badge-hb">💓 Heartbeat</span>`;
+    } else {
+      headerBadges += `<span class="ev-badge badge-ok">📦 ${totalSensors} sensor${totalSensors !== 1 ? 's' : ''}</span>`;
+      if (ingested)   headerBadges += `<span class="ev-badge badge-ok">✅ ${ingested} ingested</span>`;
+      if (hasUnmatched) headerBadges += `<span class="ev-badge badge-warn">⚠️ ${unmatched} unmatched</span>`;
+    }
+
+    // FW/HW badges
+    if (payload.fw) headerBadges += `<span class="ev-badge badge-hb">FW ${escHtml(payload.fw)}</span>`;
+
+    // Sensor rows from payload
+    let sensorHtml = '';
+    for (const { key, sensors } of tagGroups) {
+      for (const s of sensors) {
+        if (!s) continue;
+        const sid = String(s.id || s.sensorId || '?').toUpperCase();
+        const unmatchedEntry = (ev.unmatched || []).find(u => String(u.sensorId || '').toUpperCase() === sid);
+        const isUnmatched = !!unmatchedEntry;
+        const unmatchedLabel = unmatchedEntry
+          ? (unmatchedEntry.reason === 'disabled'
+            ? '⏸ disabled'
+            : unmatchedEntry.reason === 'invalid_temp'
+              ? '⚠️ invalid temp'
+              : '⚠️ not registered')
+          : '✅ registered';
+        const unmatchedClass = unmatchedEntry ? 'badge-warn' : 'badge-ok';
+        const rtcStr = s.rtc ? formatRtc(s.rtc) : null;
+        sensorHtml += `
+          <div class="sensor-row${isUnmatched ? ' unmatched' : ''}">
+            <span class="sensor-id">${escHtml(sid)}</span>
+            <span class="tag-key">${escHtml(key)}</span>
+            <span class="ev-badge ${unmatchedClass}" style="font-size:0.7rem">${unmatchedLabel}</span>
+            ${s.temp   != null ? `<span class="field">🌡️ <span>${s.temp}°C</span></span>` : '<span class="field">🌡️ <span style="color:var(--muted)">no temp</span></span>'}
+            ${s.humi   != null ? `<span class="field">💧 <span>${s.humi}%</span></span>` : ''}
+            ${s.bat    != null ? `<span class="field">🔋 <span>${s.bat}V</span></span>` : ''}
+            ${s.rssi   != null ? `<span class="field">📶 <span>${s.rssi} dBm</span></span>` : ''}
+            ${rtcStr             ? `<span class="field">🕐 <span>${escHtml(rtcStr)}</span></span>` : ''}
+            ${s.sta    != null   ? `<span class="field" title="Status byte: ${s.sta}">sta: <span>${escHtml(decodeStatus(s.sta))}</span></span>` : ''}
+          </div>`;
+      }
+    }
+
+    // Unmatched sensors that had no readable tag data (e.g. from ev.unmatched only)
+    if (hasUnmatched && !sensorHtml) {
+      for (const u of (ev.unmatched || [])) {
+        const sid = String(u.sensorId || '?').toUpperCase();
+        sensorHtml += `
+          <div class="sensor-row unmatched">
+            <span class="sensor-id">${escHtml(sid)}</span>
+            <span class="ev-badge badge-warn" style="font-size:0.7rem">${u.reason === 'disabled' ? '⏸ disabled' : (u.reason === 'invalid_temp' ? '⚠️ invalid temp' : '⚠️ not registered')}</span>
+            ${u.temp  != null ? `<span class="field">🌡️ <span>${u.temp}°C</span></span>` : ''}
+            ${u.model           ? `<span class="tag-key">${escHtml(u.model)}</span>` : ''}
+          </div>`;
+      }
+    }
+
+    if (!sensorHtml && isHeartbeat) {
+      sensorHtml = `<div style="color:var(--muted);font-size:0.8rem;font-style:italic;padding:6px 0">No sensor data in this transmission (heartbeat / keepalive only).</div>`;
+    }
+
+    // Gateway-level fields
+    const gwMeta = [];
+    if (payload.imei)  gwMeta.push(`IMEI: <strong>${escHtml(payload.imei)}</strong>`);
+    if (payload.hw)    gwMeta.push(`HW: <strong>${escHtml(payload.hw)}</strong>`);
+    if (payload.fw)    gwMeta.push(`FW: <strong>${escHtml(payload.fw)}</strong>`);
+    if (payload.bat)   gwMeta.push(`Battery: <strong>${escHtml(String(payload.bat))}V</strong>`);
+    if (payload.rtc)   gwMeta.push(`RTC: <strong>${escHtml(formatRtc(payload.rtc))}</strong>`);
+    if (payload.sn != null) gwMeta.push(`Seq#: <strong>${escHtml(String(payload.sn))}</strong>`);
+    const gwMetaHtml = gwMeta.length
+      ? `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;display:flex;flex-wrap:wrap;gap:12px">${gwMeta.join(' &nbsp;|&nbsp; ')}</div>`
+      : '';
+
+    const rawJson = JSON.stringify(payload, null, 2);
+
+    return `
+      <div class="event-block" id="ev-${idx}">
+        <div class="event-header" onclick="toggleEvent(${idx})">
+          <span class="event-time">${time.toLocaleString()}</span>
+          ${headerBadges}
+        </div>
+        <div class="event-body" id="evbody-${idx}">
+          ${gwMetaHtml}
+          ${sensorHtml}
+          <span class="raw-toggle" onclick="toggleRaw(event, ${idx})">Show raw JSON</span>
+          <pre class="raw-json" id="raw-${idx}">${escHtml(rawJson)}</pre>
+        </div>
+      </div>`;
+  }
+
+  function toggleEvent(idx) {
+    document.getElementById(`evbody-${idx}`).classList.toggle('open');
+  }
+
+  function toggleRaw(e, idx) {
+    e.stopPropagation();
+    const pre = document.getElementById(`raw-${idx}`);
+    const span = e.target;
+    if (pre.classList.toggle('open')) {
+      span.textContent = 'Hide raw JSON';
+    } else {
+      span.textContent = 'Show raw JSON';
+    }
+  }
+
+  function decodeStatus(sta) {
+    const n = parseInt(sta, 10);
+    if (isNaN(n) || n === 0) return '0 (normal)';
+    const flags = [];
+    if (n & 0x80) flags.push('LOW BAT');
+    if (n & 0x40) flags.push('TEMP ALARM');
+    if (n & 0x20) flags.push('BTN PRESSED');
+    if (n & 0x10) flags.push('ACK req');
+    if (n & 0x08) flags.push('RTC on');
+    return `${n} (${flags.length ? flags.join(', ') : 'reserved bits'})`;
+  }
+
+  function formatRtc(rtc) {
+    const s = String(rtc);
+    // YYMMDDHHmmss compact format
+    const m = s.match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+    if (m) {
+      const [, yy, mo, dd, hh, mm, ss] = m;
+      return `20${yy}-${mo}-${dd} ${hh}:${mm}:${ss} UTC`;
+    }
+    return s;
+  }
+
+  function escHtml(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function toggleAuto() {
+    if (document.getElementById('autoRefreshChk').checked) {
+      autoTimer = setInterval(loadLog, 10000);
+    } else {
+      clearInterval(autoTimer);
+      autoTimer = null;
+    }
+  }
+
+  init();
+</script>
+<script src="/js/shell.js"></script>
+</body>
+</html>

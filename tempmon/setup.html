@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -61,9 +61,8 @@
   <div class="nav-links">
     <a href="/tempmon/" class="nav-link">📡 Live Dashboard</a>
     <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
-    <a href="/tempmon/report.html" class="nav-link">📊 Compliance Report</a>
-    <a href="/tempmon/calibration.html" class="nav-link">🔧 Calibration</a>
     <a href="/tempmon/setup.html" class="nav-link active">⚙️ Setup</a>
+    <a href="/tempmon/gateway.html" class="nav-link">📶 LoRa Gateway</a>
   </div>
 
   <h1 style="font-size:1.4rem;font-weight:900;margin-bottom:22px">⚙️ Setup</h1>
@@ -137,6 +136,9 @@
       </div>
     </div>
   </div>
+
+  <!-- LoRa Gateway moved to /tempmon/gateway.html -->
+  <div id="tab-lora" class="tab-panel" style="display:none"></div>
 
   <!-- ── SAMPLE DATA TAB (admin only) ──────────────────────── -->
   <div id="tab-sample" class="tab-panel">
@@ -645,7 +647,6 @@
     } catch (err) { showNotice('simNotice', 'err', '❌ ' + err.message); }
     finally { btn.disabled = false; btn.textContent = '⏹️ Stop'; }
   }
-
   applyTypeDefaults('u'); // pre-fill Add Unit form with freezer defaults on load
   init();
 </script>
