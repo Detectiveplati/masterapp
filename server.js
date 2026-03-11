@@ -816,8 +816,9 @@ app.delete('/templog/api/lora/devices/:sensorId', requireTemplogDb, async (req, 
  * On Railway, LORA_TCP_PROXY_HOST/PORT override the browser hostname.
  */
 app.get('/templog/api/lora/tcp-config', requirePageAccess('tempmon'), (req, res) => {
-    const proxyHost = process.env.LORA_TCP_PROXY_HOST || '';
-    const proxyPort = parseInt(process.env.LORA_TCP_PROXY_PORT || '0', 10);
+    // Manual overrides take precedence, then Railway's auto-injected TCP proxy vars
+    const proxyHost = process.env.LORA_TCP_PROXY_HOST || process.env.RAILWAY_TCP_PROXY_DOMAIN || '';
+    const proxyPort = parseInt(process.env.LORA_TCP_PROXY_PORT || process.env.RAILWAY_TCP_PROXY_PORT || '0', 10);
     const internalPort = LORA_TCP_PORT;
     if (proxyHost && proxyPort) {
         res.json({ host: proxyHost, port: proxyPort, via: 'railway-proxy' });
