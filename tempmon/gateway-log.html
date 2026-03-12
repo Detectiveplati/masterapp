@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/css/app.css">
   <script src="/js/lib/dom.js"></script>
   <script src="/js/lib/http.js"></script>
+  <script src="/js/lib/tz.js"></script>
   <style>
     main { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
     .nav-links { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
@@ -188,7 +189,7 @@
       allEvents = await r.json();
       applyFilter();
       renderCoverage();
-      document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+      document.getElementById('lastUpdated').textContent = 'Updated ' + fmtTime(new Date());
       dot.classList.add('on');
       setTimeout(() => dot.classList.remove('on'), 3000);
     } catch (err) {
@@ -395,7 +396,7 @@
     return `
       <div class="event-block" id="ev-${idx}">
         <div class="event-header" onclick="toggleEvent(${idx})">
-          <span class="event-time">${time.toLocaleString()}</span>
+          <span class="event-time">${fmtDateTime(time)}</span>
           ${headerBadges}
         </div>
         <div class="event-body" id="evbody-${idx}">
@@ -440,7 +441,7 @@
     const m = s.match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
     if (m) {
       const [, yy, mo, dd, hh, mm, ss] = m;
-      return `20${yy}-${mo}-${dd} ${hh}:${mm}:${ss} UTC`;
+      return `20${yy}-${mo}-${dd} ${hh}:${mm}:${ss}`;
     }
     return s;
   }

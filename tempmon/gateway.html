@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/css/app.css">
   <script src="/js/lib/dom.js"></script>
   <script src="/js/lib/http.js"></script>
+  <script src="/js/lib/tz.js"></script>
   <style>
     main { max-width: 1080px; margin: 0 auto; padding: 28px 20px; }
     .nav-links { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
@@ -488,7 +489,7 @@
           ? `<span style="color:#c62828;font-weight:700">${unmatched.length}</span> <span style="font-size:0.76rem;color:#c62828">(${unmatched.slice(0,3).map(u=>`<code>${esc(u.sensorId)}</code>`).join(', ')}${unmatched.length>3?'…':''})</span>`
           : '<span style="color:#2e7d32">0</span>';
         return `<tr>
-          <td style="font-size:0.8rem;white-space:nowrap">${new Date(ev.receivedAt).toLocaleTimeString()}</td>
+          <td style="font-size:0.8rem;white-space:nowrap">${fmtTime(ev.receivedAt)}</td>
           <td><code style="font-size:0.78rem">${esc(ev.gatewayId || '—')}</code></td>
           <td>${ev.sensorCount > 0 ? `<strong style="color:#1565c0">${ev.sensorCount}</strong>` : '<span style="color:var(--muted)">0 ♥</span>'}</td>
           <td>${ev.ingestedCount > 0 ? `<strong style="color:#2e7d32">${ev.ingestedCount}</strong>` : '<span style="color:var(--muted)">—</span>'}</td>
@@ -510,7 +511,7 @@
       scanEvents = await r.json();
       await loadRegisteredDevices();
       renderScanner();
-      document.getElementById('scanUpdated').textContent = new Date().toLocaleTimeString();
+      document.getElementById('scanUpdated').textContent = fmtTime(new Date());
       dot.classList.add('on');
       setTimeout(() => dot.classList.remove('on'), 3000);
     } catch (_) {
@@ -599,7 +600,7 @@
             <td><code style="font-weight:800">${esc(s.sensorId)}</code></td>
             <td>${modelBadge(s.model)}</td>
             <td>${s.lastTemp != null ? `<strong>${s.lastTemp}°C</strong>` : '<span style="color:var(--muted)">—</span>'}</td>
-            <td style="font-size:0.8rem">${new Date(s.lastSeen).toLocaleString()}</td>
+            <td style="font-size:0.8rem">${fmtDateTime(s.lastSeen)}</td>
             <td style="text-align:center">${s.seenCount}</td>
             <td>
               <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
@@ -691,7 +692,7 @@
       const r = await apiFetch('/templog/api/lora/status');
       const devices = await r.json();
       renderMonitor(devices);
-      document.getElementById('monitorUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+      document.getElementById('monitorUpdated').textContent = 'Updated ' + fmtTime(new Date());
     } catch (err) {
       document.getElementById('monitorPanel').innerHTML = `<div class="no-data" style="color:#c62828">Failed to load: ${esc(err.message)}</div>`;
     } finally { btn.disabled = false; btn.textContent = '🔄 Refresh'; }
@@ -717,7 +718,7 @@
         <td>${d.humidity != null ? d.humidity + '%' : '<span style="color:var(--muted)">—</span>'}</td>
         <td>${batteryHtml(d.battery)}</td>
         <td>${rssiHtml(d.rssi)}</td>
-        <td style="font-size:0.8rem;color:var(--muted);white-space:nowrap" title="${d.lastSeen ? new Date(d.lastSeen).toLocaleString() : ''}">${timeAgo(d.lastSeen)}</td>
+        <td style="font-size:0.8rem;color:var(--muted);white-space:nowrap" title="${d.lastSeen ? fmtDateTime(d.lastSeen) : ''}">${timeAgo(d.lastSeen)}</td>
         <td><div style="display:flex;gap:5px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" title="Change linked unit" onclick="editUnit('${esc(d.sensorId)}','${esc(d.tempmonUnitId||'')}')">✏️</button>
           <button class="btn btn-ghost btn-sm" onclick="toggleDevice('${esc(d.sensorId)}',${!d.enabled})">${d.enabled?'⏸':'▶️'}</button>

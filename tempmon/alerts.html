@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/css/app.css">
   <script src="/js/lib/dom.js"></script>
   <script src="/js/lib/http.js"></script>
+  <script src="/js/lib/tz.js"></script>
   <style>
     main { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
     .nav-links { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
@@ -210,7 +211,7 @@
       const unitName = a.unit?.name || '—';
       const valStr   = a.value != null ? ` — ${a.value.toFixed(1)}°C` : '';
       const caBox    = a.correctiveAction
-        ? `<div class="ca-box">✅ Corrective action logged by <strong>${escHtml(a.correctiveAction.takenBy)}</strong> on ${new Date(a.correctiveAction.takenAt).toLocaleDateString()} · Outcome: <strong>${escHtml(a.correctiveAction.outcome || 'N/A')}</strong></div>`
+        ? `<div class="ca-box">✅ Corrective action logged by <strong>${escHtml(a.correctiveAction.takenBy)}</strong> on ${fmtDate(a.correctiveAction.takenAt)} · Outcome: <strong>${escHtml(a.correctiveAction.outcome || 'N/A')}</strong></div>`
         : '';
 
       const actions = [];
@@ -226,7 +227,7 @@
           <div>
             <div class="alert-title">${emoji} ${label}${valStr} · ${escHtml(unitName)}</div>
             <div class="alert-meta">
-              ${new Date(a.createdAt).toLocaleString()}
+              ${fmtDateTime(a.createdAt)}
               ${a.device ? '· Device: ' + escHtml(a.device.label || a.device.deviceId) : ''}
               · <span class="badge-status ${sCls}">${a.status.toUpperCase()}</span>
               ${a.acknowledgedBy ? `· Acked by ${escHtml(a.acknowledgedBy)}` : ''}
@@ -366,7 +367,7 @@
   }
 
   function printPDF() {
-    document.getElementById('printSubtitle').textContent = 'Alert & CA Log · Generated ' + new Date().toLocaleString();
+    document.getElementById('printSubtitle').textContent = 'Alert & CA Log · Generated ' + fmtDateTime(new Date());
     document.body.classList.add('print');
     window.print();
     window.addEventListener('afterprint', () => document.body.classList.remove('print'), { once: true });
