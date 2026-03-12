@@ -121,6 +121,8 @@
       <span style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--muted)"><span style="display:inline-block;width:28px;height:3px;border-top:2px dotted rgba(46,125,50,0.8)"></span> Target</span>
       <span style="margin-left:auto;font-size:0.75rem;color:var(--muted)">🖱️ Drag to zoom &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Click <strong>Reset Zoom</strong> to restore</span>
     </div>
+    <!-- Dynamic zone band — populated by loadUnit() -->
+    <div id="zoneBandRow" style="margin-top:16px"></div>
   </div>
 
   <!-- Alerts -->
@@ -192,6 +194,49 @@
     } catch { window.location.replace('/login'); }
   }
 
+  function renderZoneBand(u) {
+    const el = document.getElementById('zoneBandRow');
+    if (!el) return;
+    const min = u.criticalMin;
+    const max = u.criticalMax;
+    const buf = u.warningBuffer ?? 2;
+    const tgt = u.targetTemp;
+    const warnLow  = min + buf;
+    const warnHigh = max - buf;
+
+    // Row 1 — alert zone band (applies to all unit types)
+    const seg = (label, sub, bg, color, extra = '') =>
+      `<div style="flex:1;background:${bg};color:${color};padding:7px 4px;text-align:center;font-size:0.72rem;font-weight:800;line-height:1.3${extra}">${label}<br><span style="font-weight:400;font-size:0.68rem">${sub}</span></div>`;
+
+    let band1 = `<div style="display:flex;border-radius:8px;overflow:hidden;border:1px solid var(--border)">`;
+    band1 += seg('🔴 Critical Low', `< ${min}°C`,       '#c62828', '#fff');
+    band1 += seg('🟡 Warning Low',   `${min}–${warnLow}°C`, '#ef6c00', '#fff');
+    const safeLabel = tgt != null ? `✅ Safe &nbsp;<span style="font-weight:400;font-size:0.68rem;opacity:.85">▸ ${tgt}°C target</span>` : '✅ Safe';
+    band1 += `<div style="flex:2;background:#2e7d32;color:#fff;padding:7px 4px;text-align:center;font-size:0.72rem;font-weight:800;line-height:1.3">${safeLabel}<br><span style="font-weight:400;font-size:0.68rem">${warnLow}–${warnHigh}°C</span></div>`;
+    band1 += seg('🟡 Warning High',  `${warnHigh}–${max}°C`, '#ef6c00', '#fff');
+    band1 += seg('🔴 Critical High', `> ${max}°C`,      '#c62828', '#fff');
+    band1 += '</div>';
+
+    let html = `<p style="font-size:0.72rem;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em">Alert zones for this unit</p>${band1}`;
+
+    // Row 2 — warmer on/off state machine band (warmers only)
+    if (u.type === 'warmer') {
+      const cfg         = u.warmerStateConfig || {};
+      const roomCeil    = cfg.roomTempCeiling ?? 35;
+      const warmupStart = cfg.warmupStartTemp ?? 40;
+      let band2 = `<div style="display:flex;border-radius:8px;overflow:hidden;border:1px solid var(--border)">`;
+      band2 += seg('⬜ Off',         `≤ ${roomCeil}°C`,               '#e0e0e0', '#424242');
+      band2 += seg('',               `${roomCeil}–${warmupStart}°C`,  '#eeeeee', '#757575');
+      band2 += seg('🌡 Warming Up',   `${warmupStart}–${min}°C`,       '#fff3e0', '#e65100');
+      band2 += `<div style="flex:2;background:#e8f5e9;color:#2e7d32;padding:7px 4px;text-align:center;font-size:0.72rem;font-weight:800;line-height:1.3">✅ Active<br><span style="font-weight:400;font-size:0.68rem">≥ ${min}°C</span></div>`;
+      band2 += '</div>';
+      html += `<p style="font-size:0.72rem;font-weight:700;color:var(--muted);margin:10px 0 5px;text-transform:uppercase;letter-spacing:.04em">Warmer power state zones</p>${band2}`;
+      html += `<p style="font-size:0.7rem;color:var(--muted);margin-top:6px">⚠️ <strong>FAULT</strong> fires if the warmer stays in the <em>Warming Up</em> zone for more than ${cfg.faultMinutes ?? 30} min without reaching ${min}°C.</p>`;
+    }
+
+    el.innerHTML = html;
+  }
+
   async function loadUnit() {
     const r = await apiFetch(API + '/units/' + unitId);
     unit = await r.json();
@@ -206,6 +251,9 @@
       <span class="limit-badge max">Max ${unit.criticalMax}°C</span>
       ${unit.targetTemp != null ? `<span class="limit-badge tgt">Target ${unit.targetTemp}°C</span>` : ''}`;
     document.getElementById('limitsRow').innerHTML = limitsHtml;
+
+    // Temperature zone band + (for warmers) state-machine band
+    renderZoneBand(unit);
 
     // Warmer power state pill — only rendered for warmer-type units
     if (unit.type === 'warmer') {
