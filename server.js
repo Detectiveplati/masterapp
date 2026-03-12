@@ -813,6 +813,13 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
         if (sensorRow.humidity != null) readingData.humidity = sensorRow.humidity;
         if (sensorRow.rssi    != null) readingData.rssi    = sensorRow.rssi;
         if (sensorRow.battery != null) readingData.battery = sensorRow.battery;
+        // Skip duplicate — same device + same sensor timestamp already stored
+        const exists = await TempMonReading.exists({ device: tmDevice._id, recordedAt: readingData.recordedAt });
+        if (exists) {
+            console.log(`[TempMon] Skipping duplicate reading: ${sensorRow.sensorId} @ ${readingData.recordedAt}`);
+            return;
+        }
+
         const reading = new TempMonReading(readingData);
         await reading.save();
         const rhStr  = sensorRow.humidity != null ? ` RH:${sensorRow.humidity}%` : '';
