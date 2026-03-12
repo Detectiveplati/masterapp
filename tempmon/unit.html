@@ -93,9 +93,11 @@
         <div class="limits-row" id="limitsRow"></div>
         <div id="lastSeen" style="font-size:0.78rem;color:var(--muted);margin-top:6px"></div>
       </div>
+      <div id="warmerStateRow" style="display:none">
+        <div class="current-lbl">Warmer State</div>
+      </div>
     </div>
     <div style="margin-top:4px" id="openAlertsInline"></div>
-    <div id="warmerStateRow" style="display:none;margin-top:10px"></div>
   </div>
 
   <!-- Chart -->
@@ -221,7 +223,8 @@
       };
       const row = document.getElementById('warmerStateRow');
       row.style.display = '';
-      row.innerHTML = `<span class="warmer-state-pill ${s}">${stateLabels[s] || s}</span>`
+      row.innerHTML = `<div class="current-lbl">Warmer State</div>
+        <span class="warmer-state-pill ${s}">${stateLabels[s] || s}</span>`
         + (ws.since ? `<span style="font-size:0.75rem;color:var(--muted);margin-left:10px">since ${fmtDateTime(ws.since)}</span>` : '');
     }
 
