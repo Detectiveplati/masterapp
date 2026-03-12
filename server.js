@@ -576,12 +576,22 @@ const UNIT_TYPE_TO_EQUIPMENT = { freezer: 'freezer', chiller: 'chiller', warmer:
  * whenever a lora_device document has a tempmonUnitId set.
  */
 async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
-    if (!loraDevice.tempmonUnitId) return;
+    if (!loraDevice.tempmonUnitId) {
+        // Sensor registered without a linked TempMon unit — readings stay in TempLog only.
+        // Go to /tempmon/gateway.html and click ✏️ on the sensor to link it to a unit.
+        return;
+    }
     try {
-        const mongoose = require('mongoose');
         const unitId = loraDevice.tempmonUnitId;
         const unit = await TempMonUnit.findById(unitId);
-        if (!unit || !unit.active) return;
+        if (!unit) {
+            console.warn(`[TempMon] Unit ${unitId} not found for sensor ${sensorRow.sensorId}. Re-link on gateway.html.`);
+            return;
+        }
+        if (!unit.active) {
+            console.warn(`[TempMon] Unit "${unit.name}" is inactive — skipping reading for ${sensorRow.sensorId}.`);
+            return;
+        }
 
         // Find or auto-create a TempMonDevice for this LoRa sensor
         let tmDevice = await TempMonDevice.findOne({ deviceId: sensorRow.sensorId });
@@ -616,6 +626,7 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
             flagged
         });
         await reading.save();
+        console.log(`✓ [TempMon] Reading saved: ${sensorRow.sensorId} → "${unit.name}" ${sensorRow.temp}°C${flagged ? ' ⚠️ FLAGGED' : ''}`);
 
         // Alert logic
         const alertType = tmEvaluateAlertType(sensorRow.temp, unit);

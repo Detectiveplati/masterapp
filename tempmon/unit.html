@@ -385,7 +385,7 @@
             <td style="font-weight:700">${rd.value.toFixed(1)}°C</td>
             <td>${rd.flagged ? '<span class="flag">⚠️ Out of range</span>' : '✅'} ${rd.isSample ? '<span class="sample-tag">(sample)</span>' : ''}</td>
           </tr>`).join('')
-      : '<tr><td colspan="4" class="no-data">No readings in selected range</td></tr>';
+      : '<tr><td colspan="4" class="no-data">No readings in selected range. If sensors are linked, try widening the date range or check the Gateway Setup page to confirm the sensors are sending data.</td></tr>';
   }
 
   function resetZoom() {
@@ -429,7 +429,7 @@
               <br><span style="font-size:0.72rem">${d.lastSeenAt ? 'Last: ' + fmtDateTime(d.lastSeenAt) : 'Never seen'}</span>
             </div>
           </div>`).join('')
-      : '<div class="no-data">No devices registered for this unit. <a href="/tempmon/setup.html" style="color:var(--accent)">Register a device →</a></div>';
+      : '<div class="no-data">No sensors are currently linked to this unit. Go to <a href="/tempmon/gateway.html" style="color:var(--accent)">Gateway Setup →</a> and click ✏️ on each sensor to link it to this unit. Once linked, readings will appear here automatically.</div>';
   }
 
   function exportCSV(e) {

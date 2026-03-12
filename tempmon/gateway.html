@@ -404,7 +404,7 @@
       const u = tempmonUnits.find(u => u._id === tempmonUnitId);
       return u ? `<span class="badge badge-blue">${esc(unitLabel(u))}</span>` : `<span class="badge badge-grey" title="Unit ID: ${esc(tempmonUnitId)}">Deleted unit</span>`;
     }
-    return esc(equipLabel[equipment] || equipment || '—');
+    return `<span class="badge badge-orange" title="Not linked to a TempMon unit — readings will NOT appear in the dashboard. Click ✏️ to link.">⚠️ Not linked</span>`;
   }
 
   async function init() {
