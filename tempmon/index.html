@@ -177,6 +177,8 @@
       }).join('');
     } catch (err) {
       console.error(err);
+      document.getElementById('unitsGrid').innerHTML =
+        `<div class="no-data" style="color:#c62828">❌ Failed to load dashboard: ${escHtml(err.message)}<br><small>Check browser console for details.</small></div>`;
     }
   }
 
