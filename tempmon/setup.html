@@ -440,13 +440,16 @@
     if (!units.length) { tbody.innerHTML = '<tr><td colspan="7" class="no-data">No units yet.</td></tr>'; return; }
     tbody.innerHTML = units.map(u => {
       const typeCls = 'type-' + u.type;
+      const notInUseBadge = u.inUse === false
+        ? `<span style="background:#fff8e1;color:#e65100;font-size:0.72rem;font-weight:700;border-radius:4px;padding:1px 6px;border:1px solid #ffe082" title="${escHtml(u.inUseComment||'')}">⏸ Not in use</span>`
+        : '';
       return `<tr class="${u.active ? '' : 'inactive-row'}">
         <td><strong>${escHtml(u.name)}</strong></td>
         <td><span class="type-badge ${typeCls}">${u.type}</span></td>
         <td>${escHtml(u.area || u.location || '—')}</td>
         <td>${u.criticalMin}°C – ${u.criticalMax}°C</td>
         <td>${u.targetTemp != null ? u.targetTemp + '°C' : '—'}</td>
-        <td>${u.active ? '<span style="color:#2e7d32;font-weight:700">Active</span>' : '<span style="color:var(--muted)">Inactive</span>'}${u.inUse === false ? ' <span style="background:#fff8e1;color:#e65100;font-size:0.72rem;font-weight:700;border-radius:4px;padding:1px 6px;border:1px solid #ffe082" title="${escHtml(u.inUseComment||'')}">⏸ Not in use</span>' : ''}</td>
+        <td>${u.active ? '<span style="color:#2e7d32;font-weight:700">Active</span>' : '<span style="color:var(--muted)">Inactive</span>'} ${notInUseBadge}</td>
         <td style="display:flex;gap:5px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="openEditUnit('${u._id}')">✏️</button>
           <button class="btn btn-primary btn-sm" onclick="openAddTag('${u._id}', '${escHtml(u.name).replace(/'/g,'\\&#39;')}')" title="Register a TAG sensor for this unit">📡 Add TAG</button>
