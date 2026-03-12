@@ -937,7 +937,6 @@ async function updateWarmerState(unit, value, readingTs) {
 
   const cfg          = unit.warmerStateConfig || {};
   const roomCeiling  = cfg.roomTempCeiling   ?? 35;
-  const warmupStart  = cfg.warmupStartTemp   ?? 40;
   const targetLow    = unit.criticalMin;              // e.g. 60°C
   const offConfirmMs = (cfg.offConfirmMinutes ?? 20) * 60000;
   const faultMs      = (cfg.faultMinutes      ?? 30) * 60000;
@@ -949,53 +948,83 @@ async function updateWarmerState(unit, value, readingTs) {
   // Bootstrap in-memory tracker from DB on first reading after server start
   if (!global._warmerState[unit._id]) {
     global._warmerState[unit._id] = {
-      state: unit.warmerState?.state || 'unknown',
-      since: unit.warmerState?.since ? new Date(unit.warmerState.since).getTime() : ts
+      state:    unit.warmerState?.state || 'unknown',
+      since:    unit.warmerState?.since ? new Date(unit.warmerState.since).getTime() : ts,
+      prevTemp: null
     };
   }
 
-  const current = global._warmerState[unit._id];
-  const state   = current.state;
-  const since   = current.since;
-  const elapsed = ts - since;
-  let   newState = state;
+  const current  = global._warmerState[unit._id];
+  const state    = current.state;
+  const since    = current.since;
+  const elapsed  = ts - since;
+  const prevTemp = current.prevTemp;
+
+  // Slope: positive = heating up, negative = cooling down.
+  // Dead-band of ±0.3°C to ignore sensor noise.
+  const slope   = prevTemp !== null ? value - prevTemp : 0;
+  const rising  = slope >  0.3;
+  const falling = slope < -0.3;
+
+  let newState = state;
 
   if (value >= targetLow) {
-    // Active zone — warmer is maintaining temperature
+    // ── Active zone: warmer is holding target temperature ───────────
     newState = 'active';
+
   } else if (value <= roomCeiling) {
-    // Room temp zone
-    if (state === 'off') {
+    // ── Room-temperature zone ───────────────────────────────────────
+    if (rising) {
+      // Temperature climbing from cold → warmer just switched on
+      newState = 'warming_up';
+    } else if (state === 'off') {
       newState = 'off';
-    } else if (state === 'cooling') {
+    } else if (state === 'cooling' || state === 'fault' || state === 'warming_up') {
       newState = elapsed >= offConfirmMs ? 'off' : 'cooling';
     } else {
-      // Dropped to room temp from any other state → start cooling timer
       newState = 'cooling';
     }
-  } else if (value > warmupStart) {
-    // Mid zone: warmupStart < temp < targetLow (e.g. 40–60°C)
-    if (state === 'fault') {
-      newState = 'fault'; // stays faulted until temp reaches target or cools completely
-    } else if (state === 'warming_up') {
-      newState = elapsed >= faultMs ? 'fault' : 'warming_up';
-    } else {
-      // Coming from off / cooling / active — start warmup timer
-      newState = 'warming_up';
-    }
+
   } else {
-    // Low zone: roomCeiling < temp ≤ warmupStart (35–40°C)
-    // Ambiguous — keep existing off, treat everything else as cooling
-    newState = (state === 'off') ? 'off' : 'cooling';
+    // ── Mid zone: roomCeiling < temp < targetLow ────────────────────
+    // Use slope to determine direction; fall back to time-based fault guard.
+    if (rising) {
+      // Temperature trending upward → heating up
+      if (state === 'fault') {
+        newState = 'fault';        // stays faulted until it reaches target or fully cools off
+      } else if (state === 'warming_up') {
+        newState = elapsed >= faultMs ? 'fault' : 'warming_up';
+      } else {
+        newState = 'warming_up';   // fresh warm-up (resets timer via state change)
+      }
+    } else if (falling) {
+      // Temperature trending downward → cooling down
+      newState = 'cooling';
+    } else {
+      // Flat — no significant slope; continue existing timer-based logic
+      if (state === 'warming_up') {
+        newState = elapsed >= faultMs ? 'fault' : 'warming_up';
+      } else if (state === 'fault') {
+        newState = 'fault';
+      } else if (state === 'active') {
+        newState = 'cooling';      // just dropped below target
+      } else {
+        newState = state === 'off' ? 'cooling' : (state || 'cooling');
+      }
+    }
   }
+
+  // Always persist the latest reading in tracker (needed for next slope calculation)
+  global._warmerState[unit._id].prevTemp = value;
 
   if (newState !== state) {
     const prev = state;
-    global._warmerState[unit._id] = { state: newState, since: ts };
+    global._warmerState[unit._id] = { state: newState, since: ts, prevTemp: value };
     await TempMonUnit.findByIdAndUpdate(unit._id, {
       $set: { 'warmerState.state': newState, 'warmerState.since': new Date(ts) }
     });
-    console.log(`🔥 [TempMon] Warmer "${unit.name}": ${prev} → ${newState} at ${value}°C`);
+    const slopeStr = prevTemp !== null ? ` (slope ${slope > 0 ? '+' : ''}${slope.toFixed(1)}°C)` : '';
+    console.log(`🔥 [TempMon] Warmer "${unit.name}": ${prev} → ${newState} at ${value}°C${slopeStr}`);
     if (newState === 'fault' && unit.inUse !== false) {
       sendPush(
         `⚠️ ${unit.name}: Warmer may be faulty`,
