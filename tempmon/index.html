@@ -76,6 +76,7 @@
     .filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; }
     .filter-row-lbl { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); white-space: nowrap; min-width: 50px; }
     .filter-divider { width: 100%; height: 1px; background: var(--border); margin: 4px 0; }
+    .filter-btn.f-group.active { background: #546e7a; border-color: #546e7a; color: #fff; }
     .filter-count { margin-left: auto; font-size: 0.76rem; color: var(--muted); white-space: nowrap; }
     @media (max-width: 600px) { main { padding: 16px; } .unit-temp { font-size: 2rem; } .filter-bar { gap: 6px; } }
   </style>
@@ -125,6 +126,11 @@
       <select id="filterLocation" onchange="applyFilters()" style="margin-left:auto;padding:5px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:0.8rem;font-weight:700;color:var(--muted);background:transparent;cursor:pointer">
         <option value="all">All Locations</option>
       </select>
+      <div style="display:flex;align-items:center;gap:4px;margin-left:10px">
+        <span style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Group</span>
+        <button class="filter-btn f-group active" id="grpType" onclick="setGroup('type')">Type</button>
+        <button class="filter-btn f-group"        id="grpLoc"  onclick="setGroup('location')">Location</button>
+      </div>
       <span class="filter-count" id="filterCount"></span>
     </div>
   </div>
@@ -149,6 +155,14 @@
   let allUnits     = [];
   let activeStatus = 'all';
   let activeType   = 'all';
+  let activeGroup  = 'type'; // 'type' | 'location'
+
+  function setGroup(g) {
+    activeGroup = g;
+    document.getElementById('grpType').classList.toggle('active', g === 'type');
+    document.getElementById('grpLoc').classList.toggle('active',  g === 'location');
+    applyFilters();
+  }
 
   function setType(t) {
     activeType = t;
@@ -214,22 +228,36 @@
       return;
     }
 
-    const areaGroups = {};
+    // When a specific type is selected, grouping by type would be pointless — fall back to location
+    const groupBy = (activeGroup === 'type' && activeType === 'all') ? 'type' : 'location';
+
+    const TYPE_ORDER  = ['freezer', 'chiller', 'warmer', 'ambient'];
+    const TYPE_LABELS = { freezer: '🧊 Freezer', chiller: '❄️ Chiller', warmer: '🔥 Warmer', ambient: '🌡️ Ambient' };
+
+    const groups = {};
     filtered.forEach(u => {
-      const key = (u.area || u.location || '').trim() || 'Uncategorized';
-      (areaGroups[key] = areaGroups[key] || []).push(u);
+      const key = groupBy === 'type'
+        ? (u.type || 'other')
+        : ((u.area || u.location || '').trim() || 'Uncategorized');
+      (groups[key] = groups[key] || []).push(u);
     });
-    const areaOrder = Object.keys(areaGroups).sort((a, b) => {
-      if (a === 'Uncategorized') return 1;
-      if (b === 'Uncategorized') return -1;
-      return a.localeCompare(b);
-    });
+
+    const order = groupBy === 'type'
+      ? TYPE_ORDER.filter(t => groups[t])
+      : Object.keys(groups).sort((a, b) => {
+          if (a === 'Uncategorized') return 1;
+          if (b === 'Uncategorized') return -1;
+          return a.localeCompare(b);
+        });
+
     let html = '';
-    for (const area of areaOrder) {
-      const list = areaGroups[area];
+    for (const key of order) {
+      const list = groups[key];
+      if (!list) continue;
+      const label = groupBy === 'type' ? (TYPE_LABELS[key] || key) : escHtml(key);
       const critCount = list.filter(u => tempClass(u, u.latestReading) === 'critical').length;
       const badge = critCount ? `<span style="color:#c62828;font-weight:700;font-size:0.72rem">${critCount} critical</span>` : '';
-      html += `<div class="group-header"><span>${escHtml(area)} <span style="font-weight:400;font-size:0.74rem">(${list.length})</span></span>${badge}</div>`;
+      html += `<div class="group-header"><span>${label} <span style="font-weight:400;font-size:0.74rem">(${list.length})</span></span>${badge}</div>`;
       html += `<div class="units-grid">${list.map(renderCard).join('')}</div>`;
     }
     document.getElementById('unitsGrid').innerHTML = html;
