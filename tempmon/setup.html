@@ -64,14 +64,15 @@
     <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
     <a href="/tempmon/setup.html" class="nav-link active">⚙️ Setup</a>
     <a href="/tempmon/gateway.html" class="nav-link">📶 LoRa Gateway</a>
+    <a href="/tempmon/gateway-log.html" class="nav-link">🪵 Raw Log</a>
   </div>
 
   <h1 style="font-size:1.4rem;font-weight:900;margin-bottom:22px">⚙️ Setup</h1>
 
   <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('units')">🏭 Units</button>
-    <button class="tab-btn" onclick="switchTab('devices')">📡 Devices</button>
-    <button class="tab-btn admin-only" onclick="switchTab('sample')" style="display:none">🧪 Sample Data</button>
+    <button class="tab-btn active" data-tab="units" onclick="switchTab('units')">🏭 Units</button>
+    <button class="tab-btn" data-tab="devices" onclick="switchTab('devices')">📡 Devices</button>
+    <button class="tab-btn admin-only" data-tab="sample" onclick="switchTab('sample')" style="display:none">🧪 Sample Data</button>
   </div>
 
   <!-- ── UNITS TAB ─────────────────────────────────────── -->
@@ -138,10 +139,7 @@
     </div>
   </div>
 
-  <!-- LoRa Gateway moved to /tempmon/gateway.html -->
-  <div id="tab-lora" class="tab-panel" style="display:none"></div>
-
-  <!-- ── SAMPLE DATA TAB (admin only) ──────────────────────── -->
+<!-- ── SAMPLE DATA TAB (admin only) ──────────────────────── -->
   <div id="tab-sample" class="tab-panel">
     <div class="section-card">
       <h2>🧪 Sample Data Generator</h2>
@@ -285,12 +283,13 @@
   }
 
   function switchTab(name) {
-    document.querySelectorAll('.tab-btn').forEach((b, i) => {
-      const tabs = ['units','devices','sample'];
-      b.classList.toggle('active', tabs[i] === name);
+    // Use data-tab attribute for reliable matching (not array index)
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === name);
     });
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    document.getElementById('tab-' + name).classList.add('active');
+    const panel = document.getElementById('tab-' + name);
+    if (panel) panel.classList.add('active');
     if (name === 'sample') loadPurgeList();
   }
 

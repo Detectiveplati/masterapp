@@ -70,6 +70,7 @@
     <a href="/tempmon/alerts.html" class="nav-link active">🔴 Alerts</a>
     <a href="/tempmon/setup.html" class="nav-link">⚙️ Setup</a>
     <a href="/tempmon/gateway.html" class="nav-link">📶 LoRa Gateway</a>
+    <a href="/tempmon/gateway-log.html" class="nav-link">🪵 Raw Log</a>
   </div>
 
   <div class="section-card">
@@ -176,23 +177,31 @@
       if (location.hash.length > 1) document.getElementById('filterStatus').value = '';
 
       load();
+      // Auto-refresh open alerts every 60s
+      setInterval(load, 60000);
     } catch { window.location.replace('/login'); }
   }
 
   async function load() {
-    const status = document.getElementById('filterStatus').value;
-    const unitId = document.getElementById('filterUnit').value;
-    const from   = document.getElementById('filterFrom').value;
-    const to     = document.getElementById('filterTo').value;
-    const params = new URLSearchParams({ limit: 200 });
-    if (status) params.set('status', status);
-    if (unitId) params.set('unitId', unitId);
-    if (from)   params.set('from', from);
-    if (to)     params.set('to', to + 'T23:59:59');
+    try {
+      const status = document.getElementById('filterStatus').value;
+      const unitId = document.getElementById('filterUnit').value;
+      const from   = document.getElementById('filterFrom').value;
+      const to     = document.getElementById('filterTo').value;
+      const params = new URLSearchParams({ limit: 200 });
+      if (status) params.set('status', status);
+      if (unitId) params.set('unitId', unitId);
+      if (from)   params.set('from', from);
+      if (to)     params.set('to', to + 'T23:59:59');
 
-    const r = await apiFetch(API + '/alerts?' + params.toString());
-    const alerts = await r.json();
-    renderAlerts(alerts);
+      const r = await apiFetch(API + '/alerts?' + params.toString());
+      const alerts = await r.json();
+      renderAlerts(alerts);
+    } catch (err) {
+      console.error(err);
+      document.getElementById('alertsList').innerHTML =
+        `<div class="no-data" style="color:#c62828">❌ Failed to load alerts: ${escHtml(err.message)}<br><small>Check browser console for details.</small></div>`;
+    }
   }
 
   const TYPE_EMOJI  = { critical_high: '🔴', critical_low: '🔴', warning_high: '🟡', warning_low: '🟡', device_offline: '⚫' };

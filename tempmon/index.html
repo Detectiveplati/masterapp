@@ -52,7 +52,8 @@
     .unit-alert-badge { background: rgba(198,40,40,.1); color: #c62828; border-radius: 20px; padding: 2px 9px; font-weight: 700; font-size: 0.72rem; }
     .battery { display: inline-flex; align-items: center; gap: 3px; }
     .no-data { text-align: center; padding: 60px; color: var(--muted); font-style: italic; grid-column: 1/-1; }
-    .refresh-info { font-size: 0.78rem; color: var(--muted); text-align: right; }
+    .refresh-info { font-size: 0.78rem; color: var(--muted); }
+    .group-header { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 0 10px; padding-bottom: 4px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     @media (max-width: 600px) { main { padding: 16px; } .unit-temp { font-size: 2rem; } }
   </style>
 </head>
@@ -60,7 +61,10 @@
 <main>
   <div class="page-header">
     <h1>🌡️ Equipment Temp Monitor</h1>
-    <span class="refresh-info" id="lastRefresh">Refreshing every 30s</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span id="liveDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#bdbdbd;transition:background .4s"></span>
+      <span class="refresh-info" id="lastRefresh">Loading…</span>
+    </div>
   </div>
 
   <div class="nav-links">
@@ -68,6 +72,7 @@
     <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
     <a href="/tempmon/setup.html" class="nav-link">⚙️ Setup</a>
     <a href="/tempmon/gateway.html" class="nav-link">📶 LoRa Gateway</a>
+    <a href="/tempmon/gateway-log.html" class="nav-link">🪵 Raw Log</a>
   </div>
 
   <div class="summary-bar">
@@ -78,8 +83,8 @@
     <div class="stat-card warn">  <div class="val" id="statOffline">—</div><div class="lbl">Offline Devices</div></div>
   </div>
 
-  <div class="units-grid" id="unitsGrid">
-    <div class="no-data">Loading…</div>
+  <div id="unitsGrid">
+    <div class="units-grid"><div class="no-data">Loading…</div></div>
   </div>
 </main>
 
@@ -106,9 +111,8 @@
   function tempClass(unit, reading) {
     if (!reading) return 'no-data';
     const v = reading.value;
-    if (reading.flagged) {
-      return v > unit.criticalMax ? 'critical' : 'critical';
-    }
+    // Out of bounds entirely → critical; flagged by server → critical
+    if (reading.flagged || v < unit.criticalMin || v > unit.criticalMax) return 'critical';
     const buf = unit.warningBuffer || 2;
     if (v < unit.criticalMin + buf || v > unit.criticalMax - buf) return 'warning';
     return 'in-range';
@@ -127,6 +131,34 @@
     return Math.round(diff / 86400) + 'd ago';
   }
 
+  function renderCard(u) {
+    const r         = u.latestReading;
+    const cls       = r ? tempClass(u, r) : (u.openAlerts ? 'critical' : 'no-data');
+    const tCls      = tempTextClass(cls);
+    const tempStr   = r ? r.value.toFixed(1) + '°C' : '—';
+    const icon      = TYPE_ICONS[u.type] || '🌡️';
+    const alertBadge = u.openAlerts > 0
+      ? `<span class="unit-alert-badge">⚠️ ${u.openAlerts} alert${u.openAlerts > 1 ? 's' : ''}</span>` : '';
+    return `
+      <a class="unit-card ${escHtml(cls)}" href="/tempmon/unit.html?id=${escHtml(String(u._id))}">
+        <div class="unit-top">
+          <div>
+            <div class="unit-icon">${icon}</div>
+            <div class="unit-name">${escHtml(u.name)}</div>
+            ${u.location ? `<div class="unit-location">${escHtml(u.location)}</div>` : ''}
+          </div>
+          ${alertBadge}
+        </div>
+        <div class="unit-temp ${tCls}">${tempStr}</div>
+        <div class="unit-limits">Range: ${u.criticalMin}°C – ${u.criticalMax}°C</div>
+        ${r ? `<div class="unit-minmax"><span>📍 ${relativeTime(r.recordedAt)}</span></div>` : '<div class="unit-minmax"><span style="color:#bbb">No readings yet</span></div>'}
+        <div class="unit-meta">
+          <span>${escHtml(u.type.charAt(0).toUpperCase() + u.type.slice(1))}</span>
+          ${r ? `<span>🕐 ${relativeTime(r.recordedAt)}</span>` : '<span style="color:#bbb">Awaiting data</span>'}
+        </div>
+      </a>`;
+  }
+
   async function load() {
     try {
       const [unitsRes, dashRes] = await Promise.all([
@@ -135,6 +167,10 @@
       ]);
       const units = await unitsRes.json();
       const dash  = await dashRes.json();
+
+      // Live pulse indicator on successful fetch
+      const dot = document.getElementById('liveDot');
+      if (dot) { dot.style.background = '#4caf50'; setTimeout(() => { dot.style.background = '#bdbdbd'; }, 1500); }
 
       // Summary bar
       document.getElementById('statTotal').textContent    = dash.totalUnits;
@@ -145,40 +181,30 @@
       document.getElementById('lastRefresh').textContent  = 'Updated ' + relativeTime(new Date());
 
       if (!units.length) {
-        document.getElementById('unitsGrid').innerHTML = `<div class="no-data">No units configured yet.<br><a href="/tempmon/setup.html" style="color:var(--accent);font-weight:700">⚙️ Add your first unit →</a></div>`;
+        document.getElementById('unitsGrid').innerHTML = '<div class="units-grid"><div class="no-data">No units configured yet.<br><a href="/tempmon/setup.html" style="color:var(--accent);font-weight:700">⚙️ Add your first unit →</a></div></div>';
         return;
       }
 
-      document.getElementById('unitsGrid').innerHTML = units.map(u => {
-        const r      = u.latestReading;
-        const cls    = r ? tempClass(u, r) : (u.openAlerts ? 'critical' : 'no-data');
-        const tCls   = tempTextClass(cls);
-        const tempStr = r ? r.value.toFixed(1) + '°C' : '—';
-        const icon   = TYPE_ICONS[u.type] || '🌡️';
-        const alertBadge = u.openAlerts > 0 ? `<span class="unit-alert-badge">⚠️ ${u.openAlerts} alert${u.openAlerts > 1 ? 's' : ''}</span>` : '';
-        return `
-          <a class="unit-card ${escHtml(cls)}" href="/tempmon/unit.html?id=${escHtml(u._id)}">
-            <div class="unit-top">
-              <div>
-                <div class="unit-icon">${icon}</div>
-                <div class="unit-name">${escHtml(u.name)}</div>
-                ${u.location ? `<div class="unit-location">${escHtml(u.location)}</div>` : ''}
-              </div>
-              ${alertBadge}
-            </div>
-            <div class="unit-temp ${tCls}">${tempStr}</div>
-            <div class="unit-limits">Range: ${u.criticalMin}°C – ${u.criticalMax}°C</div>
-            ${r ? `<div class="unit-minmax"><span>📍 ${relativeTime(r.recordedAt)}</span></div>` : '<div class="unit-minmax"><span style="color:#bbb">No readings yet</span></div>'}
-            <div class="unit-meta">
-              <span>${escHtml(u.type.charAt(0).toUpperCase() + u.type.slice(1))}</span>
-              <span style="font-size:0.72rem">${u._id}</span>
-            </div>
-          </a>`;
-      }).join('');
+      // Group by equipment type
+      const typeOrder  = ['warmer', 'chiller', 'freezer', 'ambient'];
+      const typeLabels = { warmer: '🔥 Food Warmers', chiller: '❄️ Chillers', freezer: '🧊 Freezers', ambient: '🌡️ Ambient' };
+      const groups = {};
+      units.forEach(u => { (groups[u.type] = groups[u.type] || []).push(u); });
+
+      let html = '';
+      for (const t of typeOrder) {
+        const list = groups[t];
+        if (!list || !list.length) continue;
+        const critCount = list.filter(u => tempClass(u, u.latestReading) === 'critical').length;
+        const badge = critCount ? `<span style="color:#c62828;font-weight:700;font-size:0.72rem">${critCount} critical</span>` : '';
+        html += `<div class="group-header"><span>${typeLabels[t] || t} <span style="font-weight:400;font-size:0.74rem">(${list.length})</span></span>${badge}</div>`;
+        html += `<div class="units-grid">${list.map(renderCard).join('')}</div>`;
+      }
+      document.getElementById('unitsGrid').innerHTML = html;
     } catch (err) {
       console.error(err);
       document.getElementById('unitsGrid').innerHTML =
-        `<div class="no-data" style="color:#c62828">❌ Failed to load dashboard: ${escHtml(err.message)}<br><small>Check browser console for details.</small></div>`;
+        `<div class="units-grid"><div class="no-data" style="color:#c62828">❌ Failed to load dashboard: ${escHtml(err.message)}<br><small>Check browser console for details.</small></div></div>`;
     }
   }
 

@@ -141,16 +141,18 @@
 <script>
   const API   = '/api/tempmon';
   const unitId = new URLSearchParams(location.search).get('id');
-  let unit     = null;
-  let chartInst    = null;
-  let chartReadings = [];   // kept for tooltip access
+  let unit           = null;
+  let unitDeviceList = [];   // populated by loadUnit(), used to label readings
+  let chartInst      = null;
+  let chartReadings  = [];   // kept for tooltip access
+  let autoRefreshTimer = null;
 
   if (!unitId) { alert('No unit ID specified.'); location.href = '/tempmon/'; }
 
-  // Default date range: last 24 h
+  // Default date range: last 7 days (wider window for first-time data visibility)
   (function () {
     const now  = new Date();
-    const from = new Date(now - 24 * 60 * 60 * 1000);
+    const from = new Date(now - 7 * 24 * 60 * 60 * 1000);
     document.getElementById('fromDate').value = from.toISOString().slice(0, 10);
     document.getElementById('toDate').value   = now.toISOString().slice(0, 10);
   })();
@@ -164,12 +166,20 @@
       document.documentElement.style.visibility = '';
       await Promise.all([loadUnit(), loadAlerts(), loadDevices()]);
       loadChart();
+      // Auto-refresh current reading + chart every 30s when viewing recent data
+      autoRefreshTimer = setInterval(async () => {
+        await loadUnit();
+        const toVal = document.getElementById('toDate').value;
+        const today = new Date().toISOString().slice(0, 10);
+        if (!toVal || toVal >= today) loadChart();
+      }, 30000);
     } catch { window.location.replace('/login'); }
   }
 
   async function loadUnit() {
     const r = await apiFetch(API + '/units/' + unitId);
     unit = await r.json();
+    unitDeviceList = unit.devices || [];   // cache devices for readings table label
     document.title   = unit.name + ' — Temp Monitor';
     document.getElementById('unitName').textContent = unit.name;
     document.getElementById('unitSub').textContent  =
@@ -376,12 +386,15 @@
     });
 
     // Readings table (latest 50)
+    const devLabel = unitDeviceList.length === 1
+      ? escHtml(unitDeviceList[0].label || unitDeviceList[0].deviceId)
+      : (unitDeviceList.length > 1 ? 'Multiple' : '—');
     const recent = readings.slice(-50).reverse();
     document.getElementById('readingsBody').innerHTML = recent.length
       ? recent.map(rd => `
           <tr class="${rd.flagged ? 'flagged-row' : ''}">
             <td>${fmtDateTime(rd.recordedAt)}</td>
-            <td>—</td>
+            <td style="font-size:0.78rem">${devLabel}</td>
             <td style="font-weight:700">${rd.value.toFixed(1)}°C</td>
             <td>${rd.flagged ? '<span class="flag">⚠️ Out of range</span>' : '✅'} ${rd.isSample ? '<span class="sample-tag">(sample)</span>' : ''}</td>
           </tr>`).join('')
