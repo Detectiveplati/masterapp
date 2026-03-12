@@ -235,7 +235,7 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
       // Alert logic
       const alertType = evaluateAlertType(value, unit);
       if (alertType) {
-        const created = await maybeCreateOrNotifyAlert(unit, device, reading._id, alertType, value);
+        const created = await maybeCreateOrNotifyAlert(unit, device, reading._id, alertType, value, ts);
         if (created) results.alerts++;
       } else {
         // Value back in range — auto-resolve open warning/critical alerts for this unit
@@ -261,7 +261,7 @@ function evaluateAlertType(value, unit) {
   return null;
 }
 
-async function maybeCreateOrNotifyAlert(unit, device, readingId, type, value) {
+async function maybeCreateOrNotifyAlert(unit, device, readingId, type, value, readingTs) {
   // Skip alert creation entirely when unit is marked as not in use
   if (unit.inUse === false) return;
 
@@ -279,19 +279,22 @@ async function maybeCreateOrNotifyAlert(unit, device, readingId, type, value) {
     ? `${cfg.pushDelayCriticalMinutes || 60} min`
     : `${cfg.pushDelayWarningMinutes  || 120} min`;
 
+  // Use the reading's own recordedAt timestamp so buffered readings from distant
+  // sensors are evaluated against sensor-time, not server-arrival-time.
+  const ts = (readingTs instanceof Date ? readingTs : new Date(readingTs || Date.now())).getTime();
+
   // In-memory excursion tracker: only raise the alert after the full threshold period
   if (!global._tempmonExcursionStart) global._tempmonExcursionStart = {};
   const key = `${unit._id}_${type}`;
-  const now = Date.now();
 
   if (!global._tempmonExcursionStart[key]) {
-    // First reading out of range for this unit+type — start the timer, no alert yet
-    global._tempmonExcursionStart[key] = now;
+    // First reading out of range for this unit+type — record the sensor timestamp
+    global._tempmonExcursionStart[key] = ts;
     console.log(`⏱  [TempMon] Excursion started (${thresholdLabel} required): ${type} for "${unit.name}" at ${value}°C`);
     return false;
   }
 
-  const elapsedMs = now - global._tempmonExcursionStart[key];
+  const elapsedMs = ts - global._tempmonExcursionStart[key];
   if (elapsedMs < thresholdMs) return false; // still within grace period
 
   // Threshold exceeded — create alert record and send push immediately

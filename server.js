@@ -821,7 +821,7 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
         // Alert logic
         const alertType = tmEvaluateAlertType(sensorRow.temp, unit);
         if (alertType) {
-            await tmMaybeCreateAlert(unit, tmDevice, reading._id, alertType, sensorRow.temp);
+            await tmMaybeCreateAlert(unit, tmDevice, reading._id, alertType, sensorRow.temp, readingData.recordedAt);
         } else {
             // Clear in-memory excursion timers so the next excursion starts a fresh countdown
             if (global._tempmonExcursionStart) {
@@ -856,7 +856,7 @@ function tmBuildAlertLabel(type, value, unit) {
          :                            `Warning — temperature dropping to ${value}°C`;
 }
 
-async function tmMaybeCreateAlert(unit, device, readingId, type, value) {
+async function tmMaybeCreateAlert(unit, device, readingId, type, value, readingTs) {
     // Skip alert creation entirely when unit is marked as not in use
     if (unit.inUse === false) return;
 
@@ -873,17 +873,20 @@ async function tmMaybeCreateAlert(unit, device, readingId, type, value) {
         ? `${cfg.pushDelayCriticalMinutes || 60} min`
         : `${cfg.pushDelayWarningMinutes  || 120} min`;
 
+    // Use the reading's own recordedAt so buffered readings from distant sensors
+    // are evaluated against sensor-time, not server-arrival-time.
+    const ts = (readingTs instanceof Date ? readingTs : new Date(readingTs || Date.now())).getTime();
+
     // In-memory excursion tracker
     if (!global._tempmonExcursionStart) global._tempmonExcursionStart = {};
     const key = `${unit._id}_${type}`;
-    const now = Date.now();
 
     if (!global._tempmonExcursionStart[key]) {
-        global._tempmonExcursionStart[key] = now;
-        return; // start timer, no alert yet
+        global._tempmonExcursionStart[key] = ts;
+        return; // start timer using sensor timestamp, no alert yet
     }
 
-    const elapsedMs = now - global._tempmonExcursionStart[key];
+    const elapsedMs = ts - global._tempmonExcursionStart[key];
     if (elapsedMs < thresholdMs) return; // still within grace period
 
     // Threshold exceeded — create alert record and send push immediately
