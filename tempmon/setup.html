@@ -231,6 +231,27 @@
   </div>
 </main>
 
+<!-- Add TAG Modal -->
+<div id="addTagModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeAddTag()">
+  <div style="background:#fff;border-radius:16px;padding:28px 24px;width:min(96vw,480px);max-height:90vh;overflow-y:auto">
+    <h3 style="font-size:1.05rem;font-weight:800;margin-bottom:6px">📡 Register TAG Sensor</h3>
+    <p id="addTagUnitLabel" style="font-size:0.85rem;color:var(--muted);margin-bottom:18px"></p>
+    <input type="hidden" id="atUnitId">
+    <div class="grid-form">
+      <div class="fg"><label>Device ID <span style="color:#c62828">*</span></label><input id="atDeviceId" type="text" placeholder="e.g. TAG08B-A1B2C3 or LoRa sensor ID"></div>
+      <div class="fg"><label>Label</label><input id="atLabel" type="text" placeholder="e.g. Probe A — Top shelf"></div>
+      <div class="fg"><label>Firmware version</label><input id="atFirmware" type="text" placeholder="e.g. v1.2.0"></div>
+      <div class="fg"><label>Expected interval (min)</label><input id="atInterval" type="number" value="5" min="1"></div>
+      <div class="fg"><label>Calibration interval (days)</label><input id="atCalInterval" type="number" value="180" min="1"></div>
+    </div>
+    <div id="atNotice" class="notice"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-grey" onclick="closeAddTag()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAddTag()">📡 Register Device</button>
+    </div>
+  </div>
+</div>
+
 <!-- Edit Unit Modal -->
 <div id="editUnitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeEditUnit()">
   <div style="background:#fff;border-radius:16px;padding:28px 24px;width:min(96vw,520px);max-height:90vh;overflow-y:auto">
@@ -328,6 +349,9 @@
       }
       await loadUnits();
       await Promise.all([loadDevices(), loadAreas()]);
+      // Support ?tab=thresholds etc. from external links
+      const tabParam = new URLSearchParams(location.search).get('tab');
+      if (tabParam) switchTab(tabParam);
     } catch { window.location.replace('/login'); }
   }
 
@@ -403,7 +427,11 @@
         <td>${u.criticalMin}°C – ${u.criticalMax}°C</td>
         <td>${u.targetTemp != null ? u.targetTemp + '°C' : '—'}</td>
         <td>${u.active ? '<span style="color:#2e7d32;font-weight:700">Active</span>' : '<span style="color:var(--muted)">Inactive</span>'}</td>
-        <td style="display:flex;gap:5px"><button class="btn btn-outline btn-sm" onclick="openEditUnit('${u._id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteUnit('${u._id}', '${escHtml(u.name).replace(/'/g,'\\&#39;')}')">🗑️</button></td>
+        <td style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="openEditUnit('${u._id}')">✏️</button>
+          <button class="btn btn-primary btn-sm" onclick="openAddTag('${u._id}', '${escHtml(u.name).replace(/'/g,'\\&#39;')}')" title="Register a TAG sensor for this unit">📡 Add TAG</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteUnit('${u._id}', '${escHtml(u.name).replace(/'/g,'\\&#39;')}')">🗑️</button>
+        </td>
       </tr>`;
     }).join('');
   }
@@ -472,6 +500,49 @@
     document.getElementById('editUnitModal').style.display = 'flex';
   }
   function closeEditUnit() { document.getElementById('editUnitModal').style.display = 'none'; }
+
+  // ── Quick Add TAG Modal ────────────────────────────────
+  function openAddTag(unitId, unitName) {
+    document.getElementById('atUnitId').value = unitId;
+    document.getElementById('addTagUnitLabel').textContent = 'Unit: ' + unitName;
+    ['atDeviceId','atLabel','atFirmware'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('atInterval').value = '5';
+    document.getElementById('atCalInterval').value = '180';
+    document.getElementById('atNotice').style.display = 'none';
+    document.getElementById('addTagModal').style.display = 'flex';
+    setTimeout(() => document.getElementById('atDeviceId').focus(), 50);
+  }
+  function closeAddTag() { document.getElementById('addTagModal').style.display = 'none'; }
+  async function saveAddTag() {
+    const unitId   = document.getElementById('atUnitId').value;
+    const deviceId = document.getElementById('atDeviceId').value.trim();
+    if (!deviceId) {
+      const n = document.getElementById('atNotice');
+      n.className = 'notice err'; n.textContent = '⚠️ Device ID is required.'; n.style.display = 'block';
+      return;
+    }
+    try {
+      const r = await apiFetch(API + '/devices', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          unit:                    unitId,
+          deviceId,
+          label:                   document.getElementById('atLabel').value.trim(),
+          firmware:                document.getElementById('atFirmware').value.trim(),
+          expectedIntervalMinutes: parseInt(document.getElementById('atInterval').value) || 5,
+          calibrationIntervalDays: parseInt(document.getElementById('atCalInterval').value) || 180
+        })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      closeAddTag();
+      await loadDevices();
+      showNotice('deviceNotice', 'ok', `✅ Device ${escHtml(deviceId)} registered!`);
+    } catch (err) {
+      const n = document.getElementById('atNotice');
+      n.className = 'notice err'; n.textContent = '❌ ' + err.message; n.style.display = 'block';
+    }
+  }
+
   async function deleteUnit(id, name) {
     if (!confirm(`Delete unit "${name}"? This will deactivate it and remove it from the dashboard. Historical readings are preserved.`)) return;
     try {
