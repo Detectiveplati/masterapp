@@ -56,7 +56,22 @@
     .no-data { text-align: center; padding: 60px; color: var(--muted); font-style: italic; grid-column: 1/-1; }
     .refresh-info { font-size: 0.78rem; color: var(--muted); }
     .group-header { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 0 10px; padding-bottom: 4px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-    @media (max-width: 600px) { main { padding: 16px; } .unit-temp { font-size: 2rem; } }
+    /* Filter bar */
+    .filter-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; padding: 12px 14px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+    .filter-bar input[type=search] { flex: 1 1 160px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: var(--bg, #fff); color: var(--ink); outline: none; }
+    .filter-bar input[type=search]:focus { border-color: var(--accent); }
+    .filter-group { display: flex; gap: 4px; flex-wrap: wrap; }
+    .filter-btn { padding: 5px 11px; border-radius: 20px; border: 1.5px solid var(--border); background: transparent; font-size: 0.78rem; font-weight: 700; cursor: pointer; color: var(--muted); transition: all .15s; }
+    .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .filter-btn.f-critical.active { background: #c62828; border-color: #c62828; }
+    .filter-btn.f-warning.active  { background: #e65100; border-color: #e65100; }
+    .filter-btn.f-ok.active       { background: #2e7d32; border-color: #2e7d32; }
+    .filter-btn.f-offline.active  { background: #757575; border-color: #757575; }
+    .filter-type { padding: 6px 10px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.82rem; font-weight: 700; color: var(--muted); background: transparent; cursor: pointer; }
+    .filter-type:focus { border-color: var(--accent); outline: none; }
+    .filter-count { margin-left: auto; font-size: 0.76rem; color: var(--muted); white-space: nowrap; }
+    @media (max-width: 600px) { main { padding: 16px; } .unit-temp { font-size: 2rem; } .filter-bar { gap: 6px; } }
   </style>
 </head>
 <body data-module="tempmon">
@@ -77,6 +92,26 @@
     <a href="/tempmon/gateway-log.html" class="nav-link">🪵 Raw Log</a>
   </div>
 
+  <div class="filter-bar">
+    <input type="search" id="filterText" placeholder="🔍 Search units…" oninput="applyFilters()">
+    <div class="filter-group" id="statusFilters">
+      <button class="filter-btn active" data-status="all"   onclick="setStatus('all')">All</button>
+      <button class="filter-btn f-critical" data-status="critical" onclick="setStatus('critical')">🔴 Critical</button>
+      <button class="filter-btn f-warning"  data-status="warning"  onclick="setStatus('warning')">🟡 Warning</button>
+      <button class="filter-btn f-ok"       data-status="in-range" onclick="setStatus('in-range')">🟢 OK</button>
+      <button class="filter-btn f-offline"  data-status="offline"  onclick="setStatus('offline')">⬛ Offline</button>
+      <button class="filter-btn"            data-status="no-reading" onclick="setStatus('no-reading')">— No Data</button>
+    </div>
+    <select class="filter-type" id="filterType" onchange="applyFilters()">
+      <option value="all">All Types</option>
+      <option value="freezer">🧊 Freezer</option>
+      <option value="chiller">❄️ Chiller</option>
+      <option value="warmer">🔥 Warmer</option>
+      <option value="ambient">🌡️ Ambient</option>
+    </select>
+    <span class="filter-count" id="filterCount"></span>
+  </div>
+
   <div class="summary-bar">
     <div class="stat-card ok">   <div class="val" id="statTotal">—</div><div class="lbl">Total Units</div></div>
     <div class="stat-card ok">   <div class="val" id="statInRange">—</div><div class="lbl">In Range</div></div>
@@ -94,6 +129,8 @@
   const API = '/api/tempmon';
   let refreshTimer = null;
   let currentUser  = null;
+  let allUnits     = [];
+  let activeStatus = 'all';
 
   async function init() {
     try {
@@ -109,6 +146,59 @@
   }
 
   const TYPE_ICONS = { freezer: '🧊', chiller: '❄️', warmer: '🔥', ambient: '🌡️' };
+
+  function setStatus(s) {
+    activeStatus = s;
+    document.querySelectorAll('#statusFilters .filter-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.status === s));
+    applyFilters();
+  }
+
+  function applyFilters() {
+    if (!allUnits.length) return;
+    const text     = (document.getElementById('filterText')?.value || '').toLowerCase().trim();
+    const typeVal  = document.getElementById('filterType')?.value || 'all';
+
+    const filtered = allUnits.filter(u => {
+      const cls = u.latestReading ? tempClass(u, u.latestReading) : (u.openAlerts ? 'critical' : 'no-reading');
+      if (activeStatus !== 'all' && cls !== activeStatus) return false;
+      if (typeVal !== 'all' && u.type !== typeVal) return false;
+      if (text) {
+        const haystack = [(u.name||''), (u.location||''), (u.area||''), (u.type||'')].join(' ').toLowerCase();
+        if (!haystack.includes(text)) return false;
+      }
+      return true;
+    });
+
+    const countEl = document.getElementById('filterCount');
+    if (countEl) countEl.textContent = filtered.length === allUnits.length
+      ? '' : `${filtered.length} of ${allUnits.length} shown`;
+
+    if (!filtered.length) {
+      document.getElementById('unitsGrid').innerHTML = '<div class="units-grid"><div class="no-data">No units match the current filters.</div></div>';
+      return;
+    }
+
+    const areaGroups = {};
+    filtered.forEach(u => {
+      const key = (u.area || u.location || '').trim() || 'Uncategorized';
+      (areaGroups[key] = areaGroups[key] || []).push(u);
+    });
+    const areaOrder = Object.keys(areaGroups).sort((a, b) => {
+      if (a === 'Uncategorized') return 1;
+      if (b === 'Uncategorized') return -1;
+      return a.localeCompare(b);
+    });
+    let html = '';
+    for (const area of areaOrder) {
+      const list = areaGroups[area];
+      const critCount = list.filter(u => tempClass(u, u.latestReading) === 'critical').length;
+      const badge = critCount ? `<span style="color:#c62828;font-weight:700;font-size:0.72rem">${critCount} critical</span>` : '';
+      html += `<div class="group-header"><span>${escHtml(area)} <span style="font-weight:400;font-size:0.74rem">(${list.length})</span></span>${badge}</div>`;
+      html += `<div class="units-grid">${list.map(renderCard).join('')}</div>`;
+    }
+    document.getElementById('unitsGrid').innerHTML = html;
+  }
 
   function tempClass(unit, reading) {
     if (!reading) return 'no-reading';
@@ -187,27 +277,8 @@
         return;
       }
 
-      // Group by area (from maintenance module); units without area → type label; no area at all → 'Uncategorized'
-      const areaGroups = {};
-      units.forEach(u => {
-        const key = (u.area || u.location || '').trim() || 'Uncategorized';
-        (areaGroups[key] = areaGroups[key] || []).push(u);
-      });
-      const areaOrder = Object.keys(areaGroups).sort((a, b) => {
-        if (a === 'Uncategorized') return 1;
-        if (b === 'Uncategorized') return -1;
-        return a.localeCompare(b);
-      });
-
-      let html = '';
-      for (const area of areaOrder) {
-        const list = areaGroups[area];
-        const critCount = list.filter(u => tempClass(u, u.latestReading) === 'critical').length;
-        const badge = critCount ? `<span style="color:#c62828;font-weight:700;font-size:0.72rem">${critCount} critical</span>` : '';
-        html += `<div class="group-header"><span>${escHtml(area)} <span style="font-weight:400;font-size:0.74rem">(${list.length})</span></span>${badge}</div>`;
-        html += `<div class="units-grid">${list.map(renderCard).join('')}</div>`;
-      }
-      document.getElementById('unitsGrid').innerHTML = html;
+      allUnits = units;
+      applyFilters();
     } catch (err) {
       console.error(err);
       document.getElementById('unitsGrid').innerHTML =
