@@ -17,7 +17,7 @@ const TempMonCorrectiveAction = require('../models/TempMonCorrectiveAction');
 const TempMonCalibration      = require('../models/TempMonCalibration');
 const TempMonConfig           = require('../models/TempMonConfig');
 
-const { requireAuth } = require('../services/auth-middleware');
+const { requireAuth, requireAdmin } = require('../services/auth-middleware');
 const { memUpload, uploadBufferToCloudinary } = require('../services/cloudinary-upload');
 
 // Lazily resolve sendPushToPermission from the push router (avoids circular-at-load issues)
@@ -1000,6 +1000,65 @@ async function updateWarmerState(unit, value, readingTs) {
     }
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// DEBUG / TEST — admin only
+// POST /api/tempmon/debug/inject
+// Inject a simulated reading for any warmer unit (bypasses gateway key).
+// Body: { unitId, temp, minsAgo? }
+// ═══════════════════════════════════════════════════════════════════
+router.post('/debug/inject', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { unitId, temp, minsAgo = 0 } = req.body;
+    if (!unitId || temp === undefined) {
+      return res.status(400).json({ error: 'unitId and temp are required' });
+    }
+
+    const unit = await TempMonUnit.findById(unitId);
+    if (!unit) return res.status(404).json({ error: 'Unit not found' });
+    if (unit.type !== 'warmer') return res.status(400).json({ error: 'Unit is not a warmer' });
+
+    // Find a device linked to this unit (prefer the test device, fall back to first)
+    const device = await TempMonDevice.findOne({ unit: unitId, active: true }).sort({ createdAt: 1 });
+    if (!device) return res.status(404).json({ error: 'No active device linked to this unit. Add one in Setup first.' });
+
+    const ts = new Date(Date.now() - minsAgo * 60000);
+    const flagged = temp < unit.criticalMin || temp > unit.criticalMax;
+
+    const reading = new TempMonReading({
+      device:     device._id,
+      unit:       unit._id,
+      value:      temp,
+      recordedAt: ts,
+      receivedAt: new Date(),
+      gatewayId:  'debug-inject',
+      flagged
+    });
+    await reading.save();
+
+    // Reload unit so warmerState is fresh from DB
+    const freshUnit = await TempMonUnit.findById(unitId);
+    // Reset in-memory tracker so state machine re-evaluates from DB state
+    if (global._warmerState) delete global._warmerState[String(unitId)];
+    const previousState = freshUnit.warmerState?.state || 'unknown';
+
+    await updateWarmerState(freshUnit, temp, ts);
+
+    const updated = await TempMonUnit.findById(unitId);
+    res.json({
+      ok: true,
+      temp,
+      minsAgo,
+      recordedAt: ts,
+      previousState,
+      newState: updated.warmerState?.state,
+      since: updated.warmerState?.since,
+      readingId: reading._id
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router;
 module.exports.updateWarmerState = updateWarmerState;

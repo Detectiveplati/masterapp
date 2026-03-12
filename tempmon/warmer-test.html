@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Warmer State Test — Temp Monitor</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/lib/dom.js"></script>
+  <script src="/js/lib/http.js"></script>
+  <style>
+    main { max-width: 860px; margin: 0 auto; padding: 28px 20px; }
+    .nav-links { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
+    .nav-link { padding: 8px 14px; border-radius: 8px; background: #f0f0f0; color: var(--muted); font-size: 0.82rem; font-weight: 700; text-decoration: none; }
+    .nav-link:hover { background: #e0e0e0; color: var(--ink); }
+    .nav-link.active { background: var(--accent); color: #fff; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 2px 6px var(--shadow); padding: 22px 24px; margin-bottom: 20px; }
+    .card h2 { font-size: 1rem; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .btn { padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.88rem; font-weight: 700; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; transition: opacity .15s; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2, #27ae60)); color: #fff; }
+    .btn-outline { background: #fff; border: 2px solid var(--border); color: var(--ink); }
+    .btn-warning { background: rgba(230,81,0,.1); border: 1px solid rgba(230,81,0,.3); color: #e65100; }
+    .btn-danger  { background: rgba(198,40,40,.1); border: 1px solid rgba(198,40,40,.3); color: #c62828; }
+    .btn-green   { background: rgba(46,125,50,.1);  border: 1px solid rgba(46,125,50,.3);  color: #2e7d32; }
+    .btn-blue    { background: rgba(21,101,192,.1); border: 1px solid rgba(21,101,192,.3); color: #1565c0; }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+    /* Zone temp buttons */
+    .zone-btn { flex: 1; min-width: 110px; padding: 14px 8px; border-radius: 10px; border: 2px solid transparent; flex-direction: column; gap: 4px; font-size: 0.82rem; font-weight: 800; cursor: pointer; font-family: inherit; transition: transform .1s, box-shadow .1s; }
+    .zone-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+    .zone-btn .val { font-size: 1.3rem; font-weight: 900; }
+    .zone-btn.zone-room    { background: #f5f5f5; border-color: #bdbdbd; color: #424242; }
+    .zone-btn.zone-ambig   { background: #eeeeee; border-color: #bdbdbd; color: #757575; }
+    .zone-btn.zone-warmup  { background: #fff3e0; border-color: #ef6c00; color: #e65100; }
+    .zone-btn.zone-active  { background: #e8f5e9; border-color: #2e7d32; color: #2e7d32; }
+    .zone-btn.zone-high    { background: #ffebee; border-color: #c62828; color: #c62828; }
+
+    /* Custom temp row */
+    .temp-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .temp-row input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
+    .temp-row input[type=number] { width: 80px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; font-weight: 700; font-family: inherit; text-align: center; }
+    .fg { display: flex; flex-direction: column; gap: 5px; }
+    .fg label { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+    .fg select, .fg input { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-family: inherit; }
+
+    /* State display */
+    .state-display { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .state-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 1rem; font-weight: 800; padding: 8px 20px; border-radius: 24px; text-transform: uppercase; letter-spacing: .05em; }
+    .state-pill.off        { background: #f0f0f0; color: #757575; }
+    .state-pill.warming_up { background: rgba(245,124,0,.15); color: #e65100; }
+    .state-pill.active     { background: rgba(46,125,50,.14);  color: #2e7d32; }
+    .state-pill.cooling    { background: rgba(21,101,192,.12); color: #1565c0; }
+    .state-pill.fault      { background: rgba(198,40,40,.14);  color: #c62828; animation: fault-pulse 1.2s ease-in-out infinite; }
+    .state-pill.unknown    { background: #f5f5f5; color: #bdbdbd; }
+    @keyframes fault-pulse { 0%,100%{opacity:1}50%{opacity:.5} }
+    .state-arrow { font-size: 1.4rem; color: var(--muted); }
+
+    /* Log */
+    .log-box { background: #1a1a2e; color: #e0e0e0; border-radius: 10px; padding: 14px 16px; min-height: 160px; max-height: 340px; overflow-y: auto; font-size: 0.82rem; font-family: 'Courier New', monospace; }
+    .log-box .log-line { margin-bottom: 4px; line-height: 1.4; }
+    .log-box .log-ok    { color: #81c784; }
+    .log-box .log-err   { color: #ef9a9a; }
+    .log-box .log-info  { color: #90caf9; }
+    .log-box .log-warn  { color: #ffcc80; }
+    .log-box .log-state-change { color: #ce93d8; font-weight: 700; }
+    .muted { color: var(--muted); font-size: 0.8rem; }
+    .notice { padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; margin-bottom: 16px; }
+    .notice-warn { background: rgba(230,81,0,.1); border: 1px solid rgba(230,81,0,.25); color: #e65100; }
+    hr.divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  </style>
+</head>
+<body data-module="tempmon">
+<main>
+  <div class="nav-links">
+    <a href="/tempmon/" class="nav-link">📡 Live Dashboard</a>
+    <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
+    <a href="/tempmon/setup.html" class="nav-link">⚙️ Setup</a>
+    <a href="/tempmon/gateway.html" class="nav-link">📶 LoRa Gateway</a>
+    <a href="/tempmon/warmer-test.html" class="nav-link active">🧪 Warmer Test</a>
+  </div>
+
+  <h1 style="font-size:1.4rem;font-weight:900;margin-bottom:4px">🧪 Warmer State Machine Test</h1>
+  <p class="muted" style="margin-bottom:22px">Inject simulated temperature readings to observe state transitions in real time. Admin only.</p>
+
+  <div class="notice notice-warn" id="noDeviceNotice" style="display:none">
+    ⚠️ This unit has no active device linked. <a href="/tempmon/setup.html" style="color:var(--accent)">Add a device in Setup</a> first.
+  </div>
+
+  <!-- Unit selector + state display -->
+  <div class="card">
+    <h2>🎯 Target Unit</h2>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+      <div class="fg" style="flex:1;min-width:220px">
+        <label>Warmer unit</label>
+        <select id="unitSelect" onchange="onUnitChange()">
+          <option value="">— loading —</option>
+        </select>
+      </div>
+      <a id="unitLink" href="#" target="_blank" class="btn btn-outline" style="font-size:0.8rem" title="Open unit detail page">↗ View unit</a>
+    </div>
+
+    <hr class="divider">
+
+    <div class="state-display" id="stateDisplay">
+      <div>
+        <div class="muted" style="margin-bottom:4px">Current state</div>
+        <span class="state-pill unknown" id="statePill">⬜ Unknown</span>
+      </div>
+      <div class="state-arrow" id="stateArrow" style="display:none">→</div>
+      <div id="newStateWrap" style="display:none">
+        <div class="muted" style="margin-bottom:4px">After injection</div>
+        <span class="state-pill unknown" id="newStatePill"></span>
+      </div>
+      <div style="margin-left:auto;text-align:right">
+        <div class="muted">criticalMin</div>
+        <div style="font-weight:800;font-size:1.1rem" id="targetDisplay">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zone buttons -->
+  <div class="card">
+    <h2>🌡️ Inject by Zone</h2>
+    <p class="muted" style="margin-bottom:14px">Each button sends a reading at a representative temperature for that zone. Timestamps are <em>now</em> by default.</p>
+    <div class="btn-row" id="zoneBtns" style="margin-bottom:16px">
+      <!-- populated by JS after unit loads -->
+    </div>
+
+    <hr class="divider">
+
+    <h2 style="margin-top:0">✏️ Custom Temperature</h2>
+    <div class="temp-row" style="margin-bottom:14px">
+      <input type="range" id="tempSlider" min="-10" max="100" value="25" oninput="syncSlider(this.value)">
+      <input type="number" id="tempInput" value="25" step="0.5" oninput="syncInput(this.value)">
+      <span class="muted">°C</span>
+    </div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+      <div class="fg">
+        <label>Back-date by (minutes)</label>
+        <input type="number" id="minsAgo" value="0" min="0" step="1" style="width:100px">
+      </div>
+      <button class="btn btn-primary" onclick="inject()" id="injectBtn">⚡ Inject Reading</button>
+    </div>
+  </div>
+
+  <!-- Quick scenarios -->
+  <div class="card">
+    <h2>🎬 Quick Scenarios</h2>
+    <p class="muted" style="margin-bottom:14px">
+      Each scenario injects a sequence of back-dated readings to simulate a time-lapse.
+      Uses back-dated timestamps so timers trip immediately — no waiting required.
+    </p>
+    <div class="btn-row">
+      <button class="btn btn-green" onclick="runScenario('active')" id="sc-active">
+        ✅ Normal startup → Active
+      </button>
+      <button class="btn btn-danger" onclick="runScenario('fault')" id="sc-fault">
+        ⚠️ Stuck warming → Fault
+      </button>
+      <button class="btn btn-blue" onclick="runScenario('off')" id="sc-off">
+        ⬜ Cool down → Off
+      </button>
+    </div>
+    <p class="muted" style="margin-top:12px;font-size:0.76rem">
+      The scenarios reset the warmer state first (room temp back-dated 10 min) then step through the transitions.
+    </p>
+  </div>
+
+  <!-- Log -->
+  <div class="card">
+    <h2 style="justify-content:space-between">
+      📋 Injection Log
+      <button class="btn btn-outline" style="font-size:0.76rem;padding:4px 10px" onclick="clearLog()">Clear</button>
+    </h2>
+    <div class="log-box" id="logBox">
+      <div class="log-line log-info">Ready. Select a warmer unit above to begin.</div>
+    </div>
+  </div>
+</main>
+
+<script>
+  const API = '/api/tempmon';
+  let currentUnit = null;
+
+  /* ── Logging ─────────────────────────────────────── */
+  function log(msg, cls = '') {
+    const box = document.getElementById('logBox');
+    const d = document.createElement('div');
+    d.className = 'log-line' + (cls ? ' ' + cls : '');
+    const ts = new Date().toLocaleTimeString();
+    d.textContent = `[${ts}] ${msg}`;
+    box.appendChild(d);
+    box.scrollTop = box.scrollHeight;
+  }
+  function clearLog() {
+    document.getElementById('logBox').innerHTML = '';
+    log('Log cleared.', 'log-info');
+  }
+
+  /* ── Slider ↔ input sync ──────────────────────────── */
+  function syncSlider(v) { document.getElementById('tempInput').value = v; }
+  function syncInput(v)  { document.getElementById('tempSlider').value = v; }
+
+  /* ── Unit load ─────────────────────────────────────── */
+  async function init() {
+    const r = await apiFetch(API + '/units?allActive=true');
+    const units = await r.json();
+    const warmers = units.filter(u => u.type === 'warmer');
+    const sel = document.getElementById('unitSelect');
+    sel.innerHTML = warmers.length
+      ? warmers.map(u => `<option value="${u._id}">${u.name} — ${u.location || 'no location'}</option>`).join('')
+      : '<option value="">No warmer units found</option>';
+    if (warmers.length) {
+      await onUnitChange();
+    }
+  }
+
+  async function onUnitChange() {
+    const id = document.getElementById('unitSelect').value;
+    if (!id) return;
+    const r = await apiFetch(API + '/units/' + id);
+    currentUnit = await r.json();
+    document.getElementById('unitLink').href = '/tempmon/unit.html?id=' + id;
+
+    renderStatePill('statePill', currentUnit.warmerState?.state || 'unknown');
+    document.getElementById('newStateWrap').style.display = 'none';
+    document.getElementById('stateArrow').style.display   = 'none';
+
+    const critMin = currentUnit.criticalMin;
+    document.getElementById('targetDisplay').textContent = critMin + '°C';
+
+    renderZoneButtons(currentUnit);
+    document.getElementById('noDeviceNotice').style.display = 'none';
+    log(`Loaded unit: ${currentUnit.name}  (criticalMin: ${critMin}°C, state: ${currentUnit.warmerState?.state || 'unknown'})`, 'log-info');
+  }
+
+  function renderZoneButtons(u) {
+    const cfg  = u.warmerStateConfig || {};
+    const rc   = cfg.roomTempCeiling  ?? 35;
+    const ws   = cfg.warmupStartTemp  ?? 40;
+    const min  = u.criticalMin;
+    const max  = u.criticalMax;
+
+    const roomTemp   = Math.round(rc / 2);          // e.g. 18°C
+    const ambigTemp  = Math.round((rc + ws) / 2);   // e.g. 37°C
+    const warmupTemp = Math.round((ws + min) / 2);  // e.g. 52°C
+    const activeTemp = Math.round((min + max) / 2); // e.g. 76°C
+    const highTemp   = Math.round(max + 5);          // e.g. 95°C
+
+    const zones = [
+      { label: '⬜ Off / Room',    cls: 'zone-room',   temp: roomTemp,   sub: `≤ ${rc}°C` },
+      { label: '〰️ Ambiguous',    cls: 'zone-ambig',  temp: ambigTemp,  sub: `${rc}–${ws}°C` },
+      { label: '🌡️ Warming Up',   cls: 'zone-warmup', temp: warmupTemp, sub: `${ws}–${min}°C` },
+      { label: '✅ Active',        cls: 'zone-active', temp: activeTemp, sub: `≥ ${min}°C` },
+      { label: '🔴 Critical High', cls: 'zone-high',   temp: highTemp,   sub: `> ${max}°C` },
+    ];
+
+    document.getElementById('zoneBtns').innerHTML = zones.map(z =>
+      `<button class="zone-btn ${z.cls}" onclick="quickInject(${z.temp})">
+        <span class="val">${z.temp}°C</span>
+        <span>${z.label}</span>
+        <span style="font-size:0.7rem;font-weight:400;opacity:.7">${z.sub}</span>
+      </button>`
+    ).join('');
+
+    document.getElementById('tempSlider').min  = -10;
+    document.getElementById('tempSlider').max  = max + 20;
+    document.getElementById('tempSlider').value = roomTemp;
+    syncSlider(roomTemp);
+  }
+
+  /* ── Single inject ─────────────────────────────────── */
+  async function quickInject(temp) {
+    document.getElementById('tempInput').value  = temp;
+    document.getElementById('tempSlider').value = temp;
+    await inject();
+  }
+
+  async function inject() {
+    if (!currentUnit) { log('No unit selected.', 'log-err'); return; }
+    const temp    = parseFloat(document.getElementById('tempInput').value);
+    const minsAgo = parseFloat(document.getElementById('minsAgo').value) || 0;
+    if (isNaN(temp)) { log('Enter a valid temperature.', 'log-err'); return; }
+
+    setAllBtnsDisabled(true);
+    log(`→ Injecting ${temp}°C (${minsAgo > 0 ? minsAgo + ' min ago' : 'now'}) …`, 'log-info');
+
+    try {
+      const r = await apiFetch(API + '/debug/inject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unitId: currentUnit._id, temp, minsAgo })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        if (data.error && data.error.includes('No active device')) {
+          document.getElementById('noDeviceNotice').style.display = '';
+        }
+        log(`✗ ${data.error}`, 'log-err');
+        return;
+      }
+
+      const changed = data.previousState !== data.newState;
+      if (changed) {
+        log(`🔁 State: ${data.previousState} → ${data.newState}`, 'log-state-change');
+      } else {
+        log(`✓ ${temp}°C injected — state unchanged: ${data.newState}`, 'log-ok');
+      }
+
+      renderStatePill('statePill', data.newState);
+      if (changed) {
+        renderStatePill('newStatePill', data.newState);
+        document.getElementById('newStatePill').textContent = pillText(data.newState);
+        document.getElementById('stateArrow').style.display   = '';
+        document.getElementById('newStateWrap').style.display = '';
+        // Update currentUnit state
+        currentUnit.warmerState = { state: data.newState, since: data.since };
+        setTimeout(() => {
+          document.getElementById('stateArrow').style.display   = 'none';
+          document.getElementById('newStateWrap').style.display = 'none';
+        }, 4000);
+      } else {
+        document.getElementById('stateArrow').style.display   = 'none';
+        document.getElementById('newStateWrap').style.display = 'none';
+      }
+    } catch (e) {
+      log(`✗ Network error: ${e.message}`, 'log-err');
+    } finally {
+      setAllBtnsDisabled(false);
+    }
+  }
+
+  /* ── Scenarios ──────────────────────────────────────── */
+  async function runScenario(name) {
+    if (!currentUnit) { log('No unit selected.', 'log-err'); return; }
+    const cfg     = currentUnit.warmerStateConfig || {};
+    const rc      = cfg.roomTempCeiling ?? 35;
+    const ws      = cfg.warmupStartTemp ?? 40;
+    const target  = currentUnit.criticalMin;
+    const faultM  = cfg.faultMinutes      ?? 30;
+    const offM    = cfg.offConfirmMinutes ?? 20;
+
+    const steps = {
+      active: [
+        { label: 'Reset — room temp (10 min ago)', temp: Math.round(rc / 2), minsAgo: 10 },
+        { label: 'Warming up (now)',                temp: Math.round((ws + target) / 2), minsAgo: 0 },
+        { label: 'Active — reached target (now)',   temp: target + 5, minsAgo: 0 },
+      ],
+      fault: [
+        { label: 'Reset — room temp (10 min ago)',          temp: Math.round(rc / 2),           minsAgo: 10 },
+        { label: `Warming up — ${faultM + 1} min ago`,      temp: Math.round((ws + target) / 2), minsAgo: faultM + 1 },
+        { label: `Still warming — now (${faultM}+ min elapsed) → FAULT`, temp: Math.round((ws + target) / 2), minsAgo: 0 },
+      ],
+      off: [
+        { label: 'Active (10 min ago)',                      temp: target + 5, minsAgo: 10 },
+        { label: `Cooling — ${offM + 1} min ago`,            temp: Math.round(rc / 2), minsAgo: offM + 1 },
+        { label: `Still at room temp — now (${offM}+ min) → Off`, temp: Math.round(rc / 2), minsAgo: 0 },
+      ]
+    };
+
+    const seq = steps[name];
+    log(`▶ Running scenario: ${name}`, 'log-warn');
+    setAllBtnsDisabled(true);
+
+    for (const step of seq) {
+      log(`  → ${step.label} (${step.temp}°C, ${step.minsAgo} min ago)`, 'log-info');
+      document.getElementById('tempInput').value  = step.temp;
+      document.getElementById('tempSlider').value = step.temp;
+      document.getElementById('minsAgo').value    = step.minsAgo;
+
+      try {
+        const r = await apiFetch(API + '/debug/inject', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ unitId: currentUnit._id, temp: step.temp, minsAgo: step.minsAgo })
+        });
+        const data = await r.json();
+        if (!r.ok) { log(`  ✗ ${data.error}`, 'log-err'); break; }
+        const changed = data.previousState !== data.newState;
+        if (changed) {
+          log(`  🔁 ${data.previousState} → ${data.newState}`, 'log-state-change');
+          renderStatePill('statePill', data.newState);
+          currentUnit.warmerState = { state: data.newState };
+        } else {
+          log(`  ✓ state stays: ${data.newState}`, 'log-ok');
+        }
+      } catch (e) {
+        log(`  ✗ ${e.message}`, 'log-err'); break;
+      }
+      await sleep(400);
+    }
+
+    log(`✔ Scenario "${name}" complete.`, 'log-ok');
+    setAllBtnsDisabled(false);
+  }
+
+  /* ── Helpers ─────────────────────────────────────────── */
+  const STATE_LABELS = {
+    off: '⬜ Off', warming_up: '🌡️ Warming Up',
+    active: '✅ Active', cooling: '❄️ Cooling',
+    fault: '⚠️ Fault', unknown: '❓ Unknown'
+  };
+  function pillText(state) { return STATE_LABELS[state] || state; }
+
+  function renderStatePill(id, state) {
+    const pill = document.getElementById(id);
+    pill.className = 'state-pill ' + (state || 'unknown');
+    pill.textContent = pillText(state);
+  }
+
+  function setAllBtnsDisabled(dis) {
+    document.querySelectorAll('button').forEach(b => b.disabled = dis);
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  init();
+</script>
+</body>
+</html>
