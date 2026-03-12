@@ -562,6 +562,130 @@ app.post('/templog/api/equipment-temp/readings', requireTemplogDb, async (req, r
     }
 });
 
+// ─── TempMon models (same Mongoose connection as maintenance DB) ─────────────
+const TempMonUnit    = require('./models/TempMonUnit');
+const TempMonDevice  = require('./models/TempMonDevice');
+const TempMonReading = require('./models/TempMonReading');
+const TempMonAlert   = require('./models/TempMonAlert');
+
+// Map LoRa device unit type to TempLog equipment name (for backward compat)
+const UNIT_TYPE_TO_EQUIPMENT = { freezer: 'freezer', chiller: 'chiller', warmer: 'food-warmer' };
+
+/**
+ * Forward a LoRa tag reading into the TempMon system (TempMonReading + alert logic)
+ * whenever a lora_device document has a tempmonUnitId set.
+ */
+async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
+    if (!loraDevice.tempmonUnitId) return;
+    try {
+        const mongoose = require('mongoose');
+        const unitId = loraDevice.tempmonUnitId;
+        const unit = await TempMonUnit.findById(unitId);
+        if (!unit || !unit.active) return;
+
+        // Find or auto-create a TempMonDevice for this LoRa sensor
+        let tmDevice = await TempMonDevice.findOne({ deviceId: sensorRow.sensorId });
+        if (!tmDevice) {
+            tmDevice = new TempMonDevice({
+                unit:     unit._id,
+                deviceId: sensorRow.sensorId,
+                label:    loraDevice.alias || loraDevice.sensorId,
+                active:   true
+            });
+            await tmDevice.save();
+            console.log(`✓ [TempMon] Auto-created device for LoRa sensor ${sensorRow.sensorId} → unit "${unit.name}"`);
+        } else if (String(tmDevice.unit) !== String(unit._id)) {
+            // Unit linkage changed — update
+            tmDevice.unit = unit._id;
+            await tmDevice.save();
+        }
+
+        // Update heartbeat
+        tmDevice.lastSeenAt = new Date();
+        await tmDevice.save();
+
+        // Store reading
+        const flagged = sensorRow.temp < unit.criticalMin || sensorRow.temp > unit.criticalMax;
+        const reading = new TempMonReading({
+            device:     tmDevice._id,
+            unit:       unit._id,
+            value:      sensorRow.temp,
+            recordedAt: sensorRow.recordedAt || new Date(),
+            receivedAt: new Date(),
+            gatewayId:  gatewayId || '',
+            flagged
+        });
+        await reading.save();
+
+        // Alert logic
+        const alertType = tmEvaluateAlertType(sensorRow.temp, unit);
+        if (alertType) {
+            await tmMaybeCreateAlert(unit, tmDevice, reading._id, alertType, sensorRow.temp);
+        } else {
+            await TempMonAlert.updateMany(
+                { unit: unit._id, type: { $in: ['critical_high', 'critical_low', 'warning_high', 'warning_low'] }, status: 'open' },
+                { $set: { status: 'resolved', resolvedAt: new Date(), resolveNote: 'Temperature returned to normal range automatically' } }
+            );
+        }
+    } catch (e) {
+        console.error(`[TempMon] forwardToTempMon error for ${sensorRow.sensorId}:`, e.message);
+    }
+}
+
+function tmEvaluateAlertType(value, unit) {
+    const { criticalMin, criticalMax, warningBuffer = 2 } = unit;
+    if (value < criticalMin)                 return 'critical_low';
+    if (value > criticalMax)                 return 'critical_high';
+    if (value < criticalMin + warningBuffer) return 'warning_low';
+    if (value > criticalMax - warningBuffer) return 'warning_high';
+    return null;
+}
+
+function tmBuildAlertLabel(type, value, unit) {
+    return type === 'critical_high' ? `CRITICAL HIGH — ${value}°C (max ${unit.criticalMax}°C)`
+         : type === 'critical_low'  ? `CRITICAL LOW — ${value}°C (min ${unit.criticalMin}°C)`
+         : type === 'warning_high'  ? `Warning — temperature rising to ${value}°C`
+         :                            `Warning — temperature dropping to ${value}°C`;
+}
+
+async function tmMaybeCreateAlert(unit, device, readingId, type, value) {
+    const thresholdMs = (unit.alertThresholdMinutes || 0) * 60 * 1000;
+    const existing = await TempMonAlert.findOne({ unit: unit._id, type, status: { $in: ['open', 'acknowledged'] } });
+
+    if (existing) {
+        if (!existing.pushSentAt && thresholdMs > 0) {
+            const alertAgeMs = Date.now() - new Date(existing.createdAt).getTime();
+            if (alertAgeMs >= thresholdMs) {
+                await TempMonAlert.updateOne({ _id: existing._id }, { pushSentAt: new Date(), notificationSent: true });
+                if (typeof sendPushToPermission === 'function') {
+                    sendPushToPermission('tempmon', {
+                        title:   `${type.startsWith('critical') ? '🔴' : '🟡'} ${unit.name}: ${tmBuildAlertLabel(type, value, unit)}`,
+                        message: `Temperature has been out of range for ${unit.alertThresholdMinutes}+ min. Check the unit.`,
+                        url:     '/tempmon/alerts.html'
+                    }).catch(() => {});
+                }
+            }
+        }
+        return;
+    }
+
+    const sendImmediately = thresholdMs === 0;
+    const alert = new TempMonAlert({
+        unit: unit._id, device: device._id, reading: readingId, type, value,
+        pushSentAt:       sendImmediately ? new Date() : null,
+        notificationSent: sendImmediately
+    });
+    await alert.save();
+
+    if (sendImmediately && typeof sendPushToPermission === 'function') {
+        sendPushToPermission('tempmon', {
+            title:   `${type.startsWith('critical') ? '🔴' : '🟡'} ${unit.name}: ${tmBuildAlertLabel(type, value, unit)}`,
+            message: 'Check the unit immediately.',
+            url:     '/tempmon/alerts.html'
+        }).catch(() => {});
+    }
+}
+
 const LORA_SUPPORTED_MODELS = ['TAG07', 'TAG08B', 'TAG08L', 'TAG09'];
 
 function normalizeLoraModel(value) {
@@ -724,19 +848,32 @@ app.post('/templog/api/lora/devices', requireTemplogDb, async (req, res) => {
     try {
         const sensorId = normalizeSensorId(req.body.sensorId);
         const model = normalizeLoraModel(req.body.model);
-        const equipment = normalizeEquipmentName(req.body.equipment);
         const alias = String(req.body.alias || '').trim();
         const notes = String(req.body.notes || '').trim();
 
         if (!sensorId) return res.status(400).json({ error: 'sensorId is required' });
-        if (!EQUIPMENT_TEMPERATURES.includes(equipment)) return res.status(400).json({ error: 'Invalid equipment mapping' });
         if (!LORA_SUPPORTED_MODELS.includes(model)) return res.status(400).json({ error: 'Unsupported model. Use TAG07/TAG08B/TAG08L/TAG09' });
+
+        // Support linking directly to a TempMon unit (preferred) OR the legacy generic type
+        let equipment = normalizeEquipmentName(req.body.equipment);
+        let tempmonUnitId = req.body.tempmonUnitId || null;
+
+        if (tempmonUnitId) {
+            // Validate the unit exists and derive equipment type from it
+            const unit = await TempMonUnit.findById(tempmonUnitId).lean();
+            if (!unit) return res.status(400).json({ error: 'TempMon unit not found' });
+            equipment = UNIT_TYPE_TO_EQUIPMENT[unit.type] || equipment;
+            tempmonUnitId = String(unit._id);
+        } else {
+            if (!EQUIPMENT_TEMPERATURES.includes(equipment)) return res.status(400).json({ error: 'Invalid equipment mapping — provide a valid tempmonUnitId or equipment type' });
+        }
 
         const now = new Date();
         const doc = {
             sensorId,
             model,
             equipment,
+            tempmonUnitId: tempmonUnitId || null,
             alias,
             notes,
             enabled: req.body.enabled !== false,
@@ -770,7 +907,19 @@ app.put('/templog/api/lora/devices/:sensorId', requireTemplogDb, async (req, res
             if (model && !LORA_SUPPORTED_MODELS.includes(model)) return res.status(400).json({ error: 'Unsupported model' });
             update.model = model;
         }
-        if (req.body.equipment !== undefined) {
+        // Allow linking/unlinking a TempMon unit
+        if (req.body.tempmonUnitId !== undefined) {
+            if (req.body.tempmonUnitId === null || req.body.tempmonUnitId === '') {
+                update.tempmonUnitId = null;
+            } else {
+                const unit = await TempMonUnit.findById(req.body.tempmonUnitId).lean();
+                if (!unit) return res.status(400).json({ error: 'TempMon unit not found' });
+                update.tempmonUnitId = String(unit._id);
+                // Sync equipment type for backward compat
+                update.equipment = UNIT_TYPE_TO_EQUIPMENT[unit.type] || update.equipment;
+            }
+        }
+        if (req.body.equipment !== undefined && req.body.tempmonUnitId === undefined) {
             const equipment = normalizeEquipmentName(req.body.equipment);
             if (!EQUIPMENT_TEMPERATURES.includes(equipment)) return res.status(400).json({ error: 'Invalid equipment mapping' });
             update.equipment = equipment;
@@ -900,6 +1049,7 @@ app.get('/templog/api/lora/status', requireTemplogDb, async (req, res) => {
                 sensorId: d.sensorId,
                 model: d.model,
                 equipment: d.equipment,
+                tempmonUnitId: d.tempmonUnitId || null,
                 alias: d.alias || '',
                 enabled: d.enabled,
                 status,
@@ -1025,13 +1175,19 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
                 humidity: row.humidity,
                 rssi: row.rssi,
                 recordedAt: row.recordedAt,
-                createdAt: now
+                createdAt: now,
+                _loraDevice: mapped   // carry device doc for TempMon forwarding
             });
         }
 
         let ingested = 0;
         if (mappedReadings.length) {
-            const result = await ingestEquipmentReadings(req, mappedReadings);
+            // Forward to TempMon for any sensor linked to a unit (before stripping _loraDevice)
+            await Promise.all(mappedReadings.map(r => forwardToTempMon(r._loraDevice, { sensorId: r.sensorId, temp: r.temp, recordedAt: r.recordedAt }, gatewayId)));
+
+            // Strip internal helper field before inserting into TempLog collection
+            const cleanReadings = mappedReadings.map(({ _loraDevice, ...rest }) => rest);
+            const result = await ingestEquipmentReadings(req, cleanReadings);
             ingested = result.count;
         }
 
@@ -1412,13 +1568,18 @@ async function ingestTcpTagRecords(gatewayImei, tags, tagModel) {
             source: 'lora-tcp-gateway', gatewayId, sensorId: row.sensorId,
             model: mapped.model || row.model || '',
             humidity: row.humidity, rssi: row.rssi,
-            recordedAt: row.recordedAt, createdAt: now
+            recordedAt: row.recordedAt, createdAt: now,
+            _loraDevice: mapped   // carry device doc for TempMon forwarding
         });
     }
     let ingested = 0;
     if (mappedReadings.length) {
         try {
-            const result = await ingestEquipmentReadings({ templogDb }, mappedReadings);
+            // Forward to TempMon for any sensor linked to a unit
+            await Promise.all(mappedReadings.map(r => forwardToTempMon(r._loraDevice, { sensorId: r.sensorId, temp: r.temp, recordedAt: r.recordedAt }, gatewayId)));
+
+            const cleanReadings = mappedReadings.map(({ _loraDevice, ...rest }) => rest);
+            const result = await ingestEquipmentReadings({ templogDb }, cleanReadings);
             ingested = result.count;
         } catch (e) { console.error('[TCP] ingest error:', e.message); }
     }

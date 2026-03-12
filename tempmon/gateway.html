@@ -179,12 +179,8 @@
         </select>
       </div>
       <div class="fg">
-        <label>Equipment <span style="color:#c62828">*</span></label>
-        <select id="fEquipment">
-          <option value="chiller">❄️ Chiller</option>
-          <option value="freezer">🧊 Freezer</option>
-          <option value="food-warmer">🔥 Food Warmer</option>
-        </select>
+        <label>Link to Unit <span style="color:#c62828">*</span><span style="font-size:0.72rem;font-weight:400;color:var(--muted);margin-left:4px">Chiller / Freezer / Warmer</span></label>
+        <select id="fUnit"><option value="">Loading units…</option></select>
       </div>
       <div class="fg">
         <label>Friendly Name <span style="font-size:0.72rem;font-weight:400;color:var(--muted)">(optional)</span></label>
@@ -328,6 +324,7 @@
 <script>
   let registeredDevices = [];
   let scanEvents = [];
+  let tempmonUnits = [];
   let scanAutoTimer = null;
   let monitorTimer = null;
 
@@ -389,6 +386,25 @@
   }
 
   const equipLabel = { chiller: '❄️ Chiller', freezer: '🧊 Freezer', 'food-warmer': '🔥 Food Warmer' };
+  const typeEmoji  = { freezer: '🧊', chiller: '❄️', warmer: '🔥', ambient: '🌡️' };
+
+  function unitLabel(u) { return `${typeEmoji[u.type] || '🌡️'} ${u.name}${u.location ? ' — ' + u.location : ''}`; }
+
+  function renderUnitOptions(selectedId) {
+    const placeholder = '<option value="">Select a TempMon unit…</option>';
+    if (!tempmonUnits.length) return placeholder + '<option value="" disabled>No units configured — add one in Setup</option>';
+    return placeholder + tempmonUnits.map(u =>
+      `<option value="${u._id}"${u._id === selectedId ? ' selected' : ''}>${esc(unitLabel(u))}</option>`
+    ).join('');
+  }
+
+  function resolveUnitName(tempmonUnitId, equipment) {
+    if (tempmonUnitId) {
+      const u = tempmonUnits.find(u => u._id === tempmonUnitId);
+      return u ? `<span class="badge badge-blue">${esc(unitLabel(u))}</span>` : `<span class="badge badge-grey" title="Unit ID: ${esc(tempmonUnitId)}">Deleted unit</span>`;
+    }
+    return esc(equipLabel[equipment] || equipment || '—');
+  }
 
   async function init() {
     try {
@@ -398,9 +414,20 @@
         return window.location.replace('/?access=denied');
       document.documentElement.style.visibility = '';
       await loadTcpConfig();
+      // Load TempMon units before rendering forms
+      try {
+        const ur = await apiFetch('/api/tempmon/units');
+        tempmonUnits = (await ur.json()).sort((a, b) => a.name.localeCompare(b.name));
+      } catch (_) {}
+      populateUnitDropdowns();
       await Promise.all([loadLoraEvents(), loadMonitor(), runScan()]);
       monitorTimer = setInterval(loadMonitor, 30000);
     } catch { window.location.replace('/login'); }
+  }
+
+  function populateUnitDropdowns() {
+    const fUnit = document.getElementById('fUnit');
+    if (fUnit) fUnit.innerHTML = renderUnitOptions('');
   }
 
   async function loadTcpConfig() {
@@ -567,6 +594,7 @@
       } else {
         tbody.innerHTML = sensors.map(s => {
           const sm = normalizeModel(s.model);
+          const unitOpts = renderUnitOptions('');
           return `<tr id="drow-${esc(s.sensorId)}">
             <td><code style="font-weight:800">${esc(s.sensorId)}</code></td>
             <td>${modelBadge(s.model)}</td>
@@ -580,11 +608,7 @@
                   <option value="TAG08B" ${sm==='TAG08B' ?'selected':''}>TAG08B</option>
                   <option value="TAG07"  ${sm==='TAG07'  ?'selected':''}>TAG07</option>
                 </select>
-                <select id="de-${esc(s.sensorId)}" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;font-family:inherit">
-                  <option value="chiller">❄️ Chiller</option>
-                  <option value="freezer">🧊 Freezer</option>
-                  <option value="food-warmer">🔥 Warmer</option>
-                </select>
+                <select id="du-${esc(s.sensorId)}" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;font-family:inherit">${unitOpts}</select>
                 <button class="btn btn-primary btn-sm" onclick='quickRegister(${JSON.stringify(s.sensorId)})'>✅ Register</button>
               </div>
             </td>
@@ -600,14 +624,15 @@
   }
 
   async function quickRegister(sensorId) {
-    const model     = document.getElementById('dm-' + sensorId)?.value || 'TAG09';
-    const equipment = document.getElementById('de-' + sensorId)?.value || 'chiller';
+    const model        = document.getElementById('dm-' + sensorId)?.value || 'TAG09';
+    const tempmonUnitId = document.getElementById('du-' + sensorId)?.value || '';
     const btn = event.target;
+    if (!tempmonUnitId) { notice('detectNotice', 'err', '⚠️ Select a unit before registering.'); return; }
     btn.disabled = true; btn.textContent = '⏳…';
     try {
       const r = await apiFetch('/templog/api/lora/devices', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sensorId, model, equipment })
+        body: JSON.stringify({ sensorId, model, tempmonUnitId })
       });
       if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
       const row = document.getElementById('drow-' + sensorId);
@@ -629,20 +654,22 @@
   }
 
   async function registerSensor() {
-    const sensorId  = document.getElementById('fSensorId').value.trim();
-    const model     = document.getElementById('fModel').value;
-    const equipment = document.getElementById('fEquipment').value;
-    const alias     = document.getElementById('fAlias').value.trim();
-    const notes     = document.getElementById('fNotes').value.trim();
+    const sensorId     = document.getElementById('fSensorId').value.trim();
+    const model        = document.getElementById('fModel').value;
+    const tempmonUnitId = document.getElementById('fUnit').value;
+    const alias        = document.getElementById('fAlias').value.trim();
+    const notes        = document.getElementById('fNotes').value.trim();
     if (!sensorId) return notice('regNotice', 'err', 'Sensor ID is required — check the sticker on the back of the tag');
+    if (!tempmonUnitId) return notice('regNotice', 'err', 'Please select the unit (chiller/freezer/warmer) this sensor will monitor');
     try {
       const r = await apiFetch('/templog/api/lora/devices', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sensorId, model, equipment, alias, notes })
+        body: JSON.stringify({ sensorId, model, tempmonUnitId, alias, notes })
       });
       if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
-      notice('regNotice', 'ok', `✅ "${sensorId}" registered — readings will now be stored automatically.`);
+      notice('regNotice', 'ok', `✅ "${sensorId}" registered — readings will now flow into the TempMon dashboard.`);
       ['fSensorId','fAlias','fNotes'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('fUnit').value = '';
       cancelPrefill();
       const drow = document.getElementById('drow-' + sensorId.toUpperCase());
       if (drow) drow.remove();
@@ -677,7 +704,7 @@
       return;
     }
     panel.innerHTML = `<div style="overflow-x:auto"><table class="tbl">
-      <thead><tr><th>Status</th><th>Sensor ID</th><th>Model</th><th>Equipment</th><th>Temperature</th><th>Humidity</th><th>Battery</th><th>Signal</th><th>Last Seen</th><th></th></tr></thead>
+      <thead><tr><th>Status</th><th>Sensor ID</th><th>Model</th><th>Linked Unit</th><th>Temperature</th><th>Humidity</th><th>Battery</th><th>Signal</th><th>Last Seen</th><th></th></tr></thead>
       <tbody>${devices.map(d => `<tr class="${!d.enabled?'dim':(d.status==='active'?'':'')}" id="mrow-${esc(d.sensorId)}">
         <td style="white-space:nowrap">${statusDot(d.status)}</td>
         <td>
@@ -685,14 +712,14 @@
           ${d.alias ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:2px">${esc(d.alias)}</div>` : ''}
         </td>
         <td>${modelBadge(d.model)}</td>
-        <td id="eq-${esc(d.sensorId)}">${esc(equipLabel[d.equipment] || d.equipment || '—')}</td>
+        <td id="eq-${esc(d.sensorId)}">${resolveUnitName(d.tempmonUnitId, d.equipment)}</td>
         <td style="font-size:0.95rem;font-weight:700">${d.temp != null ? d.temp + '°C' : '<span style="color:var(--muted)">—</span>'}</td>
         <td>${d.humidity != null ? d.humidity + '%' : '<span style="color:var(--muted)">—</span>'}</td>
         <td>${batteryHtml(d.battery)}</td>
         <td>${rssiHtml(d.rssi)}</td>
         <td style="font-size:0.8rem;color:var(--muted);white-space:nowrap" title="${d.lastSeen ? new Date(d.lastSeen).toLocaleString() : ''}">${timeAgo(d.lastSeen)}</td>
         <td><div style="display:flex;gap:5px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" title="Change equipment" onclick="editEquipment('${esc(d.sensorId)}','${esc(d.equipment||'')}')">✏️</button>
+          <button class="btn btn-ghost btn-sm" title="Change linked unit" onclick="editUnit('${esc(d.sensorId)}','${esc(d.tempmonUnitId||'')}')">✏️</button>
           <button class="btn btn-ghost btn-sm" onclick="toggleDevice('${esc(d.sensorId)}',${!d.enabled})">${d.enabled?'⏸':'▶️'}</button>
           <button class="btn btn-danger btn-sm" onclick="removeDevice('${esc(d.sensorId)}')">🗑️</button>
         </div></td>
@@ -719,30 +746,26 @@
     } catch (err) { alert('Error: ' + err.message); }
   }
 
-  function editEquipment(sensorId, current) {
+  function editUnit(sensorId, currentUnitId) {
     const cell = document.getElementById('eq-' + sensorId);
     if (!cell) return;
-    const opts = [
-      ['chiller',      '❄️ Chiller'],
-      ['freezer',      '🧊 Freezer'],
-      ['food-warmer',  '🔥 Food Warmer']
-    ].map(([v, l]) => `<option value="${v}"${v === current ? ' selected' : ''}>${l}</option>`).join('');
+    const opts = renderUnitOptions(currentUnitId);
     cell.innerHTML = `<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
       <select id="eqsel-${sensorId}" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;font-family:inherit">${opts}</select>
-      <button class="btn btn-primary btn-sm" onclick="saveEquipment('${sensorId}')">✅</button>
+      <button class="btn btn-primary btn-sm" onclick="saveUnit('${sensorId}')">✅</button>
       <button class="btn btn-ghost btn-sm" onclick="loadMonitor()">✖</button>
     </div>`;
   }
 
-  async function saveEquipment(sensorId) {
+  async function saveUnit(sensorId) {
     const sel = document.getElementById('eqsel-' + sensorId);
     if (!sel) return;
-    const equipment = sel.value;
+    const tempmonUnitId = sel.value || null;
     sel.disabled = true;
     try {
       const r = await apiFetch('/templog/api/lora/devices/' + encodeURIComponent(sensorId), {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ equipment })
+        body: JSON.stringify({ tempmonUnitId })
       });
       if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
       await loadMonitor();
