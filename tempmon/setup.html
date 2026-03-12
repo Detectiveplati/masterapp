@@ -72,6 +72,7 @@
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="units" onclick="switchTab('units')">🏭 Units</button>
     <button class="tab-btn" data-tab="devices" onclick="switchTab('devices')">📡 Devices</button>
+    <button class="tab-btn" data-tab="thresholds" onclick="switchTab('thresholds')">🔔 Thresholds</button>
     <button class="tab-btn admin-only" data-tab="sample" onclick="switchTab('sample')" style="display:none">🧪 Sample Data</button>
   </div>
 
@@ -154,6 +155,35 @@
       <button class="btn btn-primary" onclick="seedEquipment(this)">🌱 Seed / Re-link All Equipment Units</button>
       <div id="seedStatus" class="notice" style="margin-top:12px;display:none"></div>
     </div>
+
+  <!-- ── THRESHOLDS TAB ──────────────────────────────────────── -->
+  <div id="tab-thresholds" class="tab-panel">
+    <div class="section-card">
+      <h2 style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        🔔 Alert Thresholds &amp; Temperature Limits
+        <button class="btn btn-primary btn-sm" onclick="saveAllThresholds()">💾 Save All</button>
+      </h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:16px">
+        Edit temperature limits and alert delay for all units in one view. Changes are saved per-row or all at once with <strong>Save All</strong>.
+      </p>
+      <div id="thresholdNotice" class="notice"></div>
+      <div style="overflow-x:auto;margin-top:12px">
+        <table class="data-table" id="thresholdsTable">
+          <thead><tr>
+            <th>Unit</th>
+            <th>Type</th>
+            <th style="min-width:90px">Critical Min (°C)</th>
+            <th style="min-width:90px">Critical Max (°C)</th>
+            <th style="min-width:90px">Warn Buffer (°C)</th>
+            <th style="min-width:90px">Target (°C)</th>
+            <th style="min-width:110px">Alert Delay (min)</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="thresholdsBody"><tr><td colspan="8" class="no-data">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
 <!-- ── SAMPLE DATA TAB (admin only) ──────────────────────── -->
   <div id="tab-sample" class="tab-panel">
@@ -310,6 +340,7 @@
     const panel = document.getElementById('tab-' + name);
     if (panel) panel.classList.add('active');
     if (name === 'sample') loadPurgeList();
+    if (name === 'thresholds') renderThresholds();
   }
 
   function showNotice(id, type, msg) {
@@ -732,6 +763,75 @@
     } catch (err) { showNotice('simNotice', 'err', '❌ ' + err.message); }
     finally { btn.disabled = false; btn.textContent = '⏹️ Stop'; }
   }
+  // ── Thresholds control panel ────────────────────────────────
+  function renderThresholds() {
+    const tbody = document.getElementById('thresholdsBody');
+    if (!units.length) { tbody.innerHTML = '<tr><td colspan="8" class="no-data">No units yet.</td></tr>'; return; }
+    tbody.innerHTML = units.map(u => {
+      const typeCls = 'type-' + u.type;
+      return `<tr id="trow-${u._id}">
+        <td><strong>${escHtml(u.name)}</strong><br><small style="color:var(--muted);font-size:0.72rem">${escHtml(u.area || u.location || '')}</small></td>
+        <td><span class="type-badge ${typeCls}">${u.type}</span></td>
+        <td><input type="number" step="0.1" value="${u.criticalMin}" id="tMin-${u._id}" style="width:80px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></td>
+        <td><input type="number" step="0.1" value="${u.criticalMax}" id="tMax-${u._id}" style="width:80px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></td>
+        <td><input type="number" step="0.1" value="${u.warningBuffer ?? 2}" id="tBuf-${u._id}" style="width:70px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></td>
+        <td><input type="number" step="0.1" value="${u.targetTemp ?? ''}" placeholder="—" id="tTarget-${u._id}" style="width:70px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></td>
+        <td><input type="number" min="0" value="${u.alertThresholdMinutes ?? 0}" id="tThresh-${u._id}" style="width:80px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></td>
+        <td><button class="btn btn-primary btn-sm" onclick="saveThreshold('${u._id}', this)">Save</button><span id="tStatus-${u._id}" style="font-size:0.78rem;margin-left:6px"></span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function saveThreshold(id, btn) {
+    const min    = parseFloat(document.getElementById('tMin-'    + id).value);
+    const max    = parseFloat(document.getElementById('tMax-'    + id).value);
+    const buf    = parseFloat(document.getElementById('tBuf-'    + id).value);
+    const target = document.getElementById('tTarget-' + id).value;
+    const thresh = parseInt(document.getElementById('tThresh-'  + id).value);
+    const status = document.getElementById('tStatus-' + id);
+    if (isNaN(min) || isNaN(max)) { status.textContent = '⚠️ Min/Max required'; status.style.color = '#c62828'; return; }
+    if (min >= max) { status.textContent = '⚠️ Min must be < Max'; status.style.color = '#c62828'; return; }
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const r = await apiFetch(API + '/units/' + id, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          criticalMin: min, criticalMax: max,
+          warningBuffer: isNaN(buf) ? 2 : buf,
+          targetTemp: target !== '' ? parseFloat(target) : null,
+          alertThresholdMinutes: isNaN(thresh) ? 0 : thresh
+        })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      // update local units cache so other panels stay in sync
+      const u = units.find(x => x._id === id);
+      if (u) { u.criticalMin = min; u.criticalMax = max; u.warningBuffer = buf; u.targetTemp = target !== '' ? parseFloat(target) : null; u.alertThresholdMinutes = thresh; }
+      status.textContent = '✅ Saved'; status.style.color = '#2e7d32';
+      setTimeout(() => { status.textContent = ''; }, 2500);
+    } catch (err) {
+      status.textContent = '❌ ' + err.message; status.style.color = '#c62828';
+    } finally { btn.disabled = false; btn.textContent = 'Save'; }
+  }
+
+  async function saveAllThresholds() {
+    const notice = document.getElementById('thresholdNotice');
+    notice.className = 'notice'; notice.textContent = 'Saving…'; notice.style.display = 'block';
+    let ok = 0, fail = 0;
+    for (const u of units) {
+      const btn = document.querySelector(`#trow-${u._id} button`);
+      if (btn) {
+        await saveThreshold(u._id, btn);
+        const st = document.getElementById('tStatus-' + u._id);
+        if (st && st.textContent.startsWith('✅')) ok++; else fail++;
+      }
+    }
+    notice.className = 'notice ' + (fail ? 'err' : 'ok');
+    notice.textContent = fail
+      ? `⚠️ ${ok} saved, ${fail} failed — check rows with ❌`
+      : `✅ All ${ok} unit(s) saved successfully`;
+    setTimeout(() => { notice.style.display = 'none'; }, 4000);
+  }
+
   applyTypeDefaults('u'); // pre-fill Add Unit form with freezer defaults on load
   init();
 </script>
