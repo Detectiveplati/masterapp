@@ -27,7 +27,9 @@
     .stat-card.warn   .val { color: #e65100; }
     .stat-card.ok     .val { color: #2e7d32; }
     /* Units grid */
-    .units-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+    .units-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    @media (max-width: 768px) { .units-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .units-grid { grid-template-columns: 1fr; } }
     .unit-card { background: linear-gradient(180deg, var(--card), #fffbf9); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 2px 6px var(--shadow); padding: 20px 18px; cursor: pointer; transition: box-shadow .15s, border-color .15s; text-decoration: none; color: inherit; display: block; }
     .unit-card:hover { box-shadow: 0 4px 18px var(--shadow); border-color: var(--accent); }
     .unit-card.in-range  { border-left: 4px solid #2e7d32; }
@@ -185,19 +187,24 @@
         return;
       }
 
-      // Group by equipment type
-      const typeOrder  = ['warmer', 'chiller', 'freezer', 'ambient'];
-      const typeLabels = { warmer: '🔥 Food Warmers', chiller: '❄️ Chillers', freezer: '🧊 Freezers', ambient: '🌡️ Ambient' };
-      const groups = {};
-      units.forEach(u => { (groups[u.type] = groups[u.type] || []).push(u); });
+      // Group by area (from maintenance module); units without area → type label; no area at all → 'Uncategorized'
+      const areaGroups = {};
+      units.forEach(u => {
+        const key = (u.area || u.location || '').trim() || 'Uncategorized';
+        (areaGroups[key] = areaGroups[key] || []).push(u);
+      });
+      const areaOrder = Object.keys(areaGroups).sort((a, b) => {
+        if (a === 'Uncategorized') return 1;
+        if (b === 'Uncategorized') return -1;
+        return a.localeCompare(b);
+      });
 
       let html = '';
-      for (const t of typeOrder) {
-        const list = groups[t];
-        if (!list || !list.length) continue;
+      for (const area of areaOrder) {
+        const list = areaGroups[area];
         const critCount = list.filter(u => tempClass(u, u.latestReading) === 'critical').length;
         const badge = critCount ? `<span style="color:#c62828;font-weight:700;font-size:0.72rem">${critCount} critical</span>` : '';
-        html += `<div class="group-header"><span>${typeLabels[t] || t} <span style="font-weight:400;font-size:0.74rem">(${list.length})</span></span>${badge}</div>`;
+        html += `<div class="group-header"><span>${escHtml(area)} <span style="font-weight:400;font-size:0.74rem">(${list.length})</span></span>${badge}</div>`;
         html += `<div class="units-grid">${list.map(renderCard).join('')}</div>`;
       }
       document.getElementById('unitsGrid').innerHTML = html;

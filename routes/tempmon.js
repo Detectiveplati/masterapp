@@ -96,8 +96,8 @@ router.get('/units/:id', requireAuth, async (req, res) => {
 // POST /api/tempmon/units
 router.post('/units', requireAuth, async (req, res) => {
   try {
-    const { name, type, location, criticalMin, criticalMax, warningBuffer, targetTemp, notes, alertThresholdMinutes } = req.body;
-    const unit = new TempMonUnit({ name, type, location, criticalMin, criticalMax, warningBuffer, targetTemp, notes, alertThresholdMinutes });
+    const { name, type, location, area, criticalMin, criticalMax, warningBuffer, targetTemp, notes, alertThresholdMinutes } = req.body;
+    const unit = new TempMonUnit({ name, type, location, area, criticalMin, criticalMax, warningBuffer, targetTemp, notes, alertThresholdMinutes });
     await unit.save();
     console.log('✓ [TempMon] Created unit:', name);
     res.status(201).json(unit);
@@ -109,7 +109,7 @@ router.post('/units', requireAuth, async (req, res) => {
 // PUT /api/tempmon/units/:id
 router.put('/units/:id', requireAuth, async (req, res) => {
   try {
-    const fields = ['name', 'type', 'location', 'criticalMin', 'criticalMax', 'warningBuffer', 'targetTemp', 'notes', 'active', 'alertThresholdMinutes'];
+    const fields = ['name', 'type', 'location', 'area', 'criticalMin', 'criticalMax', 'warningBuffer', 'targetTemp', 'notes', 'active', 'alertThresholdMinutes'];
     const update = {};
     fields.forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
     const unit = await TempMonUnit.findByIdAndUpdate(req.params.id, { $set: update }, { new: true, runValidators: true });

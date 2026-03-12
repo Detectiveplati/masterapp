@@ -9,6 +9,7 @@ const TempMonUnitSchema = new mongoose.Schema({
   name:           { type: String, required: true, trim: true },      // "Blast Freezer 1"
   type:           { type: String, enum: ['freezer', 'chiller', 'warmer', 'ambient'], required: true },
   location:       { type: String, default: '', trim: true },         // "Prep Kitchen — Cold Room A"
+  area:           { type: String, default: '', trim: true },         // area from maintenance module (dashboard grouping)
   criticalMin:    { type: Number, required: true },                  // °C lower limit
   criticalMax:    { type: Number, required: true },                  // °C upper limit
   warningBuffer:  { type: Number, default: 2 },                      // degrees inside limits → warning zone

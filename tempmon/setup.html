@@ -89,7 +89,9 @@
             <option value="ambient">🌡️ Ambient</option>
           </select>
         </div>
-        <div class="fg"><label>Location</label><input id="uLocation" type="text" placeholder="e.g. Prep Kitchen — Cold Room A"></div>
+        <div class="fg"><label>Area</label>
+          <select id="uArea"><option value="">— Select area —</option></select>
+        </div>
         <div class="fg"><label>Critical Min (°C) <span style="color:#c62828">*</span></label><input id="uMin" type="number" step="0.1" placeholder="-25"></div>
         <div class="fg"><label>Critical Max (°C) <span style="color:#c62828">*</span></label><input id="uMax" type="number" step="0.1" placeholder="-15"></div>
         <div class="fg"><label>Warning Buffer (°C)</label><input id="uBuffer" type="number" step="0.1" value="2" placeholder="2"></div>
@@ -105,7 +107,7 @@
       <h2>🏭 Configured Units</h2>
       <div style="overflow-x:auto">
         <table class="data-table">
-          <thead><tr><th>Name</th><th>Type</th><th>Location</th><th>Range</th><th>Target</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th>Type</th><th>Area</th><th>Range</th><th>Target</th><th>Status</th><th></th></tr></thead>
           <tbody id="unitsBody"><tr><td colspan="7" class="no-data">Loading…</td></tr></tbody>
         </table>
       </div>
@@ -211,7 +213,9 @@
           <button type="button" class="btn btn-outline btn-sm" onclick="applyTypeDefaults('eu')" title="Fill standard temperature limits for this type">📊 Defaults</button>
         </div>
       </div>
-      <div class="fg"><label>Location</label><input id="euLocation" type="text"></div>
+      <div class="fg"><label>Area</label>
+        <select id="euArea"><option value="">— Select area —</option></select>
+      </div>
       <div class="fg"><label>Critical Min (°C)</label><input id="euMin" type="number" step="0.1"></div>
       <div class="fg"><label>Critical Max (°C)</label><input id="euMax" type="number" step="0.1"></div>
       <div class="fg"><label>Warning Buffer (°C)</label><input id="euBuffer" type="number" step="0.1"></div>
@@ -289,7 +293,7 @@
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
         loadSimStatus();
       }
-      await Promise.all([loadUnits(), loadDevices()]);
+      await Promise.all([loadUnits(), loadDevices(), loadAreas()]);
     } catch { window.location.replace('/login'); }
   }
 
@@ -311,6 +315,19 @@
   }
 
   // ── Units ───────────────────────────────────────────────────────
+  async function loadAreas() {
+    try {
+      const r = await apiFetch('/api/areas');
+      const areas = await r.json();
+      const opts = '<option value="">— Select area —</option>'
+        + areas.map(a => `<option value="${escHtml(a.name)}">${escHtml(a.name)}</option>`).join('');
+      ['uArea', 'euArea'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = opts;
+      });
+    } catch(e) { console.warn('Could not load areas', e); }
+  }
+
   async function loadUnits() {
     const r  = await apiFetch(API + '/units?allActive=true');
     // Also load inactive units by fetching all without filter (units endpoint only returns active, so we do a separate all-units call via devices workaround — just use the active list for now)
@@ -327,7 +344,7 @@
       return `<tr class="${u.active ? '' : 'inactive-row'}">
         <td><strong>${escHtml(u.name)}</strong></td>
         <td><span class="type-badge ${typeCls}">${u.type}</span></td>
-        <td>${escHtml(u.location || '—')}</td>
+        <td>${escHtml(u.area || u.location || '—')}</td>
         <td>${u.criticalMin}°C – ${u.criticalMax}°C</td>
         <td>${u.targetTemp != null ? u.targetTemp + '°C' : '—'}</td>
         <td>${u.active ? '<span style="color:#2e7d32;font-weight:700">Active</span>' : '<span style="color:var(--muted)">Inactive</span>'}</td>
@@ -362,7 +379,8 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name, type,
-          location:      document.getElementById('uLocation').value.trim(),
+          area:          document.getElementById('uArea').value,
+          location:      document.getElementById('uArea').value,
           criticalMin:   min, criticalMax: max,
           warningBuffer: parseFloat(document.getElementById('uBuffer').value) || 2,
           targetTemp:    document.getElementById('uTarget').value !== '' ? parseFloat(document.getElementById('uTarget').value) : undefined,
@@ -372,7 +390,8 @@
       });
       if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
       showNotice('unitNotice', 'ok', '✅ Unit added!');
-      ['uName','uLocation','uMin','uMax','uTarget','uNotes'].forEach(id => document.getElementById(id).value = '');
+      ['uName','uMin','uMax','uTarget','uNotes'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('uArea').value = '';
       document.getElementById('uBuffer').value = '2';
       document.getElementById('uThreshold').value = '0';
       await loadUnits();
@@ -386,7 +405,7 @@
     document.getElementById('euId').value      = id;
     document.getElementById('euName').value    = u.name;
     document.getElementById('euType').value    = u.type;
-    document.getElementById('euLocation').value= u.location || '';
+    document.getElementById('euArea').value    = u.area || u.location || '';
     document.getElementById('euMin').value     = u.criticalMin;
     document.getElementById('euMax').value     = u.criticalMax;
     document.getElementById('euBuffer').value  = u.warningBuffer ?? 2;
@@ -406,7 +425,8 @@
         body: JSON.stringify({
           name:          document.getElementById('euName').value.trim(),
           type:          document.getElementById('euType').value,
-          location:      document.getElementById('euLocation').value.trim(),
+          area:          document.getElementById('euArea').value,
+          location:      document.getElementById('euArea').value,
           criticalMin:   parseFloat(document.getElementById('euMin').value),
           criticalMax:   parseFloat(document.getElementById('euMax').value),
           warningBuffer: parseFloat(document.getElementById('euBuffer').value) || 2,
