@@ -93,6 +93,7 @@
           <label>Area <span id="areaHint" style="font-size:0.75rem;color:var(--muted);font-weight:400"></span></label>
           <input id="uArea" type="text" list="areasList" placeholder="e.g. Cold Kitchen" autocomplete="off">
           <datalist id="areasList"></datalist>
+          <small style="color:var(--muted);font-size:0.72rem">Areas from Maintenance module · <a href="/maintenance/areas.html" target="_blank" style="color:var(--accent);text-decoration:none">Manage areas ↗</a></small>
         </div>
         <div class="fg"><label>Critical Min (°C) <span style="color:#c62828">*</span></label><input id="uMin" type="number" step="0.1" placeholder="-25"></div>
         <div class="fg"><label>Critical Max (°C) <span style="color:#c62828">*</span></label><input id="uMax" type="number" step="0.1" placeholder="-15"></div>
@@ -295,7 +296,8 @@
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
         loadSimStatus();
       }
-      await Promise.all([loadUnits(), loadDevices(), loadAreas()]);
+      await loadUnits();
+      await Promise.all([loadDevices(), loadAreas()]);
     } catch { window.location.replace('/login'); }
   }
 
@@ -319,22 +321,34 @@
   // ── Units ───────────────────────────────────────────────────────
   async function loadAreas() {
     const hint = document.getElementById('areaHint');
+    const dl   = document.getElementById('areasList');
+
+    // Harvest any areas already set on existing units as a reliable fallback
+    const unitAreas = [...new Set(
+      units.map(u => (u.area || u.location || '').trim()).filter(Boolean)
+    )];
+
+    let maintenanceAreas = [];
     try {
       const r = await apiFetch('/api/areas');
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const areas = await r.json();
-      const dl = document.getElementById('areasList');
-      if (dl) {
-        dl.innerHTML = areas.map(a => `<option value="${escHtml(a.name)}">`).join('');
-      }
-      if (hint) {
-        hint.textContent = areas.length
-          ? `(${areas.length} areas — pick or type)`
-          : '(no areas yet — type manually)';
-      }
+      if (r.ok) maintenanceAreas = await r.json();
     } catch(e) {
-      console.warn('Could not load areas:', e);
-      if (hint) hint.textContent = '(type manually — could not load areas)';
+      console.warn('Could not load maintenance areas:', e);
+    }
+
+    const maintenanceNames = new Set(maintenanceAreas.map(a => a.name));
+    const combined = [
+      ...maintenanceAreas.map(a => a.name),
+      ...unitAreas.filter(a => !maintenanceNames.has(a))
+    ];
+
+    if (dl) {
+      dl.innerHTML = combined.map(name => `<option value="${escHtml(name)}">`).join('');
+    }
+    if (hint) {
+      hint.textContent = combined.length
+        ? `(${combined.length} area${combined.length !== 1 ? 's' : ''} — pick or type)`
+        : '(none yet)';
     }
   }
 
