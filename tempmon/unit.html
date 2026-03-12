@@ -303,18 +303,13 @@
           },
           zoom: {
             zoom: {
-              drag: {
-                enabled:         true,
-                backgroundColor: 'rgba(2,136,209,0.12)',
-                borderColor:     'rgba(2,136,209,0.55)',
-                borderWidth:     1
-              },
-              wheel:  { enabled: true },
-              pinch:  { enabled: true },
-              mode:   'x',
+              drag:  { enabled: false },
+              wheel: { enabled: true },
+              pinch: { enabled: true },
+              mode:  'x',
               onZoom: () => { document.getElementById('resetZoomBtn').style.display = ''; }
             },
-            pan:  { enabled: true, mode: 'x' },
+            pan:    { enabled: true, mode: 'x' },
             limits: { x: { minRange: 2 } }
           },
           annotation: unit ? {
