@@ -55,6 +55,15 @@
     .battery { display: inline-flex; align-items: center; gap: 3px; }
     .unit-card.not-in-use { opacity: .65; border-left: 4px solid #ffb300; }
     .unit-paused-badge { background:#fff8e1;color:#e65100;border-radius:12px;padding:2px 8px;font-weight:700;font-size:0.7rem;border:1px solid #ffe082; }
+    /* Warmer state pill (dashboard cards) */
+    .ws-pill { display:inline-flex;align-items:center;gap:4px;font-size:0.74rem;font-weight:800;padding:3px 10px;border-radius:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px; }
+    .ws-pill.off        { background:#f0f0f0;color:#757575; }
+    .ws-pill.warming_up { background:rgba(245,124,0,.13);color:#e65100; }
+    .ws-pill.active     { background:rgba(46,125,50,.12);color:#2e7d32; }
+    .ws-pill.cooling    { background:rgba(21,101,192,.10);color:#1565c0; }
+    .ws-pill.fault      { background:rgba(198,40,40,.12);color:#c62828;animation:ws-fault-pulse 1.4s ease-in-out infinite; }
+    .ws-pill.unknown    { background:#f5f5f5;color:#bdbdbd; }
+    @keyframes ws-fault-pulse { 0%,100%{opacity:1}50%{opacity:.5} }
     .no-data { text-align: center; padding: 60px; color: var(--muted); font-style: italic; grid-column: 1/-1; }
     .refresh-info { font-size: 0.78rem; color: var(--muted); }
     .group-header { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 0 10px; padding-bottom: 4px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
@@ -286,6 +295,13 @@
     return Math.round(diff / 86400) + 'd ago';
   }
 
+  function renderWarmerStatePill(u) {
+    const ws = u.warmerState || {};
+    const s  = ws.state || 'unknown';
+    const labels = { off:'⬜ Off', warming_up:'🌡️ Warming Up', active:'✅ Active', cooling:'❄️ Cooling', fault:'⚠️ Fault', unknown:'— Unknown' };
+    return `<div><span class="ws-pill ${s}">${labels[s] || s}</span></div>`;
+  }
+
   function renderCard(u) {
     const paused    = u.inUse === false;
     const r         = u.latestReading;
@@ -308,6 +324,7 @@
           ${alertBadge}
         </div>
         <div class="unit-temp ${tCls}">${paused ? '—' : tempStr}</div>
+        ${u.type === 'warmer' ? renderWarmerStatePill(u) : ''}
         ${pauseComment}
         <div class="unit-limits">Range: ${u.criticalMin}°C – ${u.criticalMax}°C</div>
         ${r ? `<div class="unit-minmax"><span>📍 ${relativeTime(r.recordedAt)}</span></div>` : '<div class="unit-minmax"><span style="color:#bbb">No readings yet</span></div>'}
