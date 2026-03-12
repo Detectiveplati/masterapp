@@ -24,8 +24,17 @@
     .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2, #27ae60)); color: #fff; }
     .btn-outline  { background: #fff; border: 2px solid var(--accent); color: var(--accent); }
     .btn-sm       { padding: 5px 11px; font-size: 0.78rem; }
-    .btn-danger   { background: rgba(198,40,40,.08); border: 1px solid rgba(198,40,40,.2); color: #c62828; }
-    .btn-green    { background: rgba(46,125,50,.08);  border: 1px solid rgba(46,125,50,.2);  color: #2e7d32; }
+    .btn-danger        { background: rgba(198,40,40,.08); border: 1px solid rgba(198,40,40,.2); color: #c62828; }
+    .btn-danger-solid  { background: linear-gradient(135deg,#c62828,#b71c1c); color:#fff; border:none; }
+    .btn-green         { background: rgba(46,125,50,.08);  border: 1px solid rgba(46,125,50,.2);  color: #2e7d32; }
+    /* Purge modal */
+    .modal-warn { background:#fff3cd;border-left:4px solid #e65100;padding:10px 12px;border-radius:6px;color:#b35c00;font-size:0.82rem;margin-bottom:14px; }
+    .modal-input { width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.88rem;font-family:inherit;margin-top:6px; }
+    .modal-radio-row { display:flex;gap:18px;margin-bottom:14px; }
+    .modal-radio-row label { display:flex;align-items:center;gap:6px;font-size:0.85rem;font-weight:700;cursor:pointer; }
+    .modal-date-row { display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px; }
+    .modal-date-row label { font-size:0.82rem;font-weight:700; }
+    .modal-date-row input[type=date] { padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;font-family:inherit; }
     /* Alert rows */
     .alert-row { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; background: #fff; }
     .alert-row.critical-high, .alert-row.critical-low { border-left: 4px solid #c62828; }
@@ -78,10 +87,11 @@
 
     <div class="filter-bar">
       <select id="filterStatus" onchange="load()">
-        <option value="">All Statuses</option>
-        <option value="open" selected>Open</option>
-        <option value="acknowledged">Acknowledged</option>
+        <option value="active" selected>Active (Open + Acknowledged)</option>
+        <option value="open">Open Only</option>
+        <option value="acknowledged">Acknowledged Only</option>
         <option value="resolved">Resolved</option>
+        <option value="">All Statuses</option>
       </select>
       <select id="filterUnit" onchange="load()">
         <option value="">All Units</option>
@@ -89,12 +99,38 @@
       <input type="date" id="filterFrom" onchange="load()" title="From date">
       <input type="date" id="filterTo"   onchange="load()" title="To date">
       <button class="btn btn-outline btn-sm" onclick="printPDF()">🖨️ Print Report</button>
+      <button class="btn btn-danger-solid btn-sm" id="purgeAlertsBtn" onclick="openPurgeAlerts()" style="display:none">🗑️ Purge Resolved</button>
       <a href="/tempmon/setup.html?tab=thresholds" class="btn btn-outline btn-sm" style="margin-left:auto">🔔 Configure Thresholds ↗</a>
     </div>
 
     <div id="alertsList"><div class="no-data">Loading…</div></div>
   </div>
 </main>
+
+<!-- Purge Alerts Modal -->
+<div id="purgeAlertsModal" class="modal-overlay" onclick="if(event.target===this)closePurgeAlerts()">
+  <div class="modal-box" style="width:min(96vw,460px)">
+    <h3 style="color:#c62828">🗑️ Purge Resolved Alerts</h3>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:14px">Only <strong>resolved</strong> alerts will be deleted. Open and acknowledged alerts are never touched.</p>
+    <div class="modal-radio-row">
+      <label><input type="radio" name="purgeAlertRange" value="all" onchange="togglePurgeAlertRange()" checked> All resolved</label>
+      <label><input type="radio" name="purgeAlertRange" value="range" onchange="togglePurgeAlertRange()"> Date range</label>
+    </div>
+    <div id="purgeAlertDateRow" class="modal-date-row" style="display:none">
+      <label>From <input type="date" id="purgeAlertFrom"></label>
+      <label>To &nbsp;<input type="date" id="purgeAlertTo"></label>
+    </div>
+    <div class="modal-warn">⚠️ This action is <strong>irreversible</strong>. Deleted alerts and their corrective action records cannot be recovered.</div>
+    <label style="font-size:0.82rem;font-weight:700;color:var(--ink)">
+      Type <strong>PURGE</strong> to confirm:
+      <input type="text" id="purgeAlertConfirmInput" class="modal-input" placeholder="PURGE" autocomplete="off">
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closePurgeAlerts()">Cancel</button>
+      <button class="btn btn-danger-solid btn-sm" id="purgeAlertSubmitBtn" onclick="submitPurgeAlerts()">🗑️ Purge</button>
+    </div>
+  </div>
+</div>
 
 <!-- CA Modal -->
 <div class="modal-overlay" id="caModal" onclick="if(event.target===this)closeCA()">
@@ -163,6 +199,7 @@
         return window.location.replace('/?access=denied');
       currentUser = user;
       document.documentElement.style.visibility = '';
+      if (user.role === 'admin') document.getElementById('purgeAlertsBtn').style.display = '';
 
       // Load units for filter dropdown
       const ur = await apiFetch(API + '/units');
@@ -373,6 +410,54 @@
       document.getElementById('threshErr').style.display = 'block';
     } finally {
       document.getElementById('threshSaveBtn').disabled = false;
+    }
+  }
+
+  // ── Purge Alerts ────────────────────────────────────────────────
+  function openPurgeAlerts() {
+    document.querySelector('input[name=purgeAlertRange][value=all]').checked = true;
+    document.getElementById('purgeAlertDateRow').style.display = 'none';
+    document.getElementById('purgeAlertFrom').value = '';
+    document.getElementById('purgeAlertTo').value   = '';
+    document.getElementById('purgeAlertConfirmInput').value = '';
+    const btn = document.getElementById('purgeAlertSubmitBtn');
+    btn.disabled = false; btn.textContent = '🗑️ Purge';
+    document.getElementById('purgeAlertsModal').classList.add('open');
+  }
+  function closePurgeAlerts() { document.getElementById('purgeAlertsModal').classList.remove('open'); }
+  function togglePurgeAlertRange() {
+    const isRange = document.querySelector('input[name=purgeAlertRange]:checked').value === 'range';
+    document.getElementById('purgeAlertDateRow').style.display = isRange ? '' : 'none';
+  }
+  async function submitPurgeAlerts() {
+    const confirmText = document.getElementById('purgeAlertConfirmInput').value.trim();
+    if (confirmText.toUpperCase() !== 'PURGE') {
+      alert('Type PURGE (all caps) to confirm.');
+      return;
+    }
+    const isRange = document.querySelector('input[name=purgeAlertRange]:checked').value === 'range';
+    const btn = document.getElementById('purgeAlertSubmitBtn');
+    btn.disabled = true; btn.textContent = 'Purging…';
+    try {
+      let url = API + '/alerts';
+      if (isRange) {
+        const from  = document.getElementById('purgeAlertFrom').value;
+        const toEnd = document.getElementById('purgeAlertTo').value
+          ? document.getElementById('purgeAlertTo').value + 'T23:59:59' : '';
+        const params = new URLSearchParams();
+        if (from)  params.set('from', from);
+        if (toEnd) params.set('to',   toEnd);
+        if (params.toString()) url += '?' + params.toString();
+      }
+      const res  = await apiFetch(url, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      closePurgeAlerts();
+      alert(`✅ Purged ${data.deleted} resolved alert${data.deleted !== 1 ? 's' : ''}.`);
+      load();
+    } catch (err) {
+      btn.disabled = false; btn.textContent = '🗑️ Purge';
+      alert('❌ Purge failed: ' + err.message);
     }
   }
 

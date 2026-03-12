@@ -424,7 +424,8 @@ router.get('/alerts', requireAuth, async (req, res) => {
   try {
     const { status, unitId, from, to, limit = 100 } = req.query;
     const query = {};
-    if (status) query.status = status;
+    // 'active' = open + acknowledged (excludes resolved)
+    if (status) query.status = status === 'active' ? { $in: ['open', 'acknowledged'] } : status;
     if (unitId) query.unit   = unitId;
     if (from || to) {
       query.createdAt = {};
@@ -1059,6 +1060,28 @@ router.post('/debug/inject', requireAuth, requireAdmin, async (req, res) => {
       since: updated.warmerState?.since,
       readingId: reading._id
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// PURGE ALERTS — admin only
+// DELETE /api/tempmon/alerts?from=&to=
+// Deletes RESOLVED alerts only. Optional createdAt date range.
+// ═══════════════════════════════════════════════════════════════════
+router.delete('/alerts', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const query = { status: 'resolved' };
+    if (from || to) {
+      query.createdAt = {};
+      if (from) query.createdAt.$gte = new Date(from);
+      if (to)   query.createdAt.$lte = new Date(to);
+    }
+    const result = await TempMonAlert.deleteMany(query);
+    console.log(`[TempMon] Purge alerts by admin (${req.user?.email}): deleted=${result.deletedCount}, range=${from||'*'}→${to||'*'}`);
+    res.json({ ok: true, deleted: result.deletedCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
