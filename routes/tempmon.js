@@ -110,7 +110,7 @@ router.post('/units', requireAuth, async (req, res) => {
 // PUT /api/tempmon/units/:id
 router.put('/units/:id', requireAuth, async (req, res) => {
   try {
-    const fields = ['name', 'type', 'location', 'area', 'criticalMin', 'criticalMax', 'warningBuffer', 'targetTemp', 'notes', 'active', 'alertThresholdMinutes'];
+    const fields = ['name', 'type', 'location', 'area', 'criticalMin', 'criticalMax', 'warningBuffer', 'targetTemp', 'notes', 'active', 'inUse', 'inUseComment', 'alertThresholdMinutes'];
     const update = {};
     fields.forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
     const unit = await TempMonUnit.findByIdAndUpdate(req.params.id, { $set: update }, { new: true, runValidators: true });
@@ -263,6 +263,8 @@ function evaluateAlertType(value, unit) {
 }
 
 async function maybeCreateOrNotifyAlert(unit, device, readingId, type, value) {
+  // Skip alert creation entirely when unit is marked as not in use
+  if (unit.inUse === false) return;
   // Load push delays from DB config (cached 5 min)
   const cfg = await getPushConfig();
   const thresholdMs    = type.startsWith('critical_')

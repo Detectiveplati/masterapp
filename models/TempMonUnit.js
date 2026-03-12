@@ -15,6 +15,8 @@ const TempMonUnitSchema = new mongoose.Schema({
   warningBuffer:  { type: Number, default: 2 },                      // degrees inside limits → warning zone
   targetTemp:     { type: Number },                                   // ideal operating temp (display only)
   active:              { type: Boolean, default: true },
+  inUse:               { type: Boolean, default: true },          // false = monitoring paused (no alerts)
+  inUseComment:        { type: String, default: '', trim: true }, // reason for being out of use
   notes:               { type: String, default: '', trim: true },
   // Minutes a unit must stay at critical temperature before a push notification fires.
   // 0 = notify immediately. Recommended: 20–30 min for kitchen equipment.

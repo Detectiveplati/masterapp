@@ -850,6 +850,8 @@ function tmBuildAlertLabel(type, value, unit) {
 }
 
 async function tmMaybeCreateAlert(unit, device, readingId, type, value) {
+    // Skip alert creation entirely when unit is marked as not in use
+    if (unit.inUse === false) return;
     // Load push delays from DB config (cached 5 min)
     const cfg = await getSvPushConfig();
     const thresholdMs    = type.startsWith('critical_')

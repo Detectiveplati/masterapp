@@ -53,10 +53,11 @@
     .unit-meta { display: flex; align-items: center; justify-content: space-between; font-size: 0.76rem; color: var(--muted); }
     .unit-alert-badge { background: rgba(198,40,40,.1); color: #c62828; border-radius: 20px; padding: 2px 9px; font-weight: 700; font-size: 0.72rem; }
     .battery { display: inline-flex; align-items: center; gap: 3px; }
+    .unit-card.not-in-use { opacity: .65; border-left: 4px solid #ffb300; }
+    .unit-paused-badge { background:#fff8e1;color:#e65100;border-radius:12px;padding:2px 8px;font-weight:700;font-size:0.7rem;border:1px solid #ffe082; }
     .no-data { text-align: center; padding: 60px; color: var(--muted); font-style: italic; grid-column: 1/-1; }
     .refresh-info { font-size: 0.78rem; color: var(--muted); }
     .group-header { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 0 10px; padding-bottom: 4px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-    /* Filter bar */
     .filter-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; padding: 12px 14px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
     .filter-bar input[type=search] { flex: 1 1 160px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: var(--bg, #fff); color: var(--ink); outline: none; }
     .filter-bar input[type=search]:focus { border-color: var(--accent); }
@@ -101,6 +102,7 @@
       <button class="filter-btn f-ok"       data-status="in-range" onclick="setStatus('in-range')">🟢 OK</button>
       <button class="filter-btn f-offline"  data-status="offline"  onclick="setStatus('offline')">⬛ Offline</button>
       <button class="filter-btn"            data-status="no-reading" onclick="setStatus('no-reading')">— No Data</button>
+      <button class="filter-btn"            data-status="paused"   onclick="setStatus('paused')">⏸️ Not In Use</button>
     </div>
     <select class="filter-type" id="filterType" onchange="applyFilters()">
       <option value="all">All Types</option>
@@ -161,7 +163,12 @@
 
     const filtered = allUnits.filter(u => {
       const cls = u.latestReading ? tempClass(u, u.latestReading) : (u.openAlerts ? 'critical' : 'no-reading');
-      if (activeStatus !== 'all' && cls !== activeStatus) return false;
+      const isPaused = u.inUse === false;
+      if (activeStatus === 'paused') { if (!isPaused) return false; }
+      else if (activeStatus !== 'all') {
+        if (isPaused) return false; // paused units only show under 'all' or 'paused'
+        if (cls !== activeStatus) return false;
+      }
       if (typeVal !== 'all' && u.type !== typeVal) return false;
       if (text) {
         const haystack = [(u.name||''), (u.location||''), (u.area||''), (u.type||'')].join(' ').toLowerCase();
@@ -224,13 +231,16 @@
   }
 
   function renderCard(u) {
+    const paused    = u.inUse === false;
     const r         = u.latestReading;
-    const cls       = r ? tempClass(u, r) : (u.openAlerts ? 'critical' : 'no-reading');
-    const tCls      = tempTextClass(cls);
+    const cls       = paused ? 'not-in-use' : (r ? tempClass(u, r) : (u.openAlerts ? 'critical' : 'no-reading'));
+    const tCls      = paused ? 'temp-nodata' : tempTextClass(cls);
     const tempStr   = r ? r.value.toFixed(1) + '°C' : '—';
     const icon      = TYPE_ICONS[u.type] || '🌡️';
-    const alertBadge = u.openAlerts > 0
-      ? `<span class="unit-alert-badge">⚠️ ${u.openAlerts} alert${u.openAlerts > 1 ? 's' : ''}</span>` : '';
+    const alertBadge = !paused && u.openAlerts > 0
+      ? `<span class="unit-alert-badge">⚠️ ${u.openAlerts} alert${u.openAlerts > 1 ? 's' : ''}</span>`
+      : (paused ? `<span class="unit-paused-badge">⏸ Not in use</span>` : '');
+    const pauseComment = paused && u.inUseComment ? `<div style="font-size:0.75rem;color:#e65100;margin-top:4px;font-style:italic">${escHtml(u.inUseComment)}</div>` : '';
     return `
       <a class="unit-card ${escHtml(cls)}" href="/tempmon/unit.html?id=${escHtml(String(u._id))}">
         <div class="unit-top">
@@ -241,7 +251,8 @@
           </div>
           ${alertBadge}
         </div>
-        <div class="unit-temp ${tCls}">${tempStr}</div>
+        <div class="unit-temp ${tCls}">${paused ? '—' : tempStr}</div>
+        ${pauseComment}
         <div class="unit-limits">Range: ${u.criticalMin}°C – ${u.criticalMax}°C</div>
         ${r ? `<div class="unit-minmax"><span>📍 ${relativeTime(r.recordedAt)}</span></div>` : '<div class="unit-minmax"><span style="color:#bbb">No readings yet</span></div>'}
         <div class="unit-meta">

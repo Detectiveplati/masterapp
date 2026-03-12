@@ -291,9 +291,15 @@
       <div class="fg"><label>Alert Threshold (min)</label><input id="euThreshold" type="number" min="0" placeholder="0 = notify immediately"></div>
       <div class="fg"><label>Notes</label><input id="euNotes" type="text"></div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-      <input type="checkbox" id="euActive" style="width:16px;height:16px">
-      <label style="font-size:0.88rem;font-weight:700">Active</label>
+    <!-- Not in use -->
+    <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:14px 16px;margin-bottom:14px">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:700;font-size:0.9rem">
+        <input type="checkbox" id="euNotInUse" style="width:16px;height:16px" onchange="document.getElementById('euNotInUseRow').style.display=this.checked?'block':'none'">
+        ⏸️ Not currently in use — pause all alerts
+      </label>
+      <div id="euNotInUseRow" style="display:none;margin-top:10px">
+        <input id="euInUseComment" type="text" placeholder="Reason (e.g. Sent for servicing until 20 Mar)" style="width:100%;padding:7px 10px;border:1px solid #ffe082;border-radius:7px;font-size:0.85rem">
+      </div>
     </div>
     <div id="euNotice" class="notice"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
@@ -440,7 +446,7 @@
         <td>${escHtml(u.area || u.location || '—')}</td>
         <td>${u.criticalMin}°C – ${u.criticalMax}°C</td>
         <td>${u.targetTemp != null ? u.targetTemp + '°C' : '—'}</td>
-        <td>${u.active ? '<span style="color:#2e7d32;font-weight:700">Active</span>' : '<span style="color:var(--muted)">Inactive</span>'}</td>
+        <td>${u.active ? '<span style="color:#2e7d32;font-weight:700">Active</span>' : '<span style="color:var(--muted)">Inactive</span>'}${u.inUse === false ? ' <span style="background:#fff8e1;color:#e65100;font-size:0.72rem;font-weight:700;border-radius:4px;padding:1px 6px;border:1px solid #ffe082" title="${escHtml(u.inUseComment||'')}">⏸ Not in use</span>' : ''}</td>
         <td style="display:flex;gap:5px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="openEditUnit('${u._id}')">✏️</button>
           <button class="btn btn-primary btn-sm" onclick="openAddTag('${u._id}', '${escHtml(u.name).replace(/'/g,'\\&#39;')}')" title="Register a TAG sensor for this unit">📡 Add TAG</button>
@@ -510,6 +516,10 @@
     document.getElementById('euThreshold').value = u.alertThresholdMinutes ?? 0;
     document.getElementById('euNotes').value   = u.notes || '';
     document.getElementById('euActive').checked = u.active;
+    const notInUse = u.inUse === false;
+    document.getElementById('euNotInUse').checked = notInUse;
+    document.getElementById('euInUseComment').value = u.inUseComment || '';
+    document.getElementById('euNotInUseRow').style.display = notInUse ? 'block' : 'none';
     document.getElementById('euNotice').style.display = 'none';
     document.getElementById('editUnitModal').style.display = 'flex';
   }
@@ -581,6 +591,8 @@
           targetTemp:    document.getElementById('euTarget').value !== '' ? parseFloat(document.getElementById('euTarget').value) : null,
           notes:         document.getElementById('euNotes').value.trim(),
           active:        document.getElementById('euActive').checked,
+          inUse:         !document.getElementById('euNotInUse').checked,
+          inUseComment:  document.getElementById('euInUseComment').value.trim(),
           alertThresholdMinutes: parseInt(document.getElementById('euThreshold').value) || 0
         })
       });
