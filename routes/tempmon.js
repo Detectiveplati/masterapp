@@ -977,7 +977,7 @@ async function checkOfflineDevices() {
     const devices = await TempMonDevice.find({ active: true }).populate('unit', 'name').lean();
     for (const device of devices) {
       if (!device.lastSeenAt) continue;
-      const cutoff = new Date(Date.now() - device.expectedIntervalMinutes * 2 * 60 * 1000);
+      const cutoff = new Date(Date.now() - 30 * 60 * 1000); // alert after 30 min of no readings
       if (device.lastSeenAt < cutoff) {
         // Check if offline alert already open for this device
         const existing = await TempMonAlert.findOne({ device: device._id, type: 'device_offline', status: 'open' });
