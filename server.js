@@ -824,7 +824,7 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
             await tmMaybeCreateAlert(unit, tmDevice, reading._id, alertType, sensorRow.temp);
         } else {
             await TempMonAlert.updateMany(
-                { unit: unit._id, type: { $in: ['critical_high', 'critical_low', 'warning_high', 'warning_low'] }, status: 'open' },
+                { unit: unit._id, type: { $in: ['critical_high', 'critical_low', 'warning_high', 'warning_low'] }, status: { $in: ['open', 'acknowledged'] } },
                 { $set: { status: 'resolved', resolvedAt: new Date(), resolveNote: 'Temperature returned to normal range automatically' } }
             );
         }

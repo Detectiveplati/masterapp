@@ -316,7 +316,7 @@ function buildAlertLabel(type, value, unit) {
 
 async function autoResolveAlerts(unitId) {
   await TempMonAlert.updateMany(
-    { unit: unitId, type: { $in: ['critical_high', 'critical_low', 'warning_high', 'warning_low'] }, status: 'open' },
+    { unit: unitId, type: { $in: ['critical_high', 'critical_low', 'warning_high', 'warning_low'] }, status: { $in: ['open', 'acknowledged'] } },
     { $set: { status: 'resolved', resolvedAt: new Date(), resolveNote: 'Temperature returned to normal range automatically' } }
   );
 }
@@ -1071,22 +1071,33 @@ async function checkPendingPushes() {
       type:       { $in: ['critical_high', 'critical_low', 'warning_high', 'warning_low'] }
     }).populate('unit').lean();
 
+    if (!pending.length) return;
+
+    // Load global push config once for the whole batch
+    const cfg = await getPushConfig();
+    const criticalMs = (cfg.pushDelayCriticalMinutes || 60)  * 60 * 1000;
+    const warningMs  = (cfg.pushDelayWarningMinutes  || 120) * 60 * 1000;
+
     for (const alert of pending) {
       const unit = alert.unit;
       if (!unit) continue;
-      const thresholdMs = (unit.alertThresholdMinutes || 0) * 60 * 1000;
-      if (thresholdMs === 0) continue; // immediate alerts — handled at creation time
+      if (unit.inUse === false) continue; // skip paused units
 
-      const alertAgeMs = Date.now() - new Date(alert.createdAt).getTime();
+      const thresholdMs = alert.type.startsWith('critical_') ? criticalMs : warningMs;
+      const alertAgeMs  = Date.now() - new Date(alert.createdAt).getTime();
+
       if (alertAgeMs >= thresholdMs) {
         await TempMonAlert.updateOne({ _id: alert._id }, { pushSentAt: new Date(), notificationSent: true });
         const isCritical = alert.type.startsWith('critical_');
         const emoji = isCritical ? '🔴' : '🟡';
         const label = buildAlertLabel(alert.type, alert.value, unit);
+        const delayLabel = isCritical
+          ? `${cfg.pushDelayCriticalMinutes || 60} min`
+          : `${cfg.pushDelayWarningMinutes  || 120} min`;
         sendPush(`${emoji} ${unit.name}: ${label}`,
-          `Temperature has been out of range for ${unit.alertThresholdMinutes}+ min. Check the unit.`,
+          `Temperature has been out of range for ${delayLabel}. Check the unit.`,
           '/tempmon/alerts.html');
-        console.log(`✓ [TempMon] Pending push fired (threshold): ${alert.type} for "${unit.name}"`);
+        console.log(`✓ [TempMon] Pending push fired (${delayLabel} threshold): ${alert.type} for "${unit.name}"`);
       }
     }
   } catch (err) {
