@@ -734,6 +734,23 @@ const TempMonUnit    = require('./models/TempMonUnit');
 const TempMonDevice  = require('./models/TempMonDevice');
 const TempMonReading = require('./models/TempMonReading');
 const TempMonAlert   = require('./models/TempMonAlert');
+const TempMonConfig  = require('./models/TempMonConfig');
+
+// ── Push config cache (shared with routes/tempmon via same mongoose connection) ──
+let _svPushConfigCache = null;
+let _svPushConfigCacheTs = 0;
+async function getSvPushConfig() {
+    const now = Date.now();
+    if (_svPushConfigCache && now - _svPushConfigCacheTs < 5 * 60 * 1000) return _svPushConfigCache;
+    const cfg = await TempMonConfig.findOneAndUpdate(
+        { key: 'global' },
+        { $setOnInsert: { key: 'global' } },
+        { upsert: true, new: true }
+    );
+    _svPushConfigCache = cfg;
+    _svPushConfigCacheTs = now;
+    return cfg;
+}
 
 // Map LoRa device unit type to TempLog equipment name (for backward compat)
 const UNIT_TYPE_TO_EQUIPMENT = { freezer: 'freezer', chiller: 'chiller', warmer: 'food-warmer' };
@@ -833,9 +850,14 @@ function tmBuildAlertLabel(type, value, unit) {
 }
 
 async function tmMaybeCreateAlert(unit, device, readingId, type, value) {
-    // Fixed type-based push delay: critical = 60 min, warning = 120 min
-    const thresholdMs    = type.startsWith('critical_') ? 60 * 60 * 1000 : 120 * 60 * 1000;
-    const thresholdLabel = type.startsWith('critical_') ? '60 min' : '2 hours';
+    // Load push delays from DB config (cached 5 min)
+    const cfg = await getSvPushConfig();
+    const thresholdMs    = type.startsWith('critical_')
+        ? (cfg.pushDelayCriticalMinutes || 60) * 60 * 1000
+        : (cfg.pushDelayWarningMinutes  || 120) * 60 * 1000;
+    const thresholdLabel = type.startsWith('critical_')
+        ? `${cfg.pushDelayCriticalMinutes || 60} min`
+        : `${cfg.pushDelayWarningMinutes  || 120} min`;
     const existing = await TempMonAlert.findOne({ unit: unit._id, type, status: { $in: ['open', 'acknowledged'] } });
 
     if (existing) {
@@ -849,6 +871,8 @@ async function tmMaybeCreateAlert(unit, device, readingId, type, value) {
                         message: `Temperature has been out of range for ${thresholdLabel}. Check the unit.`,
                         url:     '/tempmon/alerts.html'
                     }).catch(() => {});
+                    // Invalidate cache so next reading picks up any config change
+                    _svPushConfigCache = null;
                 }
             }
         }

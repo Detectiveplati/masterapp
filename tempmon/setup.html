@@ -158,6 +158,31 @@
 
   <!-- ── THRESHOLDS TAB ──────────────────────────────────────── -->
   <div id="tab-thresholds" class="tab-panel">
+
+    <!-- Push notification delays -->
+    <div class="section-card">
+      <h2>🔔 Push Notification Delays</h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:16px">
+        How long a temperature must stay out of range before a push notification is sent.
+        Alert records appear immediately regardless of these settings.
+      </p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:16px">
+        <div class="fg">
+          <label>🔴 Critical out-of-range (minutes)</label>
+          <input id="cfgCritical" type="number" min="0" placeholder="60" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;width:100%">
+          <small style="color:var(--muted);font-size:0.72rem">Below critical min or above critical max</small>
+        </div>
+        <div class="fg">
+          <label>🟡 Warning zone (minutes)</label>
+          <input id="cfgWarning" type="number" min="0" placeholder="120" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;width:100%">
+          <small style="color:var(--muted);font-size:0.72rem">Within warning buffer of the limit</small>
+        </div>
+      </div>
+      <div id="cfgNotice" class="notice"></div>
+      <button class="btn btn-primary" onclick="savePushConfig()">💾 Save Push Settings</button>
+    </div>
+
+    <!-- Per-unit temperature limits -->
     <div class="section-card">
       <h2 style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         🔔 Alert Thresholds &amp; Temperature Limits
@@ -364,7 +389,7 @@
     const panel = document.getElementById('tab-' + name);
     if (panel) panel.classList.add('active');
     if (name === 'sample') loadPurgeList();
-    if (name === 'thresholds') renderThresholds();
+    if (name === 'thresholds') { renderThresholds(); loadPushConfig(); }
   }
 
   function showNotice(id, type, msg) {
@@ -834,6 +859,38 @@
     } catch (err) { showNotice('simNotice', 'err', '❌ ' + err.message); }
     finally { btn.disabled = false; btn.textContent = '⏹️ Stop'; }
   }
+  // ── Push config ─────────────────────────────────────────────────
+  async function loadPushConfig() {
+    try {
+      const r = await apiFetch(API + '/config');
+      if (!r.ok) return;
+      const cfg = await r.json();
+      document.getElementById('cfgCritical').value = cfg.pushDelayCriticalMinutes ?? 60;
+      document.getElementById('cfgWarning').value  = cfg.pushDelayWarningMinutes  ?? 120;
+    } catch(e) { console.warn('Could not load push config:', e); }
+  }
+  async function savePushConfig() {
+    const critical = parseInt(document.getElementById('cfgCritical').value);
+    const warning  = parseInt(document.getElementById('cfgWarning').value);
+    const notice   = document.getElementById('cfgNotice');
+    if (isNaN(critical) || isNaN(warning) || critical < 0 || warning < 0) {
+      notice.className = 'notice err'; notice.textContent = '⚠️ Both values must be 0 or greater.'; notice.style.display = 'block';
+      return;
+    }
+    try {
+      const r = await apiFetch(API + '/config', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pushDelayCriticalMinutes: critical, pushDelayWarningMinutes: warning })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      notice.className = 'notice ok'; notice.textContent = '✅ Push notification settings saved.';
+      notice.style.display = 'block';
+      setTimeout(() => { notice.style.display = 'none'; }, 3000);
+    } catch(err) {
+      notice.className = 'notice err'; notice.textContent = '❌ ' + err.message; notice.style.display = 'block';
+    }
+  }
+
   // ── Thresholds control panel ────────────────────────────────
   function renderThresholds() {
     const tbody = document.getElementById('thresholdsBody');

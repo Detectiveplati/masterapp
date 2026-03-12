@@ -16,6 +16,7 @@ const TempMonReading          = require('../models/TempMonReading');
 const TempMonAlert            = require('../models/TempMonAlert');
 const TempMonCorrectiveAction = require('../models/TempMonCorrectiveAction');
 const TempMonCalibration      = require('../models/TempMonCalibration');
+const TempMonConfig           = require('../models/TempMonConfig');
 
 const { requireAuth } = require('../services/auth-middleware');
 const { memUpload, uploadBufferToCloudinary } = require('../services/cloudinary-upload');
@@ -262,9 +263,14 @@ function evaluateAlertType(value, unit) {
 }
 
 async function maybeCreateOrNotifyAlert(unit, device, readingId, type, value) {
-  // Fixed type-based push delay: critical = 60 min, warning = 120 min
-  const thresholdMs = type.startsWith('critical_') ? 60 * 60 * 1000 : 120 * 60 * 1000;
-  const thresholdLabel = type.startsWith('critical_') ? '60 min' : '2 hours';
+  // Load push delays from DB config (cached 5 min)
+  const cfg = await getPushConfig();
+  const thresholdMs    = type.startsWith('critical_')
+    ? (cfg.pushDelayCriticalMinutes || 60) * 60 * 1000
+    : (cfg.pushDelayWarningMinutes  || 120) * 60 * 1000;
+  const thresholdLabel = type.startsWith('critical_')
+    ? `${cfg.pushDelayCriticalMinutes || 60} min`
+    : `${cfg.pushDelayWarningMinutes  || 120} min`;
 
   // Check for an existing open/acknowledged alert of the same type for this unit
   const existing = await TempMonAlert.findOne({ unit: unit._id, type, status: { $in: ['open', 'acknowledged'] } });
@@ -784,6 +790,56 @@ async function simTick() {
   } catch (err) {
     console.error('✗ [TempMon] Sim tick error:', err.message);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════
+
+// GET /api/tempmon/config
+router.get('/config', requireAuth, async (req, res) => {
+  try {
+    const cfg = await TempMonConfig.findOneAndUpdate(
+      { key: 'global' },
+      { $setOnInsert: { key: 'global' } },
+      { upsert: true, new: true }
+    );
+    res.json(cfg);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PUT /api/tempmon/config
+router.put('/config', requireAuth, async (req, res) => {
+  try {
+    const { pushDelayCriticalMinutes, pushDelayWarningMinutes } = req.body;
+    const update = {};
+    if (pushDelayCriticalMinutes !== undefined) update.pushDelayCriticalMinutes = Math.max(0, parseInt(pushDelayCriticalMinutes) || 0);
+    if (pushDelayWarningMinutes  !== undefined) update.pushDelayWarningMinutes  = Math.max(0, parseInt(pushDelayWarningMinutes)  || 0);
+    const cfg = await TempMonConfig.findOneAndUpdate(
+      { key: 'global' },
+      { $set: update },
+      { upsert: true, new: true }
+    );
+    // Invalidate in-memory cache
+    _pushConfigCache = null;
+    res.json(cfg);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── In-memory push config cache (TTL 5 min) ────────────────────────
+let _pushConfigCache = null;
+let _pushConfigCacheTs = 0;
+async function getPushConfig() {
+  const now = Date.now();
+  if (_pushConfigCache && now - _pushConfigCacheTs < 5 * 60 * 1000) return _pushConfigCache;
+  const cfg = await TempMonConfig.findOneAndUpdate(
+    { key: 'global' },
+    { $setOnInsert: { key: 'global' } },
+    { upsert: true, new: true }
+  );
+  _pushConfigCache = cfg;
+  _pushConfigCacheTs = now;
+  return cfg;
 }
 
 // GET /api/tempmon/sim/status
