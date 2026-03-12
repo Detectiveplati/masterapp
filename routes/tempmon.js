@@ -208,8 +208,8 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
       const unit = device.unit;
       const ts   = recordedAt ? new Date(recordedAt) : new Date();
 
-      // Skip duplicate — same device + same sensor timestamp already stored
-      const exists = await TempMonReading.exists({ device: device._id, recordedAt: ts });
+      // Skip duplicate — same device + same sensor timestamp + same value already stored
+      const exists = await TempMonReading.exists({ device: device._id, recordedAt: ts, value });
       if (exists) { results.skipped++; continue; }
 
       // Determine if reading is flagged

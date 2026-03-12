@@ -813,8 +813,8 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
         if (sensorRow.humidity != null) readingData.humidity = sensorRow.humidity;
         if (sensorRow.rssi    != null) readingData.rssi    = sensorRow.rssi;
         if (sensorRow.battery != null) readingData.battery = sensorRow.battery;
-        // Skip duplicate — same device + same sensor timestamp already stored
-        const exists = await TempMonReading.exists({ device: tmDevice._id, recordedAt: readingData.recordedAt });
+        // Skip duplicate — same device + same sensor timestamp + same value already stored
+        const exists = await TempMonReading.exists({ device: tmDevice._id, recordedAt: readingData.recordedAt, value: sensorRow.temp });
         if (exists) {
             console.log(`[TempMon] Skipping duplicate reading: ${sensorRow.sensorId} @ ${readingData.recordedAt}`);
             return;
@@ -847,7 +847,12 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
             );
         }
     } catch (e) {
-        console.error(`[TempMon] forwardToTempMon error for ${sensorRow.sensorId}:`, e.message);
+        if (e.code === 11000) {
+            // Unique index violation — concurrent duplicate, safe to ignore
+            console.log(`[TempMon] Duplicate reading race (ignored): ${sensorRow.sensorId} @ ${readingData?.recordedAt}`);
+        } else {
+            console.error(`[TempMon] forwardToTempMon error for ${sensorRow.sensorId}:`, e.message);
+        }
     }
 }
 
@@ -1414,9 +1419,15 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
                 humidity: row.humidity,
                 rssi: row.rssi,
                 battery: row.battery,
-                // Use server receipt time — individual TAG device clocks are not synced
-                // (same reasoning as TCP path: gateway @UTC only syncs the RD07 itself).
-                recordedAt: now.toISOString(),
+                // Use sensor timestamp when it looks valid (within 7 days of now).
+                // Falls back to server receipt time for sensors with factory-default clocks.
+                recordedAt: (function() {
+                    const sensorTs = row.recordedAt;
+                    if (sensorTs && Math.abs(new Date(sensorTs).getTime() - now.getTime()) < 7 * 24 * 60 * 60 * 1000) {
+                        return new Date(sensorTs).toISOString();
+                    }
+                    return now.toISOString();
+                })(),
                 createdAt: now,
                 _loraDevice: mapped   // carry device doc for TempMon forwarding
             });

@@ -24,5 +24,8 @@ const TempMonReadingSchema = new mongoose.Schema({
 
 TempMonReadingSchema.index({ unit:   1, recordedAt: -1 });
 TempMonReadingSchema.index({ device: 1, recordedAt: -1 });
+// Unique constraint: a device cannot emit the same temp value at the exact same timestamp.
+// Guards against duplicate ingest (gateway retries, double-delivery).
+TempMonReadingSchema.index({ device: 1, recordedAt: 1, value: 1 }, { unique: true });
 
 module.exports = mongoose.model('TempMonReading', TempMonReadingSchema);
