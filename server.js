@@ -19,7 +19,7 @@ const net = require('net');
 const path = require('path');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const { requirePageAccess } = require('./services/auth-middleware');
+const { requirePageAccess, requireAuth, requireAdmin } = require('./services/auth-middleware');
 
 // Try to load puppeteer (optional - for PDF generation)
 let puppeteer = null;
@@ -70,13 +70,7 @@ async function seedTempMonUnits() {
         const TempMonUnit   = require('./models/TempMonUnit');
         const TempMonDevice = require('./models/TempMonDevice');
 
-        const count = await TempMonUnit.countDocuments({ active: true });
-        if (count > 0) {
-            console.log(`✓ [TempMon] ${count} unit(s) already in database — skipping seed`);
-            return;
-        }
-
-        console.log('⏳ [TempMon] No units found — seeding 31 equipment units…');
+        console.log('⏳ [TempMon] Upserting 31 equipment units + TempMon devices…');
 
         const LIMITS = {
             freezer: { criticalMin: -25, criticalMax: -12, warningBuffer: 2, targetTemp: -18 },
@@ -132,16 +126,85 @@ async function seedTempMonUnits() {
             await TempMonDevice.findOneAndUpdate(
                 { deviceId: sn },
                 {
-                    $set:         { unit: unitDoc._id, label: sensor.name, active: true },
-                    $setOnInsert: { deviceId: sn, expectedIntervalMinutes: 5 },
+                    $set:         { unit: unitDoc._id, active: true },
+                    $setOnInsert: { deviceId: sn, expectedIntervalMinutes: 5, label: sensor.name },
                 },
                 { upsert: true, new: true }
             );
             created++;
         }
-        console.log(`✓ [TempMon] Seeded ${created} equipment units + devices`);
+        console.log(`✓ [TempMon] Equipment seed done — ${created} unit(s) upserted`);
     } catch (err) {
         console.error('✗ [TempMon] Seed error:', err.message);
+    }
+}
+
+/**
+ * Link all 31 LoRa sensor IDs → TempMon units in the TempLog (lora_devices) collection.
+ * Called after the TempLog MongoClient connects. Safe to re-run (upsert).
+ */
+async function seedLoraLinks(db) {
+    if (!db) { console.warn('⚠️  [TempMon] seedLoraLinks skipped — TempLog DB not ready'); return; }
+    try {
+        const TempMonUnit   = require('./models/TempMonUnit');
+        const TYPE_TO_EQUIP = { warmer: 'warmer', chiller: 'chiller', freezer: 'freezer' };
+        const SENSORS = [
+            { sn: '9240013',  name: 'CK-B4-FW-01',                             type: 'warmer'  },
+            { sn: '9240014',  name: 'CK-B4-FW-02',                             type: 'warmer'  },
+            { sn: '9240127',  name: 'CK-B4-FW-03',                             type: 'warmer'  },
+            { sn: '9240128',  name: 'CK-B4-FW-04',                             type: 'warmer'  },
+            { sn: '9240129',  name: 'CK-B4-FW-05',                             type: 'warmer'  },
+            { sn: '9240130',  name: 'CK-B5-FW-06',                             type: 'warmer'  },
+            { sn: '82242245', name: 'CK-WC-01 (Packing Room WC)',              type: 'chiller' },
+            { sn: '82242251', name: 'CK-WC-02 (Hot Kitchen Veg WC)',           type: 'chiller' },
+            { sn: '82242252', name: 'CK-WC-03 (Hot Kitchen Meat WC)',          type: 'chiller' },
+            { sn: '82242253', name: 'CK-WC-04 (Old Sauce Area Veg WC)',        type: 'chiller' },
+            { sn: '82242249', name: 'CK-WC-05 (Processed Veg WC)',             type: 'chiller' },
+            { sn: '82242250', name: 'CK-WC-06 (Veg Prep WC)',                  type: 'chiller' },
+            { sn: '82242275', name: 'CK-WC-07 (06-24 Raw Fish WC)',            type: 'chiller' },
+            { sn: '82242261', name: 'CK-WC-08 (06-24 Raw Meat WC)',            type: 'chiller' },
+            { sn: '82242260', name: 'CK-WC-09 (05-26 Main Walk-In Chiller)',   type: 'chiller' },
+            { sn: '82242254', name: 'CK-WC-11 (05-27 Chiller)',                type: 'chiller' },
+            { sn: '82242256', name: 'CK-WC-12 (06-19 Bakery WC)',              type: 'chiller' },
+            { sn: '82242255', name: 'CK-SC-01 (Fruit Room SC)',                type: 'chiller' },
+            { sn: '82242248', name: 'CK-SC-02 (Salad Room SC)',                type: 'chiller' },
+            { sn: '82242247', name: 'CK-C3-SC-01',                             type: 'chiller' },
+            { sn: '82242258', name: 'CK-SC-05 (06-19 2-Door Right SC)',        type: 'chiller' },
+            { sn: '82242259', name: 'CK-SC-06 (4-Door Left SC)',               type: 'chiller' },
+            { sn: '82242246', name: 'CK-CC-01 (Dong Counter Chiller)',         type: 'chiller' },
+            { sn: '82242257', name: 'CK-CC-03 (Cold Room CC)',                 type: 'chiller' },
+            { sn: '82242262', name: 'CK-SF-01 (Retention Sample SF)',          type: 'freezer' },
+            { sn: '82242264', name: 'CK-WF-01 (Braising RTC/RTE WF)',         type: 'freezer' },
+            { sn: '82242263', name: 'CK-WF-02 (06-24 WF)',                    type: 'freezer' },
+            { sn: '82242268', name: 'CK-WF-03 (05-26 Walk-In Freezer)',       type: 'freezer' },
+            { sn: '82242267', name: 'CK-WF-04 (05-27 WF)',                    type: 'freezer' },
+            { sn: '82242265', name: 'CK-WF-05 (06-19 Side WF)',               type: 'freezer' },
+            { sn: '82242266', name: 'CK-WF-06 (06-19 Big WF)',               type: 'freezer' },
+        ];
+        let linked = 0;
+        const now = new Date();
+        for (const sensor of SENSORS) {
+            const sn   = sensor.sn.trim().toUpperCase();
+            const unit = await TempMonUnit.findOne({ name: sensor.name }).lean();
+            if (!unit) continue;
+            await db.collection('lora_devices').updateOne(
+                { sensorId: sn },
+                {
+                    $set: {
+                        equipment:     TYPE_TO_EQUIP[sensor.type],
+                        tempmonUnitId: String(unit._id),
+                        enabled:       true,
+                        updatedAt:     now,
+                    },
+                    $setOnInsert: { sensorId: sn, model: 'TAG08B', alias: sensor.name, createdAt: now },
+                },
+                { upsert: true }
+            );
+            linked++;
+        }
+        console.log(`✓ [TempMon] Linked ${linked} LoRa device(s) → TempMon units in TempLog DB`);
+    } catch (err) {
+        console.error('✗ [TempMon] seedLoraLinks error:', err.message);
     }
 }
 
@@ -168,7 +231,7 @@ const templogClientOptions = TEMPLOG_MONGO_URI.startsWith('mongodb+srv')
     : {};
 
 MongoClient.connect(TEMPLOG_MONGO_URI, templogClientOptions)
-    .then(client => {
+    .then(async client => {
         templogDb = client.db(TEMPLOG_DB_NAME);
         console.log(`✓ [TempLog] MongoDB connected (db: ${TEMPLOG_DB_NAME})`);
         // Handle unexpected disconnection
@@ -176,6 +239,7 @@ MongoClient.connect(TEMPLOG_MONGO_URI, templogClientOptions)
             console.warn('⚠️  [TempLog] MongoDB connection closed');
             templogDb = null;
         });
+        await seedLoraLinks(templogDb);
     })
     .catch(err => {
         console.error('✗ [TempLog] MongoDB connection error:', err.message);
@@ -310,6 +374,23 @@ app.get('/procurement/request/:id', requirePageAccess('procurement'), (req, res)
 const apiRouter            = require('./routes');
 const sendPushToPermission = apiRouter.sendPushToPermission;
 app.use('/api', apiRouter);
+
+// POST /api/tempmon/admin/seed — force re-seed all 31 equipment units + LoRa links (admin only)
+// Registered after apiRouter so it only fires if the router passes (no conflict with tempmon routes)
+app.post('/api/tempmon/admin/seed', requireAuth, requireAdmin, requireTemplogDb, async (req, res) => {
+    try {
+        await seedTempMonUnits();
+        await seedLoraLinks(req.templogDb);
+        const TempMonUnit = require('./models/TempMonUnit');
+        const units  = await TempMonUnit.countDocuments({ active: true });
+        const linked = await req.templogDb.collection('lora_devices')
+            .countDocuments({ tempmonUnitId: { $exists: true, $ne: '' } });
+        res.json({ ok: true, units, linked });
+    } catch (err) {
+        console.error('✗ [TempMon] Admin seed HTTP error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // QR code for procurement request form — auto-detects host (works on Railway)
 app.get('/api/qr', async (req, res) => {

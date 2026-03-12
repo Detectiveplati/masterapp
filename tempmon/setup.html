@@ -139,6 +139,17 @@
     </div>
   </div>
 
+    <div class="section-card">
+      <h2>🔧 Equipment Unit Registration</h2>
+      <p style="color:var(--muted);font-size:0.88rem;margin-bottom:18px">
+        Re-seeds all 31 equipment units (food warmers, walk-in chillers/reach-ins, freezers) and links
+        their LoRa sensor IDs for live temperature forwarding. Safe to re-run — uses upsert so no
+        existing data or readings are lost. Use this if the dashboard shows no units after a fresh deployment.
+      </p>
+      <button class="btn btn-primary" onclick="seedEquipment(this)">🌱 Seed / Re-link All Equipment Units</button>
+      <div id="seedStatus" class="notice" style="margin-top:12px;display:none"></div>
+    </div>
+
 <!-- ── SAMPLE DATA TAB (admin only) ──────────────────────── -->
   <div id="tab-sample" class="tab-panel">
     <div class="section-card">
@@ -462,6 +473,25 @@
     if (!confirm('Decommission this device? It will no longer report.')) return;
     await apiFetch(API + '/devices/' + id, { method: 'DELETE' });
     await loadDevices();
+  }
+
+  // ── Equipment Seed ───────────────────────────────────────────
+  async function seedEquipment(btn) {
+    const el = document.getElementById('seedStatus');
+    btn.disabled = true; btn.textContent = '⏳ Seeding…';
+    el.style.display = 'block'; el.className = 'notice';
+    el.textContent = 'Running seed — this may take a few seconds…';
+    try {
+      const r = await apiFetch('/api/tempmon/admin/seed', { method: 'POST' });
+      el.textContent = `✅ Done — ${r.units} equipment units in DB, ${r.linked} LoRa devices linked.`;
+      el.className = 'notice notice-success';
+      await loadUnits();
+    } catch (e) {
+      el.textContent = '❌ ' + e.message;
+      el.className = 'notice notice-error';
+    } finally {
+      btn.disabled = false; btn.textContent = '🌱 Seed / Re-link All Equipment Units';
+    }
   }
 
   // ── Sample Data ─────────────────────────────────────────────────
