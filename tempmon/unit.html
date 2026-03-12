@@ -124,9 +124,9 @@
     <h2>📋 Recent Readings</h2>
     <div style="overflow-x:auto">
       <table class="readings-table"><thead>
-        <tr><th>Timestamp</th><th>Device</th><th>Temp (°C)</th><th>RH (%)</th><th>Status</th></tr>
+        <tr><th>Timestamp</th><th>Device</th><th>Temp (°C)</th><th>RH (%)</th><th>Battery (V)</th><th>Status</th></tr>
       </thead><tbody id="readingsBody">
-        <tr><td colspan="5" class="no-data">Loading…</td></tr>
+        <tr><td colspan="6" class="no-data">Loading…</td></tr>
       </tbody></table>
     </div>
   </div>
@@ -427,9 +427,10 @@
             <td style="font-size:0.78rem">${devLabel}</td>
             <td style="font-weight:700">${rd.value.toFixed(1)}°C</td>
             <td>${rd.humidity != null ? rd.humidity.toFixed(1) + '%' : '<span style="color:var(--muted)">—</span>'}</td>
+            <td>${rd.battery  != null ? rd.battery.toFixed(2) + 'V' : '<span style="color:var(--muted)">—</span>'}</td>
             <td>${rd.flagged ? '<span class="flag">⚠️ Out of range</span>' : '✅'} ${rd.isSample ? '<span class="sample-tag">(sample)</span>' : ''}</td>
           </tr>`).join('')
-      : '<tr><td colspan="5" class="no-data">No readings in selected range. If sensors are linked, try widening the date range or check the Gateway Setup page to confirm the sensors are sending data.</td></tr>';
+      : '<tr><td colspan="6" class="no-data">No readings in selected range. If sensors are linked, try widening the date range or check the Gateway Setup page to confirm the sensors are sending data.</td></tr>';
   }
 
   function resetZoom() {

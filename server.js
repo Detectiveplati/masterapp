@@ -793,10 +793,13 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
             flagged
         };
         if (sensorRow.humidity != null) readingData.humidity = sensorRow.humidity;
+        if (sensorRow.rssi    != null) readingData.rssi    = sensorRow.rssi;
+        if (sensorRow.battery != null) readingData.battery = sensorRow.battery;
         const reading = new TempMonReading(readingData);
         await reading.save();
-        const rhStr = sensorRow.humidity != null ? ` RH:${sensorRow.humidity}%` : '';
-        console.log(`✓ [TempMon] Reading saved: ${sensorRow.sensorId} → "${unit.name}" ${sensorRow.temp}°C${rhStr}${flagged ? ' ⚠️ FLAGGED' : ''}`);
+        const rhStr  = sensorRow.humidity != null ? ` RH:${sensorRow.humidity}%` : '';
+        const batStr = sensorRow.battery  != null ? ` Bat:${sensorRow.battery}V`  : '';
+        console.log(`✓ [TempMon] Reading saved: ${sensorRow.sensorId} → "${unit.name}" ${sensorRow.temp}°C${rhStr}${batStr}${flagged ? ' ⚠️ FLAGGED' : ''}`);
 
         // Alert logic
         const alertType = tmEvaluateAlertType(sensorRow.temp, unit);
@@ -973,6 +976,9 @@ function extractLoraSensorRows(payload) {
         const humidity = Number(humidityValue);
         const rssiValue = pickFirst(row, ['rssi', 'RSSI']);
         const rssi = Number(rssiValue);
+        // HTTP: 'bat'; TCP/SDK: 'bat', 'battery', 'Battery'
+        const batteryValue = pickFirst(row, ['bat', 'battery', 'Battery', 'BAT', 'batt']);
+        const battery = Number(batteryValue);
         const model = normalizeLoraModel(
             pickFirst(row, ['model', 'deviceModel', 'tagModel', 'HardwareType', 'hardwareType', 'TagType'])
         ) || inferredModel;
@@ -983,6 +989,7 @@ function extractLoraSensorRows(payload) {
             // SDK: Humidity == -1000 means not present/null
             humidity: Number.isFinite(humidity) && humidity !== -1000 ? humidity : null,
             rssi: Number.isFinite(rssi) ? rssi : null,
+            battery: Number.isFinite(battery) && battery > 0 ? battery : null,
             model: model || '',
             recordedAt: parseRecordedAt(
                 pickFirst(row, ['recordedAt', 'time', 'timestamp', 'rtc', 'RTC'])
@@ -1359,6 +1366,7 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
                 model: mapped.model || row.model || '',
                 humidity: row.humidity,
                 rssi: row.rssi,
+                battery: row.battery,
                 // Use server receipt time — individual TAG device clocks are not synced
                 // (same reasoning as TCP path: gateway @UTC only syncs the RD07 itself).
                 recordedAt: now.toISOString(),
@@ -1370,7 +1378,7 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
         let ingested = 0;
         if (mappedReadings.length) {
             // Forward to TempMon for any sensor linked to a unit (before stripping _loraDevice)
-            await Promise.all(mappedReadings.map(r => forwardToTempMon(r._loraDevice, { sensorId: r.sensorId, temp: r.temp, humidity: r.humidity, recordedAt: r.recordedAt }, gatewayId)));
+            await Promise.all(mappedReadings.map(r => forwardToTempMon(r._loraDevice, { sensorId: r.sensorId, temp: r.temp, humidity: r.humidity, rssi: r.rssi, battery: r.battery, recordedAt: r.recordedAt }, gatewayId)));
 
             // Strip internal helper field before inserting into TempLog collection
             const cleanReadings = mappedReadings.map(({ _loraDevice, ...rest }) => rest);
@@ -1758,7 +1766,7 @@ async function ingestTcpTagRecords(gatewayImei, tags, tagModel) {
             equipment: mapped.equipment, temp: row.temp,
             source: 'lora-tcp-gateway', gatewayId, sensorId: row.sensorId,
             model: mapped.model || row.model || '',
-            humidity: row.humidity, rssi: row.rssi,
+            humidity: row.humidity, rssi: row.rssi, battery: row.battery,
             recordedAt: row.recordedAt, createdAt: now,
             _loraDevice: mapped   // carry device doc for TempMon forwarding
         });
@@ -1767,7 +1775,7 @@ async function ingestTcpTagRecords(gatewayImei, tags, tagModel) {
     if (mappedReadings.length) {
         try {
             // Forward to TempMon for any sensor linked to a unit
-            await Promise.all(mappedReadings.map(r => forwardToTempMon(r._loraDevice, { sensorId: r.sensorId, temp: r.temp, humidity: r.humidity, recordedAt: r.recordedAt }, gatewayId)));
+            await Promise.all(mappedReadings.map(r => forwardToTempMon(r._loraDevice, { sensorId: r.sensorId, temp: r.temp, humidity: r.humidity, rssi: r.rssi, battery: r.battery, recordedAt: r.recordedAt }, gatewayId)));
 
             const cleanReadings = mappedReadings.map(({ _loraDevice, ...rest }) => rest);
             const result = await ingestEquipmentReadings({ templogDb }, cleanReadings);

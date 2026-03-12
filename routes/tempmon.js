@@ -369,13 +369,16 @@ router.get('/readings/:unitId/export', requireAuth, async (req, res) => {
 
     const readings = await TempMonReading.find(query).sort({ recordedAt: 1 }).populate('device', 'deviceId label').lean();
 
-    const lines = ['Timestamp,Device ID,Device Label,Temp (°C),Flagged,Sample'];
+    const lines = ['Timestamp,Device ID,Device Label,Temp (°C),RH (%),Battery (V),RSSI (dBm),Flagged,Sample'];
     for (const r of readings) {
       lines.push([
         new Date(r.recordedAt).toISOString(),
         r.device?.deviceId || '',
         `"${r.device?.label || ''}"`,
         r.value,
+        r.humidity != null ? r.humidity : '',
+        r.battery  != null ? r.battery  : '',
+        r.rssi     != null ? r.rssi     : '',
         r.flagged ? 'YES' : 'NO',
         r.isSample ? 'YES' : 'NO'
       ].join(','));
