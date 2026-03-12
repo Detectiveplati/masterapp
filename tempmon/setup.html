@@ -319,7 +319,7 @@
   //   Warmer: 15 min — shorter window as hot-holding is a legal CCP.
   const TYPE_DEFAULTS = {
     freezer: { criticalMin: -25, criticalMax: -12, targetTemp: -18, warningBuffer: 3, alertThresholdMinutes: 20 },
-    chiller: { criticalMin:  -2, criticalMax:   8, targetTemp:   3, warningBuffer: 2, alertThresholdMinutes: 20 },
+    chiller: { criticalMin:  -1, criticalMax:   8, targetTemp:   3, warningBuffer: 2, alertThresholdMinutes: 20 },
     warmer:  { criticalMin:  63, criticalMax:  90, targetTemp:  75, warningBuffer: 5, alertThresholdMinutes: 15 },
     ambient: null // no standard limits
   };
