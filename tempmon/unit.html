@@ -142,7 +142,7 @@
     <h2>📋 Recent Readings</h2>
     <div style="overflow-x:auto">
       <table class="readings-table"><thead>
-        <tr><th>Timestamp</th><th>Device</th><th>Temp (°C)</th><th>RH (%)</th><th>Battery (V)</th><th>Status</th></tr>
+        <tr><th>Sensor Time</th><th>Received</th><th>Device</th><th>Temp (°C)</th><th>RH (%)</th><th>Battery (V)</th><th>Status</th></tr>
       </thead><tbody id="readingsBody">
         <tr><td colspan="6" class="no-data">Loading…</td></tr>
       </tbody></table>
@@ -494,21 +494,33 @@
     });
 
     // Readings table (latest 50)
-    const devLabel = unitDeviceList.length === 1
-      ? escHtml(unitDeviceList[0].label || unitDeviceList[0].deviceId)
-      : (unitDeviceList.length > 1 ? 'Multiple' : '—');
     const recent = readings.slice(-50).reverse();
     document.getElementById('readingsBody').innerHTML = recent.length
-      ? recent.map(rd => `
+      ? recent.map(rd => {
+          const recAt  = rd.receivedAt ? new Date(rd.receivedAt) : null;
+          const recStr = recAt ? fmtDateTime(recAt) : '<span style="color:var(--muted)">—</span>';
+          const gapMs  = recAt ? recAt - new Date(rd.recordedAt) : 0;
+          const buffered = gapMs > 60000; // > 1 min gap = buffered from sensor
+          const gapLabel = buffered
+            ? `<span title="Reading was buffered in sensor for ${Math.round(gapMs/60000)} min before arriving" style="display:inline-block;margin-top:3px;font-size:0.68rem;font-weight:800;background:#fff3e0;color:#e65100;border-radius:4px;padding:1px 6px">⏳ buffered ${Math.round(gapMs/60000)}m</span>`
+            : '';
+          const devLabelRow = unitDeviceList.length === 1
+            ? escHtml(unitDeviceList[0].label || unitDeviceList[0].deviceId)
+            : (unitDeviceList.find(d => String(d._id) === String(rd.device))
+                ? escHtml((unitDeviceList.find(d => String(d._id) === String(rd.device))).label || (unitDeviceList.find(d => String(d._id) === String(rd.device))).deviceId)
+                : (unitDeviceList.length > 1 ? 'Multiple' : '—'));
+          return `
           <tr class="${rd.flagged ? 'flagged-row' : ''}">
-            <td>${fmtDateTime(rd.recordedAt)}</td>
-            <td style="font-size:0.78rem">${devLabel}</td>
+            <td>${fmtDateTime(rd.recordedAt)}${gapLabel}</td>
+            <td style="font-size:0.78rem;color:var(--muted)">${recStr}</td>
+            <td style="font-size:0.78rem">${devLabelRow}</td>
             <td style="font-weight:700">${rd.value.toFixed(1)}°C</td>
             <td>${rd.humidity != null ? rd.humidity.toFixed(1) + '%' : '<span style="color:var(--muted)">—</span>'}</td>
-            <td>${rd.battery  != null ? rd.battery.toFixed(2) + 'V' : '<span style="color:var(--muted)">—</span>'}</td>
+            <td>${rd.battery  != null ? rd.battery.toFixed(2) + 'V'  : '<span style="color:var(--muted)">—</span>'}</td>
             <td>${rd.flagged ? '<span class="flag">⚠️ Out of range</span>' : '✅'}</td>
-          </tr>`).join('')
-      : '<tr><td colspan="6" class="no-data">No readings in selected range. If sensors are linked, try widening the date range or check the Gateway Setup page to confirm the sensors are sending data.</td></tr>';
+          </tr>`;
+        }).join('')
+      : '<tr><td colspan="7" class="no-data">No readings in selected range. If sensors are linked, try widening the date range or check the Gateway Setup page to confirm the sensors are sending data.</td></tr>';
   }
 
   function resetZoom() {
