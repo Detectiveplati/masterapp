@@ -1064,5 +1064,31 @@ router.post('/debug/inject', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// PURGE READINGS — admin only
+// DELETE /api/tempmon/readings/:unitId?from=&to=
+// Deletes readings for a unit. Optional date range params.
+// ═══════════════════════════════════════════════════════════════════
+router.delete('/readings/:unitId', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const unit = await TempMonUnit.findById(req.params.unitId).lean();
+    if (!unit) return res.status(404).json({ error: 'Unit not found' });
+
+    const { from, to } = req.query;
+    const query = { unit: req.params.unitId };
+    if (from || to) {
+      query.recordedAt = {};
+      if (from) query.recordedAt.$gte = new Date(from);
+      if (to)   query.recordedAt.$lte = new Date(to);
+    }
+
+    const result = await TempMonReading.deleteMany(query);
+    console.log(`[TempMon] Purge by admin (${req.user?.email}): unit="${unit.name}", deleted=${result.deletedCount}, range=${from || '*'} → ${to || '*'}`);
+    res.json({ ok: true, deleted: result.deletedCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
 module.exports.updateWarmerState = updateWarmerState;

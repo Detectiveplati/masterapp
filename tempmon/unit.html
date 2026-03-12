@@ -29,7 +29,20 @@
     .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 700; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
     .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2, #27ae60)); color: #fff; }
     .btn-outline { background: #fff; border: 2px solid var(--accent); color: var(--accent); }
+    .btn-danger  { background: linear-gradient(135deg, #c62828, #b71c1c); color: #fff; }
     .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+    /* Purge modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 999; display: flex; align-items: center; justify-content: center; }
+    .modal-box { background: #fff; border-radius: 16px; padding: 28px 28px 22px; max-width: 460px; width: 94%; box-shadow: 0 8px 40px rgba(0,0,0,0.22); }
+    .modal-box h3 { margin: 0 0 10px; font-size: 1.05rem; font-weight: 900; color: #c62828; }
+    .modal-radio-row { display: flex; gap: 18px; margin-bottom: 14px; }
+    .modal-radio-row label { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+    .modal-date-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .modal-date-row label { font-size: 0.82rem; font-weight: 700; }
+    .modal-date-row input[type=date] { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; font-family: inherit; }
+    .modal-warn { background: #fff3cd; border-left: 4px solid #e65100; padding: 10px 12px; border-radius: 6px; color: #b35c00; font-size: 0.82rem; margin-bottom: 14px; }
+    .modal-input { width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; font-family: inherit; margin-top: 6px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
     /* Current temp */
     .current-temp-row { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; margin-bottom: 18px; }
     .current-val { font-size: 3.5rem; font-weight: 900; line-height: 1; }
@@ -139,7 +152,10 @@
 
   <!-- Readings Table -->
   <div class="section-card">
-    <h2>📋 Recent Readings</h2>
+    <h2 style="justify-content:space-between">
+      <span>📋 Recent Readings</span>
+      <button class="btn btn-danger btn-sm" id="purgeBtn" onclick="openPurgeModal()" style="display:none">🗑️ Purge Data</button>
+    </h2>
     <div style="overflow-x:auto">
       <table class="readings-table"><thead>
         <tr><th>Sensor Time</th><th>Received</th><th>Device</th><th>Temp (°C)</th><th>RH (%)</th><th>Battery (V)</th><th>Status</th></tr>
@@ -156,10 +172,36 @@
   </div>
 </main>
 
+<!-- Purge Readings Modal -->
+<div id="purgeModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closePurgeModal()">
+  <div class="modal-box">
+    <h3>🗑️ Purge Readings</h3>
+    <p id="purgeUnitLabel" style="font-weight:800;font-size:0.9rem;margin-bottom:14px;color:var(--ink)"></p>
+    <div class="modal-radio-row">
+      <label><input type="radio" name="purgeRange" value="all" onchange="togglePurgeDateRange()" checked> All readings</label>
+      <label><input type="radio" name="purgeRange" value="range" onchange="togglePurgeDateRange()"> Date range</label>
+    </div>
+    <div id="purgeDateRow" class="modal-date-row" style="display:none">
+      <label>From <input type="date" id="purgeFrom"></label>
+      <label>To &nbsp;<input type="date" id="purgeTo"></label>
+    </div>
+    <div class="modal-warn">⚠️ This action is <strong>irreversible</strong>. Deleted readings cannot be recovered.</div>
+    <label style="font-size:0.82rem;font-weight:700;color:var(--ink)">
+      Type the unit name to confirm:
+      <input type="text" id="purgeConfirmInput" class="modal-input" placeholder="" autocomplete="off">
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closePurgeModal()">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="purgeSubmitBtn" onclick="submitPurge()">🗑️ Purge</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const API   = '/api/tempmon';
   const unitId = new URLSearchParams(location.search).get('id');
   let unit           = null;
+  let currentUser    = null;
   let unitDeviceList = [];   // populated by loadUnit(), used to label readings
   let chartInst      = null;
   let chartReadings  = [];   // kept for tooltip access
@@ -181,7 +223,9 @@
       const { user } = await r.json();
       if (!user.permissions?.tempmon && user.role !== 'admin')
         return window.location.replace('/?access=denied');
+      currentUser = user;
       document.documentElement.style.visibility = '';
+      if (user.role === 'admin') document.getElementById('purgeBtn').style.display = '';
       await Promise.all([loadUnit(), loadAlerts(), loadDevices()]);
       loadChart();
       // Auto-refresh current reading + chart every 30s when viewing recent data
@@ -545,6 +589,61 @@
     const toEnd = document.getElementById('toDate').value ? document.getElementById('toDate').value + 'T23:59:59' : '';
     const url   = API + '/readings/' + unitId + '/export' + '?from=' + from + '&to=' + toEnd;
     window.location = url;
+  }
+
+  // ── Purge modal ───────────────────────────────────────────────────
+  function openPurgeModal() {
+    document.getElementById('purgeUnitLabel').textContent = unit ? unit.name : '';
+    document.getElementById('purgeConfirmInput').placeholder = unit ? unit.name : '';
+    document.querySelector('input[name=purgeRange][value=all]').checked = true;
+    document.getElementById('purgeDateRow').style.display = 'none';
+    document.getElementById('purgeFrom').value = document.getElementById('fromDate').value;
+    document.getElementById('purgeTo').value   = document.getElementById('toDate').value;
+    document.getElementById('purgeConfirmInput').value = '';
+    const btn = document.getElementById('purgeSubmitBtn');
+    btn.disabled = false; btn.textContent = '🗑️ Purge';
+    document.getElementById('purgeModal').style.display = 'flex';
+  }
+
+  function closePurgeModal() {
+    document.getElementById('purgeModal').style.display = 'none';
+  }
+
+  function togglePurgeDateRange() {
+    const isRange = document.querySelector('input[name=purgeRange]:checked').value === 'range';
+    document.getElementById('purgeDateRow').style.display = isRange ? '' : 'none';
+  }
+
+  async function submitPurge() {
+    const confirmText = document.getElementById('purgeConfirmInput').value.trim();
+    if (!unit || confirmText.toLowerCase() !== unit.name.toLowerCase()) {
+      alert('Unit name does not match. Please type the exact unit name to confirm.');
+      return;
+    }
+    const isRange = document.querySelector('input[name=purgeRange]:checked').value === 'range';
+    const btn = document.getElementById('purgeSubmitBtn');
+    btn.disabled = true; btn.textContent = 'Purging…';
+    try {
+      let url = API + '/readings/' + unitId;
+      if (isRange) {
+        const from  = document.getElementById('purgeFrom').value;
+        const toEnd = document.getElementById('purgeTo').value
+          ? document.getElementById('purgeTo').value + 'T23:59:59' : '';
+        const params = new URLSearchParams();
+        if (from)  params.set('from', from);
+        if (toEnd) params.set('to',   toEnd);
+        if (params.toString()) url += '?' + params.toString();
+      }
+      const res  = await apiFetch(url, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      closePurgeModal();
+      alert(`✅ Purged ${data.deleted} reading${data.deleted !== 1 ? 's' : ''} successfully.`);
+      loadChart();
+    } catch (err) {
+      btn.disabled = false; btn.textContent = '🗑️ Purge';
+      alert('❌ Purge failed: ' + err.message);
+    }
   }
 
   init();
