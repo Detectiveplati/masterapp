@@ -101,8 +101,7 @@
           if (perm === '__admin__') {
             card.style.display = isAdmin ? '' : 'none';
           } else if (!isAdmin && !(user.permissions && user.permissions[perm])) {
-            card.classList.add('locked');
-            card.removeAttribute('href');
+            card.style.display = 'none';
           }
         });
 

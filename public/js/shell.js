@@ -297,19 +297,13 @@
       });
     }
 
-    // Hide/dim nav links that user doesn't have permission for
+    // Hide nav links that user doesn't have permission for
     if (user.role !== 'admin') {
       var permLinks = document.querySelectorAll('#sidenav [data-perm]');
       permLinks.forEach(function (link) {
         var perm = link.dataset.perm;
-        if (perm === '__admin__') {
+        if (perm === '__admin__' || (perm && !(user.permissions && user.permissions[perm]))) {
           link.style.display = 'none';
-          return;
-        }
-        if (perm && !(user.permissions && user.permissions[perm])) {
-          link.style.opacity   = '0.38';
-          link.style.pointerEvents = 'none';
-          link.style.cursor    = 'not-allowed';
         }
       });
     }
