@@ -4,8 +4,7 @@
  * Base: /api/tempmon
  *
  * Covers: units, devices, ingest (IoT gateway), alerts,
- *         corrective actions, calibrations, dashboard, reports,
- *         sample-data generator.
+ *         corrective actions, calibrations, dashboard, reports.
  */
 const express  = require('express');
 const router   = express.Router();
@@ -335,14 +334,13 @@ async function closeOfflineAlertIfOpen(deviceId) {
 // GET /api/tempmon/readings/:unitId?from=&to=&limit=&includeSample=
 router.get('/readings/:unitId', requireAuth, async (req, res) => {
   try {
-    const { from, to, limit = 2500, includeSample = 'true' } = req.query;
+    const { from, to, limit = 2500 } = req.query;
     const query = { unit: req.params.unitId };
     if (from || to) {
       query.recordedAt = {};
       if (from) query.recordedAt.$gte = new Date(from);
       if (to)   query.recordedAt.$lte = new Date(to);
     }
-    if (includeSample === 'false') query.isSample = false;
 
     const readings = await TempMonReading.find(query)
       .sort({ recordedAt: -1 })
@@ -370,7 +368,7 @@ router.get('/readings/:unitId/export', requireAuth, async (req, res) => {
 
     const readings = await TempMonReading.find(query).sort({ recordedAt: 1 }).populate('device', 'deviceId label').lean();
 
-    const lines = ['Timestamp,Device ID,Device Label,Temp (°C),RH (%),Battery (V),RSSI (dBm),Flagged,Sample'];
+    const lines = ['Timestamp,Device ID,Device Label,Temp (°C),RH (%),Battery (V),RSSI (dBm),Flagged'];
     for (const r of readings) {
       lines.push([
         new Date(r.recordedAt).toISOString(),
@@ -380,8 +378,7 @@ router.get('/readings/:unitId/export', requireAuth, async (req, res) => {
         r.humidity != null ? r.humidity : '',
         r.battery  != null ? r.battery  : '',
         r.rssi     != null ? r.rssi     : '',
-        r.flagged ? 'YES' : 'NO',
-        r.isSample ? 'YES' : 'NO'
+        r.flagged ? 'YES' : 'NO'
       ].join(','));
     }
 
@@ -657,7 +654,7 @@ router.get('/reports/daily', requireAuth, async (req, res) => {
       if (from) match.recordedAt.$gte = new Date(from);
       if (to)   match.recordedAt.$lte = new Date(to);
     }
-    match.isSample = false; // exclude sample data from reports
+
 
     const data = await TempMonReading.aggregate([
       { $match: match },
@@ -686,7 +683,7 @@ router.get('/reports/daily', requireAuth, async (req, res) => {
 router.get('/reports/compliance', requireAuth, async (req, res) => {
   try {
     const { from, to } = req.query;
-    const match = { isSample: false };
+    const match = {};
     if (from || to) {
       match.recordedAt = {};
       if (from) match.recordedAt.$gte = new Date(from);
@@ -723,76 +720,6 @@ router.get('/reports/compliance', requireAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-// ═══════════════════════════════════════════════════════════════════
-// SAMPLE DATA GENERATOR
-// ═══════════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════════
-// LIVE SIMULATION ENGINE
-// Injects one realistic reading per active unit on a configurable
-// interval. Admin-only. Useful when physical IoT devices aren't yet
-// on-site. Readings are tagged isSample:true.
-// ═══════════════════════════════════════════════════════════════════
-
-async function simTick() {
-  try {
-    const allUnits = await TempMonUnit.find({ active: true }).lean();
-    const disabledIds = (global._tempmonSimConfig?.disabledUnitIds || []).map(String);
-    const units = allUnits.filter(u => !disabledIds.includes(u._id.toString()));
-    for (const unit of units) {
-      // Ensure a sample device exists — auto-create if needed
-      let device = await TempMonDevice.findOne({ unit: unit._id, active: true }).lean();
-      if (!device) {
-        device = await TempMonDevice.create({
-          unit: unit._id, deviceId: `SIM_${unit._id}`,
-          label: 'Simulation Device', active: true
-        });
-        console.log(`✓ [TempMon] Auto-created sim device for unit: ${unit.name}`);
-      }
-
-      const target = unit.targetTemp != null ? unit.targetTemp : (unit.criticalMin + unit.criticalMax) / 2;
-      const range  = (unit.criticalMax - unit.criticalMin) / 6;
-
-      // Check if this unit is in out-of-range (excursion) mode
-      const excursionUnitIds = global._tempmonSimConfig?.excursionUnitIds || [];
-      const excursionActive  = excursionUnitIds.includes(unit._id.toString());
-
-      let value;
-      if (excursionActive) {
-        // Always breach HIGH (above criticalMax) regardless of unit type
-        value = Math.round((unit.criticalMax + 1 + Math.random() * 4) * 10) / 10;
-      } else {
-        const u1 = Math.random(), u2 = Math.random();
-        const z  = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
-        value = Math.round((target + z * range) * 10) / 10;
-        const lo = unit.criticalMin + (unit.warningBuffer || 2) + 0.5;
-        const hi = unit.criticalMax - (unit.warningBuffer || 2) - 0.5;
-        value = Math.max(lo, Math.min(hi, value));
-      }
-
-      const flagged = value < unit.criticalMin || value > unit.criticalMax;
-      const reading = await TempMonReading.create({
-        device: device._id, unit: unit._id,
-        value, recordedAt: new Date(), receivedAt: new Date(),
-        gatewayId: 'SIM', flagged, isSample: true
-      });
-
-      await TempMonDevice.updateOne({ _id: device._id }, { lastSeenAt: new Date() });
-      await closeOfflineAlertIfOpen(device._id);
-
-      const alertType = evaluateAlertType(value, unit);
-      if (alertType) {
-        await maybeCreateOrNotifyAlert(unit, device, reading._id, alertType, value);
-      } else {
-        await autoResolveAlerts(unit._id);
-      }
-    }
-    console.log(`✓ [TempMon] Sim tick — ${units.length}/${allUnits.length} unit(s) active`);
-  } catch (err) {
-    console.error('✗ [TempMon] Sim tick error:', err.message);
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════
 // CONFIG
@@ -844,178 +771,28 @@ async function getPushConfig() {
   return cfg;
 }
 
-// GET /api/tempmon/sim/status
-router.get('/sim/status', requireAuth, async (req, res) => {
-  res.json({
-    active:           !!global._tempmonSimActive,
-    intervalMinutes:  global._tempmonSimConfig?.intervalMinutes || 2,
-    excursionUnitIds: global._tempmonSimConfig?.excursionUnitIds || [],
-    disabledUnitIds:  global._tempmonSimConfig?.disabledUnitIds  || []
-  });
-});
-
-// POST /api/tempmon/sim/start
-router.post('/sim/start', requireAuth, async (req, res) => {
-  if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const { intervalMinutes = 2, excursionUnitIds = [], disabledUnitIds = [] } = req.body;
-  const ms = Math.max(1, intervalMinutes) * 60 * 1000;
-
-  if (global._tempmonSimInterval) clearInterval(global._tempmonSimInterval);
-  global._tempmonSimConfig  = {
-    intervalMinutes,
-    excursionUnitIds: excursionUnitIds.map(String),
-    disabledUnitIds:  disabledUnitIds.map(String)
-  };
-  global._tempmonSimActive  = true;
-  global._tempmonSimInterval = setInterval(simTick, ms);
-
-  simTick().catch(() => {});
-
-  console.log(`✓ [TempMon] Live sim started — interval: ${intervalMinutes}min, excursion: ${excursionUnitIds.length}, disabled: ${disabledUnitIds.length}`);
-  res.json({ ok: true, intervalMinutes, excursionUnitIds, disabledUnitIds });
-});
-
-// POST /api/tempmon/sim/stop
-router.post('/sim/stop', requireAuth, async (req, res) => {
-  if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  if (global._tempmonSimInterval) clearInterval(global._tempmonSimInterval);
-  global._tempmonSimActive   = false;
-  global._tempmonSimInterval = null;
-  global._tempmonSimConfig   = null;
-  console.log('✓ [TempMon] Live sim stopped');
-  res.json({ ok: true });
-});
-
-// POST /api/tempmon/sim/unit/:unitId/mode — toggle a unit's sim mode on the fly { mode: 'disabled'|'normal'|'critical' }
-router.post('/sim/unit/:unitId/mode', requireAuth, async (req, res) => {
-  if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  if (!global._tempmonSimActive) return res.status(400).json({ error: 'Simulation not running' });
-  const { mode } = req.body;
-  const unitId = req.params.unitId;
-  if (!global._tempmonSimConfig) global._tempmonSimConfig = { excursionUnitIds: [], disabledUnitIds: [] };
-  const excIds  = global._tempmonSimConfig.excursionUnitIds || [];
-  const disIds  = global._tempmonSimConfig.disabledUnitIds  || [];
-
-  // Remove from both lists first, then add to correct list
-  global._tempmonSimConfig.excursionUnitIds = excIds.filter(id => id !== unitId);
-  global._tempmonSimConfig.disabledUnitIds  = disIds.filter(id => id !== unitId);
-
-  if (mode === 'critical')  global._tempmonSimConfig.excursionUnitIds.push(unitId);
-  if (mode === 'disabled')  global._tempmonSimConfig.disabledUnitIds.push(unitId);
-
-  console.log(`✓ [TempMon] Sim unit ${unitId} → ${mode}`);
-  res.json({
-    ok: true,
-    excursionUnitIds: global._tempmonSimConfig.excursionUnitIds,
-    disabledUnitIds:  global._tempmonSimConfig.disabledUnitIds
-  });
-});
-
-// POST /api/tempmon/sample-data — admin only
-router.post('/sample-data', requireAuth, async (req, res) => {
+// POST /api/tempmon/test-push — send a test push notification to all tempmon subscribers
+router.post('/test-push', requireAuth, async (req, res) => {
   try {
-    if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
-
-    const { unitId, hours = 72, intervalMinutes = 5 } = req.body;
-    const units = unitId
-      ? await TempMonUnit.find({ _id: unitId, active: true })
-      : await TempMonUnit.find({ active: true });
-
-    if (units.length === 0) return res.status(404).json({ error: 'No active units found' });
-
-    let totalInserted = 0;
-
-    for (const unit of units) {
-      let devices = await TempMonDevice.find({ unit: unit._id, active: true });
-      // Auto-create a sample device if the unit has none — allows testing without real hardware
-      if (devices.length === 0) {
-        const sampleDevice = await TempMonDevice.create({
-          unit: unit._id, deviceId: `SAMPLE_${unit._id}`,
-          label: 'Sample Device', active: true
-        });
-        devices = [sampleDevice];
-        console.log(`✓ [TempMon] Auto-created sample device for unit: ${unit.name}`);
+    const { unitId } = req.body;
+    let title   = '🔔 Test Push Notification';
+    let message = 'This is a test alert from Equipment Temp Monitor.';
+    if (unitId) {
+      const unit = await TempMonUnit.findById(unitId).lean();
+      if (unit) {
+        title   = `🔔 Test: ${unit.name}`;
+        message = `Push notifications are working for ${unit.name}.`;
       }
-
-      const now       = new Date();
-      const startTime = new Date(now - hours * 60 * 60 * 1000);
-      const steps     = Math.floor((hours * 60) / intervalMinutes);
-      const target    = unit.targetTemp != null ? unit.targetTemp : (unit.criticalMin + unit.criticalMax) / 2;
-      const range     = (unit.criticalMax - unit.criticalMin) / 6; // natural variance
-
-      // Delete existing sample readings for this unit in this time window
-      await TempMonReading.deleteMany({ unit: unit._id, isSample: true, recordedAt: { $gte: startTime } });
-
-      // Plan excursion windows (2–4 events, each 15–30 min long)
-      const numExcursions = 2 + Math.floor(Math.random() * 3);
-      const excursions = [];
-      for (let e = 0; e < numExcursions; e++) {
-        const startStep = Math.floor(Math.random() * (steps - 30));
-        const duration  = 3 + Math.floor(Math.random() * 6); // in steps
-        excursions.push({ start: startStep, end: startStep + duration });
-      }
-
-      const readings = [];
-      for (let i = 0; i < steps; i++) {
-        const ts        = new Date(startTime.getTime() + i * intervalMinutes * 60 * 1000);
-        const inExcursion = excursions.some(ex => i >= ex.start && i <= ex.end);
-        let value;
-
-        if (inExcursion) {
-          // Push outside critical limits
-          const breach = unit.type === 'warmer'
-            ? unit.criticalMax + 1 + Math.random() * 4
-            : unit.criticalMin - 1 - Math.random() * 4;
-          value = Math.round(breach * 10) / 10;
-        } else {
-          // Normal distribution around target
-          const u1 = Math.random(), u2 = Math.random();
-          const z  = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
-          value = Math.round((target + z * range) * 10) / 10;
-          // Clamp to within warning zone (not normal to be at exact limit during stable operation)
-          const lo = unit.criticalMin + unit.warningBuffer + 0.5;
-          const hi = unit.criticalMax - unit.warningBuffer - 0.5;
-          value = Math.max(lo, Math.min(hi, value));
-        }
-
-        const flagged = value < unit.criticalMin || value > unit.criticalMax;
-
-        for (const device of devices) {
-          readings.push({
-            device:     device._id,
-            unit:       unit._id,
-            value,
-            recordedAt: ts,
-            receivedAt: ts,
-            gatewayId:  'SAMPLE_GENERATOR',
-            flagged,
-            isSample:   true
-          });
-        }
-      }
-
-      await TempMonReading.insertMany(readings, { ordered: false });
-      totalInserted += readings.length;
     }
-
-    console.log('✓ [TempMon] Sample data generated:', totalInserted, 'readings');
-    res.json({ ok: true, inserted: totalInserted });
-  } catch (err) {
-    console.error('✗ [TempMon] Sample data error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// DELETE /api/tempmon/sample-data/:unitId — purge sample readings for a unit
-router.delete('/sample-data/:unitId', requireAuth, async (req, res) => {
-  try {
-    if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
-    const result = await TempMonReading.deleteMany({ unit: req.params.unitId, isSample: true });
-    res.json({ ok: true, deleted: result.deletedCount });
+    sendPush(title, message, '/tempmon/alerts.html');
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+
 
 // ═══════════════════════════════════════════════════════════════════
 // DEVICE-OFFLINE CRON

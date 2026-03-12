@@ -45,11 +45,7 @@
     .type-warmer  { background: rgba(230,81,0,.1);   color: #e65100; }
     .type-ambient { background: rgba(90,97,108,.1);  color: var(--muted); }
     .inactive-row td { opacity: .5; }
-    /* Sample data */
-    .sample-card { background: rgba(255,193,7,.06); border: 1px solid rgba(255,193,7,.3); border-radius: 12px; padding: 18px 20px; }
-    .sample-card h3 { font-size: 0.95rem; font-weight: 800; margin-bottom: 10px; }
-    .sample-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,.06); flex-wrap: wrap; }
-    .sample-row:last-child { border-bottom: none; }
+
     .notice { padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; margin-top: 12px; display: none; }
     .notice.ok  { background: rgba(39,174,96,.1); color: #2e7d32; }
     .notice.err { background: rgba(198,40,40,.1); color: #c62828; }
@@ -73,7 +69,7 @@
     <button class="tab-btn active" data-tab="units" onclick="switchTab('units')">🏭 Units</button>
     <button class="tab-btn" data-tab="devices" onclick="switchTab('devices')">📡 Devices</button>
     <button class="tab-btn" data-tab="thresholds" onclick="switchTab('thresholds')">🔔 Thresholds</button>
-    <button class="tab-btn admin-only" data-tab="sample" onclick="switchTab('sample')" style="display:none">🧪 Sample Data</button>
+
   </div>
 
   <!-- ── UNITS TAB ─────────────────────────────────────── -->
@@ -199,50 +195,6 @@
     </div>
   </div>
 
-<!-- ── SAMPLE DATA TAB (admin only) ──────────────────────── -->
-  <div id="tab-sample" class="tab-panel">
-    <div class="section-card">
-      <h2>🧪 Sample Data Generator</h2>
-      <p style="color:var(--muted);font-size:0.88rem;margin-bottom:18px">
-        Generate synthetic temperature readings so the dashboard and charts are functional before physical devices arrive.
-        All sample readings are tagged <code>isSample: true</code> and excluded from compliance reports.
-        Re-running replaces existing sample data for the selected unit.
-        <strong>Note:</strong> If no device exists for a unit, one will be created automatically.
-      </p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
-        <div class="fg"><label>Unit (blank = all)</label><select id="sampleUnit"><option value="">All Units</option></select></div>
-        <div class="fg"><label>Hours back</label><input id="sampleHours" type="number" value="72" min="1" max="720" style="width:80px"></div>
-        <div class="fg"><label>Interval (min)</label><input id="sampleInterval" type="number" value="5" min="1" max="60" style="width:80px"></div>
-        <button class="btn btn-primary" onclick="generateSample()">▶️ Generate Sample Data</button>
-      </div>
-      <div id="sampleStatus" class="notice"></div>
-    </div>
-
-    <div class="section-card">
-      <h2>🔴 Live Simulation</h2>
-      <p style="color:var(--muted);font-size:0.88rem;margin-bottom:18px">
-        Injects one real-time reading per active unit every <em>N</em> minutes — simulates live IoT data without hardware.
-        Set each unit to <strong>Normal</strong> (within acceptable range) or <strong>Out&nbsp;of&nbsp;Range</strong>
-        (critical breach) independently to test alerts and push notifications per device.
-      </p>
-      <div id="simStatusBanner" style="display:none;padding:10px 14px;border-radius:8px;font-size:0.88rem;font-weight:700;margin-bottom:14px;background:rgba(39,174,96,.12);color:#2e7d32">⚡ Live simulation is running</div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
-        <div class="fg" style="margin:0"><label>Interval (min)</label><input id="simInterval" type="number" value="2" min="1" max="60" style="width:80px"></div>
-        <button class="btn btn-primary" id="simStartBtn" onclick="startSim()">▶️ Start Live Sim</button>
-        <button class="btn btn-outline" id="simStopBtn" onclick="stopSim()" style="display:none">⏹️ Stop</button>
-        <button class="btn btn-outline btn-sm" id="simRefreshBtn" onclick="refreshSimLatestTemps()" style="margin-left:auto">🔄 Refresh Readings</button>
-      </div>
-      <div id="simUnitTable" style="margin-bottom:14px">
-        <div style="color:var(--muted);font-size:0.85rem;font-style:italic">Loading units…</div>
-      </div>
-      <div id="simNotice" class="notice"></div>
-    </div>
-
-    <div class="section-card sample-card">
-      <h3>🗑️ Purge Sample Data by Unit</h3>
-      <div id="purgeList"><div class="no-data">Loading units…</div></div>
-    </div>
-  </div>
 </main>
 
 <!-- Add TAG Modal -->
@@ -365,7 +317,6 @@
       document.documentElement.style.visibility = '';
       if (user.role === 'admin') {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
-        loadSimStatus();
       }
       await loadUnits();
       await Promise.all([loadDevices(), loadAreas()]);
@@ -383,7 +334,6 @@
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     const panel = document.getElementById('tab-' + name);
     if (panel) panel.classList.add('active');
-    if (name === 'sample') loadPurgeList();
     if (name === 'thresholds') { renderThresholds(); loadPushConfig(); }
   }
 
@@ -460,17 +410,8 @@
   }
 
   function populateUnitSelectors() {
-    ['dUnit', 'sampleUnit'].forEach(id => {
-      const sel = document.getElementById(id);
-      if (!sel) return;
-      const placeholder = (id === 'sampleUnit') ? '<option value="">All Units</option>' : '<option value="">Select unit…</option>';
-      sel.innerHTML = placeholder + units.map(u => `<option value="${u._id}">${escHtml(u.name)}</option>`).join('');
-    });
-    // Rebuild sim unit table whenever unit list changes
-    const excursionUnitIds = Object.entries(simUnitModes).filter(([, m]) => m === 'critical').map(([id]) => id);
-    const disabledUnitIds  = Object.entries(simUnitModes).filter(([, m]) => m === 'disabled').map(([id]) => id);
-    const simRunning = document.getElementById('simStopBtn').style.display !== 'none';
-    renderSimUnitTable(excursionUnitIds, disabledUnitIds, simRunning);
+    const sel = document.getElementById('dUnit');
+    if (sel) sel.innerHTML = '<option value="">Select unit…</option>' + units.map(u => `<option value="${u._id}">${escHtml(u.name)}</option>`).join('');
   }
 
   async function addUnit() {
@@ -660,189 +601,6 @@
     } catch (err) { alert('❌ ' + err.message); }
   }
 
-  // ── Sample Data ─────────────────────────────────────────────────
-  async function generateSample() {
-    const unitId   = document.getElementById('sampleUnit').value;
-    const hours    = parseInt(document.getElementById('sampleHours').value) || 72;
-    const interval = parseInt(document.getElementById('sampleInterval').value) || 5;
-    const btn = event.target;
-    btn.disabled = true; btn.textContent = 'Generating…';
-    try {
-      const r = await apiFetch(API + '/sample-data', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ unitId: unitId || undefined, hours, intervalMinutes: interval })
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error);
-      showNotice('sampleStatus', 'ok', `✅ Generated ${d.inserted} sample readings!`);
-    } catch (err) { showNotice('sampleStatus', 'err', '❌ ' + err.message); }
-    finally { btn.disabled = false; btn.textContent = '▶️ Generate Sample Data'; }
-  }
-
-  async function loadPurgeList() {
-    if (!units.length) { const r = await apiFetch(API + '/units'); units = await r.json(); }
-    populateUnitSelectors(); // keep sim / sample selects in sync
-    document.getElementById('purgeList').innerHTML = units.map(u => `
-      <div class="sample-row">
-        <div>
-          <div style="font-weight:700">${escHtml(u.name)}</div>
-          <div style="font-size:0.78rem;color:var(--muted)">${u.type}</div>
-        </div>
-        <button class="btn btn-danger btn-sm" onclick="purgeSample('${u._id}', '${escHtml(u.name)}')">🗑️ Clear Sample Data</button>
-      </div>`).join('') || '<div class="no-data">No units</div>';
-  }
-
-  async function purgeSample(unitId, name) {
-    if (!confirm('Delete all sample readings for "' + name + '"?')) return;
-    const r = await apiFetch(API + '/sample-data/' + unitId, { method: 'DELETE' });
-    const d = await r.json();
-    showNotice('sampleStatus', 'ok', `🗑️ Deleted ${d.deleted} sample readings for "${name}"`);
-  }
-
-  // ── Live Simulation ──────────────────────────────────────────────
-  // Per-unit mode: 'disabled' | 'normal' | 'critical'
-  const simUnitModes = {};
-
-  async function loadSimStatus() {
-    try {
-      const r = await apiFetch(API + '/sim/status');
-      const s = await r.json();
-      setSimUI(s.active, s.intervalMinutes, s.excursionUnitIds || [], s.disabledUnitIds || []);
-    } catch (_) {}
-  }
-
-  function setSimUI(active, intervalMinutes, excursionUnitIds = [], disabledUnitIds = []) {
-    document.getElementById('simStatusBanner').style.display = active ? 'block' : 'none';
-    document.getElementById('simStartBtn').style.display     = active ? 'none'  : '';
-    document.getElementById('simStopBtn').style.display      = active ? ''      : 'none';
-    if (active) document.getElementById('simInterval').value = intervalMinutes || 2;
-    renderSimUnitTable(excursionUnitIds, disabledUnitIds, active);
-  }
-
-  function renderSimUnitTable(excursionUnitIds = [], disabledUnitIds = [], simRunning = false) {
-    const wrap = document.getElementById('simUnitTable');
-    if (!units.length) {
-      wrap.innerHTML = '<div style="color:var(--muted);font-size:0.85rem">No active units. Add a unit in the Units tab first.</div>';
-      return;
-    }
-    // Sync server state into local staging map
-    units.forEach(u => {
-      const id = u._id.toString();
-      if (disabledUnitIds.map(String).includes(id))       simUnitModes[id] = 'disabled';
-      else if (excursionUnitIds.map(String).includes(id)) simUnitModes[id] = 'critical';
-      else if (!simUnitModes[id])                         simUnitModes[id] = 'normal';
-    });
-
-    const rows = units.map(u => {
-      const mode = simUnitModes[u._id] || 'normal';
-      const icon = { freezer: '🧊', chiller: '❄️', warmer: '🔥', ambient: '🌡️' }[u.type] || '🌡️';
-      const btn = (label, val, bg, fg) =>
-        `<button onclick="toggleUnitMode('${u._id}','${val}')"
-          style="padding:5px 13px;font-size:0.79rem;font-weight:700;cursor:pointer;border:none;
-          background:${mode === val ? bg : '#f5f5f5'};color:${mode === val ? fg : 'var(--muted)'}">${label}</button>`;
-      return `<tr style="border-bottom:1px solid var(--border)">
-        <td style="padding:10px 14px;font-weight:700">${icon} ${escHtml(u.name)}</td>
-        <td style="padding:10px 14px;color:var(--muted);font-size:0.82rem;text-transform:capitalize">${u.type}</td>
-        <td style="padding:10px 14px" id="simlatest-${u._id}">
-          ${mode === 'disabled'
-            ? '<span style="color:var(--muted);font-size:0.8rem">⏸ Paused</span>'
-            : '<span style="color:var(--muted);font-size:0.82rem">—</span>'}
-        </td>
-        <td style="padding:10px 14px">
-          <div style="display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
-            ${btn('⏸ Off',      'disabled', '#616161', '#fff')}
-            <span style="border-left:1px solid var(--border)"></span>
-            ${btn('✅ Normal',   'normal',   '#2e7d32', '#fff')}
-            <span style="border-left:1px solid var(--border)"></span>
-            ${btn('⚠️ Out of Range', 'critical', '#c62828', '#fff')}
-          </div>
-        </td>
-      </tr>`;
-    }).join('');
-
-    wrap.innerHTML = `
-      <table style="width:100%;border-collapse:collapse;font-size:0.88rem;border:1px solid var(--border);border-radius:10px;overflow:hidden">
-        <thead style="background:#f8f8f8">
-          <tr>
-            <th style="padding:9px 14px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:800">Unit</th>
-            <th style="padding:9px 14px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:800">Type</th>
-            <th style="padding:9px 14px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:800">Latest Reading</th>
-            <th style="padding:9px 14px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:800">Simulation Mode</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-    refreshSimLatestTemps();
-  }
-
-  async function refreshSimLatestTemps() {
-    for (const u of units) {
-      if ((simUnitModes[u._id] || 'normal') === 'disabled') continue;
-      try {
-        const r    = await apiFetch(API + '/readings/' + u._id + '?limit=1');
-        const data = await r.json();
-        const el   = document.getElementById('simlatest-' + u._id);
-        if (!el) continue;
-        if (data.length) {
-          const rd  = data[0];
-          const col = rd.flagged ? '#c62828' : '#2e7d32';
-          const ts  = fmtTimeShort(rd.recordedAt);
-          el.innerHTML = `<span style="font-weight:700;color:${col}">${rd.value.toFixed(1)}°C</span>
-            <span style="font-size:0.75rem;color:var(--muted);margin-left:5px">${ts}${rd.isSample ? ' · sim' : ''}</span>`;
-        } else {
-          el.innerHTML = '<span style="color:var(--muted);font-size:0.82rem">No data yet</span>';
-        }
-      } catch (_) {}
-    }
-  }
-
-  async function toggleUnitMode(unitId, mode) {
-    simUnitModes[unitId] = mode;
-    const simRunning = document.getElementById('simStopBtn').style.display !== 'none';
-    if (simRunning) {
-      try {
-        await apiFetch(API + '/sim/unit/' + unitId + '/mode', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mode })
-        });
-      } catch (_) {}
-    }
-    const excursionUnitIds = Object.entries(simUnitModes).filter(([, m]) => m === 'critical').map(([id]) => id);
-    const disabledUnitIds  = Object.entries(simUnitModes).filter(([, m]) => m === 'disabled').map(([id]) => id);
-    renderSimUnitTable(excursionUnitIds, disabledUnitIds, simRunning);
-  }
-
-  async function startSim() {
-    const intervalMinutes  = parseInt(document.getElementById('simInterval').value) || 2;
-    const excursionUnitIds = Object.entries(simUnitModes).filter(([, m]) => m === 'critical').map(([id]) => id);
-    const disabledUnitIds  = Object.entries(simUnitModes).filter(([, m]) => m === 'disabled').map(([id]) => id);
-    const btn = document.getElementById('simStartBtn');
-    btn.disabled = true; btn.textContent = 'Starting…';
-    try {
-      const r = await apiFetch(API + '/sim/start', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intervalMinutes, excursionUnitIds, disabledUnitIds })
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error);
-      const activeCount = units.length - disabledUnitIds.length;
-      setSimUI(true, intervalMinutes, excursionUnitIds, disabledUnitIds);
-      showNotice('simNotice', 'ok', `⚡ Sim started — every ${intervalMinutes} min · ${activeCount} unit(s) active · ${excursionUnitIds.length} out-of-range`);
-    } catch (err) { showNotice('simNotice', 'err', '❌ ' + err.message); }
-    finally { btn.disabled = false; btn.textContent = '▶️ Start Live Sim'; }
-  }
-
-  async function stopSim() {
-    const btn = document.getElementById('simStopBtn');
-    btn.disabled = true; btn.textContent = 'Stopping…';
-    try {
-      await apiFetch(API + '/sim/stop', { method: 'POST' });
-      Object.keys(simUnitModes).forEach(k => { simUnitModes[k] = 'normal'; });
-      setSimUI(false, null, [], []);
-      showNotice('simNotice', 'ok', '⏹️ Live simulation stopped');
-    } catch (err) { showNotice('simNotice', 'err', '❌ ' + err.message); }
-    finally { btn.disabled = false; btn.textContent = '⏹️ Stop'; }
-  }
   // ── Push config ─────────────────────────────────────────────────
   async function loadPushConfig() {
     try {
