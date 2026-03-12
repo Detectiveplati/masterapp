@@ -111,6 +111,9 @@
       <option value="warmer">🔥 Warmer</option>
       <option value="ambient">🌡️ Ambient</option>
     </select>
+    <select class="filter-type" id="filterLocation" onchange="applyFilters()">
+      <option value="all">All Locations</option>
+    </select>
     <span class="filter-count" id="filterCount"></span>
   </div>
 
@@ -158,8 +161,9 @@
 
   function applyFilters() {
     if (!allUnits.length) return;
-    const text     = (document.getElementById('filterText')?.value || '').toLowerCase().trim();
-    const typeVal  = document.getElementById('filterType')?.value || 'all';
+    const text      = (document.getElementById('filterText')?.value || '').toLowerCase().trim();
+    const typeVal   = document.getElementById('filterType')?.value || 'all';
+    const locVal    = document.getElementById('filterLocation')?.value || 'all';
 
     const filtered = allUnits.filter(u => {
       const cls = u.latestReading ? tempClass(u, u.latestReading) : (u.openAlerts ? 'critical' : 'no-reading');
@@ -170,6 +174,10 @@
         if (cls !== activeStatus) return false;
       }
       if (typeVal !== 'all' && u.type !== typeVal) return false;
+      if (locVal  !== 'all') {
+        const uLoc = (u.area || u.location || '').trim() || 'Uncategorized';
+        if (uLoc !== locVal) return false;
+      }
       if (text) {
         const haystack = [(u.name||''), (u.location||''), (u.area||''), (u.type||'')].join(' ').toLowerCase();
         if (!haystack.includes(text)) return false;
@@ -289,6 +297,15 @@
       }
 
       allUnits = units;
+      // Rebuild location dropdown from current unit data
+      const locSel = document.getElementById('filterLocation');
+      if (locSel) {
+        const prevLoc = locSel.value;
+        const locs = [...new Set(units.map(u => (u.area || u.location || '').trim() || 'Uncategorized'))].sort((a,b) => {
+          if (a === 'Uncategorized') return 1; if (b === 'Uncategorized') return -1; return a.localeCompare(b);
+        });
+        locSel.innerHTML = '<option value="all">All Locations</option>' + locs.map(l => `<option value="${escHtml(l)}"${l === prevLoc ? ' selected' : ''}>${escHtml(l)}</option>`).join('');
+      }
       applyFilters();
     } catch (err) {
       console.error(err);
