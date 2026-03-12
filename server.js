@@ -823,6 +823,13 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
         if (alertType) {
             await tmMaybeCreateAlert(unit, tmDevice, reading._id, alertType, sensorRow.temp);
         } else {
+            // Clear in-memory excursion timers so the next excursion starts a fresh countdown
+            if (global._tempmonExcursionStart) {
+                const prefix = String(unit._id) + '_';
+                Object.keys(global._tempmonExcursionStart).forEach(k => {
+                    if (k.startsWith(prefix)) delete global._tempmonExcursionStart[k];
+                });
+            }
             await TempMonAlert.updateMany(
                 { unit: unit._id, type: { $in: ['critical_high', 'critical_low', 'warning_high', 'warning_low'] }, status: { $in: ['open', 'acknowledged'] } },
                 { $set: { status: 'resolved', resolvedAt: new Date(), resolveNote: 'Temperature returned to normal range automatically' } }
@@ -852,42 +859,48 @@ function tmBuildAlertLabel(type, value, unit) {
 async function tmMaybeCreateAlert(unit, device, readingId, type, value) {
     // Skip alert creation entirely when unit is marked as not in use
     if (unit.inUse === false) return;
+
+    // Check for existing open/acknowledged alert (handles server restarts)
+    const existing = await TempMonAlert.findOne({ unit: unit._id, type, status: { $in: ['open', 'acknowledged'] } });
+    if (existing) return; // already alerted — no duplicate
+
     // Load push delays from DB config (cached 5 min)
     const cfg = await getSvPushConfig();
-    const thresholdMs    = type.startsWith('critical_')
+    const thresholdMs = type.startsWith('critical_')
         ? (cfg.pushDelayCriticalMinutes || 60) * 60 * 1000
         : (cfg.pushDelayWarningMinutes  || 120) * 60 * 1000;
     const thresholdLabel = type.startsWith('critical_')
         ? `${cfg.pushDelayCriticalMinutes || 60} min`
         : `${cfg.pushDelayWarningMinutes  || 120} min`;
-    const existing = await TempMonAlert.findOne({ unit: unit._id, type, status: { $in: ['open', 'acknowledged'] } });
 
-    if (existing) {
-        if (!existing.pushSentAt) {
-            const alertAgeMs = Date.now() - new Date(existing.createdAt).getTime();
-            if (alertAgeMs >= thresholdMs) {
-                await TempMonAlert.updateOne({ _id: existing._id }, { pushSentAt: new Date(), notificationSent: true });
-                if (typeof sendPushToPermission === 'function') {
-                    sendPushToPermission('tempmon', {
-                        title:   `${type.startsWith('critical') ? '🔴' : '🟡'} ${unit.name}: ${tmBuildAlertLabel(type, value, unit)}`,
-                        message: `Temperature has been out of range for ${thresholdLabel}. Check the unit.`,
-                        url:     '/tempmon/alerts.html'
-                    }).catch(() => {});
-                    // Invalidate cache so next reading picks up any config change
-                    _svPushConfigCache = null;
-                }
-            }
-        }
-        return;
+    // In-memory excursion tracker
+    if (!global._tempmonExcursionStart) global._tempmonExcursionStart = {};
+    const key = `${unit._id}_${type}`;
+    const now = Date.now();
+
+    if (!global._tempmonExcursionStart[key]) {
+        global._tempmonExcursionStart[key] = now;
+        return; // start timer, no alert yet
     }
 
-    // Alert record created immediately — push withheld until threshold
+    const elapsedMs = now - global._tempmonExcursionStart[key];
+    if (elapsedMs < thresholdMs) return; // still within grace period
+
+    // Threshold exceeded — create alert record and send push immediately
     const alert = new TempMonAlert({
         unit: unit._id, device: device._id, reading: readingId, type, value,
-        pushSentAt:       null,
-        notificationSent: false
+        pushSentAt:       new Date(),
+        notificationSent: true
     });
     await alert.save();
+
+    if (typeof sendPushToPermission === 'function') {
+        sendPushToPermission('tempmon', {
+            title:   `${type.startsWith('critical') ? '🔴' : '🟡'} ${unit.name}: ${tmBuildAlertLabel(type, value, unit)}`,
+            message: `Temperature has been out of range for ${thresholdLabel}. Check the unit.`,
+            url:     '/tempmon/alerts.html'
+        }).catch(() => {});
+    }
 }
 
 const LORA_SUPPORTED_MODELS = ['TAG07', 'TAG08B', 'TAG08L', 'TAG09'];

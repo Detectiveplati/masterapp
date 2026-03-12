@@ -264,45 +264,53 @@ function evaluateAlertType(value, unit) {
 async function maybeCreateOrNotifyAlert(unit, device, readingId, type, value) {
   // Skip alert creation entirely when unit is marked as not in use
   if (unit.inUse === false) return;
+
+  // Check if there is already an open/acknowledged alert for this unit+type
+  // (covers restarts where in-memory state is lost)
+  const existing = await TempMonAlert.findOne({ unit: unit._id, type, status: { $in: ['open', 'acknowledged'] } });
+  if (existing) return false; // already alerted — no duplicate
+
   // Load push delays from DB config (cached 5 min)
   const cfg = await getPushConfig();
-  const thresholdMs    = type.startsWith('critical_')
+  const thresholdMs = type.startsWith('critical_')
     ? (cfg.pushDelayCriticalMinutes || 60) * 60 * 1000
     : (cfg.pushDelayWarningMinutes  || 120) * 60 * 1000;
   const thresholdLabel = type.startsWith('critical_')
     ? `${cfg.pushDelayCriticalMinutes || 60} min`
     : `${cfg.pushDelayWarningMinutes  || 120} min`;
 
-  // Check for an existing open/acknowledged alert of the same type for this unit
-  const existing = await TempMonAlert.findOne({ unit: unit._id, type, status: { $in: ['open', 'acknowledged'] } });
+  // In-memory excursion tracker: only raise the alert after the full threshold period
+  if (!global._tempmonExcursionStart) global._tempmonExcursionStart = {};
+  const key = `${unit._id}_${type}`;
+  const now = Date.now();
 
-  if (existing) {
-    // Alert already exists — check if threshold duration has now been exceeded and push not yet sent
-    if (!existing.pushSentAt) {
-      const alertAgeMs = Date.now() - new Date(existing.createdAt).getTime();
-      if (alertAgeMs >= thresholdMs) {
-        await TempMonAlert.updateOne({ _id: existing._id }, { pushSentAt: new Date(), notificationSent: true });
-        const isCritical = type.startsWith('critical_');
-        const emoji = isCritical ? '🔴' : '🟡';
-        const label = buildAlertLabel(type, value, unit);
-        sendPush(`${emoji} ${unit.name}: ${label}`,
-          `Temperature has been out of range for ${thresholdLabel}. Check the unit.`,
-          '/tempmon/alerts.html');
-        console.log(`✓ [TempMon] Push sent (${thresholdLabel} threshold met): ${type} for "${unit.name}" at ${value}°C`);
-      }
-    }
+  if (!global._tempmonExcursionStart[key]) {
+    // First reading out of range for this unit+type — start the timer, no alert yet
+    global._tempmonExcursionStart[key] = now;
+    console.log(`⏱  [TempMon] Excursion started (${thresholdLabel} required): ${type} for "${unit.name}" at ${value}°C`);
     return false;
   }
 
-  // Alert record always created immediately (visible in alerts page)
-  // Push notification withheld until threshold duration is reached
+  const elapsedMs = now - global._tempmonExcursionStart[key];
+  if (elapsedMs < thresholdMs) return false; // still within grace period
+
+  // Threshold exceeded — create alert record and send push immediately
   const alert = new TempMonAlert({
     unit: unit._id, device: device._id, reading: readingId, type, value,
-    pushSentAt:       null,
-    notificationSent: false
+    pushSentAt:       new Date(),
+    notificationSent: true
   });
   await alert.save();
-  console.log(`✓ [TempMon] Alert created (push pending ${thresholdLabel}): ${type} for "${unit.name}" at ${value}°C`);
+
+  const isCritical = type.startsWith('critical_');
+  const emoji = isCritical ? '🔴' : '🟡';
+  const label = buildAlertLabel(type, value, unit);
+  sendPush(`${emoji} ${unit.name}: ${label}`,
+    `Temperature has been out of range for ${thresholdLabel}. Check the unit.`,
+    '/tempmon/alerts.html');
+  console.log(`✓ [TempMon] Alert raised + push sent after ${thresholdLabel}: ${type} for "${unit.name}" at ${value}°C`);
+
+  // Keep the key so further readings don't re-trigger; cleared when temp returns to normal
   return true;
 }
 
@@ -314,6 +322,13 @@ function buildAlertLabel(type, value, unit) {
 }
 
 async function autoResolveAlerts(unitId) {
+  // Clear in-memory excursion timers for this unit so the next excursion starts a fresh countdown
+  if (global._tempmonExcursionStart) {
+    const prefix = String(unitId) + '_';
+    Object.keys(global._tempmonExcursionStart).forEach(k => {
+      if (k.startsWith(prefix)) delete global._tempmonExcursionStart[k];
+    });
+  }
   await TempMonAlert.updateMany(
     { unit: unitId, type: { $in: ['critical_high', 'critical_low', 'warning_high', 'warning_low'] }, status: { $in: ['open', 'acknowledged'] } },
     { $set: { status: 'resolved', resolvedAt: new Date(), resolveNote: 'Temperature returned to normal range automatically' } }
