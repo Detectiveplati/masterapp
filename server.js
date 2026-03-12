@@ -1053,12 +1053,14 @@ function extractLoraSensorRows(payload) {
     }
 
     // Deduplicate: when a sensor flushes a buffer of readings in one batch, all entries
-    // share the same gateway timestamp (rtc / server receipt time) but have different values.
-    // Keep only the LAST occurrence per (sensorId, recordedAt) pair — one reading per
-    // sensor per second is the right resolution for temperature monitoring.
+    // may share the same gateway timestamp but have different values.
+    // Keep only the LAST occurrence per (sensorId, 5-minute window) — one reading per
+    // sensor per 5 minutes is the desired resolution.
+    const BUCKET_MS = 5 * 60 * 1000;
     const deduped = new Map(); // key → row
     for (const r of rows) {
-        deduped.set(r.sensorId + '|' + r.recordedAt, r);
+        const bucket = Math.floor(new Date(r.recordedAt).getTime() / BUCKET_MS);
+        deduped.set(r.sensorId + '|' + bucket, r);
     }
     return [...deduped.values()];
 }
