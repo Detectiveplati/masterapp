@@ -1,6 +1,9 @@
 [build]
 builder = "nixpacks"
 
+[build.env]
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+
 [deploy]
 startCommand = "node server.js"
 healthcheckPath = "/api/health"
