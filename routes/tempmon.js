@@ -262,14 +262,16 @@ function evaluateAlertType(value, unit) {
 }
 
 async function maybeCreateOrNotifyAlert(unit, device, readingId, type, value) {
-  const thresholdMs = (unit.alertThresholdMinutes || 0) * 60 * 1000;
+  // Fixed type-based push delay: critical = 60 min, warning = 120 min
+  const thresholdMs = type.startsWith('critical_') ? 60 * 60 * 1000 : 120 * 60 * 1000;
+  const thresholdLabel = type.startsWith('critical_') ? '60 min' : '2 hours';
 
   // Check for an existing open/acknowledged alert of the same type for this unit
   const existing = await TempMonAlert.findOne({ unit: unit._id, type, status: { $in: ['open', 'acknowledged'] } });
 
   if (existing) {
     // Alert already exists — check if threshold duration has now been exceeded and push not yet sent
-    if (!existing.pushSentAt && thresholdMs > 0) {
+    if (!existing.pushSentAt) {
       const alertAgeMs = Date.now() - new Date(existing.createdAt).getTime();
       if (alertAgeMs >= thresholdMs) {
         await TempMonAlert.updateOne({ _id: existing._id }, { pushSentAt: new Date(), notificationSent: true });
@@ -277,32 +279,23 @@ async function maybeCreateOrNotifyAlert(unit, device, readingId, type, value) {
         const emoji = isCritical ? '🔴' : '🟡';
         const label = buildAlertLabel(type, value, unit);
         sendPush(`${emoji} ${unit.name}: ${label}`,
-          `Temperature has been out of range for ${unit.alertThresholdMinutes}+ min. Check the unit.`,
+          `Temperature has been out of range for ${thresholdLabel}. Check the unit.`,
           '/tempmon/alerts.html');
-        console.log(`✓ [TempMon] Push sent (threshold met ${unit.alertThresholdMinutes}min): ${type} for "${unit.name}" at ${value}°C`);
+        console.log(`✓ [TempMon] Push sent (${thresholdLabel} threshold met): ${type} for "${unit.name}" at ${value}°C`);
       }
     }
     return false;
   }
 
-  // No existing alert — create one
-  const sendImmediately = thresholdMs === 0;
+  // Alert record always created immediately (visible in alerts page)
+  // Push notification withheld until threshold duration is reached
   const alert = new TempMonAlert({
     unit: unit._id, device: device._id, reading: readingId, type, value,
-    pushSentAt:       sendImmediately ? new Date() : null,
-    notificationSent: sendImmediately
+    pushSentAt:       null,
+    notificationSent: false
   });
   await alert.save();
-
-  if (sendImmediately) {
-    const isCritical = type.startsWith('critical_');
-    const emoji = isCritical ? '🔴' : '🟡';
-    sendPush(`${emoji} ${unit.name}: ${buildAlertLabel(type, value, unit)}`,
-      `Check the unit immediately. Alert created.`, '/tempmon/alerts.html');
-    console.log(`✓ [TempMon] Alert + push: ${type} for "${unit.name}" at ${value}°C`);
-  } else {
-    console.log(`✓ [TempMon] Alert created (push pending ${unit.alertThresholdMinutes}min threshold): ${type} for "${unit.name}" at ${value}°C`);
-  }
+  console.log(`✓ [TempMon] Alert created (push pending ${thresholdLabel}): ${type} for "${unit.name}" at ${value}°C`);
   return true;
 }
 

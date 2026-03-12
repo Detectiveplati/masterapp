@@ -833,18 +833,20 @@ function tmBuildAlertLabel(type, value, unit) {
 }
 
 async function tmMaybeCreateAlert(unit, device, readingId, type, value) {
-    const thresholdMs = (unit.alertThresholdMinutes || 0) * 60 * 1000;
+    // Fixed type-based push delay: critical = 60 min, warning = 120 min
+    const thresholdMs    = type.startsWith('critical_') ? 60 * 60 * 1000 : 120 * 60 * 1000;
+    const thresholdLabel = type.startsWith('critical_') ? '60 min' : '2 hours';
     const existing = await TempMonAlert.findOne({ unit: unit._id, type, status: { $in: ['open', 'acknowledged'] } });
 
     if (existing) {
-        if (!existing.pushSentAt && thresholdMs > 0) {
+        if (!existing.pushSentAt) {
             const alertAgeMs = Date.now() - new Date(existing.createdAt).getTime();
             if (alertAgeMs >= thresholdMs) {
                 await TempMonAlert.updateOne({ _id: existing._id }, { pushSentAt: new Date(), notificationSent: true });
                 if (typeof sendPushToPermission === 'function') {
                     sendPushToPermission('tempmon', {
                         title:   `${type.startsWith('critical') ? '🔴' : '🟡'} ${unit.name}: ${tmBuildAlertLabel(type, value, unit)}`,
-                        message: `Temperature has been out of range for ${unit.alertThresholdMinutes}+ min. Check the unit.`,
+                        message: `Temperature has been out of range for ${thresholdLabel}. Check the unit.`,
                         url:     '/tempmon/alerts.html'
                     }).catch(() => {});
                 }
@@ -853,21 +855,13 @@ async function tmMaybeCreateAlert(unit, device, readingId, type, value) {
         return;
     }
 
-    const sendImmediately = thresholdMs === 0;
+    // Alert record created immediately — push withheld until threshold
     const alert = new TempMonAlert({
         unit: unit._id, device: device._id, reading: readingId, type, value,
-        pushSentAt:       sendImmediately ? new Date() : null,
-        notificationSent: sendImmediately
+        pushSentAt:       null,
+        notificationSent: false
     });
     await alert.save();
-
-    if (sendImmediately && typeof sendPushToPermission === 'function') {
-        sendPushToPermission('tempmon', {
-            title:   `${type.startsWith('critical') ? '🔴' : '🟡'} ${unit.name}: ${tmBuildAlertLabel(type, value, unit)}`,
-            message: 'Check the unit immediately.',
-            url:     '/tempmon/alerts.html'
-        }).catch(() => {});
-    }
 }
 
 const LORA_SUPPORTED_MODELS = ['TAG07', 'TAG08B', 'TAG08L', 'TAG09'];
