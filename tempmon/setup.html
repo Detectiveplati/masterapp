@@ -372,7 +372,7 @@
         <td>${u.criticalMin}°C – ${u.criticalMax}°C</td>
         <td>${u.targetTemp != null ? u.targetTemp + '°C' : '—'}</td>
         <td>${u.active ? '<span style="color:#2e7d32;font-weight:700">Active</span>' : '<span style="color:var(--muted)">Inactive</span>'}</td>
-        <td><button class="btn btn-outline btn-sm" onclick="openEditUnit('${u._id}')">✏️</button></td>
+        <td style="display:flex;gap:5px"><button class="btn btn-outline btn-sm" onclick="openEditUnit('${u._id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteUnit('${u._id}', '${escHtml(u.name).replace(/'/g,'\\&#39;')}')">🗑️</button></td>
       </tr>`;
     }).join('');
   }
@@ -441,6 +441,14 @@
     document.getElementById('editUnitModal').style.display = 'flex';
   }
   function closeEditUnit() { document.getElementById('editUnitModal').style.display = 'none'; }
+  async function deleteUnit(id, name) {
+    if (!confirm(`Delete unit "${name}"? This will deactivate it and remove it from the dashboard. Historical readings are preserved.`)) return;
+    try {
+      const r = await apiFetch(API + '/units/' + id, { method: 'DELETE' });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      await loadUnits();
+    } catch (err) { alert('❌ ' + err.message); }
+  }
   async function saveEditUnit() {
     const id = document.getElementById('euId').value;
     try {
@@ -472,21 +480,21 @@
   // ── Devices ─────────────────────────────────────────────────────
   async function loadDevices() {
     const r = await apiFetch(API + '/devices');
-    devices = await r.json();
+    devices = (await r.json()).filter(d => d.active);
     const tbody = document.getElementById('devicesBody');
     if (!devices.length) { tbody.innerHTML = '<tr><td colspan="8" class="no-data">No devices yet.</td></tr>'; return; }
     tbody.innerHTML = devices.map(d => {
       const dueDays = d.calibrationDue ? Math.ceil((new Date(d.calibrationDue) - Date.now()) / 86400000) : null;
       const dueStr  = d.calibrationDue ? (dueDays <= 30 ? `⚠️ ${dueDays}d` : fmtDate(d.calibrationDue)) : '—';
-      return `<tr class="${d.active ? '' : 'inactive-row'}">
+      return `<tr>
         <td><code style="font-size:0.8rem">${escHtml(d.deviceId)}</code></td>
         <td>${escHtml(d.label || '—')}</td>
         <td>${d.unit ? escHtml(d.unit.name) : '—'}</td>
         <td>${d.batteryPct != null ? d.batteryPct + '%' : '—'}</td>
         <td style="font-size:0.78rem">${d.lastSeenAt ? fmtDateTime(d.lastSeenAt) : 'Never'}</td>
         <td style="font-size:0.78rem;${dueDays != null && dueDays <= 30 ? 'color:#c62828;font-weight:700' : ''}">${dueStr}</td>
-        <td>${d.active ? '<span style="color:#2e7d32;font-weight:700">Active</span>' : '<span style="color:var(--muted)">Inactive</span>'}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="decommission('${d._id}')">Decommission</button></td>
+        <td><span style="color:#2e7d32;font-weight:700">Active</span></td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteDevice('${d._id}', '${escHtml(d.label || d.deviceId).replace(/'/g,'\\&#39;')}')">🗑️ Delete</button></td>
       </tr>`;
     }).join('');
   }
@@ -513,10 +521,13 @@
     } catch (err) { showNotice('deviceNotice', 'err', '❌ ' + err.message); }
   }
 
-  async function decommission(id) {
-    if (!confirm('Decommission this device? It will no longer report.')) return;
-    await apiFetch(API + '/devices/' + id, { method: 'DELETE' });
-    await loadDevices();
+  async function deleteDevice(id, label) {
+    if (!confirm(`Delete TAG device "${label}"? It will be decommissioned and removed from this list.`)) return;
+    try {
+      const r = await apiFetch(API + '/devices/' + id, { method: 'DELETE' });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      await loadDevices();
+    } catch (err) { alert('❌ ' + err.message); }
   }
 
   // ── Equipment Seed ───────────────────────────────────────────
