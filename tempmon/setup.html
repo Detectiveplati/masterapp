@@ -518,7 +518,6 @@
     document.getElementById('euTarget').value  = u.targetTemp ?? '';
     document.getElementById('euThreshold').value = u.alertThresholdMinutes ?? 0;
     document.getElementById('euNotes').value   = u.notes || '';
-    document.getElementById('euActive').checked = u.active;
     const notInUse = u.inUse === false;
     document.getElementById('euNotInUse').checked = notInUse;
     document.getElementById('euInUseComment').value = u.inUseComment || '';
@@ -593,7 +592,7 @@
           warningBuffer: parseFloat(document.getElementById('euBuffer').value) || 2,
           targetTemp:    document.getElementById('euTarget').value !== '' ? parseFloat(document.getElementById('euTarget').value) : null,
           notes:         document.getElementById('euNotes').value.trim(),
-          active:        document.getElementById('euActive').checked,
+          active:        true,
           inUse:         !document.getElementById('euNotInUse').checked,
           inUseComment:  document.getElementById('euInUseComment').value.trim(),
           alertThresholdMinutes: parseInt(document.getElementById('euThreshold').value) || 0
