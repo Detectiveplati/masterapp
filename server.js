@@ -79,12 +79,12 @@ async function seedTempMonUnits() {
         };
 
         const SENSORS = [
-            { sn: '9240013',  name: 'CK-B4-FW-01',                             type: 'warmer'  },
-            { sn: '9240014',  name: 'CK-B4-FW-02',                             type: 'warmer'  },
-            { sn: '9240127',  name: 'CK-B4-FW-03',                             type: 'warmer'  },
-            { sn: '9240128',  name: 'CK-B4-FW-04',                             type: 'warmer'  },
-            { sn: '9240129',  name: 'CK-B4-FW-05',                             type: 'warmer'  },
-            { sn: '9240130',  name: 'CK-B5-FW-06',                             type: 'warmer'  },
+            { sn: '09240013', name: 'CK-B4-FW-01',                             type: 'warmer'  },
+            { sn: '09240014', name: 'CK-B4-FW-02',                             type: 'warmer'  },
+            { sn: '09240127', name: 'CK-B4-FW-03',                             type: 'warmer'  },
+            { sn: '09240128', name: 'CK-B4-FW-04',                             type: 'warmer'  },
+            { sn: '09240129', name: 'CK-B4-FW-05',                             type: 'warmer'  },
+            { sn: '09240130', name: 'CK-B5-FW-06',                             type: 'warmer'  },
             { sn: '82242245', name: 'CK-WC-01 (Packing Room WC)',              type: 'chiller' },
             { sn: '82242251', name: 'CK-WC-02 (Hot Kitchen Veg WC)',           type: 'chiller' },
             { sn: '82242252', name: 'CK-WC-03 (Hot Kitchen Meat WC)',          type: 'chiller' },
@@ -115,7 +115,7 @@ async function seedTempMonUnits() {
         let created = 0;
         for (const sensor of SENSORS) {
             const limits = LIMITS[sensor.type];
-            const sn = sensor.sn.trim().toUpperCase();
+            const sn = normalizeSensorId(sensor.sn);
 
             const unitDoc = await TempMonUnit.findOneAndUpdate(
                 { name: sensor.name },
@@ -149,12 +149,12 @@ async function seedLoraLinks(db) {
         const TempMonUnit   = require('./models/TempMonUnit');
         const TYPE_TO_EQUIP = { warmer: 'warmer', chiller: 'chiller', freezer: 'freezer' };
         const SENSORS = [
-            { sn: '9240013',  name: 'CK-B4-FW-01',                             type: 'warmer'  },
-            { sn: '9240014',  name: 'CK-B4-FW-02',                             type: 'warmer'  },
-            { sn: '9240127',  name: 'CK-B4-FW-03',                             type: 'warmer'  },
-            { sn: '9240128',  name: 'CK-B4-FW-04',                             type: 'warmer'  },
-            { sn: '9240129',  name: 'CK-B4-FW-05',                             type: 'warmer'  },
-            { sn: '9240130',  name: 'CK-B5-FW-06',                             type: 'warmer'  },
+            { sn: '09240013', name: 'CK-B4-FW-01',                             type: 'warmer'  },
+            { sn: '09240014', name: 'CK-B4-FW-02',                             type: 'warmer'  },
+            { sn: '09240127', name: 'CK-B4-FW-03',                             type: 'warmer'  },
+            { sn: '09240128', name: 'CK-B4-FW-04',                             type: 'warmer'  },
+            { sn: '09240129', name: 'CK-B4-FW-05',                             type: 'warmer'  },
+            { sn: '09240130', name: 'CK-B5-FW-06',                             type: 'warmer'  },
             { sn: '82242245', name: 'CK-WC-01 (Packing Room WC)',              type: 'chiller' },
             { sn: '82242251', name: 'CK-WC-02 (Hot Kitchen Veg WC)',           type: 'chiller' },
             { sn: '82242252', name: 'CK-WC-03 (Hot Kitchen Meat WC)',          type: 'chiller' },
@@ -184,7 +184,7 @@ async function seedLoraLinks(db) {
         let linked = 0;
         const now = new Date();
         for (const sensor of SENSORS) {
-            const sn   = sensor.sn.trim().toUpperCase();
+            const sn   = normalizeSensorId(sensor.sn);
             const unit = await TempMonUnit.findOne({ name: sensor.name }).lean();
             if (!unit) continue;
             await db.collection('lora_devices').updateOne(
@@ -783,7 +783,7 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
 
         // Store reading
         const flagged = sensorRow.temp < unit.criticalMin || sensorRow.temp > unit.criticalMax;
-        const reading = new TempMonReading({
+        const readingData = {
             device:     tmDevice._id,
             unit:       unit._id,
             value:      sensorRow.temp,
@@ -791,9 +791,12 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
             receivedAt: new Date(),
             gatewayId:  gatewayId || '',
             flagged
-        });
+        };
+        if (sensorRow.humidity != null) readingData.humidity = sensorRow.humidity;
+        const reading = new TempMonReading(readingData);
         await reading.save();
-        console.log(`✓ [TempMon] Reading saved: ${sensorRow.sensorId} → "${unit.name}" ${sensorRow.temp}°C${flagged ? ' ⚠️ FLAGGED' : ''}`);
+        const rhStr = sensorRow.humidity != null ? ` RH:${sensorRow.humidity}%` : '';
+        console.log(`✓ [TempMon] Reading saved: ${sensorRow.sensorId} → "${unit.name}" ${sensorRow.temp}°C${rhStr}${flagged ? ' ⚠️ FLAGGED' : ''}`);
 
         // Alert logic
         const alertType = tmEvaluateAlertType(sensorRow.temp, unit);
@@ -881,7 +884,11 @@ function normalizeLoraModel(value) {
 }
 
 function normalizeSensorId(value) {
-    return String(value || '').trim().toUpperCase();
+    const s = String(value || '').trim().toUpperCase();
+    // TZONE TAG sensor IDs are always 8 BCD digits from the wire (4 bytes × 2 nibbles).
+    // Pad pure-numeric IDs shorter than 8 digits so wire IDs match stored ones.
+    if (/^\d+$/.test(s) && s.length < 8) return s.padStart(8, '0');
+    return s;
 }
 
 function parseRecordedAt(value) {
@@ -1361,7 +1368,7 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
         let ingested = 0;
         if (mappedReadings.length) {
             // Forward to TempMon for any sensor linked to a unit (before stripping _loraDevice)
-            await Promise.all(mappedReadings.map(r => forwardToTempMon(r._loraDevice, { sensorId: r.sensorId, temp: r.temp, recordedAt: r.recordedAt }, gatewayId)));
+            await Promise.all(mappedReadings.map(r => forwardToTempMon(r._loraDevice, { sensorId: r.sensorId, temp: r.temp, humidity: r.humidity, recordedAt: r.recordedAt }, gatewayId)));
 
             // Strip internal helper field before inserting into TempLog collection
             const cleanReadings = mappedReadings.map(({ _loraDevice, ...rest }) => rest);
@@ -1715,7 +1722,11 @@ async function ingestTcpTagRecords(gatewayImei, tags, tagModel) {
         imei: gatewayImei,
         data: { [tagModel.toLowerCase()]: tags.map(t => ({
             id: t.id, temp: t.temp, humi: t.humidity, rssi: t.rssi,
-            bat: t.battery, sta: t.status, rtc: t.rtc
+            bat: t.battery, sta: t.status,
+            // Use server receipt time (now) as recordedAt — individual TAG device clocks
+            // are NOT synced via the gateway @UTC command and may be factory-default
+            // (e.g. 2020-01-01), resulting in timestamps thousands of days in the past.
+            recordedAt: now.toISOString()
         })) }
     };
     const gatewayId = String(gatewayImei || '').trim();
@@ -1754,7 +1765,7 @@ async function ingestTcpTagRecords(gatewayImei, tags, tagModel) {
     if (mappedReadings.length) {
         try {
             // Forward to TempMon for any sensor linked to a unit
-            await Promise.all(mappedReadings.map(r => forwardToTempMon(r._loraDevice, { sensorId: r.sensorId, temp: r.temp, recordedAt: r.recordedAt }, gatewayId)));
+            await Promise.all(mappedReadings.map(r => forwardToTempMon(r._loraDevice, { sensorId: r.sensorId, temp: r.temp, humidity: r.humidity, recordedAt: r.recordedAt }, gatewayId)));
 
             const cleanReadings = mappedReadings.map(({ _loraDevice, ...rest }) => rest);
             const result = await ingestEquipmentReadings({ templogDb }, cleanReadings);

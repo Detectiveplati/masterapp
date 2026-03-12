@@ -124,9 +124,9 @@
     <h2>📋 Recent Readings</h2>
     <div style="overflow-x:auto">
       <table class="readings-table"><thead>
-        <tr><th>Timestamp</th><th>Device</th><th>Temp (°C)</th><th>Status</th></tr>
+        <tr><th>Timestamp</th><th>Device</th><th>Temp (°C)</th><th>RH (%)</th><th>Status</th></tr>
       </thead><tbody id="readingsBody">
-        <tr><td colspan="4" class="no-data">Loading…</td></tr>
+        <tr><td colspan="5" class="no-data">Loading…</td></tr>
       </tbody></table>
     </div>
   </div>
@@ -216,8 +216,10 @@
     const r = await apiFetch(url);
     const readings = await r.json();
 
-    const labels = readings.map(r => fmtChartLabel(r.recordedAt));
-    const data   = readings.map(r => r.value);
+    const labels   = readings.map(r => fmtChartLabel(r.recordedAt));
+    const data     = readings.map(r => r.value);
+    const rhData   = readings.map(r => r.humidity != null ? r.humidity : null);
+    const hasRH    = rhData.some(v => v != null);
     const buffer = unit ? (unit.warningBuffer || 2) : 2;
     const colors = readings.map(r => {
       if (r.flagged) return 'rgba(198,40,40,0.9)';
@@ -230,6 +232,19 @@
     if (chartInst) chartInst.destroy();
     document.getElementById('resetZoomBtn').style.display = 'none';
     const ctx = document.getElementById('tempChart').getContext('2d');
+    const rhDataset = hasRH ? [{
+      label: 'Humidity (%RH)',
+      data: rhData,
+      borderColor: 'rgba(33,150,243,0.85)',
+      backgroundColor: 'rgba(33,150,243,0.05)',
+      pointBackgroundColor: 'rgba(33,150,243,0.7)',
+      pointRadius: readings.length > 200 ? 0 : 2,
+      pointHoverRadius: 4,
+      tension: 0.35,
+      fill: false,
+      yAxisID: 'yRH',
+      spanGaps: true
+    }] : [];
     chartInst = new Chart(ctx, {
       type: 'line',
       data: {
@@ -243,8 +258,9 @@
           pointRadius: readings.length > 200 ? 0 : 3,
           pointHoverRadius: 5,
           tension: 0.3,
-          fill: true
-        }]
+          fill: true,
+          yAxisID: 'y'
+        }, ...rhDataset]
       },
       options: {
         responsive: true,
@@ -262,6 +278,10 @@
               },
               label: item => {
                 const rd = chartReadings[item.dataIndex];
+                if (item.datasetIndex === 1) {
+                  // RH dataset
+                  return rd && rd.humidity != null ? [' 💧  ' + rd.humidity.toFixed(1) + '%RH'] : null;
+                }
                 if (!rd) return item.parsed.y.toFixed(1) + '°C';
                 const val    = rd.value.toFixed(1) + '°C';
                 const isWarn = !rd.flagged &&
@@ -377,6 +397,16 @@
             title: { display: true, text: '°C' },
             grid: { color: 'rgba(0,0,0,0.05)' }
           },
+          ...(hasRH ? {
+            yRH: {
+              type: 'linear',
+              position: 'right',
+              title: { display: true, text: '% RH', color: 'rgba(33,150,243,0.85)' },
+              min: 0, max: 100,
+              grid: { drawOnChartArea: false },
+              ticks: { color: 'rgba(33,150,243,0.85)' }
+            }
+          } : {}),
           x: {
             ticks: { maxTicksLimit: 10, maxRotation: 0 },
             grid: { display: false }
@@ -396,9 +426,10 @@
             <td>${fmtDateTime(rd.recordedAt)}</td>
             <td style="font-size:0.78rem">${devLabel}</td>
             <td style="font-weight:700">${rd.value.toFixed(1)}°C</td>
+            <td>${rd.humidity != null ? rd.humidity.toFixed(1) + '%' : '<span style="color:var(--muted)">—</span>'}</td>
             <td>${rd.flagged ? '<span class="flag">⚠️ Out of range</span>' : '✅'} ${rd.isSample ? '<span class="sample-tag">(sample)</span>' : ''}</td>
           </tr>`).join('')
-      : '<tr><td colspan="4" class="no-data">No readings in selected range. If sensors are linked, try widening the date range or check the Gateway Setup page to confirm the sensors are sending data.</td></tr>';
+      : '<tr><td colspan="5" class="no-data">No readings in selected range. If sensors are linked, try widening the date range or check the Gateway Setup page to confirm the sensors are sending data.</td></tr>';
   }
 
   function resetZoom() {

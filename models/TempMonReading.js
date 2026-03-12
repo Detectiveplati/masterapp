@@ -16,6 +16,7 @@ const TempMonReadingSchema = new mongoose.Schema({
   device:     { type: mongoose.Schema.Types.ObjectId, ref: 'TempMonDevice', required: true },
   unit:       { type: mongoose.Schema.Types.ObjectId, ref: 'TempMonUnit',   required: true }, // denormalised
   value:      { type: Number, required: true },          // °C
+  humidity:   { type: Number, default: null },           // %RH (TAG08B only; null for temp-only probes)
   recordedAt: { type: Date,   required: true },          // gateway timestamp (authoritative for HACCP)
   receivedAt: { type: Date,   default: Date.now },       // server receipt time
   gatewayId:  { type: String, default: '' },
