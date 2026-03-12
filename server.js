@@ -1359,7 +1359,9 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
                 model: mapped.model || row.model || '',
                 humidity: row.humidity,
                 rssi: row.rssi,
-                recordedAt: row.recordedAt,
+                // Use server receipt time — individual TAG device clocks are not synced
+                // (same reasoning as TCP path: gateway @UTC only syncs the RD07 itself).
+                recordedAt: now.toISOString(),
                 createdAt: now,
                 _loraDevice: mapped   // carry device doc for TempMon forwarding
             });
