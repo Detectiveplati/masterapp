@@ -735,6 +735,7 @@ const TempMonDevice  = require('./models/TempMonDevice');
 const TempMonReading = require('./models/TempMonReading');
 const TempMonAlert   = require('./models/TempMonAlert');
 const TempMonConfig  = require('./models/TempMonConfig');
+const { updateWarmerState: tmUpdateWarmerState } = require('./routes/tempmon');
 
 // ── Push config cache (shared with routes/tempmon via same mongoose connection) ──
 let _svPushConfigCache = null;
@@ -817,6 +818,9 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
         const rhStr  = sensorRow.humidity != null ? ` RH:${sensorRow.humidity}%` : '';
         const batStr = sensorRow.battery  != null ? ` Bat:${sensorRow.battery}V`  : '';
         console.log(`✓ [TempMon] Reading saved: ${sensorRow.sensorId} → "${unit.name}" ${sensorRow.temp}°C${rhStr}${batStr}${flagged ? ' ⚠️ FLAGGED' : ''}`);
+
+        // Update warmer power state (on/off/fault detection) — no-op for non-warmer units
+        await tmUpdateWarmerState(unit, sensorRow.temp, readingData.recordedAt);
 
         // Alert logic
         const alertType = tmEvaluateAlertType(sensorRow.temp, unit);

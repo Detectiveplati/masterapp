@@ -20,7 +20,19 @@ const TempMonUnitSchema = new mongoose.Schema({
   notes:               { type: String, default: '', trim: true },
   // Minutes a unit must stay at critical temperature before a push notification fires.
   // 0 = notify immediately. Recommended: 20–30 min for kitchen equipment.
-  alertThresholdMinutes: { type: Number, default: 0 }
+  alertThresholdMinutes: { type: Number, default: 0 },
+  // Warmer-specific: configurable thresholds for the on/off/fault state machine
+  warmerStateConfig: {
+    roomTempCeiling:   { type: Number, default: 35 },  // ≤ this °C = off / room temperature
+    warmupStartTemp:   { type: Number, default: 40 },  // > this °C = warmer considered switched on
+    offConfirmMinutes: { type: Number, default: 20 },  // minutes at room temp before confirming OFF
+    faultMinutes:      { type: Number, default: 30 }   // minutes stuck below target before FAULT
+  },
+  // Persisted warmer on/off/fault state — updated on each reading, survives server restarts
+  warmerState: {
+    state: { type: String, enum: ['off', 'warming_up', 'active', 'cooling', 'fault', 'unknown'], default: 'unknown' },
+    since: { type: Date }
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('TempMonUnit', TempMonUnitSchema);

@@ -232,6 +232,9 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
       // Close any open device_offline alert for this device
       await closeOfflineAlertIfOpen(device._id);
 
+      // Update warmer power state (on/off/fault detection) — no-op for non-warmer units
+      await updateWarmerState(unit, value, ts);
+
       // Alert logic
       const alertType = evaluateAlertType(value, unit);
       if (alertType) {
@@ -906,4 +909,97 @@ if (!global._tempmonPushCronStarted) {
   console.log('✓ [TempMon] Pending push cron started (1-min interval)');
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// WARMER STATE MACHINE
+// ═══════════════════════════════════════════════════════════════════
+// Temperature zones (relative to unit.criticalMin as targetLow, e.g. 60°C):
+//   Room   : temp ≤ roomTempCeiling (35°C)      → off or cooling down
+//   Low    : roomCeiling < temp ≤ warmupStart   → ambiguous, treated as cooling
+//   Mid    : warmupStart < temp < targetLow     → warming up (or fault if too long)
+//   Active : temp ≥ targetLow (criticalMin)     → warmer working normally
+//
+// State transitions:
+//   off        → warming_up : temp enters Mid zone (turned on)
+//   warming_up → active     : temp reaches Active zone
+//   warming_up → fault      : stuck in Mid zone for faultMinutes without reaching target
+//   active     → cooling    : temp drops below Active zone
+//   cooling    → off        : sustained at Room temp for offConfirmMinutes
+//   fault      → active     : temp finally reaches Active zone (self-resolved)
+//   fault      → cooling    : temp drops to Room zone
+// ───────────────────────────────────────────────────────────────────
+async function updateWarmerState(unit, value, readingTs) {
+  if (unit.type !== 'warmer') return;
+
+  const cfg          = unit.warmerStateConfig || {};
+  const roomCeiling  = cfg.roomTempCeiling   ?? 35;
+  const warmupStart  = cfg.warmupStartTemp   ?? 40;
+  const targetLow    = unit.criticalMin;              // e.g. 60°C
+  const offConfirmMs = (cfg.offConfirmMinutes ?? 20) * 60000;
+  const faultMs      = (cfg.faultMinutes      ?? 30) * 60000;
+
+  const ts = (readingTs instanceof Date ? readingTs : new Date(readingTs || Date.now())).getTime();
+
+  if (!global._warmerState) global._warmerState = {};
+
+  // Bootstrap in-memory tracker from DB on first reading after server start
+  if (!global._warmerState[unit._id]) {
+    global._warmerState[unit._id] = {
+      state: unit.warmerState?.state || 'unknown',
+      since: unit.warmerState?.since ? new Date(unit.warmerState.since).getTime() : ts
+    };
+  }
+
+  const current = global._warmerState[unit._id];
+  const state   = current.state;
+  const since   = current.since;
+  const elapsed = ts - since;
+  let   newState = state;
+
+  if (value >= targetLow) {
+    // Active zone — warmer is maintaining temperature
+    newState = 'active';
+  } else if (value <= roomCeiling) {
+    // Room temp zone
+    if (state === 'off') {
+      newState = 'off';
+    } else if (state === 'cooling') {
+      newState = elapsed >= offConfirmMs ? 'off' : 'cooling';
+    } else {
+      // Dropped to room temp from any other state → start cooling timer
+      newState = 'cooling';
+    }
+  } else if (value > warmupStart) {
+    // Mid zone: warmupStart < temp < targetLow (e.g. 40–60°C)
+    if (state === 'fault') {
+      newState = 'fault'; // stays faulted until temp reaches target or cools completely
+    } else if (state === 'warming_up') {
+      newState = elapsed >= faultMs ? 'fault' : 'warming_up';
+    } else {
+      // Coming from off / cooling / active — start warmup timer
+      newState = 'warming_up';
+    }
+  } else {
+    // Low zone: roomCeiling < temp ≤ warmupStart (35–40°C)
+    // Ambiguous — keep existing off, treat everything else as cooling
+    newState = (state === 'off') ? 'off' : 'cooling';
+  }
+
+  if (newState !== state) {
+    const prev = state;
+    global._warmerState[unit._id] = { state: newState, since: ts };
+    await TempMonUnit.findByIdAndUpdate(unit._id, {
+      $set: { 'warmerState.state': newState, 'warmerState.since': new Date(ts) }
+    });
+    console.log(`🔥 [TempMon] Warmer "${unit.name}": ${prev} → ${newState} at ${value}°C`);
+    if (newState === 'fault' && unit.inUse !== false) {
+      sendPush(
+        `⚠️ ${unit.name}: Warmer may be faulty`,
+        `Temperature stuck at ${value}°C for ${cfg.faultMinutes ?? 30} min — not reaching target of ${targetLow}°C. Check the warmer.`,
+        '/tempmon/unit.html?id=' + String(unit._id)
+      );
+    }
+  }
+}
+
 module.exports = router;
+module.exports.updateWarmerState = updateWarmerState;

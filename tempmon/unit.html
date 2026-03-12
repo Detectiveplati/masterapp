@@ -40,6 +40,15 @@
     .limit-badge.min  { background: rgba(21,101,192,.1);  color: #1565c0; }
     .limit-badge.max  { background: rgba(198,40,40,.1);   color: #c62828; }
     .limit-badge.tgt  { background: rgba(46,125,50,.1);   color: #2e7d32; }
+    /* Warmer state pill */
+    .warmer-state-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 800; padding: 5px 14px; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; }
+    .warmer-state-pill.off        { background: #f0f0f0; color: #757575; }
+    .warmer-state-pill.warming_up { background: rgba(245,124,0,.13); color: #e65100; }
+    .warmer-state-pill.active     { background: rgba(46,125,50,.12);  color: #2e7d32; }
+    .warmer-state-pill.cooling    { background: rgba(21,101,192,.10); color: #1565c0; }
+    .warmer-state-pill.fault      { background: rgba(198,40,40,.12);  color: #c62828; animation: fault-pulse 1.4s ease-in-out infinite; }
+    .warmer-state-pill.unknown    { background: #f5f5f5; color: #bdbdbd; }
+    @keyframes fault-pulse { 0%,100% { opacity:1; } 50% { opacity:.55; } }
     /* Chart */
     .chart-wrap { position: relative; height: 320px; }
     /* Readings table */
@@ -86,6 +95,7 @@
       </div>
     </div>
     <div style="margin-top:4px" id="openAlertsInline"></div>
+    <div id="warmerStateRow" style="display:none;margin-top:10px"></div>
   </div>
 
   <!-- Chart -->
@@ -196,6 +206,24 @@
       <span class="limit-badge max">Max ${unit.criticalMax}°C</span>
       ${unit.targetTemp != null ? `<span class="limit-badge tgt">Target ${unit.targetTemp}°C</span>` : ''}`;
     document.getElementById('limitsRow').innerHTML = limitsHtml;
+
+    // Warmer power state pill — only rendered for warmer-type units
+    if (unit.type === 'warmer') {
+      const ws  = unit.warmerState || {};
+      const s   = ws.state || 'unknown';
+      const stateLabels = {
+        off:        '⬜ Off',
+        warming_up: '🌡 Warming Up',
+        active:     '✅ Active',
+        cooling:    '❄️ Cooling Down',
+        fault:      '⚠️ FAULT — Check Warmer',
+        unknown:    '— Unknown'
+      };
+      const row = document.getElementById('warmerStateRow');
+      row.style.display = '';
+      row.innerHTML = `<span class="warmer-state-pill ${s}">${stateLabels[s] || s}</span>`
+        + (ws.since ? `<span style="font-size:0.75rem;color:var(--muted);margin-left:10px">since ${fmtDateTime(ws.since)}</span>` : '');
+    }
 
     // Latest reading via readings endpoint
     const rr = await apiFetch(API + '/readings/' + unitId + '?limit=1');
