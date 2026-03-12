@@ -36,7 +36,7 @@
     .unit-card.warning   { border-left: 4px solid #e65100; }
     .unit-card.critical  { border-left: 4px solid #c62828; }
     .unit-card.offline   { border-left: 4px solid #9e9e9e; opacity: .75; }
-    .unit-card.no-data   { border-left: 4px solid #bdbdbd; }
+    .unit-card.no-reading { border-left: 4px solid #bdbdbd; }
     .unit-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
     .unit-icon { font-size: 1.8rem; }
     .unit-name { font-size: 1rem; font-weight: 800; color: var(--ink); }
@@ -111,7 +111,7 @@
   const TYPE_ICONS = { freezer: '🧊', chiller: '❄️', warmer: '🔥', ambient: '🌡️' };
 
   function tempClass(unit, reading) {
-    if (!reading) return 'no-data';
+    if (!reading) return 'no-reading';
     const v = reading.value;
     // Out of bounds entirely → critical; flagged by server → critical
     if (reading.flagged || v < unit.criticalMin || v > unit.criticalMax) return 'critical';
@@ -121,7 +121,7 @@
   }
 
   function tempTextClass(cls) {
-    return { 'in-range': 'temp-in-range', 'warning': 'temp-warning', 'critical': 'temp-critical', 'offline': 'temp-offline', 'no-data': 'temp-nodata' }[cls] || 'temp-nodata';
+    return { 'in-range': 'temp-in-range', 'warning': 'temp-warning', 'critical': 'temp-critical', 'offline': 'temp-offline', 'no-reading': 'temp-nodata' }[cls] || 'temp-nodata';
   }
 
   function relativeTime(date) {
@@ -135,7 +135,7 @@
 
   function renderCard(u) {
     const r         = u.latestReading;
-    const cls       = r ? tempClass(u, r) : (u.openAlerts ? 'critical' : 'no-data');
+    const cls       = r ? tempClass(u, r) : (u.openAlerts ? 'critical' : 'no-reading');
     const tCls      = tempTextClass(cls);
     const tempStr   = r ? r.value.toFixed(1) + '°C' : '—';
     const icon      = TYPE_ICONS[u.type] || '🌡️';
