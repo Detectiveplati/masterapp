@@ -69,8 +69,13 @@
     .filter-btn.f-warning.active  { background: #e65100; border-color: #e65100; }
     .filter-btn.f-ok.active       { background: #2e7d32; border-color: #2e7d32; }
     .filter-btn.f-offline.active  { background: #757575; border-color: #757575; }
-    .filter-type { padding: 6px 10px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.82rem; font-weight: 700; color: var(--muted); background: transparent; cursor: pointer; }
-    .filter-type:focus { border-color: var(--accent); outline: none; }
+    .filter-btn.f-freezer.active { background: #1565c0; border-color: #1565c0; }
+    .filter-btn.f-chiller.active { background: #0288d1; border-color: #0288d1; }
+    .filter-btn.f-warmer.active  { background: #e65100; border-color: #e65100; }
+    .filter-btn.f-ambient.active { background: #558b2f; border-color: #558b2f; }
+    .filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; }
+    .filter-row-lbl { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); white-space: nowrap; min-width: 50px; }
+    .filter-divider { width: 100%; height: 1px; background: var(--border); margin: 4px 0; }
     .filter-count { margin-left: auto; font-size: 0.76rem; color: var(--muted); white-space: nowrap; }
     @media (max-width: 600px) { main { padding: 16px; } .unit-temp { font-size: 2rem; } .filter-bar { gap: 6px; } }
   </style>
@@ -93,28 +98,35 @@
     <a href="/tempmon/gateway-log.html" class="nav-link">🪵 Raw Log</a>
   </div>
 
-  <div class="filter-bar">
-    <input type="search" id="filterText" placeholder="🔍 Search units…" oninput="applyFilters()">
-    <div class="filter-group" id="statusFilters">
-      <button class="filter-btn active" data-status="all"   onclick="setStatus('all')">All</button>
-      <button class="filter-btn f-critical" data-status="critical" onclick="setStatus('critical')">🔴 Critical</button>
-      <button class="filter-btn f-warning"  data-status="warning"  onclick="setStatus('warning')">🟡 Warning</button>
-      <button class="filter-btn f-ok"       data-status="in-range" onclick="setStatus('in-range')">🟢 OK</button>
-      <button class="filter-btn f-offline"  data-status="offline"  onclick="setStatus('offline')">⬛ Offline</button>
-      <button class="filter-btn"            data-status="no-reading" onclick="setStatus('no-reading')">— No Data</button>
-      <button class="filter-btn"            data-status="paused"   onclick="setStatus('paused')">⏸️ Not In Use</button>
+  <div class="filter-bar" style="flex-direction:column;align-items:stretch;gap:8px">
+    <div class="filter-row">
+      <span class="filter-row-lbl">Status</span>
+      <div class="filter-group" id="statusFilters">
+        <button class="filter-btn active" data-status="all"        onclick="setStatus('all')">All</button>
+        <button class="filter-btn f-critical" data-status="critical"  onclick="setStatus('critical')">🔴 Critical</button>
+        <button class="filter-btn f-warning"  data-status="warning"   onclick="setStatus('warning')">🟡 Warning</button>
+        <button class="filter-btn f-ok"       data-status="in-range"  onclick="setStatus('in-range')">🟢 OK</button>
+        <button class="filter-btn f-offline"  data-status="offline"   onclick="setStatus('offline')">⬛ Offline</button>
+        <button class="filter-btn"            data-status="no-reading" onclick="setStatus('no-reading')">— No Data</button>
+        <button class="filter-btn"            data-status="paused"    onclick="setStatus('paused')">⏸️ Not In Use</button>
+      </div>
+      <input type="search" id="filterText" placeholder="🔍 Search…" oninput="applyFilters()" style="margin-left:auto;flex:0 1 180px;padding:6px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:0.82rem">
     </div>
-    <select class="filter-type" id="filterType" onchange="applyFilters()">
-      <option value="all">All Types</option>
-      <option value="freezer">🧊 Freezer</option>
-      <option value="chiller">❄️ Chiller</option>
-      <option value="warmer">🔥 Warmer</option>
-      <option value="ambient">🌡️ Ambient</option>
-    </select>
-    <select class="filter-type" id="filterLocation" onchange="applyFilters()">
-      <option value="all">All Locations</option>
-    </select>
-    <span class="filter-count" id="filterCount"></span>
+    <div class="filter-divider"></div>
+    <div class="filter-row">
+      <span class="filter-row-lbl">Type</span>
+      <div class="filter-group" id="typeFilters">
+        <button class="filter-btn active" data-type="all"     onclick="setType('all')">All</button>
+        <button class="filter-btn f-freezer" data-type="freezer" onclick="setType('freezer')">🧊 Freezer</button>
+        <button class="filter-btn f-chiller" data-type="chiller" onclick="setType('chiller')">❄️ Chiller</button>
+        <button class="filter-btn f-warmer"  data-type="warmer"  onclick="setType('warmer')">🔥 Warmer</button>
+        <button class="filter-btn f-ambient" data-type="ambient" onclick="setType('ambient')">🌡️ Ambient</button>
+      </div>
+      <select id="filterLocation" onchange="applyFilters()" style="margin-left:auto;padding:5px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:0.8rem;font-weight:700;color:var(--muted);background:transparent;cursor:pointer">
+        <option value="all">All Locations</option>
+      </select>
+      <span class="filter-count" id="filterCount"></span>
+    </div>
   </div>
 
   <div class="summary-bar">
@@ -136,6 +148,14 @@
   let currentUser  = null;
   let allUnits     = [];
   let activeStatus = 'all';
+  let activeType   = 'all';
+
+  function setType(t) {
+    activeType = t;
+    document.querySelectorAll('#typeFilters .filter-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.type === t));
+    applyFilters();
+  }
 
   async function init() {
     try {
@@ -162,7 +182,7 @@
   function applyFilters() {
     if (!allUnits.length) return;
     const text      = (document.getElementById('filterText')?.value || '').toLowerCase().trim();
-    const typeVal   = document.getElementById('filterType')?.value || 'all';
+    const typeVal   = activeType;
     const locVal    = document.getElementById('filterLocation')?.value || 'all';
 
     const filtered = allUnits.filter(u => {
