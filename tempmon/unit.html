@@ -97,6 +97,10 @@
       <label>To   <input type="date" id="toDate"></label>
       <button class="btn btn-primary btn-sm" onclick="loadChart()">Apply</button>
       <button class="btn btn-outline btn-sm" id="resetZoomBtn" onclick="resetZoom()" style="display:none">🔍 Reset Zoom</button>
+      <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;font-weight:600;cursor:pointer;color:var(--muted)">
+        <input type="checkbox" id="showSample" onchange="loadChart()">
+        Show sample data
+      </label>
       <a id="exportBtn" href="#" class="btn btn-outline btn-sm" style="margin-left:auto" onclick="exportCSV(event)">⬇️ Export CSV</a>
     </div>
     <div class="chart-wrap"><canvas id="tempChart"></canvas></div>
@@ -212,7 +216,11 @@
     const from  = document.getElementById('fromDate').value;
     const to    = document.getElementById('toDate').value;
     const toEnd = to ? to + 'T23:59:59' : '';
-    const url   = API + '/readings/' + unitId + '?limit=1000' + (from ? '&from=' + from : '') + (toEnd ? '&to=' + toEnd : '');
+    const showSample = document.getElementById('showSample')?.checked;
+    const url   = API + '/readings/' + unitId + '?limit=2500'
+      + (from ? '&from=' + from : '')
+      + (toEnd ? '&to=' + toEnd : '')
+      + (showSample ? '' : '&includeSample=false');
     const r = await apiFetch(url);
     const readings = await r.json();
 

@@ -335,7 +335,7 @@ async function closeOfflineAlertIfOpen(deviceId) {
 // GET /api/tempmon/readings/:unitId?from=&to=&limit=&includeSample=
 router.get('/readings/:unitId', requireAuth, async (req, res) => {
   try {
-    const { from, to, limit = 500, includeSample = 'true' } = req.query;
+    const { from, to, limit = 2500, includeSample = 'true' } = req.query;
     const query = { unit: req.params.unitId };
     if (from || to) {
       query.recordedAt = {};
