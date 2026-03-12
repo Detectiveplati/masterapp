@@ -143,7 +143,85 @@
 
   <!-- ── THRESHOLDS TAB ──────────────────────────────────────── -->
   <div id="tab-thresholds" class="tab-panel">
+    <!-- How thresholds work — overview guide -->
+    <div class="section-card" style="background:linear-gradient(135deg,#f8fffe,#f0f9ff);border-left:4px solid var(--accent)">
+      <h2 style="margin-bottom:12px">📖 How Temperature Thresholds Work</h2>
 
+      <!-- Temperature band diagram -->
+      <div style="display:flex;align-items:stretch;gap:0;border-radius:10px;overflow:hidden;margin-bottom:18px;font-size:0.78rem;font-weight:700;text-align:center">
+        <div style="flex:1;background:#c62828;color:#fff;padding:8px 6px">❄️ CRITICAL LOW<br><span style="font-weight:400;font-size:0.72rem">Below Critical Min</span></div>
+        <div style="flex:1;background:#ef6c00;color:#fff;padding:8px 6px">🟡 WARNING LOW<br><span style="font-weight:400;font-size:0.72rem">Min → Min + Buffer</span></div>
+        <div style="flex:1;background:#2e7d32;color:#fff;padding:8px 6px">✅ SAFE ZONE<br><span style="font-weight:400;font-size:0.72rem">Within limits</span></div>
+        <div style="flex:1;background:#ef6c00;color:#fff;padding:8px 6px">🟡 WARNING HIGH<br><span style="font-weight:400;font-size:0.72rem">Max − Buffer → Max</span></div>
+        <div style="flex:1;background:#c62828;color:#fff;padding:8px 6px">🔴 CRITICAL HIGH<br><span style="font-weight:400;font-size:0.72rem">Above Critical Max</span></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">
+        <div>
+          <p style="font-size:0.82rem;font-weight:800;color:var(--ink);margin-bottom:6px">Field meanings</p>
+          <table style="font-size:0.8rem;width:100%;border-collapse:collapse">
+            <tr><td style="padding:4px 8px 4px 0;font-weight:700;white-space:nowrap">Critical Min / Max</td><td style="padding:4px 0;color:var(--muted)">Legal/food-safety hard limits. Breach = critical alert.</td></tr>
+            <tr><td style="padding:4px 8px 4px 0;font-weight:700;white-space:nowrap">Warning Buffer</td><td style="padding:4px 0;color:var(--muted)">Degrees inside the critical limit. Gives staff early warning before the hard limit is reached.</td></tr>
+            <tr><td style="padding:4px 8px 4px 0;font-weight:700;white-space:nowrap">Target Temp</td><td style="padding:4px 0;color:var(--muted)">Ideal operating point. Shown on charts as a dotted line. Does not trigger alerts.</td></tr>
+            <tr><td style="padding:4px 8px 4px 0;font-weight:700;white-space:nowrap">Alert Delay (min)</td><td style="padding:4px 0;color:var(--muted)">Minutes out of range before an alert record is created. Use to suppress brief door-opening spikes.</td></tr>
+          </table>
+        </div>
+        <div>
+          <p style="font-size:0.82rem;font-weight:800;color:var(--ink);margin-bottom:6px">Recommended settings by type</p>
+          <table style="font-size:0.8rem;width:100%;border-collapse:collapse">
+            <thead><tr style="border-bottom:1px solid var(--border)">
+              <th style="padding:4px 8px 4px 0;text-align:left;color:var(--muted)">Type</th>
+              <th style="padding:4px 6px;text-align:center;color:var(--muted)">Min</th>
+              <th style="padding:4px 6px;text-align:center;color:var(--muted)">Max</th>
+              <th style="padding:4px 6px;text-align:center;color:var(--muted)">Buffer</th>
+              <th style="padding:4px 6px;text-align:center;color:var(--muted)">Target</th>
+              <th style="padding:4px 0;text-align:center;color:var(--muted)">Delay</th>
+            </tr></thead>
+            <tbody>
+              <tr><td style="padding:4px 8px 4px 0;font-weight:700">🧊 Freezer</td><td style="padding:4px 6px;text-align:center">−25°C</td><td style="padding:4px 6px;text-align:center">−12°C</td><td style="padding:4px 6px;text-align:center">3°C</td><td style="padding:4px 6px;text-align:center">−18°C</td><td style="padding:4px 0;text-align:center">20 min</td></tr>
+              <tr><td style="padding:4px 8px 4px 0;font-weight:700">❄️ Chiller</td><td style="padding:4px 6px;text-align:center">−1°C</td><td style="padding:4px 6px;text-align:center">8°C</td><td style="padding:4px 6px;text-align:center">2°C</td><td style="padding:4px 6px;text-align:center">3°C</td><td style="padding:4px 0;text-align:center">20 min</td></tr>
+              <tr><td style="padding:4px 8px 4px 0;font-weight:700">🔥 Warmer</td><td style="padding:4px 6px;text-align:center">63°C</td><td style="padding:4px 6px;text-align:center">90°C</td><td style="padding:4px 6px;text-align:center">5°C</td><td style="padding:4px 6px;text-align:center">75°C</td><td style="padding:4px 0;text-align:center">15 min</td></tr>
+              <tr><td style="padding:4px 8px 4px 0;font-weight:700">🌡️ Ambient</td><td colspan="5" style="padding:4px 0;color:var(--muted);font-size:0.75rem">Set to your environment's acceptable range</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Warmer-specific on/off/fault explanation -->
+    <div class="section-card" style="background:linear-gradient(135deg,#fffde7,#fff8e1);border-left:4px solid #f9a825">
+      <h2 style="margin-bottom:10px">🔥 Warmer-Specific: On / Off / Fault Detection</h2>
+      <p style="font-size:0.83rem;color:var(--muted);margin-bottom:14px">
+        Because warmers are switched off during low-load periods, the system runs a state machine on each reading to tell the difference between a warmer that is <em>off</em>, <em>warming up</em>, <em>active</em>, or <em>faulty</em>. This means you won't get false alerts when a warmer is legitimately switched off.
+      </p>
+      <div style="display:flex;align-items:stretch;gap:6px;margin-bottom:16px;font-size:0.78rem;font-weight:800;text-align:center;flex-wrap:wrap">
+        <div style="flex:1;min-width:100px;background:#e0e0e0;color:#424242;border-radius:8px;padding:8px 6px">⬜ OFF<br><span style="font-weight:400;font-size:0.72rem">At room temp<br>for 20+ min</span></div>
+        <div style="font-size:1.2rem;align-self:center">→</div>
+        <div style="flex:1;min-width:100px;background:#fff3e0;color:#e65100;border-radius:8px;padding:8px 6px">🌡 WARMING UP<br><span style="font-weight:400;font-size:0.72rem">Temp rising<br>toward target</span></div>
+        <div style="font-size:1.2rem;align-self:center">→</div>
+        <div style="flex:1;min-width:100px;background:#e8f5e9;color:#2e7d32;border-radius:8px;padding:8px 6px">✅ ACTIVE<br><span style="font-weight:400;font-size:0.72rem">At target temp<br>≥ Critical Min</span></div>
+        <div style="font-size:1.2rem;align-self:center">↘</div>
+        <div style="flex:1;min-width:100px;background:#e3f2fd;color:#1565c0;border-radius:8px;padding:8px 6px">❄️ COOLING<br><span style="font-weight:400;font-size:0.72rem">Temp falling<br>after switch-off</span></div>
+      </div>
+      <div style="background:#fce4ec;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:0.82rem">
+        <strong style="color:#c62828">⚠️ FAULT state:</strong> If the warmer is on (temp above room level) but hasn't reached the target (Critical Min) after the fault timeout, a FAULT push notification is sent. This catches warmers that are switched on but not heating effectively — e.g. element failure, door left open, or set to the wrong temperature.
+      </div>
+      <table style="font-size:0.8rem;width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:1px solid var(--border)">
+          <th style="padding:5px 10px 5px 0;text-align:left;color:var(--muted)">Warmer config field</th>
+          <th style="padding:5px 10px;text-align:center;color:var(--muted)">Default</th>
+          <th style="padding:5px 0;text-align:left;color:var(--muted)">Meaning</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="padding:5px 10px 5px 0;font-weight:700">Room Temp Ceiling</td><td style="padding:5px 10px;text-align:center">35°C</td><td style="padding:5px 0;color:var(--muted)">At or below this temp → warmer is considered off / cooling down.</td></tr>
+          <tr><td style="padding:5px 10px 5px 0;font-weight:700">Warmup Start Temp</td><td style="padding:5px 10px;text-align:center">40°C</td><td style="padding:5px 0;color:var(--muted)">Above this temp → warmer is considered switched on and in the warming-up phase.</td></tr>
+          <tr><td style="padding:5px 10px 5px 0;font-weight:700">Off Confirm (min)</td><td style="padding:5px 10px;text-align:center">20 min</td><td style="padding:5px 0;color:var(--muted)">How long to sit at room temp before confirming the state as OFF (not just a brief dip).</td></tr>
+          <tr><td style="padding:5px 10px 5px 0;font-weight:700">Fault Timeout (min)</td><td style="padding:5px 10px;text-align:center">30 min</td><td style="padding:5px 0;color:var(--muted)">If the warmer has been on (warming up) for this long without reaching the target, it is flagged as FAULT and a push alert is sent. Most warmers reach temperature within 15–20 min.</td></tr>
+          <tr><td style="padding:5px 10px 5px 0;font-weight:700">Target (Critical Min)</td><td style="padding:5px 10px;text-align:center">63°C</td><td style="padding:5px 0;color:var(--muted)">This is the temperature the warmer must reach to be considered ACTIVE. Use the Critical Min field on the unit — the state machine uses this as the target threshold.</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.75rem;color:var(--muted);margin-top:10px">💡 These values can be adjusted per unit by an administrator via the database if a specific warmer warms up slower or operates at a different typical room temperature.</p>
+    </div>
     <!-- Push notification delays -->
     <div class="section-card">
       <h2>🔔 Push Notification Delays</h2>
@@ -175,6 +253,7 @@
       </h2>
       <p style="color:var(--muted);font-size:0.85rem;margin-bottom:16px">
         Edit temperature limits and alert delay for all units in one view. Changes are saved per-row or all at once with <strong>Save All</strong>.
+        <br><span style="font-size:0.78rem">💡 <strong>Warmer units:</strong> set Critical Min to your legal hot-holding minimum (63°C). The state machine uses this as the target that defines when the warmer is considered ACTIVE.</span>
       </p>
       <div id="thresholdNotice" class="notice"></div>
       <div style="overflow-x:auto;margin-top:12px">
