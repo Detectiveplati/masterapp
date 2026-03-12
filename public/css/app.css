@@ -27,6 +27,7 @@
   --clr-foodsafety:  #16a085;
   --clr-admin:       #7f5af0;
   --clr-pest:        #2e7d32;
+  --clr-tempmon:     #e53935;
 
   /* Active module accent — overridden below per data-module */
   --accent:   #ff7a18;
@@ -384,6 +385,7 @@ section h2 {
 .hub-card.foodsafety::before  { background: linear-gradient(90deg, var(--clr-foodsafety), #1abc9c); }
 .hub-card.admin::before       { background: linear-gradient(90deg, var(--clr-admin), #5e3fce); }
 .hub-card.pest::before        { background: linear-gradient(90deg, var(--clr-pest), #66bb6a); }
+.hub-card.tempmon::before     { background: linear-gradient(90deg, var(--clr-tempmon), #ff7043); }
 
 .hub-card.maintenance .go-btn { color: var(--clr-maintenance); }
 .hub-card.templog .go-btn     { color: var(--clr-templog); }
@@ -391,6 +393,7 @@ section h2 {
 .hub-card.foodsafety .go-btn  { color: var(--clr-foodsafety); }
 .hub-card.admin .go-btn       { color: var(--clr-admin); }
 .hub-card.pest .go-btn        { color: var(--clr-pest); }
+.hub-card.tempmon .go-btn     { color: var(--clr-tempmon); }
 
 .module-card.report::before { background: linear-gradient(90deg, var(--accent), #e74c3c); }
 .module-card.view::before   { background: linear-gradient(90deg, var(--accent-2), #e67e22); }
