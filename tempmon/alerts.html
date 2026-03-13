@@ -447,7 +447,7 @@
 
       const devStr = dev.label || dev.deviceId ? `\u00b7 Device: ${escHtml(dev.label || dev.deviceId)}` : '';
 
-      return `<div class="alert-row ${m.rowCls}${a.status==='resolved'?' is-resolved':''}" id="alert-${a._id}">
+      return `<div class="alert-row ${m.rowCls}${a.status==='resolved'?' is-resolved':''}" id="alert-${a._id}"${u._id ? ` onclick="location.href='/tempmon/unit.html?id=${u._id}'" style="cursor:pointer"` : ''}>
   <div class="alert-top">
     <div class="alert-left">
       <div class="alert-headline">
@@ -455,8 +455,8 @@
         <span class="alert-type-badge" style="color:${m.color}">${m.label}</span>
         <span style="color:var(--border)">\u00b7</span>
         ${u._id
-          ? `<a class="alert-unit" href="/tempmon/alerts.html?unitId=${u._id}" style="text-decoration:none;color:inherit">${escHtml(u.name||'\u2014')}</a>`
-          : `<span class="alert-unit">${escHtml(u.name||'\u2014')}</span>`}
+          ? `<a class="alert-unit" href="/tempmon/unit.html?id=${u._id}" style="text-decoration:none;color:inherit">${escHtml(u.name||'—')}</a>`
+          : `<span class="alert-unit">${escHtml(u.name||'—')}</span>`}
         ${statusBadge(a.status)}
       </div>
       <div class="alert-meta">
@@ -467,7 +467,7 @@
       ${trailHtml}
       ${caHtml}
     </div>
-    <div class="alert-actions">${btns.join('')}</div>
+    <div class="alert-actions" onclick="event.stopPropagation()">${btns.join('')}</div>
   </div>
 </div>`;
     }).join('');
