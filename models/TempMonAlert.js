@@ -10,7 +10,7 @@ const TempMonAlertSchema = new mongoose.Schema({
   unit:             { type: mongoose.Schema.Types.ObjectId, ref: 'TempMonUnit',    required: true, index: true },
   device:           { type: mongoose.Schema.Types.ObjectId, ref: 'TempMonDevice',  required: true },
   reading:          { type: mongoose.Schema.Types.ObjectId, ref: 'TempMonReading', default: null }, // null for device_offline
-  type:             { type: String, enum: ['critical_high', 'critical_low', 'warning_high', 'warning_low', 'device_offline'], required: true },
+  type:             { type: String, enum: ['critical_high', 'critical_low', 'warning_high', 'warning_low', 'device_offline', 'warmer_fault'], required: true },
   value:            { type: Number, default: null },   // °C at time of alert (null for offline)
   status:           { type: String, enum: ['open', 'acknowledged', 'resolved'], default: 'open', index: true },
   acknowledgedBy:   { type: String, default: '' },

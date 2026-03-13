@@ -237,7 +237,7 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
       await closeOfflineAlertIfOpen(device._id);
 
       // Update warmer power state (on/off/fault detection) — no-op for non-warmer units
-      await updateWarmerState(unit, value, ts);
+      await updateWarmerState(unit, device, value, ts);
 
       // Alert logic
       const alertType = evaluateAlertType(value, unit);
@@ -260,51 +260,45 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
 // ── Alert helpers ────────────────────────────────────────────────────────────
 
 function evaluateAlertType(value, unit) {
-  const { criticalMin, criticalMax, warningBuffer = 2 } = unit;
-  if (value < criticalMin)                     return 'critical_low';
-  if (value > criticalMax)                     return 'critical_high';
-  if (value < criticalMin + warningBuffer)     return 'warning_low';
-  if (value > criticalMax - warningBuffer)     return 'warning_high';
+  // Warmers are monitored exclusively by the fault-state machine — no temperature range alerts
+  if (unit.type === 'warmer') return null;
+  const { criticalMin, criticalMax } = unit;
+  if (value < criticalMin) return 'critical_low';
+  if (value > criticalMax) return 'critical_high';
   return null;
 }
 
 async function maybeCreateOrNotifyAlert(unit, device, readingId, type, value, readingTs) {
   // Skip alert creation entirely when unit is marked as not in use
-  if (unit.inUse === false) return;
+  if (unit.inUse === false) return false;
 
   // Check if there is already an open/acknowledged alert for this unit+type
-  // (covers restarts where in-memory state is lost)
   const existing = await TempMonAlert.findOne({ unit: unit._id, type, status: { $in: ['open', 'acknowledged'] } });
-  if (existing) return false; // already alerted — no duplicate
+  if (existing) return false;
 
-  // Load push delays from DB config (cached 5 min)
-  const cfg = await getPushConfig();
-  const thresholdMs = type.startsWith('critical_')
-    ? (cfg.pushDelayCriticalMinutes || 60) * 60 * 1000
-    : (cfg.pushDelayWarningMinutes  || 120) * 60 * 1000;
-  const thresholdLabel = type.startsWith('critical_')
-    ? `${cfg.pushDelayCriticalMinutes || 60} min`
-    : `${cfg.pushDelayWarningMinutes  || 120} min`;
+  // Per-unit threshold: temperature must remain out of range for this many minutes before alerting
+  const thresholdMs = (unit.alertThresholdMinutes || 0) * 60 * 1000;
 
-  // Use the reading's own recordedAt timestamp so buffered readings from distant
-  // sensors are evaluated against sensor-time, not server-arrival-time.
+  // Use the reading's own recordedAt timestamp so buffered gateway readings are evaluated
+  // against sensor-time, not server-arrival-time.
   const ts = (readingTs instanceof Date ? readingTs : new Date(readingTs || Date.now())).getTime();
 
-  // In-memory excursion tracker: only raise the alert after the full threshold period
   if (!global._tempmonExcursionStart) global._tempmonExcursionStart = {};
   const key = `${unit._id}_${type}`;
 
   if (!global._tempmonExcursionStart[key]) {
-    // First reading out of range for this unit+type — record the sensor timestamp
     global._tempmonExcursionStart[key] = ts;
-    console.log(`⏱  [TempMon] Excursion started (${thresholdLabel} required): ${type} for "${unit.name}" at ${value}°C`);
-    return false;
+    if (thresholdMs > 0) {
+      console.log(`⏱  [TempMon] Excursion started (${unit.alertThresholdMinutes} min required): ${type} for "${unit.name}" at ${value}°C`);
+      return false;
+    }
+    // threshold = 0: fall through and raise immediately (requires a second reading though)
   }
 
   const elapsedMs = ts - global._tempmonExcursionStart[key];
-  if (elapsedMs < thresholdMs) return false; // still within grace period
+  if (elapsedMs < thresholdMs) return false;
 
-  // Threshold exceeded — create alert record and send push immediately
+  // Threshold met — create alert and send push
   const alert = new TempMonAlert({
     unit: unit._id, device: device._id, reading: readingId, type, value,
     pushSentAt:       new Date(),
@@ -312,23 +306,24 @@ async function maybeCreateOrNotifyAlert(unit, device, readingId, type, value, re
   });
   await alert.save();
 
-  const isCritical = type.startsWith('critical_');
-  const emoji = isCritical ? '🔴' : '🟡';
   const label = buildAlertLabel(type, value, unit);
-  sendPush(`${emoji} ${unit.name}: ${label}`,
-    `Temperature has been out of range for ${thresholdLabel}. Check the unit.`,
+  const threshLabel = unit.alertThresholdMinutes > 0 ? ` after ${unit.alertThresholdMinutes} min out of range` : '';
+  sendPush(`🔴 ${unit.name}: ${label}`,
+    `Temperature alert raised${threshLabel}. Check the unit immediately.`,
     '/tempmon/alerts.html');
-  console.log(`✓ [TempMon] Alert raised + push sent after ${thresholdLabel}: ${type} for "${unit.name}" at ${value}°C`);
+  console.log(`✓ [TempMon] Critical alert raised: ${type} for "${unit.name}" at ${value}°C (threshold: ${unit.alertThresholdMinutes || 0} min)`);
 
-  // Keep the key so further readings don't re-trigger; cleared when temp returns to normal
   return true;
 }
 
 function buildAlertLabel(type, value, unit) {
-  return type === 'critical_high' ? `CRITICAL HIGH — ${value}°C (max ${unit.criticalMax}°C)`
-       : type === 'critical_low'  ? `CRITICAL LOW — ${value}°C (min ${unit.criticalMin}°C)`
-       : type === 'warning_high'  ? `Warning — temperature rising to ${value}°C`
-       :                            `Warning — temperature dropping to ${value}°C`;
+  const v = value != null ? Number(value).toFixed(1) : '—';
+  return type === 'critical_high' ? `CRITICAL HIGH — ${v}°C (limit ${unit.criticalMax}°C)`
+       : type === 'critical_low'  ? `CRITICAL LOW — ${v}°C (limit ${unit.criticalMin}°C)`
+       : type === 'warmer_fault'  ? `Warmer Fault — stuck at ${v}°C (target ≥${unit.criticalMin}°C)`
+       : type === 'warning_high'  ? `Warning High — ${v}°C`
+       : type === 'warning_low'   ? `Warning Low — ${v}°C`
+       :                            type;
 }
 
 async function autoResolveAlerts(unitId) {
@@ -339,8 +334,9 @@ async function autoResolveAlerts(unitId) {
       if (k.startsWith(prefix)) delete global._tempmonExcursionStart[k];
     });
   }
+  // Only resolve critical alerts (warmers don't create critical alerts; warmer_fault is resolved by the state machine)
   await TempMonAlert.updateMany(
-    { unit: unitId, type: { $in: ['critical_high', 'critical_low', 'warning_high', 'warning_low'] }, status: { $in: ['open', 'acknowledged'] } },
+    { unit: unitId, type: { $in: ['critical_high', 'critical_low'] }, status: { $in: ['open', 'acknowledged'] } },
     { $set: { status: 'resolved', resolvedAt: new Date(), resolveNote: 'Temperature returned to normal range automatically' } }
   );
 }
@@ -433,7 +429,7 @@ router.get('/alerts', requireAuth, async (req, res) => {
       if (to)   query.createdAt.$lte = new Date(to);
     }
     const alerts = await TempMonAlert.find(query)
-      .populate('unit', 'name type criticalMin criticalMax alertThresholdMinutes')
+      .populate('unit', 'name type criticalMin criticalMax alertThresholdMinutes warmerStateConfig')
       .populate('device', 'deviceId label')
       .populate('correctiveAction')
       .sort({ createdAt: -1 })
@@ -867,37 +863,30 @@ if (!global._tempmonOfflineCronStarted) {
 // Runs every 60 seconds so threshold-based pushes fire within ~1 min of being due.
 async function checkPendingPushes() {
   try {
-    // Find open alerts that haven't had a push sent yet
+    // Safety-net: find open critical alerts that somehow have no push sent yet.
+    // Under normal flow alerts are created with pushSentAt already set, so this rarely fires.
     const pending = await TempMonAlert.find({
       pushSentAt: null,
       status:     { $in: ['open', 'acknowledged'] },
-      type:       { $in: ['critical_high', 'critical_low', 'warning_high', 'warning_low'] }
+      type:       { $in: ['critical_high', 'critical_low'] }
     }).populate('unit').lean();
 
     if (!pending.length) return;
 
-    // Load global push config once for the whole batch
-    const cfg = await getPushConfig();
-    const criticalMs = (cfg.pushDelayCriticalMinutes || 60)  * 60 * 1000;
-    const warningMs  = (cfg.pushDelayWarningMinutes  || 120) * 60 * 1000;
-
     for (const alert of pending) {
       const unit = alert.unit;
       if (!unit) continue;
-      if (unit.inUse === false) continue; // skip paused units
+      if (unit.inUse === false) continue;
 
-      const thresholdMs = alert.type.startsWith('critical_') ? criticalMs : warningMs;
+      // Use per-unit threshold
+      const thresholdMs = (unit.alertThresholdMinutes || 0) * 60 * 1000;
       const alertAgeMs  = Date.now() - new Date(alert.createdAt).getTime();
 
       if (alertAgeMs >= thresholdMs) {
         await TempMonAlert.updateOne({ _id: alert._id }, { pushSentAt: new Date(), notificationSent: true });
-        const isCritical = alert.type.startsWith('critical_');
-        const emoji = isCritical ? '🔴' : '🟡';
         const label = buildAlertLabel(alert.type, alert.value, unit);
-        const delayLabel = isCritical
-          ? `${cfg.pushDelayCriticalMinutes || 60} min`
-          : `${cfg.pushDelayWarningMinutes  || 120} min`;
-        sendPush(`${emoji} ${unit.name}: ${label}`,
+        const delayLabel = unit.alertThresholdMinutes > 0 ? `${unit.alertThresholdMinutes} min` : 'immediately';
+        sendPush(`🔴 ${unit.name}: ${label}`,
           `Temperature has been out of range for ${delayLabel}. Check the unit.`,
           '/tempmon/alerts.html');
         console.log(`✓ [TempMon] Pending push fired (${delayLabel} threshold): ${alert.type} for "${unit.name}"`);
@@ -932,7 +921,8 @@ if (!global._tempmonPushCronStarted) {
 //   fault      → active     : temp finally reaches Active zone (self-resolved)
 //   fault      → cooling    : temp drops to Room zone
 // ───────────────────────────────────────────────────────────────────
-async function updateWarmerState(unit, value, readingTs) {
+// device param is required so we can link warmer_fault alerts to the reading's device
+async function updateWarmerState(unit, device, value, readingTs) {
   if (unit.type !== 'warmer') return;
 
   const cfg          = unit.warmerStateConfig || {};
@@ -1024,13 +1014,39 @@ async function updateWarmerState(unit, value, readingTs) {
       $set: { 'warmerState.state': newState, 'warmerState.since': new Date(ts) }
     });
     const slopeStr = prevTemp !== null ? ` (slope ${slope > 0 ? '+' : ''}${slope.toFixed(1)}°C)` : '';
-    console.log(`🔥 [TempMon] Warmer "${unit.name}": ${prev} → ${newState} at ${value}°C${slopeStr}`);
+    console.log(`🔥 [TempMon] Warmer "${unit.name}": ${prev} → ${newState} at ${value.toFixed(1)}°C${slopeStr}`);
+
+    // ── Fault detected: create alert + send push ──────────────────
     if (newState === 'fault' && unit.inUse !== false) {
-      sendPush(
-        `⚠️ ${unit.name}: Warmer may be faulty`,
-        `Temperature stuck at ${value}°C for ${cfg.faultMinutes ?? 30} min — not reaching target of ${targetLow}°C. Check the warmer.`,
-        '/tempmon/unit.html?id=' + String(unit._id)
+      const existingFault = await TempMonAlert.findOne({
+        unit: unit._id, type: 'warmer_fault', status: { $in: ['open', 'acknowledged'] }
+      });
+      if (!existingFault) {
+        await TempMonAlert.create({
+          unit:             unit._id,
+          device:           device._id,
+          type:             'warmer_fault',
+          value,
+          pushSentAt:       new Date(),
+          notificationSent: true
+        });
+        sendPush(
+          `⚠️ ${unit.name}: Warmer Fault Detected`,
+          `Temperature stuck at ${value.toFixed(1)}°C for ${cfg.faultMinutes ?? 30} min — failed to reach target of ${targetLow}°C.`,
+          '/tempmon/alerts.html'
+        );
+        console.log(`⚠️ [TempMon] Warmer fault alert created: "${unit.name}" at ${value.toFixed(1)}°C`);
+      }
+    }
+
+    // ── Recovery from fault: auto-resolve open fault alert ───────
+    if (prev === 'fault' && newState !== 'fault') {
+      await TempMonAlert.updateMany(
+        { unit: unit._id, type: 'warmer_fault', status: { $in: ['open', 'acknowledged'] } },
+        { $set: { status: 'resolved', resolvedAt: new Date(),
+                  resolveNote: `Warmer recovered — state changed to '${newState}' at ${value.toFixed(1)}°C` } }
       );
+      console.log(`✓ [TempMon] Warmer fault auto-resolved: "${unit.name}" → ${newState}`);
     }
   }
 }
@@ -1076,7 +1092,7 @@ router.post('/debug/inject', requireAuth, requireAdmin, async (req, res) => {
     if (global._warmerState) delete global._warmerState[String(unitId)];
     const previousState = freshUnit.warmerState?.state || 'unknown';
 
-    await updateWarmerState(freshUnit, temp, ts);
+    await updateWarmerState(freshUnit, device, temp, ts);
 
     const updated = await TempMonUnit.findById(unitId);
     res.json({

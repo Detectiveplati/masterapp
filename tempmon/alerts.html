@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -12,78 +12,139 @@
   <script src="/js/lib/tz.js"></script>
   <style>
     main { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+
+    /* Nav */
     .nav-links { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
     .nav-link { padding: 8px 14px; border-radius: 8px; background: #f0f0f0; color: var(--muted); font-size: 0.82rem; font-weight: 700; text-decoration: none; transition: background .15s; }
     .nav-link:hover { background: #e0e0e0; color: var(--ink); }
     .nav-link.active { background: var(--accent); color: #fff; }
+
+    /* Summary chips */
+    .summary-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    .summary-chip { display: flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 10px; font-size: 0.83rem; font-weight: 700; cursor: pointer; border: none; font-family: inherit; transition: filter .15s; }
+    .summary-chip:hover { filter: brightness(.95); }
+    .summary-chip.chip-critical { background: rgba(198,40,40,.1); color: #c62828; border: 1px solid rgba(198,40,40,.2); }
+    .summary-chip.chip-fault    { background: rgba(230,81,0,.1);  color: #e65100; border: 1px solid rgba(230,81,0,.2); }
+    .summary-chip.chip-offline  { background: rgba(97,97,97,.1);  color: #616161; border: 1px solid rgba(97,97,97,.2); }
+    .summary-chip.chip-ok       { background: rgba(46,125,50,.1); color: #2e7d32; border: 1px solid rgba(46,125,50,.2); }
+    .summary-count { font-size: 1.2rem; font-weight: 900; }
+
+    /* Section card */
     .section-card { background: linear-gradient(180deg, var(--card), #fffbf9); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 2px 6px var(--shadow); padding: 22px 24px; margin-bottom: 22px; }
     .section-card h2 { font-size: 1.05rem; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+    /* Filter bar */
     .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
     .filter-bar select, .filter-bar input[type=date] { padding: 7px 11px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; font-family: inherit; background: #fff; }
+
+    /* Buttons */
     .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 700; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
-    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2, #27ae60)); color: #fff; }
-    .btn-outline  { background: #fff; border: 2px solid var(--accent); color: var(--accent); }
-    .btn-sm       { padding: 5px 11px; font-size: 0.78rem; }
-    .btn-danger        { background: rgba(198,40,40,.08); border: 1px solid rgba(198,40,40,.2); color: #c62828; }
-    .btn-danger-solid  { background: linear-gradient(135deg,#c62828,#b71c1c); color:#fff; border:none; }
-    .btn-green         { background: rgba(46,125,50,.08);  border: 1px solid rgba(46,125,50,.2);  color: #2e7d32; }
-    /* Purge modal */
-    .modal-warn { background:#fff3cd;border-left:4px solid #e65100;padding:10px 12px;border-radius:6px;color:#b35c00;font-size:0.82rem;margin-bottom:14px; }
-    .modal-input { width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.88rem;font-family:inherit;margin-top:6px; }
-    .modal-radio-row { display:flex;gap:18px;margin-bottom:14px; }
-    .modal-radio-row label { display:flex;align-items:center;gap:6px;font-size:0.85rem;font-weight:700;cursor:pointer; }
-    .modal-date-row { display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px; }
-    .modal-date-row label { font-size:0.82rem;font-weight:700; }
-    .modal-date-row input[type=date] { padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;font-family:inherit; }
+    .btn-primary      { background: linear-gradient(135deg, var(--accent), var(--accent-2,#27ae60)); color: #fff; }
+    .btn-outline      { background: #fff; border: 2px solid var(--accent); color: var(--accent); }
+    .btn-sm           { padding: 5px 11px; font-size: 0.78rem; }
+    .btn-danger       { background: rgba(198,40,40,.08); border: 1px solid rgba(198,40,40,.22); color: #c62828; }
+    .btn-danger-solid { background: linear-gradient(135deg,#c62828,#b71c1c); color:#fff; border:none; }
+    .btn-warning      { background: rgba(230,81,0,.08); border: 1px solid rgba(230,81,0,.22); color: #e65100; }
+    .btn-green        { background: rgba(46,125,50,.08); border: 1px solid rgba(46,125,50,.22); color: #2e7d32; }
+
     /* Alert rows */
-    .alert-row { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; background: #fff; }
-    .alert-row.critical-high, .alert-row.critical-low { border-left: 4px solid #c62828; }
-    .alert-row.warning-high, .alert-row.warning-low   { border-left: 4px solid #e65100; }
-    .alert-row.device-offline                          { border-left: 4px solid #9e9e9e; }
-    .alert-row.resolved                                { opacity: .6; }
+    .alert-row { border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 10px; background: #fff; transition: box-shadow .15s; }
+    .alert-row:hover { box-shadow: 0 2px 12px rgba(0,0,0,.09); }
+    .alert-row.type-critical-high,.alert-row.type-critical-low { border-left: 5px solid #c62828; }
+    .alert-row.type-warmer-fault  { border-left: 5px solid #e65100; }
+    .alert-row.type-device-offline { border-left: 5px solid #9e9e9e; }
+    .alert-row.type-warning-high,.alert-row.type-warning-low { border-left: 5px solid #f9a825; opacity:.85; }
+    .alert-row.is-resolved { opacity: .55; }
+
     .alert-top   { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-    .alert-title { font-weight: 800; font-size: 0.95rem; color: var(--ink); }
-    .alert-meta  { font-size: 0.78rem; color: var(--muted); margin-top: 3px; }
-    .alert-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-    .badge-status { display: inline-block; border-radius: 20px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700; }
-    .badge-open  { background: rgba(198,40,40,.12); color: #c62828; }
-    .badge-acked { background: rgba(230,81,0,.12);   color: #e65100; }
-    .badge-done  { background: rgba(90,97,108,.12);  color: var(--muted); }
-    .ca-box { background: rgba(39,174,96,.06); border: 1px solid rgba(39,174,96,.2); border-radius: 8px; padding: 9px 14px; margin-top: 10px; font-size: 0.82rem; color: #2e7d32; }
-    .no-data { text-align: center; padding: 40px; color: var(--muted); font-style: italic; }
-    /* CA Modal */
+    .alert-left  { flex: 1; min-width: 0; }
+    .alert-headline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 5px; }
+    .alert-type-badge { font-weight: 900; font-size: 0.88rem; letter-spacing: .04em; }
+    .alert-unit  { font-weight: 700; font-size: 0.9rem; color: var(--ink); }
+    .alert-meta  { font-size: 0.78rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+    .alert-detail { font-size: 0.84rem; font-weight: 600; border-radius: 8px; padding: 7px 12px; display: inline-block; line-height: 1.5; }
+    .detail-critical { background: rgba(198,40,40,.06); color: #8b0000; }
+    .detail-fault    { background: rgba(230,81,0,.07);  color: #bf360c; }
+    .detail-offline  { background: rgba(97,97,97,.07);  color: #424242; }
+    .detail-warning  { background: rgba(249,168,37,.1); color: #e65100; }
+    .alert-trail { margin-top: 6px; font-size: 0.78rem; color: var(--muted); }
+    .alert-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-start; padding-top: 2px; flex-shrink: 0; }
+
+    /* Status badges */
+    .badge { display: inline-block; border-radius: 20px; padding: 2px 9px; font-size: 0.72rem; font-weight: 800; letter-spacing: .04em; }
+    .badge-open   { background: rgba(198,40,40,.13); color: #c62828; }
+    .badge-acked  { background: rgba(230,81,0,.13);  color: #e65100; }
+    .badge-done   { background: rgba(90,97,108,.12); color: var(--muted); }
+
+    /* CA box */
+    .ca-box { background: rgba(39,174,96,.06); border: 1px solid rgba(39,174,96,.22); border-radius: 8px; padding: 9px 14px; margin-top: 12px; font-size: 0.82rem; color: #2e7d32; }
+
+    .no-data { text-align: center; padding: 48px 20px; color: var(--muted); font-style: italic; }
+
+    /* Modals */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 9000; align-items: center; justify-content: center; padding: 20px; }
     .modal-overlay.open { display: flex; }
     .modal-box { background: #fff; border-radius: 16px; padding: 28px 24px; width: min(96vw, 560px); box-shadow: 0 8px 40px rgba(0,0,0,.22); max-height: 90vh; overflow-y: auto; }
     .modal-box h3 { font-size: 1.05rem; font-weight: 800; margin-bottom: 18px; color: var(--ink); }
+    .modal-warn { background:#fff3cd; border-left:4px solid #e65100; padding:10px 12px; border-radius:6px; color:#b35c00; font-size:0.82rem; margin-bottom:14px; }
+    .modal-input { width:100%; box-sizing:border-box; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:0.88rem; font-family:inherit; margin-top:6px; }
+    .modal-radio-row { display:flex; gap:18px; margin-bottom:14px; }
+    .modal-radio-row label { display:flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:700; cursor:pointer; }
+    .modal-date-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+    .modal-date-row label { font-size:0.82rem; font-weight:700; }
+    .modal-date-row input[type=date] { padding:6px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.85rem; font-family:inherit; }
+    .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
     .fg { margin-bottom: 14px; }
     .fg label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--ink); margin-bottom: 5px; }
-    .fg input, .fg select, .fg textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-family: inherit; box-sizing: border-box; }
+    .fg input,.fg select,.fg textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-family: inherit; box-sizing: border-box; }
     .fg textarea { resize: vertical; min-height: 68px; }
-    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+
+    /* Print */
     .print-header { display: none; }
     @media print {
-      .nav-links, .filter-bar, .alert-actions, .modal-overlay { display: none !important; }
+      .nav-links,.summary-bar,.filter-bar,.alert-actions,.modal-overlay { display: none !important; }
       .print-header { display: block; margin-bottom: 20px; }
-      body.print .nav-links { display: none; }
     }
-    @media (max-width: 600px) { main { padding: 16px; } }
+    @media (max-width: 600px) { main { padding: 14px; } .alert-row { padding: 12px 14px; } }
   </style>
 </head>
 <body data-module="tempmon">
 <main>
-  <div class="print-header"><h2>🌡️ Temp Monitor — Alert & Corrective Action Log</h2><p id="printSubtitle"></p></div>
+
+  <div class="print-header">
+    <h2>Temp Monitor — Alert Log</h2>
+    <p id="printSubtitle"></p>
+  </div>
 
   <div class="nav-links">
-    <a href="/tempmon/" class="nav-link">📡 Live Dashboard</a>
-    <a href="/tempmon/alerts.html" class="nav-link active">🔴 Alerts</a>
-    <a href="/tempmon/setup.html" class="nav-link">⚙️ Setup</a>
-    <a href="/tempmon/gateway.html" class="nav-link">📶 LoRa Gateway</a>
-    <a href="/tempmon/gateway-log.html" class="nav-link">🪵 Raw Log</a>
+    <a href="/tempmon/" class="nav-link">Live Dashboard</a>
+    <a href="/tempmon/alerts.html" class="nav-link active">Alerts</a>
+    <a href="/tempmon/setup.html" class="nav-link">Setup</a>
+    <a href="/tempmon/gateway.html" class="nav-link">LoRa Gateway</a>
+    <a href="/tempmon/gateway-log.html" class="nav-link">Raw Log</a>
+  </div>
+
+  <!-- Active-alert summary chips -->
+  <div class="summary-bar" id="summaryBar" style="display:none">
+    <button class="summary-chip chip-critical" onclick="quickFilter('critical')">
+      <span class="summary-count" id="cntCritical">0</span>
+      <span>Critical Temp</span>
+    </button>
+    <button class="summary-chip chip-fault" onclick="quickFilter('warmer_fault')">
+      <span class="summary-count" id="cntFault">0</span>
+      <span>Warmer Fault</span>
+    </button>
+    <button class="summary-chip chip-offline" onclick="quickFilter('device_offline')">
+      <span class="summary-count" id="cntOffline">0</span>
+      <span>Device Offline</span>
+    </button>
+    <span id="allClearChip" style="display:none;align-self:center;padding:8px 14px;border-radius:10px;background:rgba(46,125,50,.1);color:#2e7d32;font-weight:700;font-size:0.85rem">
+      All Clear
+    </span>
   </div>
 
   <div class="section-card">
-    <h2>🔴 Alert Management</h2>
+    <h2>Alert Management</h2>
 
     <div class="filter-bar">
       <select id="filterStatus" onchange="load()">
@@ -93,54 +154,62 @@
         <option value="resolved">Resolved</option>
         <option value="">All Statuses</option>
       </select>
+      <select id="filterType" onchange="load()">
+        <option value="">All Types</option>
+        <option value="critical">Critical Temp (High/Low)</option>
+        <option value="warmer_fault">Warmer Fault</option>
+        <option value="device_offline">Device Offline</option>
+      </select>
       <select id="filterUnit" onchange="load()">
         <option value="">All Units</option>
       </select>
-      <input type="date" id="filterFrom" onchange="load()" title="From date">
-      <input type="date" id="filterTo"   onchange="load()" title="To date">
-      <button class="btn btn-outline btn-sm" onclick="printPDF()">🖨️ Print Report</button>
-      <button class="btn btn-danger-solid btn-sm" id="purgeAlertsBtn" onclick="openPurgeAlerts()" style="display:none">🗑️ Purge Resolved</button>
-      <a href="/tempmon/setup.html?tab=thresholds" class="btn btn-outline btn-sm" style="margin-left:auto">🔔 Configure Thresholds ↗</a>
+      <input type="date" id="filterFrom" onchange="load()" title="From">
+      <input type="date" id="filterTo"   onchange="load()" title="To">
+      <button class="btn btn-outline btn-sm" onclick="printPage()">Print</button>
+      <button class="btn btn-danger-solid btn-sm" id="purgeAlertsBtn" onclick="openPurge()" style="display:none">Purge Resolved</button>
     </div>
 
     <div id="alertsList"><div class="no-data">Loading…</div></div>
   </div>
+
 </main>
 
-<!-- Purge Alerts Modal -->
-<div id="purgeAlertsModal" class="modal-overlay" onclick="if(event.target===this)closePurgeAlerts()">
+<!-- PURGE MODAL -->
+<div id="purgeModal" class="modal-overlay" onclick="if(event.target===this)closePurge()">
   <div class="modal-box" style="width:min(96vw,460px)">
-    <h3 style="color:#c62828">🗑️ Purge Resolved Alerts</h3>
-    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:14px">Only <strong>resolved</strong> alerts will be deleted. Open and acknowledged alerts are never touched.</p>
+    <h3 style="color:#c62828">Purge Resolved Alerts</h3>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:14px">
+      Only <strong>resolved</strong> alerts will be deleted. Open and acknowledged alerts are never touched.
+    </p>
     <div class="modal-radio-row">
-      <label><input type="radio" name="purgeAlertRange" value="all" onchange="togglePurgeAlertRange()" checked> All resolved</label>
-      <label><input type="radio" name="purgeAlertRange" value="range" onchange="togglePurgeAlertRange()"> Date range</label>
+      <label><input type="radio" name="purgeRange" value="all" onchange="togglePurgeRange()" checked> All resolved</label>
+      <label><input type="radio" name="purgeRange" value="range" onchange="togglePurgeRange()"> Date range</label>
     </div>
-    <div id="purgeAlertDateRow" class="modal-date-row" style="display:none">
-      <label>From <input type="date" id="purgeAlertFrom"></label>
-      <label>To &nbsp;<input type="date" id="purgeAlertTo"></label>
+    <div id="purgeDateRow" class="modal-date-row" style="display:none">
+      <label>From <input type="date" id="purgeFrom"></label>
+      <label>To   <input type="date" id="purgeTo"></label>
     </div>
-    <div class="modal-warn">⚠️ This action is <strong>irreversible</strong>. Deleted alerts and their corrective action records cannot be recovered.</div>
+    <div class="modal-warn">This action is irreversible. Deleted alerts and corrective actions cannot be recovered.</div>
     <label style="font-size:0.82rem;font-weight:700;color:var(--ink)">
-      Type <strong>PURGE</strong> to confirm:
-      <input type="text" id="purgeAlertConfirmInput" class="modal-input" placeholder="PURGE" autocomplete="off">
+      Type PURGE to confirm:
+      <input type="text" id="purgeConfirm" class="modal-input" placeholder="PURGE" autocomplete="off">
     </label>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closePurgeAlerts()">Cancel</button>
-      <button class="btn btn-danger-solid btn-sm" id="purgeAlertSubmitBtn" onclick="submitPurgeAlerts()">🗑️ Purge</button>
+      <button class="btn btn-outline" onclick="closePurge()">Cancel</button>
+      <button class="btn btn-danger-solid" id="purgeSubmitBtn" onclick="submitPurge()">Purge</button>
     </div>
   </div>
 </div>
 
-<!-- CA Modal -->
-<div class="modal-overlay" id="caModal" onclick="if(event.target===this)closeCA()">
+<!-- CORRECTIVE ACTION MODAL -->
+<div id="caModal" class="modal-overlay" onclick="if(event.target===this)closeCA()">
   <div class="modal-box">
-    <h3>📋 Log Corrective Action</h3>
+    <h3>Log Corrective Action</h3>
     <div id="caAlertInfo" style="background:#fff3e0;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:0.85rem;color:#e65100;font-weight:700"></div>
     <input type="hidden" id="caAlertId">
-    <div class="fg"><label>Action Taken <span style="color:#c62828">*</span></label><textarea id="caActionTaken" placeholder="Describe what was done to correct the issue…" required></textarea></div>
-    <div class="fg"><label>Taken By <span style="color:#c62828">*</span></label><input type="text" id="caTakenBy" placeholder="Your name"></div>
-    <div class="fg"><label>Root Cause</label><textarea id="caRootCause" placeholder="What caused this temperature excursion?"></textarea></div>
+    <div class="fg"><label>Action Taken *</label><textarea id="caActionTaken" placeholder="Describe what was done to correct the issue…" required></textarea></div>
+    <div class="fg"><label>Taken By *</label><input type="text" id="caTakenBy" placeholder="Your name"></div>
+    <div class="fg"><label>Root Cause</label><textarea id="caRootCause" placeholder="What caused this issue?"></textarea></div>
     <div class="fg"><label>Preventive Measure</label><textarea id="caPreventive" placeholder="What will prevent recurrence?"></textarea></div>
     <div class="fg"><label>Outcome</label>
       <select id="caOutcome">
@@ -152,10 +221,11 @@
       </select>
     </div>
     <div class="fg" style="display:flex;align-items:center;gap:10px">
-      <input type="checkbox" id="caDisposal" style="width:18px;height:18px" onchange="document.getElementById('caDisposalDetails').closest('div').style.display=this.checked?'block':'none'">
+      <input type="checkbox" id="caDisposal" style="width:18px;height:18px"
+        onchange="document.getElementById('caDisposalWrap').style.display=this.checked?'block':'none'">
       <label style="margin:0;display:inline">Product disposal required</label>
     </div>
-    <div class="fg" style="display:none" id="caDisposalWrap"><label>Disposal Details</label><textarea id="caDisposalDetails" placeholder="Describe what product was disposed of…"></textarea></div>
+    <div id="caDisposalWrap" style="display:none" class="fg"><label>Disposal Details</label><textarea id="caDisposalDetails" placeholder="Describe what product was disposed of…"></textarea></div>
     <div id="caErr" style="color:#c62828;font-size:0.82rem;display:none;margin-top:8px"></div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeCA()">Cancel</button>
@@ -164,24 +234,19 @@
   </div>
 </div>
 
-<!-- Threshold Edit Modal -->
-<div class="modal-overlay" id="threshModal" onclick="if(event.target===this)closeThresh()">
-  <div class="modal-box" style="width:min(96vw,400px)">
-    <h3>⏱️ Push Notification Threshold</h3>
-    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:16px">
-      Set how long a temperature must remain in the critical zone before a push notification is sent.
-      Set to <strong>0</strong> to notify immediately on every breach.
-    </p>
-    <input type="hidden" id="threshUnitId">
-    <input type="hidden" id="threshAlertId">
-    <div class="fg">
-      <label>Notify after (minutes) &nbsp;<span style="color:var(--muted);font-weight:400;font-size:0.8rem">0 = immediately</span></label>
-      <input type="number" id="threshMinutes" min="0" max="120" step="1" placeholder="e.g. 20" style="width:100%">
+<!-- RESOLVE MODAL -->
+<div id="resolveModal" class="modal-overlay" onclick="if(event.target===this)closeResolve()">
+  <div class="modal-box" style="width:min(96vw,420px)">
+    <h3>Resolve Alert</h3>
+    <input type="hidden" id="resolveId">
+    <div class="fg"><label>Resolved By</label><input type="text" id="resolveBy" placeholder="Your name"></div>
+    <div class="fg"><label>Resolution Note <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <textarea id="resolveNote" placeholder="Describe how the issue was resolved…" style="min-height:60px"></textarea>
     </div>
-    <div id="threshErr" style="color:#c62828;font-size:0.82rem;display:none;margin-bottom:8px"></div>
+    <div id="resolveErr" style="color:#c62828;font-size:0.82rem;display:none;margin-top:8px"></div>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeThresh()">Cancel</button>
-      <button class="btn btn-primary" id="threshSaveBtn" onclick="saveThreshold()">Save</button>
+      <button class="btn btn-outline" onclick="closeResolve()">Cancel</button>
+      <button class="btn btn-primary" id="resolveSaveBtn" onclick="submitResolve()">Resolve</button>
     </div>
   </div>
 </div>
@@ -191,6 +256,7 @@
   let currentUser = null;
   let units = [];
 
+  // ─────────────────────────── Init ────────────────────────────────
   async function init() {
     try {
       const r = await apiFetch('/api/auth/me');
@@ -201,7 +267,6 @@
       document.documentElement.style.visibility = '';
       if (user.role === 'admin') document.getElementById('purgeAlertsBtn').style.display = '';
 
-      // Load units for filter dropdown
       const ur = await apiFetch(API + '/units');
       units = await ur.json();
       const sel = document.getElementById('filterUnit');
@@ -211,129 +276,264 @@
         sel.appendChild(opt);
       });
 
-      // Hash-jump: if URL has #alertId, switch filter to all so it shows up
       if (location.hash.length > 1) document.getElementById('filterStatus').value = '';
 
       load();
-      // Auto-refresh open alerts every 60s
-      setInterval(load, 60000);
-    } catch { window.location.replace('/login'); }
+      loadSummary();
+      setInterval(() => { load(); loadSummary(); }, 60000);
+    } catch (e) { console.error(e); window.location.replace('/login'); }
   }
 
+  // ─────────────────────── Summary chips ───────────────────────────
+  async function loadSummary() {
+    try {
+      const r = await apiFetch(API + '/alerts?status=active&limit=500');
+      const active = await r.json();
+
+      const nCritical = active.filter(a => a.type === 'critical_high' || a.type === 'critical_low').length;
+      const nFault    = active.filter(a => a.type === 'warmer_fault').length;
+      const nOffline  = active.filter(a => a.type === 'device_offline').length;
+      const nTotal    = nCritical + nFault + nOffline;
+
+      document.getElementById('cntCritical').textContent = nCritical;
+      document.getElementById('cntFault').textContent    = nFault;
+      document.getElementById('cntOffline').textContent  = nOffline;
+      document.getElementById('summaryBar').style.display = '';
+      document.getElementById('allClearChip').style.display = nTotal === 0 ? 'inline-flex' : 'none';
+    } catch (_) {}
+  }
+
+  function quickFilter(typeKey) {
+    document.getElementById('filterType').value   = typeKey;
+    document.getElementById('filterStatus').value = 'active';
+    load();
+  }
+
+  // ──────────────────────── Load Alerts ────────────────────────────
   async function load() {
     try {
-      const status = document.getElementById('filterStatus').value;
-      const unitId = document.getElementById('filterUnit').value;
-      const from   = document.getElementById('filterFrom').value;
-      const to     = document.getElementById('filterTo').value;
-      const params = new URLSearchParams({ limit: 200 });
-      if (status) params.set('status', status);
-      if (unitId) params.set('unitId', unitId);
-      if (from)   params.set('from', from);
-      if (to)     params.set('to', to + 'T23:59:59');
+      const status  = document.getElementById('filterStatus').value;
+      const typeKey = document.getElementById('filterType').value;
+      const unitId  = document.getElementById('filterUnit').value;
+      const from    = document.getElementById('filterFrom').value;
+      const to      = document.getElementById('filterTo').value;
 
-      const r = await apiFetch(API + '/alerts?' + params.toString());
-      const alerts = await r.json();
+      const p = new URLSearchParams({ limit: 300 });
+      if (status) p.set('status', status);
+      if (unitId) p.set('unitId', unitId);
+      if (from)   p.set('from', from);
+      if (to)     p.set('to', to + 'T23:59:59');
+
+      const r = await apiFetch(API + '/alerts?' + p.toString());
+      let alerts = await r.json();
+
+      // Client-side type filtering
+      if (typeKey === 'critical') {
+        alerts = alerts.filter(a => a.type === 'critical_high' || a.type === 'critical_low');
+      } else if (typeKey) {
+        alerts = alerts.filter(a => a.type === typeKey);
+      }
+
       renderAlerts(alerts);
     } catch (err) {
-      console.error(err);
       document.getElementById('alertsList').innerHTML =
-        `<div class="no-data" style="color:#c62828">❌ Failed to load alerts: ${escHtml(err.message)}<br><small>Check browser console for details.</small></div>`;
+        `<div class="no-data" style="color:#c62828">Failed to load alerts: ${escHtml(err.message)}</div>`;
     }
   }
 
-  const TYPE_EMOJI  = { critical_high: '🔴', critical_low: '🔴', warning_high: '🟡', warning_low: '🟡', device_offline: '⚫' };
-  const TYPE_LABEL  = { critical_high: 'CRITICAL HIGH', critical_low: 'CRITICAL LOW', warning_high: 'WARNING HIGH', warning_low: 'WARNING LOW', device_offline: 'DEVICE OFFLINE' };
-  const STATUS_CLS  = { open: 'badge-open', acknowledged: 'badge-acked', resolved: 'badge-done' };
+  // ────────────────────────── Render ───────────────────────────────
+  const TMETA = {
+    critical_high:  { icon: '🔴', label: 'CRITICAL HIGH',   rowCls: 'type-critical-high',  detailCls: 'detail-critical', color: '#c62828' },
+    critical_low:   { icon: '🔴', label: 'CRITICAL LOW',    rowCls: 'type-critical-low',   detailCls: 'detail-critical', color: '#c62828' },
+    warmer_fault:   { icon: '⚠️',  label: 'WARMER FAULT',   rowCls: 'type-warmer-fault',   detailCls: 'detail-fault',    color: '#e65100' },
+    device_offline: { icon: '⚫',  label: 'DEVICE OFFLINE', rowCls: 'type-device-offline', detailCls: 'detail-offline',  color: '#757575' },
+    warning_high:   { icon: '🟡',  label: 'WARNING HIGH',   rowCls: 'type-warning-high',   detailCls: 'detail-warning',  color: '#f9a825' },
+    warning_low:    { icon: '🟡',  label: 'WARNING LOW',    rowCls: 'type-warning-low',    detailCls: 'detail-warning',  color: '#f9a825' },
+  };
+
+  function buildDetail(a) {
+    const u = a.unit || {};
+    const v = a.value != null ? Number(a.value).toFixed(1) + '\u00b0C' : null;
+
+    if (a.type === 'critical_high') {
+      const lim    = u.criticalMax != null ? ` (limit ${u.criticalMax}\u00b0C)` : '';
+      const thresh = u.alertThresholdMinutes > 0
+        ? ` \u00b7 Temperature was out of range for ${u.alertThresholdMinutes}+ min before this alert was raised`
+        : '';
+      return { cls: 'detail-critical', text: v ? `${v}${lim}${thresh}` : null };
+    }
+    if (a.type === 'critical_low') {
+      const lim    = u.criticalMin != null ? ` (limit ${u.criticalMin}\u00b0C)` : '';
+      const thresh = u.alertThresholdMinutes > 0
+        ? ` \u00b7 Temperature was out of range for ${u.alertThresholdMinutes}+ min before this alert was raised`
+        : '';
+      return { cls: 'detail-critical', text: v ? `${v}${lim}${thresh}` : null };
+    }
+    if (a.type === 'warmer_fault') {
+      const target    = u.criticalMin != null ? `${u.criticalMin}\u00b0C` : 'target';
+      const faultMins = u.warmerStateConfig && u.warmerStateConfig.faultMinutes
+        ? u.warmerStateConfig.faultMinutes : 30;
+      const stuckStr = v ? `stuck at ${v}` : 'temperature stuck';
+      return { cls: 'detail-fault', text: `Warmer ${stuckStr} for ${faultMins} min without reaching target (\u2265${target}) \u2014 check power and heating element.` };
+    }
+    if (a.type === 'device_offline') {
+      return { cls: 'detail-offline', text: 'Device has stopped reporting to the gateway.' };
+    }
+    if (a.type === 'warning_high' || a.type === 'warning_low') {
+      return { cls: 'detail-warning', text: v ? `${v} (legacy warning alert)` : 'Legacy warning alert' };
+    }
+    return { cls: '', text: null };
+  }
+
+  function statusBadge(status) {
+    if (status === 'open')         return '<span class="badge badge-open">OPEN</span>';
+    if (status === 'acknowledged') return '<span class="badge badge-acked">ACKNOWLEDGED</span>';
+    return '<span class="badge badge-done">RESOLVED</span>';
+  }
 
   function renderAlerts(alerts) {
     if (!alerts.length) {
-      document.getElementById('alertsList').innerHTML = '<div class="no-data">No alerts match the current filters.</div>';
+      document.getElementById('alertsList').innerHTML =
+        '<div class="no-data">No alerts match the current filters.</div>';
       return;
     }
-    document.getElementById('alertsList').innerHTML = alerts.map(a => {
-      const emoji  = TYPE_EMOJI[a.type]  || '❓';
-      const label  = TYPE_LABEL[a.type]  || a.type;
-      const sCls   = STATUS_CLS[a.status] || 'badge-done';
-      const unitName = a.unit?.name || '—';
-      const valStr   = a.value != null ? ` — ${a.value.toFixed(1)}°C` : '';
-      const caBox    = a.correctiveAction
-        ? `<div class="ca-box">✅ Corrective action logged by <strong>${escHtml(a.correctiveAction.takenBy)}</strong> on ${fmtDate(a.correctiveAction.takenAt)} · Outcome: <strong>${escHtml(a.correctiveAction.outcome || 'N/A')}</strong></div>`
+
+    const html = alerts.map(a => {
+      const m   = TMETA[a.type] || { icon: '?', label: a.type, rowCls: '', detailCls: '', color: '#999' };
+      const u   = a.unit   || {};
+      const dev = a.device || {};
+      const d   = buildDetail(a);
+
+      // Detail line HTML
+      const detailHtml = d.text
+        ? `<div class="alert-detail ${d.cls}">${escHtml(d.text)}</div>`
         : '';
 
-      const actions = [];
-      if (a.status === 'open')   actions.push(`<button class="btn btn-sm btn-danger" onclick="acknowledge('${a._id}')">👁️ Acknowledge</button>`);
-      if (a.status !== 'resolved') actions.push(`<button class="btn btn-sm btn-green"  onclick="resolve('${a._id}')">✅ Resolve</button>`);
-      if (!a.correctiveAction && a.status !== 'open')
-        actions.push(`<button class="btn btn-sm btn-primary" onclick="openCA('${a._id}', '${escHtml(label + valStr)}')">📋 Log CA</button>`);
-      if (a.status === 'open')
-        actions.push(`<button class="btn btn-sm btn-primary" onclick="openCA('${a._id}', '${escHtml(label + valStr)}')">📋 Log CA</button>`);
+      // Action buttons
+      const btns = [];
+      if (a.status === 'open') {
+        btns.push(`<button class="btn btn-sm btn-warning" onclick="doAck('${a._id}')">Acknowledge</button>`);
+        btns.push(`<button class="btn btn-sm btn-green" onclick="openResolve('${a._id}')">Resolve</button>`);
+        btns.push(`<button class="btn btn-sm btn-primary" onclick="openCA('${a._id}','${safeAttr(m.label + ' \u00b7 ' + (u.name||''))}')">Log CA</button>`);
+      } else if (a.status === 'acknowledged') {
+        btns.push(`<button class="btn btn-sm btn-green" onclick="openResolve('${a._id}')">Resolve</button>`);
+        if (!a.correctiveAction)
+          btns.push(`<button class="btn btn-sm btn-primary" onclick="openCA('${a._id}','${safeAttr(m.label + ' \u00b7 ' + (u.name||''))}')">Log CA</button>`);
+      }
 
-      return `<div class="alert-row ${a.type.replace(/_/g,'-')} ${a.status === 'resolved' ? 'resolved' : ''}" id="alert-${a._id}">
-        <div class="alert-top">
-          <div>
-            <div class="alert-title">${emoji} ${label}${valStr} · ${escHtml(unitName)}</div>
-            <div class="alert-meta">
-              ${fmtDateTime(a.createdAt)}
-              ${a.device ? '· Device: ' + escHtml(a.device.label || a.device.deviceId) : ''}
-              · <span class="badge-status ${sCls}">${a.status.toUpperCase()}</span>
-              ${a.acknowledgedBy ? `· Acked by ${escHtml(a.acknowledgedBy)}` : ''}
-              ${a.resolvedBy     ? `· Resolved by ${escHtml(a.resolvedBy)}`   : ''}
-              ${a.unit && a.status !== 'resolved' ? `
-              <br><span style="display:inline-flex;align-items:center;gap:6px;margin-top:5px;font-size:0.77rem">
-                ⏱️ Push notification after:
-                <strong id="thresh-lbl-${a._id}">${a.unit.alertThresholdMinutes > 0 ? a.unit.alertThresholdMinutes + ' min' : 'Immediately'}</strong>
-                <button class="btn btn-sm btn-outline" style="padding:2px 9px;font-size:0.72rem;border-width:1px"
-                  onclick="openThresholdEdit('${a.unit._id}','${a._id}',${a.unit.alertThresholdMinutes || 0})">&#x270F; Edit</button>
-              </span>` : ''}
-            </div>
-          </div>
-          <div class="alert-actions">${actions.join('')}</div>
-        </div>
-        ${caBox}
-      </div>`;
+      // CA summary line
+      const caHtml = a.correctiveAction
+        ? `<div class="ca-box">Corrective action by <strong>${escHtml(a.correctiveAction.takenBy||'—')}</strong>`
+          + ` on ${fmtDate(a.correctiveAction.takenAt)}`
+          + (a.correctiveAction.outcome ? ` \u00b7 <strong>${escHtml(a.correctiveAction.outcome)}</strong>` : '')
+          + `</div>`
+        : '';
+
+      // Trail (ack / resolved by)
+      const trail = [];
+      if (a.acknowledgedBy) trail.push(`Acknowledged by ${escHtml(a.acknowledgedBy)}`);
+      if (a.resolvedBy)     trail.push(`Resolved by ${escHtml(a.resolvedBy)}`);
+      if (a.resolveNote)    trail.push(escHtml(a.resolveNote));
+      const trailHtml = trail.length
+        ? `<div class="alert-trail">${trail.join(' \u00b7 ')}</div>` : '';
+
+      const devStr = dev.label || dev.deviceId ? `\u00b7 Device: ${escHtml(dev.label || dev.deviceId)}` : '';
+
+      return `<div class="alert-row ${m.rowCls}${a.status==='resolved'?' is-resolved':''}" id="alert-${a._id}">
+  <div class="alert-top">
+    <div class="alert-left">
+      <div class="alert-headline">
+        <span>${m.icon}</span>
+        <span class="alert-type-badge" style="color:${m.color}">${m.label}</span>
+        <span style="color:var(--border)">\u00b7</span>
+        <span class="alert-unit">${escHtml(u.name||'\u2014')}</span>
+        ${statusBadge(a.status)}
+      </div>
+      <div class="alert-meta">
+        <span>${fmtDateTime(a.createdAt)}</span>
+        ${devStr ? `<span style="color:var(--border)">\u00b7</span><span>${devStr}</span>` : ''}
+      </div>
+      ${detailHtml}
+      ${trailHtml}
+      ${caHtml}
+    </div>
+    <div class="alert-actions">${btns.join('')}</div>
+  </div>
+</div>`;
     }).join('');
 
-    // Scroll to anchor if present
+    document.getElementById('alertsList').innerHTML = html;
+
     if (location.hash) {
-      const id = location.hash.substring(1);
-      const el = document.getElementById('alert-' + id);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const el = document.getElementById('alert-' + location.hash.substring(1));
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.outline = '2px solid var(--accent)'; }
     }
   }
 
-  async function acknowledge(id) {
+  // Safe attribute string (no single quotes)
+  function safeAttr(s) { return (s||'').replace(/'/g, '').replace(/"/g, ''); }
+
+  // ─────────────────────── Alert Actions ───────────────────────────
+  async function doAck(id) {
     const name = currentUser?.displayName || prompt('Your name:') || '';
-    await apiFetch(API + '/alerts/' + id + '/acknowledge', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ acknowledgedBy: name }) });
-    load();
+    try {
+      const r = await apiFetch(API + '/alerts/' + id + '/acknowledge', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acknowledgedBy: name })
+      });
+      if (!r.ok) throw new Error((await r.json()).error);
+      load(); loadSummary();
+    } catch (err) { alert('Error: ' + err.message); }
   }
 
-  async function resolve(id) {
-    const name = currentUser?.displayName || prompt('Your name:') || '';
-    const note = prompt('Resolution note (optional):') || '';
-    await apiFetch(API + '/alerts/' + id + '/resolve', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ resolvedBy: name, resolveNote: note }) });
-    load();
+  function openResolve(id) {
+    document.getElementById('resolveId').value        = id;
+    document.getElementById('resolveBy').value         = currentUser?.displayName || '';
+    document.getElementById('resolveNote').value       = '';
+    document.getElementById('resolveErr').style.display = 'none';
+    document.getElementById('resolveSaveBtn').disabled  = false;
+    document.getElementById('resolveModal').classList.add('open');
+    setTimeout(() => document.getElementById('resolveBy').focus(), 50);
+  }
+  function closeResolve() { document.getElementById('resolveModal').classList.remove('open'); }
+
+  async function submitResolve() {
+    const id   = document.getElementById('resolveId').value;
+    const name = document.getElementById('resolveBy').value.trim();
+    const note = document.getElementById('resolveNote').value.trim();
+    document.getElementById('resolveSaveBtn').disabled = true;
+    try {
+      const r = await apiFetch(API + '/alerts/' + id + '/resolve', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resolvedBy: name, resolveNote: note })
+      });
+      if (!r.ok) throw new Error((await r.json()).error);
+      closeResolve(); load(); loadSummary();
+    } catch (err) {
+      document.getElementById('resolveErr').textContent = err.message;
+      document.getElementById('resolveErr').style.display = 'block';
+      document.getElementById('resolveSaveBtn').disabled = false;
+    }
   }
 
-  // ── CA Modal ─────────────────────────────────────────────────────
-  function openCA(alertId, alertLabel) {
-    document.getElementById('caAlertId').value  = alertId;
-    document.getElementById('caAlertInfo').textContent = 'Alert: ' + alertLabel;
-    document.getElementById('caActionTaken').value = '';
-    document.getElementById('caTakenBy').value     = currentUser?.displayName || '';
-    document.getElementById('caRootCause').value   = '';
-    document.getElementById('caPreventive').value  = '';
-    document.getElementById('caOutcome').value     = '';
-    document.getElementById('caDisposal').checked  = false;
+  // ──────────────────── Corrective Action Modal ─────────────────────
+  function openCA(alertId, label) {
+    document.getElementById('caAlertId').value   = alertId;
+    document.getElementById('caAlertInfo').textContent = label;
+    ['caActionTaken','caTakenBy','caRootCause','caPreventive','caDisposalDetails'].forEach(id => {
+      document.getElementById(id).value = id === 'caTakenBy' ? (currentUser?.displayName || '') : '';
+    });
+    document.getElementById('caOutcome').value = '';
+    document.getElementById('caDisposal').checked = false;
     document.getElementById('caDisposalWrap').style.display = 'none';
-    document.getElementById('caDisposalDetails').value = '';
     document.getElementById('caErr').style.display = 'none';
+    document.getElementById('caSaveBtn').disabled = false;
     document.getElementById('caModal').classList.add('open');
   }
   function closeCA() { document.getElementById('caModal').classList.remove('open'); }
 
   async function saveCA() {
-    const alertId    = document.getElementById('caAlertId').value;
+    const alertId     = document.getElementById('caAlertId').value;
     const actionTaken = document.getElementById('caActionTaken').value.trim();
     const takenBy     = document.getElementById('caTakenBy').value.trim();
     if (!actionTaken || !takenBy) {
@@ -344,12 +544,9 @@
     document.getElementById('caSaveBtn').disabled = true;
     try {
       const r = await apiFetch(API + '/corrective-actions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          alert:                   alertId,
-          actionTaken,
-          takenBy,
+          alert: alertId, actionTaken, takenBy,
           rootCause:               document.getElementById('caRootCause').value.trim(),
           preventiveMeasure:       document.getElementById('caPreventive').value.trim(),
           outcome:                 document.getElementById('caOutcome').value,
@@ -357,9 +554,8 @@
           productDisposalDetails:  document.getElementById('caDisposalDetails').value.trim()
         })
       });
-      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
-      closeCA();
-      load();
+      if (!r.ok) throw new Error((await r.json()).error);
+      closeCA(); load(); loadSummary();
     } catch (err) {
       document.getElementById('caErr').textContent = err.message;
       document.getElementById('caErr').style.display = 'block';
@@ -368,104 +564,57 @@
     }
   }
 
-  function openThresholdEdit(unitId, alertId, currentMinutes) {
-    document.getElementById('threshUnitId').value   = unitId;
-    document.getElementById('threshAlertId').value  = alertId;
-    document.getElementById('threshMinutes').value  = currentMinutes;
-    document.getElementById('threshErr').style.display = 'none';
-    document.getElementById('threshModal').classList.add('open');
-    setTimeout(() => document.getElementById('threshMinutes').focus(), 50);
+  // ────────────────────── Purge Modal ──────────────────────────────
+  function openPurge() {
+    document.querySelector('input[name=purgeRange][value=all]').checked = true;
+    document.getElementById('purgeDateRow').style.display = 'none';
+    document.getElementById('purgeFrom').value  = '';
+    document.getElementById('purgeTo').value    = '';
+    document.getElementById('purgeConfirm').value = '';
+    const btn = document.getElementById('purgeSubmitBtn');
+    btn.disabled = false; btn.textContent = 'Purge';
+    document.getElementById('purgeModal').classList.add('open');
   }
-  function closeThresh() { document.getElementById('threshModal').classList.remove('open'); }
-
-  async function saveThreshold() {
-    const unitId  = document.getElementById('threshUnitId').value;
-    const alertId = document.getElementById('threshAlertId').value;
-    const minutes = parseInt(document.getElementById('threshMinutes').value);
-    if (isNaN(minutes) || minutes < 0) {
-      document.getElementById('threshErr').textContent = 'Enter a number ≥ 0.';
-      document.getElementById('threshErr').style.display = 'block';
-      return;
+  function closePurge() { document.getElementById('purgeModal').classList.remove('open'); }
+  function togglePurgeRange() {
+    const range = document.querySelector('input[name=purgeRange]:checked').value === 'range';
+    document.getElementById('purgeDateRow').style.display = range ? '' : 'none';
+  }
+  async function submitPurge() {
+    if (document.getElementById('purgeConfirm').value.trim().toUpperCase() !== 'PURGE') {
+      alert('Type PURGE (all caps) to confirm.'); return;
     }
-    document.getElementById('threshSaveBtn').disabled = true;
-    try {
-      const r = await apiFetch('/api/tempmon/units/' + unitId, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ alertThresholdMinutes: minutes })
-      });
-      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
-      // Update label in page without full reload
-      const lbl = document.getElementById('thresh-lbl-' + alertId);
-      if (lbl) lbl.textContent = minutes > 0 ? minutes + ' min' : 'Immediately';
-      // Also update any other alerts for the same unit
-      document.querySelectorAll('[id^="thresh-lbl-"]').forEach(el => {
-        const row = el.closest('.alert-row');
-        if (row && row.querySelector(`[onclick*="'${unitId}'"]`)) {
-          el.textContent = minutes > 0 ? minutes + ' min' : 'Immediately';
-        }
-      });
-      closeThresh();
-    } catch (err) {
-      document.getElementById('threshErr').textContent = err.message;
-      document.getElementById('threshErr').style.display = 'block';
-    } finally {
-      document.getElementById('threshSaveBtn').disabled = false;
-    }
-  }
-
-  // ── Purge Alerts ────────────────────────────────────────────────
-  function openPurgeAlerts() {
-    document.querySelector('input[name=purgeAlertRange][value=all]').checked = true;
-    document.getElementById('purgeAlertDateRow').style.display = 'none';
-    document.getElementById('purgeAlertFrom').value = '';
-    document.getElementById('purgeAlertTo').value   = '';
-    document.getElementById('purgeAlertConfirmInput').value = '';
-    const btn = document.getElementById('purgeAlertSubmitBtn');
-    btn.disabled = false; btn.textContent = '🗑️ Purge';
-    document.getElementById('purgeAlertsModal').classList.add('open');
-  }
-  function closePurgeAlerts() { document.getElementById('purgeAlertsModal').classList.remove('open'); }
-  function togglePurgeAlertRange() {
-    const isRange = document.querySelector('input[name=purgeAlertRange]:checked').value === 'range';
-    document.getElementById('purgeAlertDateRow').style.display = isRange ? '' : 'none';
-  }
-  async function submitPurgeAlerts() {
-    const confirmText = document.getElementById('purgeAlertConfirmInput').value.trim();
-    if (confirmText.toUpperCase() !== 'PURGE') {
-      alert('Type PURGE (all caps) to confirm.');
-      return;
-    }
-    const isRange = document.querySelector('input[name=purgeAlertRange]:checked').value === 'range';
-    const btn = document.getElementById('purgeAlertSubmitBtn');
+    const range = document.querySelector('input[name=purgeRange]:checked').value === 'range';
+    const btn   = document.getElementById('purgeSubmitBtn');
     btn.disabled = true; btn.textContent = 'Purging…';
     try {
       let url = API + '/alerts';
-      if (isRange) {
-        const from  = document.getElementById('purgeAlertFrom').value;
-        const toEnd = document.getElementById('purgeAlertTo').value
-          ? document.getElementById('purgeAlertTo').value + 'T23:59:59' : '';
-        const params = new URLSearchParams();
-        if (from)  params.set('from', from);
-        if (toEnd) params.set('to',   toEnd);
-        if (params.toString()) url += '?' + params.toString();
+      if (range) {
+        const from  = document.getElementById('purgeFrom').value;
+        const toEnd = document.getElementById('purgeTo').value
+          ? document.getElementById('purgeTo').value + 'T23:59:59' : '';
+        const p = new URLSearchParams();
+        if (from)  p.set('from', from);
+        if (toEnd) p.set('to',   toEnd);
+        if (p.toString()) url += '?' + p.toString();
       }
       const res  = await apiFetch(url, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      closePurgeAlerts();
-      alert(`✅ Purged ${data.deleted} resolved alert${data.deleted !== 1 ? 's' : ''}.`);
-      load();
+      closePurge();
+      alert(`Purged ${data.deleted} resolved alert${data.deleted !== 1 ? 's' : ''}.`);
+      load(); loadSummary();
     } catch (err) {
-      btn.disabled = false; btn.textContent = '🗑️ Purge';
-      alert('❌ Purge failed: ' + err.message);
+      btn.disabled = false; btn.textContent = 'Purge';
+      alert('Purge failed: ' + err.message);
     }
   }
 
-  function printPDF() {
-    document.getElementById('printSubtitle').textContent = 'Alert & CA Log · Generated ' + fmtDateTime(new Date());
-    document.body.classList.add('print');
+  // ──────────────────────── Print ──────────────────────────────────
+  function printPage() {
+    document.getElementById('printSubtitle').textContent =
+      'Alert Log \u00b7 Generated ' + fmtDateTime(new Date());
     window.print();
-    window.addEventListener('afterprint', () => document.body.classList.remove('print'), { once: true });
   }
 
   init();
