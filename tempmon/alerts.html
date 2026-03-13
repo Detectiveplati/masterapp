@@ -276,7 +276,14 @@
         sel.appendChild(opt);
       });
 
-      if (location.hash.length > 1) document.getElementById('filterStatus').value = '';
+      // Pre-populate filters from URL query params (e.g. arriving from dashboard)
+      const qp = new URLSearchParams(location.search);
+      if (qp.get('unitId')) {
+        document.getElementById('filterUnit').value   = qp.get('unitId');
+        document.getElementById('filterStatus').value = '';
+      } else if (location.hash.length > 1) {
+        document.getElementById('filterStatus').value = '';
+      }
 
       load();
       loadSummary();
@@ -446,7 +453,9 @@
         <span>${m.icon}</span>
         <span class="alert-type-badge" style="color:${m.color}">${m.label}</span>
         <span style="color:var(--border)">\u00b7</span>
-        <span class="alert-unit">${escHtml(u.name||'\u2014')}</span>
+        ${u._id
+          ? `<a class="alert-unit" href="/tempmon/alerts.html?unitId=${u._id}" style="text-decoration:none;color:inherit">${escHtml(u.name||'\u2014')}</a>`
+          : `<span class="alert-unit">${escHtml(u.name||'\u2014')}</span>`}
         ${statusBadge(a.status)}
       </div>
       <div class="alert-meta">

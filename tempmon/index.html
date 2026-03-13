@@ -314,7 +314,7 @@
       : (paused ? `<span class="unit-paused-badge">⏸ Not in use</span>` : '');
     const pauseComment = paused && u.inUseComment ? `<div style="font-size:0.75rem;color:#e65100;margin-top:4px;font-style:italic">${escHtml(u.inUseComment)}</div>` : '';
     return `
-      <a class="unit-card ${escHtml(cls)}" href="/tempmon/unit.html?id=${escHtml(String(u._id))}">
+      <a class="unit-card ${escHtml(cls)}" href="/tempmon/alerts.html?unitId=${escHtml(String(u._id))}">
         <div class="unit-top">
           <div>
             <div class="unit-icon">${icon}</div>
