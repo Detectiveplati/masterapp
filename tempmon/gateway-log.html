@@ -84,9 +84,17 @@
     .diag-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
     .diag-table th, .diag-table td { border-bottom:1px solid var(--border); padding:8px 6px; text-align:left; }
     .diag-table th { font-size:0.72rem; text-transform:uppercase; color:var(--muted); letter-spacing:.04em; }
-    .diag-status-ok { color:#2e7d32; font-weight:700; }
+    .diag-status-ok   { color:#2e7d32; font-weight:700; }
     .diag-status-warn { color:#e65100; font-weight:700; }
-    .diag-status-err { color:#c62828; font-weight:700; }
+    .diag-status-err  { color:#c62828; font-weight:700; }
+    .health-bar { display:flex; gap:6px; margin-bottom:6px; flex-wrap:wrap; }
+    .health-pill { border-radius:20px; padding:3px 12px; font-size:0.78rem; font-weight:700; }
+    .hp-ok      { background:rgba(46,125,50,.12);  color:#2e7d32; }
+    .hp-late    { background:rgba(230,81,0,.12);   color:#e65100; }
+    .hp-off     { background:rgba(198,40,40,.12);  color:#c62828; }
+    .hp-noseen  { background:#f5f5f5; color:#9e9e9e; }
+    .diag-table tr.row-late td { background:#fff8e1; }
+    .diag-table tr.row-off  td { background:#fce4e4; }
   </style>
 </head>
 <body data-module="tempmon">
@@ -98,8 +106,7 @@
     <a href="/tempmon/calibration.html" class="nav-link">🔧 Calibration</a>
     <a href="/tempmon/setup.html" class="nav-link">⚙️ Setup</a>
     <a href="/tempmon/gateway.html" class="nav-link">📶 LoRa Gateway</a>
-    <a href="/tempmon/gateway-log.html" class="nav-link active">🪵 Raw Log</a>
-  </div>
+    <a href="/tempmon/gateway-log.html" class="nav-link active">🪵 Raw Log</a>    <a href="/tempmon/dev-test.html" class="nav-link">🧪 Dev Test</a>  </div>
 
   <h1 style="font-size:1.4rem;font-weight:900;margin-bottom:6px">🪵 Gateway Raw Log</h1>
   <p style="font-size:0.85rem;color:var(--muted);margin-bottom:20px">
@@ -127,24 +134,26 @@
   </div>
 
   <div class="diag-card">
-    <div class="diag-title">🔍 Live Sensor Scan <span style="font-size:0.72rem;font-weight:400;color:var(--muted);margin-left:6px">active in last 30s</span></div>
-    <div class="diag-summary" id="diagSummary">Scanning…</div>
+    <div class="diag-title">� Sensor Health <span style="font-size:0.72rem;font-weight:400;color:var(--muted);margin-left:6px">all registered sensors — expected every 5 min</span></div>
+    <div class="health-bar" id="healthBar"></div>
+    <div class="diag-summary" id="diagSummary">Loading…</div>
     <div style="overflow-x:auto">
       <table class="diag-table">
         <thead>
           <tr>
+            <th>Status</th>
             <th>Sensor ID</th>
-            <th>Tag Type</th>
-            <th>Registered</th>
+            <th>Alias / Unit</th>
             <th>Temp</th>
             <th>Humidity</th>
             <th>Battery</th>
             <th>RSSI</th>
             <th>Last Seen</th>
+            <th>Age</th>
           </tr>
         </thead>
         <tbody id="diagBody">
-          <tr><td colspan="8" class="no-data" style="padding:18px">Scanning…</td></tr>
+          <tr><td colspan="9" class="no-data" style="padding:18px">Loading…</td></tr>
         </tbody>
       </table>
     </div>
@@ -155,7 +164,7 @@
 
 <script>
   let allEvents = [];
-  let registeredDevices = [];
+  let sensorStatus = [];   // from /templog/api/lora/status — all registered devices
   let autoTimer = null;
 
   async function init() {
@@ -165,18 +174,98 @@
       if (!user.permissions?.tempmon && user.role !== 'admin')
         return window.location.replace('/?access=denied');
       document.documentElement.style.visibility = '';
-      await loadRegisteredDevices();
-      await loadLog();
+      await Promise.all([loadSensorHealth(), loadLog()]);
     } catch { window.location.replace('/login'); }
   }
 
   async function loadRegisteredDevices() {
+    // kept for applyFilter compat — no-op now, sensorStatus used instead
+    return;
+  }
+
+  async function loadSensorHealth() {
     try {
-      const r = await apiFetch('/templog/api/lora/devices');
-      registeredDevices = await r.json();
-    } catch {
-      registeredDevices = [];
+      const r = await apiFetch('/templog/api/lora/status?scan=500');
+      sensorStatus = await r.json();
+      renderSensorHealth();
+    } catch(e) {
+      document.getElementById('diagBody').innerHTML =
+        `<tr><td colspan="9" class="no-data" style="color:#c62828">Failed to load sensor health: ${escHtml(e.message)}</td></tr>`;
     }
+  }
+
+  function fmtAge(ms) {
+    if (ms === null) return '—';
+    const s = Math.round(ms / 1000);
+    if (s < 60)   return s + 's';
+    if (s < 3600) return Math.round(s / 60) + 'm';
+    if (s < 86400)return Math.round(s / 3600) + 'h ' + Math.round((s % 3600) / 60) + 'm';
+    return Math.round(s / 86400) + 'd';
+  }
+
+  function renderSensorHealth() {
+    const body    = document.getElementById('diagBody');
+    const summary = document.getElementById('diagSummary');
+    const bar     = document.getElementById('healthBar');
+    const now = Date.now();
+
+    if (!sensorStatus.length) {
+      body.innerHTML = '<tr><td colspan="9" class="no-data">No registered sensors. Go to ⚙️ Setup → 🌱 Seed to register sensors.</td></tr>';
+      summary.textContent = 'No sensors registered.';
+      return;
+    }
+
+    // Sort: offline first, then late, then active, then never-seen; within each group sort by sensorId
+    const order = { offline: 0, delayed: 1, active: 2 };
+    const sorted = [...sensorStatus].sort((a, b) => {
+      const ao = a.lastSeen ? (order[a.status] ?? 3) : 99;
+      const bo = b.lastSeen ? (order[b.status] ?? 3) : 99;
+      if (ao !== bo) return ao - bo;
+      return String(a.sensorId).localeCompare(String(b.sensorId));
+    });
+
+    const counts = { active: 0, delayed: 0, offline: 0, neverSeen: 0 };
+    sorted.forEach(d => {
+      if (!d.lastSeen) counts.neverSeen++;
+      else counts[d.status] = (counts[d.status] || 0) + 1;
+    });
+
+    bar.innerHTML = [
+      counts.active   ? `<span class="health-pill hp-ok">🟢 ${counts.active} active</span>` : '',
+      counts.delayed  ? `<span class="health-pill hp-late">🟡 ${counts.delayed} late</span>` : '',
+      counts.offline  ? `<span class="health-pill hp-off">🔴 ${counts.offline} offline</span>` : '',
+      counts.neverSeen? `<span class="health-pill hp-noseen">⚪ ${counts.neverSeen} never seen</span>` : ''
+    ].filter(Boolean).join('');
+
+    const missing = counts.delayed + counts.offline + counts.neverSeen;
+    summary.textContent = missing
+      ? `⚠️ ${missing} sensor${missing !== 1 ? 's' : ''} not transmitting on schedule (expected every 5 min)`
+      : `✅ All ${counts.active} sensors transmitting normally`;
+
+    body.innerHTML = sorted.map(d => {
+      const ageMs = d.lastSeen ? now - new Date(d.lastSeen).getTime() : null;
+      const rowCls = !d.lastSeen ? '' : (d.status === 'offline' ? 'row-off' : d.status === 'delayed' ? 'row-late' : '');
+      const statusCell = !d.lastSeen
+        ? '<span style="color:#9e9e9e;font-weight:700">⚪ Never seen</span>'
+        : d.status === 'active'
+          ? '<span class="diag-status-ok">🟢 Active</span>'
+          : d.status === 'delayed'
+            ? `<span class="diag-status-warn">🟡 Late</span>`
+            : `<span class="diag-status-err">🔴 Offline</span>`;
+      const alias = escHtml(d.alias || d.equipment || '—');
+      return `
+        <tr class="${rowCls}">
+          <td>${statusCell}</td>
+          <td><code>${escHtml(d.sensorId)}</code></td>
+          <td style="font-size:0.8rem">${alias}</td>
+          <td>${d.temp    != null ? d.temp + '°C'      : '<span style="color:var(--muted)">—</span>'}</td>
+          <td>${d.humidity!= null ? d.humidity + '%'   : '<span style="color:var(--muted)">—</span>'}</td>
+          <td>${d.battery != null ? d.battery + 'V'    : '<span style="color:var(--muted)">—</span>'}</td>
+          <td>${d.rssi    != null ? d.rssi + ' dBm'    : '<span style="color:var(--muted)">—</span>'}</td>
+          <td style="font-size:0.78rem">${d.lastSeen ? fmtDateTime(new Date(d.lastSeen)) : '—'}</td>
+          <td style="font-weight:700">${fmtAge(ageMs)}</td>
+        </tr>`;
+    }).join('');
   }
 
   async function loadLog() {
@@ -184,11 +273,12 @@
     dot.classList.remove('on');
     const limit = document.getElementById('limitSel').value;
     try {
-      await loadRegisteredDevices();
-      const r = await apiFetch(`/templog/api/lora/events?limit=${limit}`);
-      allEvents = await r.json();
+      const [, evRes] = await Promise.all([
+        loadSensorHealth(),
+        apiFetch(`/templog/api/lora/events?limit=${limit}`)
+      ]);
+      allEvents = await evRes.json();
       applyFilter();
-      renderCoverage();
       document.getElementById('lastUpdated').textContent = 'Updated ' + fmtTime(new Date());
       dot.classList.add('on');
       setTimeout(() => dot.classList.remove('on'), 3000);
