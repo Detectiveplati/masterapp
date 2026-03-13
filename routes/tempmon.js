@@ -1152,13 +1152,35 @@ router.post('/debug/inject', requireAuth, requireAdmin, async (req, res) => {
     let alertCreated = false;
     if (alertType) {
       if (forceAlert) {
-        // Pre-seed the excursion timer 1 ms beyond the threshold so the alert fires immediately
+        // Force mode: close any existing open alert for this type first (clears dedup guard),
+        // then directly create the alert + push without going through the threshold timer logic.
+        await TempMonAlert.updateMany(
+          { unit: unit._id, type: alertType, status: { $in: ['open', 'acknowledged'] } },
+          { $set: { status: 'resolved', resolvedAt: new Date(), resolveNote: 'Closed by dev-test force inject' } }
+        );
+        // Also clear the excursion timer so production logic is clean afterward
         if (!global._tempmonExcursionStart) global._tempmonExcursionStart = {};
-        const key          = `${unit._id}_${alertType}`;
-        const thresholdMs  = (unit.alertThresholdMinutes || 0) * 60000;
-        global._tempmonExcursionStart[key] = ts.getTime() - thresholdMs - 1;
+        delete global._tempmonExcursionStart[`${unit._id}_${alertType}`];
+
+        await TempMonAlert.create({
+          unit:             unit._id,
+          device:           device._id,
+          reading:          reading._id,
+          type:             alertType,
+          value:            temp,
+          pushSentAt:       new Date(),
+          notificationSent: true
+        });
+        const label      = buildAlertLabel(alertType, temp, unit);
+        const threshLabel = unit.alertThresholdMinutes > 0 ? ` after ${unit.alertThresholdMinutes} min out of range` : '';
+        sendPush(`🔴 ${unit.name}: ${label}`,
+          `[TEST] Temperature alert raised${threshLabel}. Check the unit immediately.`,
+          '/tempmon/alerts.html');
+        console.log(`⚡ [TempMon] Force-injected alert: ${alertType} for "${unit.name}" at ${temp}°C`);
+        alertCreated = true;
+      } else {
+        alertCreated = await maybeCreateOrNotifyAlert(unit, device, reading._id, alertType, temp, ts);
       }
-      alertCreated = await maybeCreateOrNotifyAlert(unit, device, reading._id, alertType, temp, ts);
     } else {
       await autoResolveAlerts(unit._id);
     }
