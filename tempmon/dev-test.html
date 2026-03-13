@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Dev Test — Temp Monitor</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/lib/dom.js"></script>
+  <script src="/js/lib/http.js"></script>
+  <style>
+    main { max-width: 900px; margin: 0 auto; padding: 28px 20px; }
+    .nav-links { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
+    .nav-link { padding: 8px 14px; border-radius: 8px; background: #f0f0f0; color: var(--muted); font-size: 0.82rem; font-weight: 700; text-decoration: none; }
+    .nav-link:hover { background: #e0e0e0; color: var(--ink); }
+    .nav-link.active { background: var(--accent); color: #fff; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 2px 6px var(--shadow); padding: 22px 24px; margin-bottom: 20px; }
+    .card h2 { font-size: 1rem; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .card h2 .badge { font-size: 0.7rem; padding: 2px 9px; border-radius: 20px; background: rgba(198,40,40,.12); color: #c62828; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .btn { padding: 9px 18px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.88rem; font-weight: 700; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; transition: opacity .15s; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2, #27ae60)); color: #fff; }
+    .btn-outline { background: #fff; border: 2px solid var(--border); color: var(--ink); }
+    .btn-danger  { background: rgba(198,40,40,.1); border: 1px solid rgba(198,40,40,.3); color: #c62828; }
+    .btn-warn    { background: rgba(230,81,0,.1);  border: 1px solid rgba(230,81,0,.3);  color: #e65100; }
+    .btn-blue    { background: rgba(21,101,192,.1);border: 1px solid rgba(21,101,192,.3);color: #1565c0; }
+    .btn-green   { background: rgba(46,125,50,.1); border: 1px solid rgba(46,125,50,.3); color: #2e7d32; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap: 14px; }
+    .preset-card { border: 2px solid var(--border); border-radius: 12px; padding: 16px; cursor: pointer; transition: border-color .15s, box-shadow .15s; background: var(--card); }
+    .preset-card:hover { border-color: var(--accent); box-shadow: 0 2px 10px var(--shadow); }
+    .preset-card.selected { border-color: var(--accent); background: rgba(var(--accent-rgb,41,182,246),.05); }
+    .preset-card .ptype { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 4px; }
+    .preset-card .pname { font-size: 1rem; font-weight: 800; color: var(--ink); }
+    .preset-card .pmeta { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+    .fg { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+    .fg label { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+    .fg input, .fg select { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-family: inherit; background: #fff; }
+    .fg input:focus, .fg select:focus { outline: none; border-color: var(--accent); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media(max-width:540px){ .form-grid { grid-template-columns: 1fr; } }
+    .unit-list { display: flex; flex-direction: column; gap: 8px; }
+    .unit-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: #fff; flex-wrap: wrap; }
+    .unit-row .uname { font-weight: 800; font-size: 0.9rem; flex: 1; min-width: 100px; }
+    .unit-row .ubadge { font-size: 0.7rem; padding: 2px 9px; border-radius: 20px; font-weight: 700; text-transform: uppercase; }
+    .ubadge.warmer  { background: rgba(230,81,0,.12);  color: #e65100; }
+    .ubadge.chiller { background: rgba(21,101,192,.12); color: #1565c0; }
+    .ubadge.freezer { background: rgba(81,45,168,.12);  color: #512da8; }
+    .ubadge.test    { background: rgba(0,0,0,.07);       color: #757575; }
+    .unit-row .umeta { font-size: 0.75rem; color: var(--muted); }
+    .inject-panel { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+    .inject-panel.visible { display: block; }
+    .temp-scen-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); gap: 10px; margin-bottom: 16px; }
+    .scen-btn { padding: 14px 10px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; font-family: inherit; font-weight: 800; font-size: 0.82rem; display: flex; flex-direction: column; gap: 4px; transition: transform .1s, box-shadow .1s; }
+    .scen-btn:hover { transform: translateY(-2px); box-shadow: 0 3px 10px rgba(0,0,0,.1); }
+    .scen-btn .sval { font-size: 1.3rem; font-weight: 900; }
+    .scen-btn.scen-ok      { background: #e8f5e9; border-color: #2e7d32; color: #2e7d32; }
+    .scen-btn.scen-warn-hi { background: #fff3e0; border-color: #ef6c00; color: #e65100; }
+    .scen-btn.scen-crit-hi { background: #ffebee; border-color: #c62828; color: #c62828; }
+    .scen-btn.scen-warn-lo { background: #e3f2fd; border-color: #1565c0; color: #1565c0; }
+    .scen-btn.scen-crit-lo { background: #ede7f6; border-color: #512da8; color: #512da8; }
+    .temp-slider-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    .temp-slider-row input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
+    .temp-slider-row input[type=number] { width: 84px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; font-weight: 700; font-family: inherit; text-align: center; }
+    .log-box { background: #1a1a2e; color: #e0e0e0; border-radius: 10px; padding: 14px 16px; min-height: 140px; max-height: 320px; overflow-y: auto; font-size: 0.82rem; font-family: 'Courier New', monospace; }
+    .log-box .l { margin-bottom: 4px; line-height: 1.4; }
+    .log-box .ok   { color: #81c784; }
+    .log-box .err  { color: #ef9a9a; }
+    .log-box .info { color: #90caf9; }
+    .log-box .warn { color: #ffcc80; }
+    .notice { padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; margin-bottom: 16px; }
+    .notice-warn { background: rgba(230,81,0,.1); border: 1px solid rgba(230,81,0,.25); color: #e65100; }
+    .notice-info { background: rgba(21,101,192,.09); border: 1px solid rgba(21,101,192,.2); color: #1565c0; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    .sel-label { font-size: 0.82rem; color: var(--muted); margin-bottom: 8px; }
+    #selectedUnitBanner { padding: 10px 14px; border-radius: 10px; background: rgba(var(--accent-rgb,41,182,246),.08); border: 1px solid rgba(var(--accent-rgb,41,182,246),.2); font-size: 0.9rem; font-weight: 700; color: var(--ink); margin-bottom: 16px; display: none; }
+  </style>
+</head>
+<body data-module="tempmon">
+<main>
+  <div class="nav-links">
+    <a href="/tempmon/" class="nav-link">📡 Dashboard</a>
+    <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
+    <a href="/tempmon/setup.html" class="nav-link">⚙️ Setup</a>
+    <a href="/tempmon/gateway.html" class="nav-link">📶 Gateway</a>
+    <a href="/tempmon/dev-test.html" class="nav-link active">🧪 Dev Test</a>
+  </div>
+
+  <div class="notice notice-warn">⚠️ Admin / dev tool — actions here write real data and fire real push notifications. Do not leave open in production.</div>
+
+  <!-- ── SECTION 1: Create test unit ─────────────────────────────── -->
+  <div class="card">
+    <h2>1. Create Test Unit <span class="badge">writes DB</span></h2>
+
+    <p class="sel-label">Choose a preset or fill in custom fields below:</p>
+    <div class="grid-3" id="presetGrid"></div>
+
+    <hr class="divider">
+
+    <div class="form-grid">
+      <div class="fg">
+        <label>Unit Name</label>
+        <input id="uName" type="text" placeholder="e.g. Test Warmer #1">
+      </div>
+      <div class="fg">
+        <label>Type</label>
+        <select id="uType">
+          <option value="warmer">Warmer</option>
+          <option value="chiller" selected>Chiller</option>
+          <option value="freezer">Freezer</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Critical Min (°C)</label>
+        <input id="uCritMin" type="number" step="0.5" value="0">
+      </div>
+      <div class="fg">
+        <label>Critical Max (°C)</label>
+        <input id="uCritMax" type="number" step="0.5" value="5">
+      </div>
+      <div class="fg">
+        <label>Alert Threshold (min)</label>
+        <input id="uThreshold" type="number" min="0" value="10" title="Minutes temp must stay out of range before alerting">
+      </div>
+      <div class="fg">
+        <label>Location</label>
+        <input id="uLocation" type="text" placeholder="e.g. Kitchen — Test Bench">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="createUnit()">➕ Create Unit</button>
+      <button class="btn btn-outline" onclick="loadUnits()">🔄 Refresh Unit List</button>
+    </div>
+  </div>
+
+  <!-- ── SECTION 2: Inject reading / trigger alert ────────────────── -->
+  <div class="card">
+    <h2>2. Inject Reading &amp; Test Alert <span class="badge">fires push</span></h2>
+
+    <p class="sel-label">Select a unit to inject a reading into:</p>
+    <div id="unitList" class="unit-list"><p style="color:var(--muted);font-size:.85rem;">Loading units…</p></div>
+
+    <div class="inject-panel" id="injectPanel">
+      <div id="selectedUnitBanner"></div>
+
+      <p class="sel-label">Temperature scenario:</p>
+      <div class="temp-scen-grid" id="scenGrid"></div>
+
+      <p class="sel-label" style="margin-top:4px;">Or set a custom temperature:</p>
+      <div class="temp-slider-row">
+        <input type="range" id="tempSlider" min="-30" max="100" step="0.5" value="20" oninput="syncTempInputs('slider')">
+        <input type="number" id="tempNumber" step="0.5" value="20" oninput="syncTempInputs('number')">
+        <span style="font-size:0.82rem;color:var(--muted);">°C</span>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-danger" onclick="injectReading()">🚨 Inject &amp; Fire Alert</button>
+        <button class="btn btn-green"  onclick="injectNormal()">✅ Inject Normal Temp</button>
+        <button class="btn btn-blue"   onclick="testPush()">🔔 Test Push (no reading)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 3: Cleanup ───────────────────────────────────────── -->
+  <div class="card">
+    <h2>3. Cleanup <span class="badge">destructive</span></h2>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">Delete test units created in this session (purges their readings and alerts too).</p>
+    <div id="cleanupList" class="unit-list"><p style="font-size:.85rem;color:var(--muted);">No test units created yet in this session.</p></div>
+    <div class="btn-row" style="margin-top:12px;">
+      <button class="btn btn-danger" onclick="deleteAllTestUnits()">🗑 Delete All Test Units</button>
+    </div>
+  </div>
+
+  <!-- ── Log ──────────────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>Log</h2>
+    <div class="log-box" id="logBox"></div>
+    <div class="btn-row" style="margin-top:10px;"><button class="btn btn-outline" onclick="clearLog()">Clear</button></div>
+  </div>
+</main>
+
+<script>
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const API = '/api/tempmon';
+
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+function log(msg, cls = 'info') {
+  const box = document.getElementById('logBox');
+  const ts  = new Date().toLocaleTimeString();
+  const el  = document.createElement('div');
+  el.className = `l ${cls}`;
+  el.textContent = `[${ts}] ${msg}`;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+function clearLog() { document.getElementById('logBox').innerHTML = ''; }
+function escHtml(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Presets ───────────────────────────────────────────────────────────────────
+const PRESETS = [
+  { name: 'Test Warmer',  type: 'warmer',  criticalMin: 63, criticalMax: 85, threshold: 10,  desc: '63–85 °C, threshold 10 min' },
+  { name: 'Test Chiller', type: 'chiller', criticalMin: 0,  criticalMax: 5,  threshold: 10,  desc: '0–5 °C, threshold 10 min'   },
+  { name: 'Test Freezer', type: 'freezer', criticalMin: -25,criticalMax: -15,threshold: 15,  desc: '-25– -15 °C, threshold 15 min' },
+];
+
+const TYPE_COLOR = { warmer: 'scen-warn-hi', chiller: 'scen-ok', freezer: 'scen-warn-lo' };
+
+function renderPresets() {
+  const grid = document.getElementById('presetGrid');
+  grid.innerHTML = PRESETS.map((p, i) => `
+    <div class="preset-card" id="preset-${i}" onclick="selectPreset(${i})">
+      <div class="ptype">${p.type}</div>
+      <div class="pname">${escHtml(p.name)}</div>
+      <div class="pmeta">${escHtml(p.desc)}</div>
+    </div>`).join('');
+}
+
+function selectPreset(idx) {
+  document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(`preset-${idx}`).classList.add('selected');
+  const p = PRESETS[idx];
+  document.getElementById('uName').value      = p.name;
+  document.getElementById('uType').value      = p.type;
+  document.getElementById('uCritMin').value   = p.criticalMin;
+  document.getElementById('uCritMax').value   = p.criticalMax;
+  document.getElementById('uThreshold').value = p.threshold;
+  document.getElementById('uLocation').value  = 'Test Bench';
+}
+
+// ── Units ─────────────────────────────────────────────────────────────────────
+let allUnits     = [];
+let selectedUnit = null;
+// Track units created in this session
+let sessionTestIds = JSON.parse(sessionStorage.getItem('tm_test_ids') || '[]');
+
+async function loadUnits() {
+  try {
+    const data = await api('GET', '/units');
+    allUnits = data;
+    renderUnitList();
+    renderCleanupList();
+    log(`Loaded ${allUnits.length} unit(s)`, 'info');
+  } catch (e) { log('Failed to load units: ' + e.message, 'err'); }
+}
+
+function renderUnitList() {
+  const el = document.getElementById('unitList');
+  if (!allUnits.length) { el.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No active units found.</p>'; return; }
+  el.innerHTML = allUnits.map(u => `
+    <div class="unit-row" id="urow-${u._id}" onclick="selectUnit('${u._id}')" style="cursor:pointer;">
+      <span class="uname">${escHtml(u.name)}</span>
+      <span class="ubadge ${u.type}">${u.type}</span>
+      <span class="umeta">${u.criticalMin} – ${u.criticalMax} °C · thresh ${u.alertThresholdMinutes ?? 0} min</span>
+    </div>`).join('');
+}
+
+function renderCleanupList() {
+  const el  = document.getElementById('cleanupList');
+  const ids = sessionTestIds.filter(id => allUnits.some(u => u._id === id));
+  if (!ids.length) { el.innerHTML = '<p style="font-size:.85rem;color:var(--muted);">No test units created yet in this session.</p>'; return; }
+  el.innerHTML = ids.map(id => {
+    const u = allUnits.find(x => x._id === id);
+    if (!u) return '';
+    return `<div class="unit-row">
+      <span class="uname">${escHtml(u.name)}</span>
+      <span class="ubadge ${u.type}">${u.type}</span>
+      <span class="umeta">${u.criticalMin} – ${u.criticalMax} °C</span>
+      <button class="btn btn-danger" style="padding:5px 12px;font-size:.78rem;" onclick="deleteUnit('${u._id}')">Delete</button>
+    </div>`;
+  }).join('');
+}
+
+function selectUnit(id) {
+  selectedUnit = allUnits.find(u => u._id === id) || null;
+  document.querySelectorAll('.unit-row').forEach(r => r.style.outline = '');
+  const row = document.getElementById('urow-' + id);
+  if (row) row.style.outline = '2px solid var(--accent)';
+  if (!selectedUnit) return;
+
+  const banner = document.getElementById('selectedUnitBanner');
+  banner.style.display = 'block';
+  banner.textContent = `Selected: ${selectedUnit.name} (${selectedUnit.type}) — ${selectedUnit.criticalMin} to ${selectedUnit.criticalMax} °C`;
+
+  renderScenarios(selectedUnit);
+  document.getElementById('injectPanel').classList.add('visible');
+  document.getElementById('injectPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  log(`Selected unit: ${selectedUnit.name}`, 'info');
+}
+
+// ── Scenario buttons ─────────────────────────────────────────────────────────
+function renderScenarios(unit) {
+  const { criticalMin: mn, criticalMax: mx, warningBuffer: wb = 2 } = unit;
+  const scenarios = [
+    { label: '✅ Normal',       cls: 'scen-ok',      temp: +(mn + (mx - mn) / 2).toFixed(1),  desc: 'Mid-range' },
+    { label: '🟡 Warn High',   cls: 'scen-warn-hi', temp: +(mx - wb / 2).toFixed(1),          desc: `${(mx - wb / 2).toFixed(1)} °C` },
+    { label: '🔴 Critical High',cls: 'scen-crit-hi', temp: +(mx + 5).toFixed(1),               desc: `${(mx + 5).toFixed(1)} °C` },
+    { label: '🟡 Warn Low',    cls: 'scen-warn-lo', temp: +(mn + wb / 2).toFixed(1),          desc: `${(mn + wb / 2).toFixed(1)} °C` },
+    { label: '🔵 Critical Low',cls: 'scen-crit-lo', temp: +(mn - 5).toFixed(1),               desc: `${(mn - 5).toFixed(1)} °C` },
+  ];
+  document.getElementById('scenGrid').innerHTML = scenarios.map(s => `
+    <button class="scen-btn ${s.cls}" onclick="setTemp(${s.temp})">
+      <span>${s.label}</span>
+      <span class="sval">${s.temp}°C</span>
+      <span style="font-size:0.72rem;opacity:.8;">${s.desc}</span>
+    </button>`).join('');
+
+  // Set slider range sensibly
+  const sliderEl = document.getElementById('tempSlider');
+  sliderEl.min = Math.min(mn - 30, -30);
+  sliderEl.max = Math.max(mx + 30, 100);
+  setTemp(+(mn + (mx - mn) / 2).toFixed(1));
+}
+
+function setTemp(val) {
+  document.getElementById('tempSlider').value = val;
+  document.getElementById('tempNumber').value = val;
+}
+function syncTempInputs(src) {
+  const v = src === 'slider'
+    ? document.getElementById('tempSlider').value
+    : document.getElementById('tempNumber').value;
+  document.getElementById('tempSlider').value = v;
+  document.getElementById('tempNumber').value = v;
+}
+function getTemp() { return parseFloat(document.getElementById('tempNumber').value); }
+
+// ── Create Unit ───────────────────────────────────────────────────────────────
+async function createUnit() {
+  const name      = document.getElementById('uName').value.trim();
+  const type      = document.getElementById('uType').value;
+  const critMin   = parseFloat(document.getElementById('uCritMin').value);
+  const critMax   = parseFloat(document.getElementById('uCritMax').value);
+  const threshold = parseInt(document.getElementById('uThreshold').value, 10);
+  const location  = document.getElementById('uLocation').value.trim() || 'Test Bench';
+
+  if (!name) { log('Unit name is required.', 'err'); return; }
+  if (isNaN(critMin) || isNaN(critMax) || critMin >= critMax) { log('Invalid temperature range.', 'err'); return; }
+
+  try {
+    log(`Creating unit "${name}" (${type}, ${critMin}–${critMax} °C)…`, 'info');
+    const unit = await api('POST', '/units', { name, type, criticalMin: critMin, criticalMax: critMax, alertThresholdMinutes: threshold, location, active: true, inUse: true });
+    log(`✓ Created unit: ${unit.name} (ID: ${unit._id})`, 'ok');
+    sessionTestIds.push(unit._id);
+    sessionStorage.setItem('tm_test_ids', JSON.stringify(sessionTestIds));
+    await loadUnits();
+    selectUnit(unit._id);
+  } catch (e) { log('Failed to create unit: ' + e.message, 'err'); }
+}
+
+// ── Inject Reading ────────────────────────────────────────────────────────────
+async function injectReading() {
+  if (!selectedUnit) { log('Select a unit first.', 'warn'); return; }
+  const temp = getTemp();
+  log(`Injecting ${temp}°C into "${selectedUnit.name}"… (will run alert pipeline)`, 'warn');
+  try {
+    const r = await api('POST', '/debug/inject', { unitId: selectedUnit._id, temp });
+    const alertInfo = r.alertCreated
+      ? `🚨 Alert raised: ${r.alertType}`
+      : r.alertType
+        ? `⏱ Excursion timer started (${r.alertType}) — no alert yet (threshold not met)`
+        : '✅ No alert (temp in range or auto-resolved)';
+    log(`✓ Reading saved (${r.temp}°C, flagged:${r.flagged}). ${alertInfo}`, r.alertCreated ? 'err' : 'ok');
+    if (r.warmerState) log(`   Warmer state: ${r.warmerState.state}`, 'info');
+  } catch (e) { log('Inject failed: ' + e.message, 'err'); }
+}
+
+async function injectNormal() {
+  if (!selectedUnit) { log('Select a unit first.', 'warn'); return; }
+  const mid = (selectedUnit.criticalMin + selectedUnit.criticalMax) / 2;
+  const temp = parseFloat(mid.toFixed(1));
+  log(`Injecting normal temp ${temp}°C into "${selectedUnit.name}"…`, 'info');
+  try {
+    const r = await api('POST', '/debug/inject', { unitId: selectedUnit._id, temp });
+    log(`✓ Normal reading saved (${r.temp}°C). Alerts auto-resolved.`, 'ok');
+  } catch (e) { log('Inject failed: ' + e.message, 'err'); }
+}
+
+// ── Test Push ─────────────────────────────────────────────────────────────────
+async function testPush() {
+  if (!selectedUnit) { log('Select a unit first.', 'warn'); return; }
+  log(`Sending test push for "${selectedUnit.name}"…`, 'info');
+  try {
+    await api('POST', '/test-push', { unitId: selectedUnit._id });
+    log('✓ Test push sent.', 'ok');
+  } catch (e) { log('Test push failed: ' + e.message, 'err'); }
+}
+
+// ── Delete / Cleanup ──────────────────────────────────────────────────────────
+async function deleteUnit(id) {
+  const unit = allUnits.find(u => u._id === id);
+  if (!confirm(`Delete unit "${unit?.name}"?\nThis will soft-delete the unit only. Readings and alerts remain in the DB.`)) return;
+  try {
+    await api('DELETE', `/units/${id}`);
+    log(`✓ Deleted unit ${id}`, 'ok');
+    sessionTestIds = sessionTestIds.filter(x => x !== id);
+    sessionStorage.setItem('tm_test_ids', JSON.stringify(sessionTestIds));
+    if (selectedUnit?._id === id) {
+      selectedUnit = null;
+      document.getElementById('injectPanel').classList.remove('visible');
+    }
+    await loadUnits();
+  } catch (e) { log('Delete failed: ' + e.message, 'err'); }
+}
+
+async function deleteAllTestUnits() {
+  const ids = sessionTestIds.filter(id => allUnits.some(u => u._id === id));
+  if (!ids.length) { log('No test units to delete.', 'warn'); return; }
+  const names = ids.map(id => allUnits.find(u => u._id === id)?.name).filter(Boolean).join(', ');
+  if (!confirm(`Delete these test units?\n${names}`)) return;
+  for (const id of ids) {
+    try {
+      await api('DELETE', `/units/${id}`);
+      log(`✓ Deleted ${id}`, 'ok');
+    } catch (e) { log(`Failed to delete ${id}: ${e.message}`, 'err'); }
+  }
+  sessionTestIds = [];
+  sessionStorage.setItem('tm_test_ids', JSON.stringify([]));
+  selectedUnit = null;
+  document.getElementById('injectPanel').classList.remove('visible');
+  await loadUnits();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderPresets();
+loadUnits();
+log('Dev test panel ready.', 'info');
+</script>
+</body>
+</html>

@@ -1102,7 +1102,7 @@ async function updateWarmerState(unit, device, value, readingTs) {
 // ═══════════════════════════════════════════════════════════════════
 // DEBUG / TEST — admin only
 // POST /api/tempmon/debug/inject
-// Inject a simulated reading for any warmer unit (bypasses gateway key).
+// Inject a simulated reading for ANY unit type (bypasses gateway key).
 // Body: { unitId, temp, minsAgo? }
 // ═══════════════════════════════════════════════════════════════════
 router.post('/debug/inject', requireAuth, requireAdmin, async (req, res) => {
@@ -1114,13 +1114,19 @@ router.post('/debug/inject', requireAuth, requireAdmin, async (req, res) => {
 
     const unit = await TempMonUnit.findById(unitId);
     if (!unit) return res.status(404).json({ error: 'Unit not found' });
-    if (unit.type !== 'warmer') return res.status(400).json({ error: 'Unit is not a warmer' });
 
-    // Find a device linked to this unit (prefer the test device, fall back to first)
-    const device = await TempMonDevice.findOne({ unit: unitId, active: true }).sort({ createdAt: 1 });
-    if (!device) return res.status(404).json({ error: 'No active device linked to this unit. Add one in Setup first.' });
+    // Find or auto-create a test device linked to this unit
+    let device = await TempMonDevice.findOne({ unit: unitId, active: true }).sort({ createdAt: 1 });
+    if (!device) {
+      device = await TempMonDevice.create({
+        unit:      unit._id,
+        deviceId:  `test-device-${unit._id}`,
+        label:     `Test Device — ${unit.name}`,
+        active:    true
+      });
+    }
 
-    const ts = new Date(Date.now() - minsAgo * 60000);
+    const ts      = new Date(Date.now() - minsAgo * 60000);
     const flagged = temp < unit.criticalMin || temp > unit.criticalMax;
 
     const reading = new TempMonReading({
@@ -1134,24 +1140,35 @@ router.post('/debug/inject', requireAuth, requireAdmin, async (req, res) => {
     });
     await reading.save();
 
-    // Reload unit so warmerState is fresh from DB
-    const freshUnit = await TempMonUnit.findById(unitId);
-    // Reset in-memory tracker so state machine re-evaluates from DB state
-    if (global._warmerState) delete global._warmerState[String(unitId)];
-    const previousState = freshUnit.warmerState?.state || 'unknown';
+    // Run the same alert pipeline as a real ingest
+    if (unit.type === 'warmer') {
+      // Reset in-memory tracker so state machine re-evaluates from DB
+      if (global._warmerState) delete global._warmerState[String(unitId)];
+      const freshUnit = await TempMonUnit.findById(unitId);
+      await updateWarmerState(freshUnit, device, temp, ts);
+    }
 
-    await updateWarmerState(freshUnit, device, temp, ts);
+    const alertType = evaluateAlertType(temp, unit);
+    let alertCreated = false;
+    if (alertType) {
+      alertCreated = await maybeCreateOrNotifyAlert(unit, device, reading._id, alertType, temp, ts);
+    } else {
+      await autoResolveAlerts(unit._id);
+    }
 
-    const updated = await TempMonUnit.findById(unitId);
+    const updated = await TempMonUnit.findById(unitId).lean();
     res.json({
       ok: true,
+      unitName:  unit.name,
+      unitType:  unit.type,
       temp,
       minsAgo,
       recordedAt: ts,
-      previousState,
-      newState: updated.warmerState?.state,
-      since: updated.warmerState?.since,
-      readingId: reading._id
+      flagged,
+      alertType:    alertType || null,
+      alertCreated,
+      warmerState:  updated.warmerState || null,
+      readingId:    reading._id
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
