@@ -157,7 +157,8 @@
       </div>
 
       <div class="btn-row">
-        <button class="btn btn-danger" onclick="injectReading()">🚨 Inject &amp; Fire Alert</button>
+        <button class="btn btn-danger" onclick="injectReading(false)">🚨 Inject &amp; Fire Alert</button>
+        <button class="btn btn-warn"   onclick="injectReading(true)">⚡ Force Alert Now (bypass threshold)</button>
         <button class="btn btn-green"  onclick="injectNormal()">✅ Inject Normal Temp</button>
         <button class="btn btn-blue"   onclick="testPush()">🔔 Test Push (no reading)</button>
       </div>
@@ -359,12 +360,13 @@ async function createUnit() {
 }
 
 // ── Inject Reading ────────────────────────────────────────────────────────────
-async function injectReading() {
+async function injectReading(forceAlert = false) {
   if (!selectedUnit) { log('Select a unit first.', 'warn'); return; }
   const temp = getTemp();
-  log(`Injecting ${temp}°C into "${selectedUnit.name}"… (will run alert pipeline)`, 'warn');
+  const label = forceAlert ? '⚡ FORCE ALERT (threshold bypassed)' : 'normal inject';
+  log(`Injecting ${temp}°C into "${selectedUnit.name}" [${label}]…`, 'warn');
   try {
-    const r = await api('POST', '/debug/inject', { unitId: selectedUnit._id, temp });
+    const r = await api('POST', '/debug/inject', { unitId: selectedUnit._id, temp, forceAlert });
     const alertInfo = r.alertCreated
       ? `🚨 Alert raised: ${r.alertType}`
       : r.alertType

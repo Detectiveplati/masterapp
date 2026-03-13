@@ -1107,7 +1107,7 @@ async function updateWarmerState(unit, device, value, readingTs) {
 // ═══════════════════════════════════════════════════════════════════
 router.post('/debug/inject', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { unitId, temp, minsAgo = 0 } = req.body;
+    const { unitId, temp, minsAgo = 0, forceAlert = false } = req.body;
     if (!unitId || temp === undefined) {
       return res.status(400).json({ error: 'unitId and temp are required' });
     }
@@ -1151,6 +1151,13 @@ router.post('/debug/inject', requireAuth, requireAdmin, async (req, res) => {
     const alertType = evaluateAlertType(temp, unit);
     let alertCreated = false;
     if (alertType) {
+      if (forceAlert) {
+        // Pre-seed the excursion timer 1 ms beyond the threshold so the alert fires immediately
+        if (!global._tempmonExcursionStart) global._tempmonExcursionStart = {};
+        const key          = `${unit._id}_${alertType}`;
+        const thresholdMs  = (unit.alertThresholdMinutes || 0) * 60000;
+        global._tempmonExcursionStart[key] = ts.getTime() - thresholdMs - 1;
+      }
       alertCreated = await maybeCreateOrNotifyAlert(unit, device, reading._id, alertType, temp, ts);
     } else {
       await autoResolveAlerts(unit._id);
@@ -1163,6 +1170,7 @@ router.post('/debug/inject', requireAuth, requireAdmin, async (req, res) => {
       unitType:  unit.type,
       temp,
       minsAgo,
+      forceAlert,
       recordedAt: ts,
       flagged,
       alertType:    alertType || null,
