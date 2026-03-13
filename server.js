@@ -857,6 +857,8 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
 }
 
 function tmEvaluateAlertType(value, unit) {
+    // Warmers are monitored exclusively by the fault-state machine — no temperature range alerts
+    if (unit.type === 'warmer') return null;
     const { criticalMin, criticalMax, warningBuffer = 2 } = unit;
     if (value < criticalMin)                 return 'critical_low';
     if (value > criticalMax)                 return 'critical_high';
@@ -1720,6 +1722,28 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`   ⚙️  Admin Panel           → http://localhost:${PORT}/admin/`);
     console.log(`   💚 Health Check          → http://localhost:${PORT}/api/health`);
     console.log(`\n   Access from tablet: http://<your-ip>:${PORT}\n`);
+
+    // One-time: resolve any stale range alerts (warning/critical) on warmer units —
+    // warmers are now monitored by fault-state machine only.
+    if (!global._tempmonWarmerWarnCleaned) {
+        global._tempmonWarmerWarnCleaned = true;
+        (async () => {
+            try {
+                const TempMonUnit  = require('./models/TempMonUnit');
+                const TempMonAlert = require('./models/TempMonAlert');
+                const warmerUnits  = await TempMonUnit.find({ type: 'warmer', active: true }).select('_id').lean();
+                if (warmerUnits.length) {
+                    const ids    = warmerUnits.map(u => u._id);
+                    const result = await TempMonAlert.updateMany(
+                        { unit: { $in: ids }, type: { $in: ['warning_high', 'warning_low', 'critical_high', 'critical_low'] }, status: { $in: ['open', 'acknowledged'] } },
+                        { $set: { status: 'resolved', resolvedAt: new Date(), resolveNote: 'Auto-closed: warmer units use fault detection only' } }
+                    );
+                    if (result.modifiedCount > 0)
+                        console.log(`✓ [TempMon] Startup cleanup: resolved ${result.modifiedCount} stale warmer range alert(s)`);
+                }
+            } catch (e) { console.error('✗ [TempMon] Startup cleanup error:', e.message); }
+        })();
+    }
 });
 
 // ─── LoRa Gateway TCP Server ──────────────────────────────────────────────────
