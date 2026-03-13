@@ -334,9 +334,9 @@ async function autoResolveAlerts(unitId) {
       if (k.startsWith(prefix)) delete global._tempmonExcursionStart[k];
     });
   }
-  // Only resolve critical alerts (warmers don't create critical alerts; warmer_fault is resolved by the state machine)
+  // Resolve all open critical and legacy warning alerts for this unit
   await TempMonAlert.updateMany(
-    { unit: unitId, type: { $in: ['critical_high', 'critical_low'] }, status: { $in: ['open', 'acknowledged'] } },
+    { unit: unitId, type: { $in: ['critical_high', 'critical_low', 'warning_high', 'warning_low'] }, status: { $in: ['open', 'acknowledged'] } },
     { $set: { status: 'resolved', resolvedAt: new Date(), resolveNote: 'Temperature returned to normal range automatically' } }
   );
 }
@@ -901,6 +901,27 @@ if (!global._tempmonPushCronStarted) {
   global._tempmonPushCronStarted = true;
   setInterval(checkPendingPushes, 60 * 1000); // every minute
   console.log('✓ [TempMon] Pending push cron started (1-min interval)');
+}
+
+// ── One-time startup cleanup ─────────────────────────────────────────────────
+// Auto-resolve any open warning_high / warning_low alerts belonging to warmer
+// units — these are stale records from before the new alert logic was deployed.
+if (!global._tempmonWarmerWarnCleaned) {
+  global._tempmonWarmerWarnCleaned = true;
+  (async () => {
+    try {
+      const warmerUnits = await TempMonUnit.find({ type: 'warmer', active: true }).select('_id').lean();
+      if (warmerUnits.length) {
+        const ids = warmerUnits.map(u => u._id);
+        const result = await TempMonAlert.updateMany(
+          { unit: { $in: ids }, type: { $in: ['warning_high', 'warning_low', 'critical_high', 'critical_low'] }, status: { $in: ['open', 'acknowledged'] } },
+          { $set: { status: 'resolved', resolvedAt: new Date(), resolveNote: 'Auto-closed: warmer temperature range alerts are no longer used (fault detection only)' } }
+        );
+        if (result.modifiedCount > 0)
+          console.log(`✓ [TempMon] Startup cleanup: resolved ${result.modifiedCount} stale warmer range alert(s)`);
+      }
+    } catch (e) { console.error('✗ [TempMon] Startup cleanup error:', e.message); }
+  })();
 }
 
 // ═══════════════════════════════════════════════════════════════════
