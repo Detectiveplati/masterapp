@@ -827,7 +827,7 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
         console.log(`✓ [TempMon] Reading saved: ${sensorRow.sensorId} → "${unit.name}" ${sensorRow.temp}°C${rhStr}${batStr}${flagged ? ' ⚠️ FLAGGED' : ''}`);
 
         // Update warmer power state (on/off/fault detection) — no-op for non-warmer units
-        await tmUpdateWarmerState(unit, sensorRow.temp, readingData.recordedAt);
+        await tmUpdateWarmerState(unit, tmDevice, sensorRow.temp, readingData.recordedAt);
 
         // Alert logic
         const alertType = tmEvaluateAlertType(sensorRow.temp, unit);

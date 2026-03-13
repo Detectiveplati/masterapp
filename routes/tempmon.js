@@ -927,30 +927,44 @@ if (!global._tempmonWarmerWarnCleaned) {
 // ═══════════════════════════════════════════════════════════════════
 // WARMER STATE MACHINE
 // ═══════════════════════════════════════════════════════════════════
-// Temperature zones (relative to unit.criticalMin as targetLow, e.g. 60°C):
-//   Room   : temp ≤ roomTempCeiling (35°C)      → off or cooling down
-//   Low    : roomCeiling < temp ≤ warmupStart   → ambiguous, treated as cooling
-//   Mid    : warmupStart < temp < targetLow     → warming up (or fault if too long)
-//   Active : temp ≥ targetLow (criticalMin)     → warmer working normally
+// Uses a rolling temperature window to compute a reliable slope (°C/min).
+// Slope direction in the mid zone determines state — not just elapsed time:
+//
+//   Rising slope  → warming_up  (warmer switched on, heating toward target)
+//   Falling slope → cooling     (warmer switched off, passively cooling)
+//   Flat slope    → potential fault (warmer is on but STUCK below target)
+//
+// Temperature zones:
+//   Active  : temp ≥ criticalMin (targetLow)     → warmer holding target
+//   Mid     : roomCeiling < temp < targetLow     → slope determines intent
+//   Room    : temp ≤ roomCeiling                 → cold / off
 //
 // State transitions:
-//   off        → warming_up : temp enters Mid zone (turned on)
-//   warming_up → active     : temp reaches Active zone
-//   warming_up → fault      : stuck in Mid zone for faultMinutes without reaching target
-//   active     → cooling    : temp drops below Active zone
-//   cooling    → off        : sustained at Room temp for offConfirmMinutes
-//   fault      → active     : temp finally reaches Active zone (self-resolved)
-//   fault      → cooling    : temp drops to Room zone
+//   any         → active     : temp ≥ targetLow
+//   active      → warming_up : temp drops to mid/room with RISING slope (shouldn't happen but handled)
+//   active      → cooling    : temp drops to mid zone with FALLING slope (turned off)
+//   active      → fault      : temp drops to mid zone and goes FLAT for faultMinutes
+//   warming_up  → active     : temp reaches targetLow
+//   warming_up  → fault      : slope goes flat/negative in mid zone for faultMinutes
+//   warming_up  → cooling    : slope turns negative (switched off mid warm-up)
+//   cooling     → warming_up : slope turns positive (switched back on)
+//   cooling     → off        : sustained at room temp for offConfirmMinutes
+//   off         → warming_up : slope turns positive from room temp
+//   fault       → active     : temp finally reaches targetLow
+//   fault       → cooling    : slope turns consistently negative (switched off)
 // ───────────────────────────────────────────────────────────────────
-// device param is required so we can link warmer_fault alerts to the reading's device
 async function updateWarmerState(unit, device, value, readingTs) {
   if (unit.type !== 'warmer') return;
 
   const cfg          = unit.warmerStateConfig || {};
-  const roomCeiling  = cfg.roomTempCeiling   ?? 35;
-  const targetLow    = unit.criticalMin;              // e.g. 60°C
+  const roomCeiling  = cfg.roomTempCeiling    ?? 35;   // °C — confirmed off below this
+  const targetLow    = unit.criticalMin;               // e.g. 63°C — active zone floor
   const offConfirmMs = (cfg.offConfirmMinutes ?? 20) * 60000;
   const faultMs      = (cfg.faultMinutes      ?? 30) * 60000;
+  const windowSize   = cfg.slopeWindowReadings ?? 8;   // readings used for slope calc
+  // Slope thresholds (°C/min) — tunable via unit.warmerStateConfig
+  const riseThresh   = cfg.riseMinPerMin      ?? 0.10; // above this → heating up
+  const fallThresh   = cfg.fallMinPerMin      ?? 0.08; // below -this → cooling / switched off
 
   const ts = (readingTs instanceof Date ? readingTs : new Date(readingTs || Date.now())).getTime();
 
@@ -959,82 +973,95 @@ async function updateWarmerState(unit, device, value, readingTs) {
   // Bootstrap in-memory tracker from DB on first reading after server start
   if (!global._warmerState[unit._id]) {
     global._warmerState[unit._id] = {
-      state:    unit.warmerState?.state || 'unknown',
-      since:    unit.warmerState?.since ? new Date(unit.warmerState.since).getTime() : ts,
-      prevTemp: null
+      state:   unit.warmerState?.state || 'unknown',
+      since:   unit.warmerState?.since ? new Date(unit.warmerState.since).getTime() : ts,
+      history: []  // rolling window: [{ ts, value }, ...]
     };
   }
 
-  const current  = global._warmerState[unit._id];
-  const state    = current.state;
-  const since    = current.since;
-  const elapsed  = ts - since;
-  const prevTemp = current.prevTemp;
+  const current = global._warmerState[unit._id];
+  const state   = current.state;
+  const since   = current.since;
+  const elapsed = ts - since;
 
-  // Slope: positive = heating up, negative = cooling down.
-  // Dead-band of ±0.3°C to ignore sensor noise.
-  const slope   = prevTemp !== null ? value - prevTemp : 0;
-  const rising  = slope >  0.3;
-  const falling = slope < -0.3;
+  // ── Rolling window: push latest reading, trim to windowSize ─────
+  const history = current.history;
+  history.push({ ts, value });
+  if (history.length > windowSize) history.shift();
+
+  // ── Slope (°C/min) over full window span ─────────────────────────
+  // Using oldest → newest gives a smoothed trend that ignores per-reading noise.
+  let slopePerMin = 0;
+  if (history.length >= 2) {
+    const oldest = history[0];
+    const latest = history[history.length - 1];
+    const dtMin  = (latest.ts - oldest.ts) / 60000;
+    if (dtMin > 0) slopePerMin = (latest.value - oldest.value) / dtMin;
+  }
+
+  const rising  = slopePerMin >  riseThresh;
+  const falling = slopePerMin < -fallThresh;
+  // flat = neither rising nor falling (warmer fighting to hold or failing to heat)
 
   let newState = state;
 
+  // ── Zone: Active (temp ≥ targetLow) ─────────────────────────────
   if (value >= targetLow) {
-    // ── Active zone: warmer is holding target temperature ───────────
     newState = 'active';
 
+  // ── Zone: Room temperature (temp ≤ roomCeiling) ──────────────────
   } else if (value <= roomCeiling) {
-    // ── Room-temperature zone ───────────────────────────────────────
     if (rising) {
-      // Temperature climbing from cold → warmer just switched on
+      // Slope turning positive from cold → warmer just switched on
       newState = 'warming_up';
     } else if (state === 'off') {
       newState = 'off';
-    } else if (state === 'cooling' || state === 'fault' || state === 'warming_up') {
-      newState = elapsed >= offConfirmMs ? 'off' : 'cooling';
     } else {
-      newState = 'cooling';
+      // cooling, fault, warming_up, or unknown → confirm off after grace period
+      newState = elapsed >= offConfirmMs ? 'off' : 'cooling';
     }
 
+  // ── Zone: Mid (roomCeiling < temp < targetLow) ───────────────────
+  // THIS is where we distinguish between fault and normal cool-down:
+  //   Rising  → warmer is heating up normally → warming_up (not a fault)
+  //   Falling → warmer was switched off, passively cooling → cooling (not a fault)
+  //   Flat    → warmer is on but STUCK below target → fault after faultMinutes
   } else {
-    // ── Mid zone: roomCeiling < temp < targetLow ────────────────────
-    // Use slope to determine direction; fall back to time-based fault guard.
     if (rising) {
-      // Temperature trending upward → heating up
       if (state === 'fault') {
-        newState = 'fault';        // stays faulted until it reaches target or fully cools off
-      } else if (state === 'warming_up') {
-        newState = elapsed >= faultMs ? 'fault' : 'warming_up';
+        // Remain faulted until temp actually reaches target — rising in mid zone alone is ambiguous
+        newState = 'fault';
       } else {
-        newState = 'warming_up';   // fresh warm-up (resets timer via state change)
+        newState = 'warming_up';
       }
     } else if (falling) {
-      // Temperature trending downward → cooling down
+      // Consistent negative slope → switched off, passively cooling — never a fault
       newState = 'cooling';
     } else {
-      // Flat — no significant slope; continue existing timer-based logic
+      // Flat slope in mid zone
       if (state === 'warming_up') {
+        // Was heating but slope stalled → fault if stuck long enough
         newState = elapsed >= faultMs ? 'fault' : 'warming_up';
+      } else if (state === 'active') {
+        // Just dropped below target and is flat → give faultMs grace before declaring fault
+        newState = elapsed >= faultMs ? 'fault' : state;
       } else if (state === 'fault') {
         newState = 'fault';
-      } else if (state === 'active') {
-        newState = 'cooling';      // just dropped below target
       } else {
-        newState = state === 'off' ? 'cooling' : (state || 'cooling');
+        // cooling/off/unknown with flat slope in mid zone → still cooling slowly
+        newState = 'cooling';
       }
     }
   }
 
-  // Always persist the latest reading in tracker (needed for next slope calculation)
-  global._warmerState[unit._id].prevTemp = value;
-
   if (newState !== state) {
     const prev = state;
-    global._warmerState[unit._id] = { state: newState, since: ts, prevTemp: value };
+    global._warmerState[unit._id].state = newState;
+    global._warmerState[unit._id].since = ts;
     await TempMonUnit.findByIdAndUpdate(unit._id, {
       $set: { 'warmerState.state': newState, 'warmerState.since': new Date(ts) }
     });
-    const slopeStr = prevTemp !== null ? ` (slope ${slope > 0 ? '+' : ''}${slope.toFixed(1)}°C)` : '';
+    const slopeStr = ` (slope ${slopePerMin >= 0 ? '+' : ''}${slopePerMin.toFixed(2)}°C/min)`;
     console.log(`🔥 [TempMon] Warmer "${unit.name}": ${prev} → ${newState} at ${value.toFixed(1)}°C${slopeStr}`);
 
     // ── Fault detected: create alert + send push ──────────────────
@@ -1053,7 +1080,7 @@ async function updateWarmerState(unit, device, value, readingTs) {
         });
         sendPush(
           `⚠️ ${unit.name}: Warmer Fault Detected`,
-          `Temperature stuck at ${value.toFixed(1)}°C for ${cfg.faultMinutes ?? 30} min — failed to reach target of ${targetLow}°C.`,
+          `Temperature stuck at ${value.toFixed(1)}°C for ${cfg.faultMinutes ?? 30} min — failed to reach/maintain target of ${targetLow}°C.`,
           '/tempmon/alerts.html'
         );
         console.log(`⚠️ [TempMon] Warmer fault alert created: "${unit.name}" at ${value.toFixed(1)}°C`);
