@@ -543,93 +543,9 @@ function broadcastEquipmentTemperature(event, payload) {
     }
 }
 
-async function processEquipmentAlarm(req, reading, config) {
-    // Food warmers are monitored by the TempMon fault state machine — skip range-based alerts here.
-    // (Alerts from this path would fire against 0–5°C thresholds, not the warmer's 60–85°C target.)
-    if (reading.equipment === 'food-warmer') return;
-
-    const { status, outOfRange } = evaluateTemperatureStatus(reading.temp, config);
-    const states = req.templogDb.collection('equipment_temp_states');
-    const state = await states.findOne({ equipment: reading.equipment });
-    const recordedAt = new Date(reading.recordedAt);
-
-    if (!outOfRange) {
-        await states.updateOne(
-            { equipment: reading.equipment },
-            {
-                $set: {
-                    equipment: reading.equipment,
-                    outOfRangeSince: null,
-                    lastDirection: 'normal',
-                    updatedAt: new Date()
-                }
-            },
-            { upsert: true }
-        );
-        return;
-    }
-
-    const outOfRangeSince = state && state.outOfRangeSince ? new Date(state.outOfRangeSince) : recordedAt;
-    const elapsedMs = Math.max(0, recordedAt.getTime() - outOfRangeSince.getTime());
-    const shouldWarn = elapsedMs >= config.warningDelayMinutes * 60 * 1000;
-
-    await states.updateOne(
-        { equipment: reading.equipment },
-        {
-            $set: {
-                equipment: reading.equipment,
-                outOfRangeSince,
-                lastDirection: status,
-                updatedAt: new Date()
-            }
-        },
-        { upsert: true }
-    );
-
-    if (!shouldWarn) return;
-
-    const lastPushAt = state && state.lastPushAt ? new Date(state.lastPushAt) : null;
-    const canPush = !lastPushAt || (recordedAt.getTime() - lastPushAt.getTime()) >= (config.repeatMinutes * 60 * 1000);
-    if (!canPush) return;
-
-    const minutesOut = Math.round(elapsedMs / 60000);
-    const message = `${reading.equipment} is ${status.toUpperCase()} at ${reading.temp.toFixed(1)} C for ${minutesOut} min (threshold ${config.minTemp} to ${config.maxTemp} C).`;
-    const alertDoc = {
-        equipment: reading.equipment,
-        status,
-        temp: reading.temp,
-        minTemp: config.minTemp,
-        maxTemp: config.maxTemp,
-        warningDelayMinutes: config.warningDelayMinutes,
-        minutesOut,
-        message,
-        source: reading.source || 'iot-gateway',
-        gatewayId: reading.gatewayId || '',
-        createdAt: recordedAt
-    };
-
-    await req.templogDb.collection('equipment_temp_alerts').insertOne(alertDoc);
-
-    await states.updateOne(
-        { equipment: reading.equipment },
-        { $set: { lastPushAt: recordedAt, lastAlertAt: recordedAt } },
-        { upsert: true }
-    );
-
-    broadcastEquipmentTemperature('alert', alertDoc);
-
-    if (config.pushEnabled && typeof sendPushToPermission === 'function') {
-        try {
-            await sendPushToPermission('templog', {
-                title: `Temperature Alert: ${reading.equipment}`,
-                message,
-                url: EQUIPMENT_PAGE_URL
-            });
-        } catch (err) {
-            console.warn('[TempLog] Push alert skipped:', err.message);
-        }
-    }
-}
+// TempLog equipment-temperature alerts disabled — all temperature monitoring alerts
+// are handled exclusively by the TempMon module.
+async function processEquipmentAlarm(_req, _reading, _config) {}
 
 async function ingestEquipmentReadings(req, readings) {
     if (!Array.isArray(readings) || readings.length === 0) return { count: 0, processed: [] };
