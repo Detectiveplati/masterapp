@@ -487,7 +487,7 @@ const EQUIPMENT_PAGE_URL = '/templog/departments/equipment-temperature.html';
 
 function normalizeEquipmentName(value) {
     const raw = String(value || '').trim().toLowerCase();
-    if (raw === 'food warmer') return 'food-warmer';
+    if (raw === 'food warmer' || raw === 'warmer') return 'food-warmer';
     return raw;
 }
 
@@ -544,6 +544,10 @@ function broadcastEquipmentTemperature(event, payload) {
 }
 
 async function processEquipmentAlarm(req, reading, config) {
+    // Food warmers are monitored by the TempMon fault state machine — skip range-based alerts here.
+    // (Alerts from this path would fire against 0–5°C thresholds, not the warmer's 60–85°C target.)
+    if (reading.equipment === 'food-warmer') return;
+
     const { status, outOfRange } = evaluateTemperatureStatus(reading.temp, config);
     const states = req.templogDb.collection('equipment_temp_states');
     const state = await states.findOne({ equipment: reading.equipment });
@@ -630,10 +634,12 @@ async function processEquipmentAlarm(req, reading, config) {
 async function ingestEquipmentReadings(req, readings) {
     if (!Array.isArray(readings) || readings.length === 0) return { count: 0, processed: [] };
 
-    await req.templogDb.collection('equipment_temp_readings').insertMany(readings);
+    // Normalize equipment name so legacy 'warmer' entries are treated as 'food-warmer'
+    const normalized = readings.map(r => ({ ...r, equipment: normalizeEquipmentName(r.equipment) }));
+    await req.templogDb.collection('equipment_temp_readings').insertMany(normalized);
 
     const processed = [];
-    for (const reading of readings) {
+    for (const reading of normalized) {
         const config = await getEquipmentConfig(req.templogDb, reading.equipment);
         const status = evaluateTemperatureStatus(reading.temp, config);
         broadcastEquipmentTemperature('reading', { ...reading, ...status, config });
