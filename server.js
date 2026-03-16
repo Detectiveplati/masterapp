@@ -1745,14 +1745,22 @@ async function ingestTcpTagRecords(gatewayImei, tags, tagModel) {
     const payload = {
         source: 'lora-tcp',
         imei: gatewayImei,
-        data: { [tagModel.toLowerCase()]: tags.map(t => ({
-            id: t.id, temp: t.temp, humi: t.humidity, rssi: t.rssi,
-            bat: t.battery, sta: t.status,
-            // Use server receipt time (now) as recordedAt — individual TAG device clocks
-            // are NOT synced via the gateway @UTC command and may be factory-default
-            // (e.g. 2020-01-01), resulting in timestamps thousands of days in the past.
-            recordedAt: now.toISOString()
-        })) }
+        data: { [tagModel.toLowerCase()]: tags.map(t => {
+            // Use the sensor's own RTC timestamp when it is within 7 days of server time.
+            // The server sends @UTC sync on every TCP connection so sensor clocks are
+            // accurate after the first connect.  When the gateway was offline and
+            // buffered readings, each record carries a distinct RTC from when it was
+            // actually recorded — using it lets the 5‑min dedup buckets work correctly
+            // and preserves the true time-series instead of collapsing everything to now.
+            // Fall back to server receipt time only for factory-default / unsynced clocks.
+            const sensorTs = t.rtc ? parseRecordedAt(t.rtc) : null;
+            const validTs  = sensorTs && Math.abs(sensorTs.getTime() - now.getTime()) < 7 * 24 * 60 * 60 * 1000;
+            return {
+                id: t.id, temp: t.temp, humi: t.humidity, rssi: t.rssi,
+                bat: t.battery, sta: t.status,
+                recordedAt: validTs ? sensorTs.toISOString() : now.toISOString()
+            };
+        }) }
     };
     const gatewayId = String(gatewayImei || '').trim();
     const sensorRows = extractLoraSensorRows(payload);
