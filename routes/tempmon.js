@@ -149,12 +149,57 @@ router.get('/devices', requireAuth, async (req, res) => {
 router.post('/devices', requireAuth, async (req, res) => {
   try {
     const { unit, deviceId, label, firmware, expectedIntervalMinutes, calibrationIntervalDays } = req.body;
+
+    // Check if this deviceId is already registered (possibly under a different unit)
+    const existing = await TempMonDevice.findOne({ deviceId });
+    if (existing) {
+      const oldUnitId = existing.unit ? existing.unit.toString() : null;
+      const newUnitId = unit ? unit.toString() : null;
+
+      if (oldUnitId && newUnitId && oldUnitId !== newUnitId) {
+        // Migrate all readings and alerts from old unit to new unit
+        const [readingsMigrated, alertsMigrated] = await Promise.all([
+          TempMonReading.updateMany({ device: existing._id, unit: existing.unit }, { $set: { unit: newUnitId } }),
+          TempMonAlert.updateMany({ device: existing._id, unit: existing.unit }, { $set: { unit: newUnitId } })
+        ]);
+        console.log(`✓ [TempMon] Migrated ${readingsMigrated.modifiedCount} readings, ${alertsMigrated.modifiedCount} alerts from unit ${oldUnitId} → ${newUnitId}`);
+
+        // Reactivate and re-link the existing device record
+        existing.unit   = newUnitId;
+        existing.active = true;
+        if (label    !== undefined) existing.label    = label;
+        if (firmware !== undefined) existing.firmware = firmware;
+        if (expectedIntervalMinutes !== undefined) existing.expectedIntervalMinutes = expectedIntervalMinutes;
+        if (calibrationIntervalDays !== undefined) existing.calibrationIntervalDays = calibrationIntervalDays;
+        await existing.save();
+
+        // Auto-deactivate old unit if it has no more active devices
+        const remainingDevices = await TempMonDevice.countDocuments({ unit: oldUnitId, active: true });
+        if (remainingDevices === 0) {
+          await TempMonUnit.findByIdAndUpdate(oldUnitId, { active: false });
+          console.log(`✓ [TempMon] Auto-deactivated orphaned unit ${oldUnitId} (no devices remaining)`);
+        }
+
+        return res.status(201).json(existing);
+      }
+
+      // Same unit or no unit change — just reactivate
+      existing.active = true;
+      if (unit     !== undefined) existing.unit     = unit;
+      if (label    !== undefined) existing.label    = label;
+      if (firmware !== undefined) existing.firmware = firmware;
+      if (expectedIntervalMinutes !== undefined) existing.expectedIntervalMinutes = expectedIntervalMinutes;
+      if (calibrationIntervalDays !== undefined) existing.calibrationIntervalDays = calibrationIntervalDays;
+      await existing.save();
+      console.log('✓ [TempMon] Re-activated device:', deviceId);
+      return res.status(201).json(existing);
+    }
+
     const device = new TempMonDevice({ unit, deviceId, label, firmware, expectedIntervalMinutes, calibrationIntervalDays });
     await device.save();
     console.log('✓ [TempMon] Registered device:', deviceId);
     res.status(201).json(device);
   } catch (err) {
-    if (err.code === 11000) return res.status(409).json({ error: 'Device ID already registered' });
     res.status(400).json({ error: err.message });
   }
 });
@@ -165,6 +210,28 @@ router.put('/devices/:id', requireAuth, async (req, res) => {
     const fields = ['label', 'firmware', 'unit', 'active', 'expectedIntervalMinutes', 'calibrationIntervalDays'];
     const update = {};
     fields.forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
+
+    // If unit is being changed, migrate readings + alerts and clean up old unit
+    if (update.unit) {
+      const device = await TempMonDevice.findById(req.params.id);
+      if (device && device.unit && device.unit.toString() !== update.unit.toString()) {
+        const oldUnitId = device.unit.toString();
+        const newUnitId = update.unit.toString();
+        const [readingsMigrated, alertsMigrated] = await Promise.all([
+          TempMonReading.updateMany({ device: device._id, unit: device.unit }, { $set: { unit: newUnitId } }),
+          TempMonAlert.updateMany({ device: device._id, unit: device.unit }, { $set: { unit: newUnitId } })
+        ]);
+        console.log(`✓ [TempMon] Migrated ${readingsMigrated.modifiedCount} readings, ${alertsMigrated.modifiedCount} alerts from unit ${oldUnitId} → ${newUnitId}`);
+
+        // Auto-deactivate old unit if no active devices remain
+        const remainingDevices = await TempMonDevice.countDocuments({ unit: oldUnitId, active: true, _id: { $ne: device._id } });
+        if (remainingDevices === 0) {
+          await TempMonUnit.findByIdAndUpdate(oldUnitId, { active: false });
+          console.log(`✓ [TempMon] Auto-deactivated orphaned unit ${oldUnitId} (no devices remaining)`);
+        }
+      }
+    }
+
     const device = await TempMonDevice.findByIdAndUpdate(req.params.id, { $set: update }, { new: true });
     if (!device) return res.status(404).json({ error: 'Device not found' });
     res.json(device);
