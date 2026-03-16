@@ -1736,29 +1736,38 @@ function parseTcpTagRecord(buf, offset, isTag08B) {
 }
 
 // Ingest parsed TCP tag records into the database (reuses existing lora logic)
-async function ingestTcpTagRecords(gatewayImei, tags, tagModel) {
+// gatewayRtc: the gateway's own synced RTC from the frame header — used as the
+// anchor timestamp for batches of buffered readings whose sensor clocks are bad.
+async function ingestTcpTagRecords(gatewayImei, tags, tagModel, gatewayRtc) {
     if (!templogDb) {
         console.warn('[TCP] DB not ready — discarding', tags.length, 'tag records');
         return;
     }
     const now = new Date();
+    // Sensor clocks on TAG09/TAG08B are factory-default (2020) and cannot be synced
+    // through the gateway — so t.rtc is always garbage.
+    // Instead, use the gateway's OWN RTC (already UTC-synced by our @UTC command on
+    // every connect) as the anchor for the most recent record, and space earlier
+    // buffered records backwards by the configured sample interval.
+    // LORA_SAMPLE_INTERVAL_MINUTES defaults to 15 (standard TZONE TAG interval).
+    const sampleIntervalMs = parseInt(process.env.LORA_SAMPLE_INTERVAL_MINUTES || '15', 10) * 60 * 1000;
+    const anchorTime = (gatewayRtc instanceof Date && !isNaN(gatewayRtc)) ? gatewayRtc : now;
+
     const payload = {
         source: 'lora-tcp',
         imei: gatewayImei,
-        data: { [tagModel.toLowerCase()]: tags.map(t => {
-            // Use the sensor's own RTC timestamp when it is within 7 days of server time.
-            // The server sends @UTC sync on every TCP connection so sensor clocks are
-            // accurate after the first connect.  When the gateway was offline and
-            // buffered readings, each record carries a distinct RTC from when it was
-            // actually recorded — using it lets the 5‑min dedup buckets work correctly
-            // and preserves the true time-series instead of collapsing everything to now.
-            // Fall back to server receipt time only for factory-default / unsynced clocks.
-            const sensorTs = t.rtc ? parseRecordedAt(t.rtc) : null;
-            const validTs  = sensorTs && Math.abs(sensorTs.getTime() - now.getTime()) < 7 * 24 * 60 * 60 * 1000;
+        data: { [tagModel.toLowerCase()]: tags.map((t, i) => {
+            // Sensor RTC is always factory-default (2020) on these devices — unusable.
+            // Derive timestamp by interpolating backwards from the gateway frame time:
+            //   last record (i = tags.length-1) → anchorTime
+            //   earlier records → anchorTime - (N-1-i) * sampleInterval
+            // This correctly reconstructs the time-series for buffered offline batches
+            // and gives each record a unique bucket so none are dedup-collapsed.
+            const offset = (tags.length - 1 - i) * sampleIntervalMs;
             return {
                 id: t.id, temp: t.temp, humi: t.humidity, rssi: t.rssi,
                 bat: t.battery, sta: t.status,
-                recordedAt: validTs ? sensorTs.toISOString() : now.toISOString()
+                recordedAt: new Date(anchorTime.getTime() - offset).toISOString()
             };
         }) }
     };
@@ -1854,6 +1863,20 @@ async function processTcpBuffer(socket, state) {
             state.imei = id;
         }
 
+        // Gateway's own RTC (payload[16..21], 6 BCD bytes YYMMDDHHmmss).
+        // This IS accurate — the server sends @UTC on every connect so the gateway
+        // clock is always synced to real time, unlike individual sensor clocks.
+        let gatewayRtc = null;
+        {
+            let rtcStr = '';
+            for (let j = 16; j < 22; j++) {
+                const b = payload[j];
+                rtcStr += ((b >> 4) & 0xF).toString() + (b & 0xF).toString();
+            }
+            const d = parseRecordedAt(rtcStr);
+            if (Math.abs(d.getTime() - Date.now()) < 7 * 24 * 60 * 60 * 1000) gatewayRtc = d;
+        }
+
         // FW version: payload[4]=major (0x03→3), payload[5]=minor (0x16→22 decimal)
         const fwStr = `${payload[4]}.${payload[5].toString().padStart(2, '0')}`;
 
@@ -1904,7 +1927,7 @@ async function processTcpBuffer(socket, state) {
 
             if (tags.length) {
                 const model = isTag08B ? 'TAG08B' : 'TAG09';
-                ingestTcpTagRecords(state.imei || '', tags, model).catch(e =>
+                ingestTcpTagRecords(state.imei || '', tags, model, gatewayRtc).catch(e =>
                     console.error('[TCP] ingest error:', e.message)
                 );
             }
