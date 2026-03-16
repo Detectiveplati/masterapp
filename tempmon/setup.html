@@ -11,11 +11,14 @@
   <script src="/js/lib/http.js"></script>
   <script src="/js/lib/tz.js"></script>
   <style>
-    main { max-width: 1000px; margin: 0 auto; padding: 28px 20px; }
+    main { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
     .nav-links { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
     .nav-link { padding: 8px 14px; border-radius: 8px; background: #f0f0f0; color: var(--muted); font-size: 0.82rem; font-weight: 700; text-decoration: none; transition: background .15s; }
     .nav-link:hover { background: #e0e0e0; color: var(--ink); }
     .nav-link.active { background: var(--accent); color: #fff; }
+    .page-header { margin-bottom: 24px; }
+    .page-title  { font-size: 1.4rem; font-weight: 900; color: var(--ink); margin: 0 0 5px; }
+    .page-sub    { font-size: 0.85rem; color: var(--muted); margin: 0; }
     .section-card { background: linear-gradient(180deg, var(--card), #fffbf9); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 2px 6px var(--shadow); padding: 22px 24px; margin-bottom: 22px; }
     .section-card h2 { font-size: 1.05rem; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     /* Tabs */
@@ -64,7 +67,9 @@
     <a href="/tempmon/dev-test.html" class="nav-link">🧪 Dev Test</a>
   </div>
 
-  <h1 style="font-size:1.4rem;font-weight:900;margin-bottom:22px">⚙️ Setup</h1>
+  <div class="page-header">
+    <h1 class="page-title">⚙️ Setup</h1>
+  </div>
 
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="units" onclick="switchTab('units')">🏭 Equipment</button>
