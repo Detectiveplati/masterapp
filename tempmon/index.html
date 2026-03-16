@@ -105,7 +105,9 @@
     <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
     <a href="/tempmon/setup.html" class="nav-link">⚙️ Setup</a>
     <a href="/tempmon/gateway.html" class="nav-link">📶 LoRa Gateway</a>
-    <a href="/tempmon/gateway-log.html" class="nav-link">🪵 Raw Log</a>    <a href="/tempmon/dev-test.html" class="nav-link">🧪 Dev Test</a>  </div>
+    <a href="/tempmon/gateway-log.html" class="nav-link">🪵 Raw Log</a>
+    <a href="/tempmon/dev-test.html" class="nav-link">🧪 Dev Test</a>
+  </div>
 
   <div class="filter-bar" style="flex-direction:column;align-items:stretch;gap:8px">
     <div class="filter-row">
@@ -144,7 +146,7 @@
   </div>
 
   <div class="summary-bar">
-    <div class="stat-card ok">   <div class="val" id="statTotal">—</div><div class="lbl">Total Units</div></div>
+    <div class="stat-card ok">   <div class="val" id="statTotal">—</div><div class="lbl">Total Equipment</div></div>
     <div class="stat-card ok">   <div class="val" id="statInRange">—</div><div class="lbl">In Range</div></div>
     <div class="stat-card danger"><div class="val" id="statOutRange">—</div><div class="lbl">Out of Range</div></div>
     <div class="stat-card warn">  <div class="val" id="statAlerts">—</div><div class="lbl">Open Alerts</div></div>
@@ -232,7 +234,7 @@
       ? '' : `${filtered.length} of ${allUnits.length} shown`;
 
     if (!filtered.length) {
-      document.getElementById('unitsGrid').innerHTML = '<div class="units-grid"><div class="no-data">No units match the current filters.</div></div>';
+      document.getElementById('unitsGrid').innerHTML = '<div class="units-grid"><div class="no-data">No equipment match the current filters.</div></div>';
       return;
     }
 
@@ -356,7 +358,7 @@
       document.getElementById('lastRefresh').textContent  = 'Updated ' + relativeTime(new Date());
 
       if (!units.length) {
-        document.getElementById('unitsGrid').innerHTML = '<div class="units-grid"><div class="no-data">No units configured yet.<br><a href="/tempmon/setup.html" style="color:var(--accent);font-weight:700">⚙️ Add your first unit →</a></div></div>';
+        document.getElementById('unitsGrid').innerHTML = '<div class="units-grid"><div class="no-data">No equipment configured yet.<br><a href="/tempmon/setup.html" style="color:var(--accent);font-weight:700">⚙️ Add your first equipment →</a></div></div>';
         return;
       }
 

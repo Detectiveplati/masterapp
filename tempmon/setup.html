@@ -60,12 +60,14 @@
     <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
     <a href="/tempmon/setup.html" class="nav-link active">⚙️ Setup</a>
     <a href="/tempmon/gateway.html" class="nav-link">📶 LoRa Gateway</a>
-    <a href="/tempmon/gateway-log.html" class="nav-link">🪵 Raw Log</a>    <a href="/tempmon/dev-test.html" class="nav-link">🧪 Dev Test</a>  </div>
+    <a href="/tempmon/gateway-log.html" class="nav-link">🪵 Raw Log</a>
+    <a href="/tempmon/dev-test.html" class="nav-link">🧪 Dev Test</a>
+  </div>
 
   <h1 style="font-size:1.4rem;font-weight:900;margin-bottom:22px">⚙️ Setup</h1>
 
   <div class="tab-bar">
-    <button class="tab-btn active" data-tab="units" onclick="switchTab('units')">🏭 Units</button>
+    <button class="tab-btn active" data-tab="units" onclick="switchTab('units')">🏭 Equipment</button>
     <button class="tab-btn" data-tab="devices" onclick="switchTab('devices')">📡 Devices</button>
     <button class="tab-btn" data-tab="thresholds" onclick="switchTab('thresholds')">🔔 Thresholds</button>
 
@@ -74,7 +76,7 @@
   <!-- ── UNITS TAB ─────────────────────────────────────── -->
   <div id="tab-units" class="tab-panel active">
     <div class="section-card">
-      <h2>➕ Add Unit</h2>
+      <h2>➕ Add Equipment</h2>
       <div class="grid-form">
         <div class="fg"><label>Name <span style="color:#c62828">*</span></label><input id="uName" type="text" placeholder="e.g. Blast Freezer 1"></div>
         <div class="fg"><label>Type <span style="color:#c62828">*</span></label>
@@ -99,11 +101,11 @@
         <div class="fg"><label>Notes</label><input id="uNotes" type="text" placeholder="Optional"></div>
       </div>
       <div id="unitNotice" class="notice"></div>
-      <button class="btn btn-primary" onclick="addUnit()">➕ Add Unit</button>
+      <button class="btn btn-primary" onclick="addUnit()">➕ Add Equipment</button>
     </div>
 
     <div class="section-card">
-      <h2>🏭 Configured Units</h2>
+      <h2>🏭 Configured Equipment</h2>
       <div style="overflow-x:auto">
         <table class="data-table">
           <thead><tr><th>Name</th><th>Type</th><th>Area</th><th>Range</th><th>Target</th><th>Status</th><th></th></tr></thead>
@@ -118,7 +120,7 @@
     <div class="section-card">
       <h2>➕ Register Device</h2>
       <div class="grid-form">
-        <div class="fg"><label>Unit <span style="color:#c62828">*</span></label><select id="dUnit"><option value="">Select unit…</option></select></div>
+        <div class="fg"><label>Equipment <span style="color:#c62828">*</span></label><select id="dUnit"><option value="">Select equipment…</option></select></div>
         <div class="fg"><label>Device ID <span style="color:#c62828">*</span></label><input id="dDeviceId" type="text" placeholder="Hardware MAC / token e.g. TH-A1B2C3"></div>
         <div class="fg"><label>Label</label><input id="dLabel" type="text" placeholder="e.g. Probe A — Top shelf"></div>
         <div class="fg"><label>Firmware version</label><input id="dFirmware" type="text" placeholder="e.g. v1.2.0"></div>
@@ -133,7 +135,7 @@
       <h2>📡 Registered Devices</h2>
       <div style="overflow-x:auto">
         <table class="data-table">
-          <thead><tr><th>Device ID</th><th>Label</th><th>Unit</th><th>Battery</th><th>Last Seen</th><th>Calibration Due</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Device ID</th><th>Label</th><th>Equipment</th><th>Battery</th><th>Last Seen</th><th>Calibration Due</th><th>Status</th><th></th></tr></thead>
           <tbody id="devicesBody"><tr><td colspan="8" class="no-data">Loading…</td></tr></tbody>
         </table>
       </div>
@@ -251,14 +253,14 @@
         <button class="btn btn-primary btn-sm" onclick="saveAllThresholds()">💾 Save All</button>
       </h2>
       <p style="color:var(--muted);font-size:0.85rem;margin-bottom:16px">
-        Edit temperature limits and alert delay for all units in one view. Changes are saved per-row or all at once with <strong>Save All</strong>.
-        <br><span style="font-size:0.78rem">💡 <strong>Warmer units:</strong> set Critical Min to your legal hot-holding minimum (63°C). The state machine uses this as the target that defines when the warmer is considered ACTIVE.</span>
+        Edit temperature limits and alert delay for all equipment in one view. Changes are saved per-row or all at once with <strong>Save All</strong>.
+        <br><span style="font-size:0.78rem">💡 <strong>Warmer equipment:</strong> set Critical Min to your legal hot-holding minimum (63°C). The state machine uses this as the target that defines when the warmer is considered ACTIVE.</span>
       </p>
       <div id="thresholdNotice" class="notice"></div>
       <div style="overflow-x:auto;margin-top:12px">
         <table class="data-table" id="thresholdsTable">
           <thead><tr>
-            <th>Unit</th>
+            <th>Equipment</th>
             <th>Type</th>
             <th style="min-width:90px">Critical Min (°C)</th>
             <th style="min-width:90px">Critical Max (°C)</th>
@@ -299,7 +301,7 @@
 <!-- Edit Unit Modal -->
 <div id="editUnitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeEditUnit()">
   <div style="background:#fff;border-radius:16px;padding:28px 24px;width:min(96vw,520px);max-height:90vh;overflow-y:auto">
-    <h3 style="font-size:1.05rem;font-weight:800;margin-bottom:18px">✏️ Edit Unit</h3>
+    <h3 style="font-size:1.05rem;font-weight:800;margin-bottom:18px">✏️ Edit Equipment</h3>
     <input type="hidden" id="euId">
     <div class="grid-form">
       <div class="fg"><label>Name</label><input id="euName" type="text"></div>
