@@ -336,7 +336,6 @@
         ${u.type === 'warmer' ? renderWarmerStatePill(u) : ''}
         ${pauseComment}
         <div class="unit-limits">Range: ${u.criticalMin}°C – ${u.criticalMax}°C</div>
-        ${r ? `<div class="unit-minmax"><span>🕐 ${relativeTime(r.recordedAt)}</span></div>` : '<div class="unit-minmax"><span style="color:#bbb">No readings yet</span></div>'}
         <div class="unit-meta">
           ${r ? `<span>🕐 ${relativeTime(r.recordedAt)}</span>` : '<span style="color:#bbb">Awaiting data</span>'}
         </div>
