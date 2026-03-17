@@ -1803,15 +1803,14 @@ function parseTcpTagRecord(buf, offset, isTag08B) {
     }
     const rssiRaw  = buf[rssiOff];                         // 1 B abs dBm
     const rssi     = -rssiRaw;
-    // RTC: 6 B YY MM DD HH mm ss each byte = BCD (0x26 → 38? No — treat as plain hex digits)
-    // Using BCD interpretation: 0x26 = 20+6 = 26 (year 2026)
+    // RTC: 6 B YY MM DD HH mm ss — each byte is a raw binary decimal value (not BCD).
+    // e.g. year 2026 → byte 0x1A (26 decimal).  Use the byte value directly.
     const rtcOff   = rssiOff + 1;
     const rtcParts = [];
     for (let i = 0; i < 6; i++) {
-        const b = buf[rtcOff + i];
-        rtcParts.push(((b >> 4) * 10 + (b & 0xF)).toString().padStart(2, '0'));
+        rtcParts.push(buf[rtcOff + i].toString().padStart(2, '0'));
     }
-    const rtcStr = rtcParts.join(''); // YYMMDDHHmmss
+    const rtcStr = rtcParts.join(''); // YYMMDDHHmmss e.g. "260317043227"
     return {
         record: { id, temp, humidity, rssi, battery, status, rtc: rtcStr },
         bytesConsumed: needed
@@ -1827,32 +1826,23 @@ async function ingestTcpTagRecords(gatewayImei, tags, tagModel, gatewayRtc) {
         return;
     }
     const now = new Date();
-    // Sensor clocks on TAG09/TAG08B are factory-default (2020) and cannot be synced
-    // through the gateway — so t.rtc is always garbage.
-    // Instead, use the gateway's OWN RTC (already UTC-synced by our @UTC command on
-    // every connect) as the anchor for the most recent record, and space earlier
-    // buffered records backwards by the configured sample interval.
-    // LORA_SAMPLE_INTERVAL_MINUTES defaults to 15 (standard TZONE TAG interval).
-    const sampleIntervalMs = parseInt(process.env.LORA_SAMPLE_INTERVAL_MINUTES || '15', 10) * 60 * 1000;
+    // Each sensor tag embeds its own RTC (raw-binary, now correctly decoded).
+    // Use per-sensor rtc directly — this handles buffered offline readings properly
+    // (e.g. a sensor offline since yesterday will be stored at yesterday's 07:00 slot,
+    // not interpolated from "now").
+    // The gateway's own UTC-synced RTC is passed as top-level fallback for any sensor
+    // whose RTC is invalid or unreasonably far from the present.
     const anchorTime = (gatewayRtc instanceof Date && !isNaN(gatewayRtc)) ? gatewayRtc : now;
 
     const payload = {
         source: 'lora-tcp',
         imei: gatewayImei,
-        data: { [tagModel.toLowerCase()]: tags.map((t, i) => {
-            // Sensor RTC is always factory-default (2020) on these devices — unusable.
-            // Derive timestamp by interpolating backwards from the gateway frame time:
-            //   last record (i = tags.length-1) → anchorTime
-            //   earlier records → anchorTime - (N-1-i) * sampleInterval
-            // This correctly reconstructs the time-series for buffered offline batches
-            // and gives each record a unique bucket so none are dedup-collapsed.
-            const offset = (tags.length - 1 - i) * sampleIntervalMs;
-            return {
-                id: t.id, temp: t.temp, humi: t.humidity, rssi: t.rssi,
-                bat: t.battery, sta: t.status,
-                recordedAt: new Date(anchorTime.getTime() - offset).toISOString()
-            };
-        }) }
+        rtc: anchorTime.toISOString(), // top-level fallback used by extractLoraSensorRows
+        data: { [tagModel.toLowerCase()]: tags.map((t) => ({
+            id: t.id, temp: t.temp, humi: t.humidity, rssi: t.rssi,
+            bat: t.battery, sta: t.status,
+            rtc: t.rtc   // per-sensor RTC string e.g. "260317042724" (correctly decoded)
+        })) }
     };
     const gatewayId = String(gatewayImei || '').trim();
     const sensorRows = extractLoraSensorRows(payload);
@@ -1946,15 +1936,15 @@ async function processTcpBuffer(socket, state) {
             state.imei = id;
         }
 
-        // Gateway's own RTC (payload[16..21], 6 BCD bytes YYMMDDHHmmss).
-        // This IS accurate — the server sends @UTC on every connect so the gateway
-        // clock is always synced to real time, unlike individual sensor clocks.
+        // Gateway's own RTC (payload[16..21], 6 raw-binary bytes: YY MM DD HH mm ss).
+        // Each byte is the plain decimal value stored as a hex byte (e.g. year 26 → 0x1A).
+        // NOT BCD — do NOT split into nibbles.  The server sends @UTC on every connect
+        // so this clock is accurate UTC.
         let gatewayRtc = null;
         {
             let rtcStr = '';
             for (let j = 16; j < 22; j++) {
-                const b = payload[j];
-                rtcStr += ((b >> 4) & 0xF).toString() + (b & 0xF).toString();
+                rtcStr += payload[j].toString().padStart(2, '0');
             }
             const d = parseRecordedAt(rtcStr);
             if (Math.abs(d.getTime() - Date.now()) < 7 * 24 * 60 * 60 * 1000) gatewayRtc = d;
