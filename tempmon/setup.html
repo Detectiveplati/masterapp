@@ -588,6 +588,7 @@
       if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
       closeAddTag();
       await loadDevices();
+      switchTab('devices');
       showNotice('deviceNotice', 'ok', `✅ Device ${escHtml(deviceId)} registered!`);
     } catch (err) {
       const n = document.getElementById('atNotice');

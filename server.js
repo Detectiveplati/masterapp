@@ -1064,6 +1064,16 @@ app.post('/templog/api/lora/devices', requireTemplogDb, async (req, res) => {
             { $set: doc, $setOnInsert: { createdAt: now } },
             { upsert: true }
         );
+
+        // Immediately sync TempMonDevice so TempMon setup page reflects the registration
+        if (tempmonUnitId) {
+            await TempMonDevice.findOneAndUpdate(
+                { deviceId: sensorId },
+                { $set: { unit: tempmonUnitId, label: alias || sensorId, active: true } },
+                { upsert: true, setDefaultsOnInsert: true }
+            );
+        }
+
         res.json({ ok: true, device: doc });
     } catch (e) {
         console.error(e);
@@ -1112,6 +1122,20 @@ app.put('/templog/api/lora/devices/:sensorId', requireTemplogDb, async (req, res
             { $set: update }
         );
         if (!result.matchedCount) return res.status(404).json({ error: 'Device not found' });
+
+        // Sync TempMonDevice immediately so TempMon setup page reflects the unit change
+        if (update.tempmonUnitId !== undefined) {
+            if (update.tempmonUnitId === null) {
+                await TempMonDevice.updateOne({ deviceId: sensorId }, { $set: { active: false } });
+            } else {
+                await TempMonDevice.findOneAndUpdate(
+                    { deviceId: sensorId },
+                    { $set: { unit: update.tempmonUnitId, active: true } },
+                    { upsert: true, setDefaultsOnInsert: true }
+                );
+            }
+        }
+
         const device = await req.templogDb.collection('lora_devices').findOne({ sensorId });
         res.json({ ok: true, device });
     } catch (e) {
@@ -1354,11 +1378,17 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
                 humidity: row.humidity,
                 rssi: row.rssi,
                 battery: row.battery,
-                // Use sensor timestamp when it looks valid (within 7 days of now).
-                // Falls back to server receipt time for sensors with factory-default clocks.
+                // Use the gateway-stamped sensor timestamp only when it is within ±2 hours
+                // of the server clock.  The HTTP gateway stamps each reading with its own
+                // internal RTC (not the raw sensor RTC), but that RTC is NOT UTC-synced by
+                // the server — unlike TCP mode where we send "@UTC" on every connect.
+                // If the gateway was configured with local time (e.g. MYT = UTC+8) instead
+                // of UTC, its rtc would be 8 hours ahead of the server clock.  The 2-hour
+                // window accepts normal UTC gateways (drift/delay ≤ few minutes) while
+                // rejecting timezone-confused clocks so we fall back to server receipt time.
                 recordedAt: (function() {
                     const sensorTs = row.recordedAt;
-                    if (sensorTs && Math.abs(new Date(sensorTs).getTime() - now.getTime()) < 7 * 24 * 60 * 60 * 1000) {
+                    if (sensorTs && Math.abs(new Date(sensorTs).getTime() - now.getTime()) < 2 * 60 * 60 * 1000) {
                         return new Date(sensorTs).toISOString();
                     }
                     return now.toISOString();
