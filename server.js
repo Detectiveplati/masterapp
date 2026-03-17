@@ -17,6 +17,7 @@ const mongoose = require('mongoose');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const net = require('net');
 const path = require('path');
+const fs  = require('fs');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const { requirePageAccess, requireAuth, requireAdmin } = require('./services/auth-middleware');
@@ -1170,6 +1171,27 @@ app.delete('/templog/api/lora/devices/:sensorId', requireTemplogDb, async (req, 
 });
 
 /**
+ * GET /templog/api/lora/tcp-log
+ * Download or view the in-memory TCP diagnostic log.
+ * ?format=json  → JSON array of the last N entries
+ * ?format=text  → plain text, one JSON line per entry (default, triggers download)
+ * ?limit=N      → how many entries to return (default 200, max 500)
+ */
+app.get('/templog/api/lora/tcp-log', requirePageAccess('tempmon'), (req, res) => {
+    const limit  = Math.max(1, Math.min(TCP_LOG_MAX, parseInt(req.query.limit || '200', 10)));
+    const format = req.query.format || 'text';
+    const slice  = loraTcpLog.slice(-limit);
+    if (format === 'json') {
+        return res.json(slice);
+    }
+    // Plain text download — one JSON object per line
+    const body = slice.map(e => JSON.stringify(e)).join('\n');
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="lora-tcp-${new Date().toISOString().slice(0,10)}.log"`);
+    res.send(body);
+});
+
+/**
  * GET /templog/api/lora/tcp-config
  * Returns the TCP connection details to display in the gateway UI.
  * On Railway, LORA_TCP_PROXY_HOST/PORT override the browser hostname.
@@ -1714,6 +1736,31 @@ app.listen(PORT, '0.0.0.0', () => {
 
 const LORA_TCP_PORT = parseInt(process.env.LORA_TCP_PORT || '4001', 10);
 
+// ── TCP diagnostic log ───────────────────────────────────────────────────────
+// Captures every LoRa TCP frame (raw hex + parsed fields) for diagnosis.
+// Ring buffer: last 500 entries (in-memory, survives redeploy via API).
+// File:        logs/lora-tcp.log — rotated when it exceeds 2 MB.
+const TCP_LOG_MAX   = 500;
+const TCP_LOG_FILE  = path.join(__dirname, 'logs', 'lora-tcp.log');
+const loraTcpLog    = [];   // ring buffer
+
+try { fs.mkdirSync(path.join(__dirname, 'logs'), { recursive: true }); } catch (_) {}
+
+function logTcpFrame(entry) {
+    const line = JSON.stringify(entry);
+    loraTcpLog.push(entry);
+    if (loraTcpLog.length > TCP_LOG_MAX) loraTcpLog.shift();
+    try {
+        // Rotate when file exceeds 2 MB
+        try {
+            if (fs.statSync(TCP_LOG_FILE).size > 2 * 1024 * 1024) {
+                fs.renameSync(TCP_LOG_FILE, TCP_LOG_FILE + '.old');
+            }
+        } catch (_) {}
+        fs.appendFileSync(TCP_LOG_FILE, line + '\n');
+    } catch (_) {}
+}
+
 // Parse a 4-byte BCD sensor ID (e.g. 0x09 0x24 0x01 0x27 → "09240127")
 function parseBcdSensorId(buf, offset) {
     let id = '';
@@ -1961,6 +2008,20 @@ async function processTcpBuffer(socket, state) {
                 console.log(`[TCP] tag raw: ${payload.slice(recsOff).toString('hex').toUpperCase().match(/.{1,2}/g).join(' ')}`);
             }
 
+            // Diagnostic log — raw hex frame + parsed fields
+            logTcpFrame({
+                ts:        new Date().toISOString(),
+                type:      'sensor',
+                imei:      state.imei || '',
+                fw:        fwStr,
+                gwRtc:     gatewayRtc ? gatewayRtc.toISOString() : null,
+                tagType:   `0x${tagType.toString(16).padStart(2,'0')}`,
+                numRec,
+                recLen,
+                tags:      tags.map(t => ({ id: t.id, temp: t.temp, humi: t.humidity, rssi: t.rssi, bat: t.battery, rtc: t.rtc, sta: t.status })),
+                rawHex:    buf.slice(i, i + totalLen).toString('hex').toUpperCase().match(/.{1,2}/g).join(' ')
+            });
+
             if (tags.length) {
                 const model = isTag08B ? 'TAG08B' : 'TAG09';
                 ingestTcpTagRecords(state.imei || '', tags, model, gatewayRtc).catch(e =>
@@ -1970,6 +2031,16 @@ async function processTcpBuffer(socket, state) {
         } else {
             // ── Heartbeat / status frame (no sensor data) ──────────────────
             console.log(`[TCP] heartbeat IMEI=${state.imei||'?'} FW=${fwStr} bat=${batV}V ext=${extV}V`);
+            logTcpFrame({
+                ts:     new Date().toISOString(),
+                type:   'heartbeat',
+                imei:   state.imei || '',
+                fw:     fwStr,
+                gwRtc:  gatewayRtc ? gatewayRtc.toISOString() : null,
+                bat:    batV,
+                ext:    extV,
+                rawHex: buf.slice(i, i + totalLen).toString('hex').toUpperCase().match(/.{1,2}/g).join(' ')
+            });
             if (templogDb) {
                 templogDb.collection('lora_gateway_events').insertOne({
                     gatewayId: state.imei || socket.remoteAddress,
