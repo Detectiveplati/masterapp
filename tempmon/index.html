@@ -55,6 +55,12 @@
     .battery { display: inline-flex; align-items: center; gap: 3px; }
     .unit-card.not-in-use { opacity: .65; border-left: 4px solid #ffb300; }
     .unit-paused-badge { background:#fff8e1;color:#e65100;border-radius:12px;padding:2px 8px;font-weight:700;font-size:0.7rem;border:1px solid #ffe082; }
+    /* Type badges */
+    .type-badge { display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;font-weight:800;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px; }
+    .type-freezer { background:rgba(21,101,192,.12);color:#1565c0; }
+    .type-chiller { background:rgba(2,136,209,.11);color:#0277bd; }
+    .type-warmer  { background:rgba(230,81,0,.12);color:#e65100; }
+    .type-ambient { background:rgba(85,139,47,.10);color:#558b2f; }
     /* Warmer state pill (dashboard cards) */
     .ws-pill { display:inline-flex;align-items:center;gap:4px;font-size:0.74rem;font-weight:800;padding:3px 10px;border-radius:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px; }
     .ws-pill.off        { background:#f0f0f0;color:#757575; }
@@ -138,8 +144,8 @@
       </select>
       <div style="display:flex;align-items:center;gap:4px;margin-left:10px">
         <span style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Group</span>
-        <button class="filter-btn f-group active" id="grpType" onclick="setGroup('type')">Type</button>
-        <button class="filter-btn f-group"        id="grpLoc"  onclick="setGroup('location')">Location</button>
+        <button class="filter-btn f-group"        id="grpType" onclick="setGroup('type')">Type</button>
+        <button class="filter-btn f-group active"   id="grpLoc"  onclick="setGroup('location')">Location</button>
       </div>
       <span class="filter-count" id="filterCount"></span>
     </div>
@@ -165,7 +171,7 @@
   let allUnits     = [];
   let activeStatus = 'all';
   let activeType   = 'all';
-  let activeGroup  = 'type'; // 'type' | 'location'
+  let activeGroup  = 'location'; // 'type' | 'location'
 
   function setGroup(g) {
     activeGroup = g;
@@ -194,7 +200,8 @@
     } catch { window.location.replace('/login'); }
   }
 
-  const TYPE_ICONS = { freezer: '🧊', chiller: '❄️', warmer: '🔥', ambient: '🌡️' };
+  const TYPE_ICONS   = { freezer: '🧊', chiller: '❄️', warmer: '🔥', ambient: '🌡️' };
+  const TYPE_LABELS  = { freezer: 'Freezer', chiller: 'Chiller', warmer: 'Warmer', ambient: 'Ambient' };
 
   function setStatus(s) {
     activeStatus = s;
@@ -308,8 +315,9 @@
     const r         = u.latestReading;
     const cls       = paused ? 'not-in-use' : (r ? tempClass(u, r) : (u.openAlerts ? 'critical' : 'no-reading'));
     const tCls      = paused ? 'temp-nodata' : tempTextClass(cls);
-    const tempStr   = r ? r.value.toFixed(1) + '°C' : '—';
+    const tempStr   = r ? r.value.toFixed(1) + '\u00b0C' : '\u2014';
     const icon      = TYPE_ICONS[u.type] || '🌡️';
+    const typeLabel = TYPE_LABELS[u.type] || u.type;
     const alertBadge = !paused && u.openAlerts > 0
       ? `<span class="unit-alert-badge">⚠️ ${u.openAlerts} alert${u.openAlerts > 1 ? 's' : ''}</span>`
       : (paused ? `<span class="unit-paused-badge">⏸ Not in use</span>` : '');
@@ -318,19 +326,18 @@
       <a class="unit-card ${escHtml(cls)}" href="/tempmon/unit.html?id=${escHtml(String(u._id))}">
         <div class="unit-top">
           <div>
-            <div class="unit-icon">${icon}</div>
+            <span class="type-badge type-${escHtml(u.type)}">${icon} ${escHtml(typeLabel)}</span>
             <div class="unit-name">${escHtml(u.name)}</div>
             ${u.location ? `<div class="unit-location">${escHtml(u.location)}</div>` : ''}
           </div>
           ${alertBadge}
         </div>
-        <div class="unit-temp ${tCls}">${paused ? '—' : tempStr}</div>
+        <div class="unit-temp ${tCls}">${paused ? '\u2014' : tempStr}</div>
         ${u.type === 'warmer' ? renderWarmerStatePill(u) : ''}
         ${pauseComment}
         <div class="unit-limits">Range: ${u.criticalMin}°C – ${u.criticalMax}°C</div>
-        ${r ? `<div class="unit-minmax"><span>📍 ${relativeTime(r.recordedAt)}</span></div>` : '<div class="unit-minmax"><span style="color:#bbb">No readings yet</span></div>'}
+        ${r ? `<div class="unit-minmax"><span>🕐 ${relativeTime(r.recordedAt)}</span></div>` : '<div class="unit-minmax"><span style="color:#bbb">No readings yet</span></div>'}
         <div class="unit-meta">
-          <span>${escHtml(u.type.charAt(0).toUpperCase() + u.type.slice(1))}</span>
           ${r ? `<span>🕐 ${relativeTime(r.recordedAt)}</span>` : '<span style="color:#bbb">Awaiting data</span>'}
         </div>
       </a>`;

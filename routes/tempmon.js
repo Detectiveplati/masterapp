@@ -891,9 +891,10 @@ router.post('/test-push', requireAuth, async (req, res) => {
 
 async function checkOfflineDevices() {
   try {
-    const devices = await TempMonDevice.find({ active: true }).populate('unit', 'name').lean();
+    const devices = await TempMonDevice.find({ active: true }).populate('unit', 'name inUse').lean();
     for (const device of devices) {
       if (!device.lastSeenAt) continue;
+      if (device.unit?.inUse === false) continue; // suppress offline alerts for units not in use
       const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000); // alert after 2 hours of no readings
       if (device.lastSeenAt < cutoff) {
         // Check if offline alert already open for this device

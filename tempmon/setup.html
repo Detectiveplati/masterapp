@@ -22,9 +22,10 @@
     .section-card { background: linear-gradient(180deg, var(--card), #fffbf9); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 2px 6px var(--shadow); padding: 22px 24px; margin-bottom: 22px; }
     .section-card h2 { font-size: 1.05rem; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     /* Tabs */
-    .tab-bar { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin-bottom: 24px; }
-    .tab-btn { padding: 10px 20px; font-size: 0.9rem; font-weight: 700; cursor: pointer; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; color: var(--muted); font-family: inherit; transition: color .15s; }
-    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-bar { display: flex; gap: 4px; background: #f0f2f5; border-radius: 12px; padding: 5px; margin-bottom: 24px; flex-wrap: wrap; }
+    .tab-btn { padding: 9px 20px; font-size: 0.88rem; font-weight: 700; cursor: pointer; background: transparent; border: none; border-radius: 9px; color: var(--muted); font-family: inherit; transition: background .15s, color .15s, box-shadow .15s; white-space: nowrap; }
+    .tab-btn:hover { background: rgba(255,255,255,.75); color: var(--ink); }
+    .tab-btn.active { background: #fff; color: var(--accent); box-shadow: 0 1px 5px rgba(0,0,0,.13); }
     .tab-panel { display: none; } .tab-panel.active { display: block; }
     /* Forms */
     .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px; }
@@ -68,12 +69,13 @@
   </div>
 
   <div class="page-header">
+    <div style="font-size:0.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px">🌡️ Equipment Temp Monitor</div>
     <h1 class="page-title">⚙️ Setup</h1>
   </div>
 
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="units" onclick="switchTab('units')">🏭 Equipment</button>
-    <button class="tab-btn" data-tab="devices" onclick="switchTab('devices')">📡 Devices</button>
+    <button class="tab-btn" data-tab="devices" onclick="switchTab('devices')">🏷️ TAG Temp Sensors</button>
     <button class="tab-btn" data-tab="thresholds" onclick="switchTab('thresholds')">🔔 Thresholds</button>
 
   </div>
@@ -281,6 +283,27 @@
   </div>
 
 </main>
+
+<!-- Edit Device Modal -->
+<div id="editDeviceModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeEditDevice()">
+  <div style="background:#fff;border-radius:16px;padding:28px 24px;width:min(96vw,480px);max-height:90vh;overflow-y:auto">
+    <h3 style="font-size:1.05rem;font-weight:800;margin-bottom:18px">✏️ Edit TAG Sensor</h3>
+    <input type="hidden" id="edId">
+    <div class="grid-form">
+      <div class="fg"><label>Device ID</label><input id="edDeviceId" type="text" disabled style="background:#f5f5f5;color:var(--muted)"></div>
+      <div class="fg"><label>Label</label><input id="edLabel" type="text" placeholder="e.g. Probe A — Top shelf"></div>
+      <div class="fg"><label>Equipment</label><select id="edUnit"><option value="">Select equipment…</option></select></div>
+      <div class="fg"><label>Firmware version</label><input id="edFirmware" type="text" placeholder="e.g. v1.2.0"></div>
+      <div class="fg"><label>Expected interval (min)</label><input id="edInterval" type="number" min="1"></div>
+      <div class="fg"><label>Calibration interval (days)</label><input id="edCalInterval" type="number" min="1"></div>
+    </div>
+    <div id="edNotice" class="notice"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-grey" onclick="closeEditDevice()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditDevice()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
 
 <!-- Add TAG Modal -->
 <div id="addTagModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeAddTag()">
@@ -651,7 +674,7 @@
         <td style="font-size:0.78rem">${d.lastSeenAt ? fmtDateTime(d.lastSeenAt) : 'Never'}</td>
         <td style="font-size:0.78rem;${dueDays != null && dueDays <= 30 ? 'color:#c62828;font-weight:700' : ''}">${dueStr}</td>
         <td><span style="color:#2e7d32;font-weight:700">Active</span></td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteDevice('${d._id}', '${escHtml(d.label || d.deviceId).replace(/'/g,'\\&#39;')}')">🗑️ Delete</button></td>
+        <td><button class="btn btn-outline btn-sm" onclick="openEditDevice('${d._id}')">✏️ Edit</button> <button class="btn btn-danger btn-sm" onclick="deleteDevice('${d._id}', '${escHtml(d.label || d.deviceId).replace(/'/g,'\\&#39;')}')">🗑️ Delete</button></td>
       </tr>`;
     }).join('');
   }
@@ -676,6 +699,45 @@
       ['dDeviceId','dLabel','dFirmware'].forEach(id => document.getElementById(id).value = '');
       await loadDevices();
     } catch (err) { showNotice('deviceNotice', 'err', '❌ ' + err.message); }
+  }
+
+  // ── Edit Device Modal ────────────────────────────────────
+  function openEditDevice(id) {
+    const d = devices.find(x => x._id === id);
+    if (!d) return;
+    document.getElementById('edId').value          = id;
+    document.getElementById('edDeviceId').value    = d.deviceId;
+    document.getElementById('edLabel').value       = d.label || '';
+    document.getElementById('edFirmware').value    = d.firmware || '';
+    document.getElementById('edInterval').value    = d.expectedIntervalMinutes || 5;
+    document.getElementById('edCalInterval').value = d.calibrationIntervalDays || 180;
+    const sel = document.getElementById('edUnit');
+    sel.innerHTML = '<option value="">Select equipment…</option>' + units.map(u => `<option value="${u._id}"${d.unit && d.unit._id === u._id ? ' selected' : ''}>${escHtml(u.name)}</option>`).join('');
+    document.getElementById('edNotice').style.display = 'none';
+    document.getElementById('editDeviceModal').style.display = 'flex';
+  }
+  function closeEditDevice() { document.getElementById('editDeviceModal').style.display = 'none'; }
+  async function saveEditDevice() {
+    const id = document.getElementById('edId').value;
+    try {
+      const r = await apiFetch(API + '/devices/' + id, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label:                   document.getElementById('edLabel').value.trim(),
+          firmware:                document.getElementById('edFirmware').value.trim(),
+          unit:                    document.getElementById('edUnit').value || undefined,
+          expectedIntervalMinutes: parseInt(document.getElementById('edInterval').value) || 5,
+          calibrationIntervalDays: parseInt(document.getElementById('edCalInterval').value) || 180
+        })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      closeEditDevice();
+      await loadDevices();
+      showNotice('deviceNotice', 'ok', '✅ Device updated!');
+    } catch (err) {
+      const n = document.getElementById('edNotice');
+      n.className = 'notice err'; n.textContent = '❌ ' + err.message; n.style.display = 'block';
+    }
   }
 
   async function deleteDevice(id, label) {
