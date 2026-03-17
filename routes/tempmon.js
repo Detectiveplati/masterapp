@@ -992,6 +992,63 @@ if (!global._tempmonWarmerWarnCleaned) {
   })();
 }
 
+// ── Startup: seed excursion timers from DB ───────────────────────────────────
+// On every deploy global._tempmonExcursionStart is wiped. Re-seed it from
+// recent readings so units that were already out of range don't lose their
+// threshold countdown.
+if (!global._tempmonExcursionStart) global._tempmonExcursionStart = {};
+(async () => {
+  try {
+    // Find all non-warmer active units with a threshold > 0 and no open alert
+    const units = await TempMonUnit.find({ active: true, type: { $ne: 'warmer' }, alertThresholdMinutes: { $gt: 0 } }).lean();
+    for (const unit of units) {
+      if (unit.inUse === false) continue;
+      const openAlert = await TempMonAlert.findOne({ unit: unit._id, type: { $in: ['critical_high', 'critical_low'] }, status: { $in: ['open', 'acknowledged'] } });
+      if (openAlert) continue; // alert already exists, nothing to seed
+
+      // Get the most recent reading for this unit
+      const latest = await TempMonReading.findOne({ unit: unit._id }).sort({ recordedAt: -1 }).lean();
+      if (!latest) continue;
+      const alertType = evaluateAlertType(latest.value, unit);
+      if (!alertType) continue; // currently in range
+
+      // Find when the excursion started: walk back readings until we find one in range
+      const lookback = new Date(Date.now() - 24 * 60 * 60 * 1000); // look back up to 24h
+      const recentReadings = await TempMonReading.find({ unit: unit._id, recordedAt: { $gte: lookback } })
+        .sort({ recordedAt: 1 }).lean();
+
+      let excursionStart = latest.recordedAt;
+      for (let i = recentReadings.length - 1; i >= 0; i--) {
+        const t = evaluateAlertType(recentReadings[i].value, unit);
+        if (!t) break; // found an in-range reading — excursion started after this
+        excursionStart = recentReadings[i].recordedAt;
+      }
+
+      const key = `${unit._id}_${alertType}`;
+      global._tempmonExcursionStart[key] = new Date(excursionStart).getTime();
+
+      const thresholdMs = unit.alertThresholdMinutes * 60 * 1000;
+      const elapsedMs   = Date.now() - global._tempmonExcursionStart[key];
+
+      if (elapsedMs >= thresholdMs) {
+        // Threshold already exceeded — fire the alert immediately
+        const alert = new TempMonAlert({
+          unit: unit._id, type: alertType, value: latest.value,
+          pushSentAt: new Date(), notificationSent: true
+        });
+        await alert.save();
+        const label = buildAlertLabel(alertType, latest.value, unit);
+        sendPush(`🔴 ${unit.name}: ${label}`,
+          `Temperature has been out of range for over ${unit.alertThresholdMinutes} min. Check the unit immediately.`,
+          '/tempmon/alerts.html');
+        console.log(`✓ [TempMon] Startup: fired overdue alert for "${unit.name}" (out of range since ${excursionStart})`);
+      } else {
+        console.log(`✓ [TempMon] Startup: seeded excursion timer for "${unit.name}" — ${Math.round(elapsedMs / 60000)} of ${unit.alertThresholdMinutes} min elapsed`);
+      }
+    }
+  } catch (e) { console.error('✗ [TempMon] Startup excursion seed error:', e.message); }
+})();
+
 // ═══════════════════════════════════════════════════════════════════
 // WARMER STATE MACHINE
 // ═══════════════════════════════════════════════════════════════════
