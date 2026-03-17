@@ -735,10 +735,17 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
         if (sensorRow.humidity != null) readingData.humidity = sensorRow.humidity;
         if (sensorRow.rssi    != null) readingData.rssi    = sensorRow.rssi;
         if (sensorRow.battery != null) readingData.battery = sensorRow.battery;
-        // Skip duplicate — same device + same sensor timestamp + same value already stored
-        const exists = await TempMonReading.exists({ device: tmDevice._id, recordedAt: readingData.recordedAt, value: sensorRow.temp });
-        if (exists) {
-            console.log(`[TempMon] Skipping duplicate reading: ${sensorRow.sensorId} @ ${readingData.recordedAt}`);
+        // One reading per (device, 15-min slot) — if one already exists for this slot,
+        // overwrite it with the latest value rather than storing a second row.
+        const existingInSlot = await TempMonReading.findOne({ device: tmDevice._id, recordedAt: readingData.recordedAt });
+        if (existingInSlot) {
+            if (existingInSlot.value === sensorRow.temp) {
+                console.log(`[TempMon] Skipping duplicate reading: ${sensorRow.sensorId} @ ${readingData.recordedAt}`);
+                return;
+            }
+            // Same slot, different value (two transmissions snapped to same boundary) — overwrite
+            await TempMonReading.updateOne({ _id: existingInSlot._id }, { $set: { value: sensorRow.temp, humidity: readingData.humidity, rssi: readingData.rssi, battery: readingData.battery, flagged, receivedAt: readingData.receivedAt } });
+            console.log(`[TempMon] Updated slot reading: ${sensorRow.sensorId} @ ${readingData.recordedAt} → ${sensorRow.temp}°C`);
             return;
         }
 
