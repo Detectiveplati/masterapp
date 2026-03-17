@@ -736,17 +736,17 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
         if (sensorRow.humidity != null) readingData.humidity = sensorRow.humidity;
         if (sensorRow.rssi    != null) readingData.rssi    = sensorRow.rssi;
         if (sensorRow.battery != null) readingData.battery = sensorRow.battery;
-        // One reading per (device, 15-min slot) — if one already exists for this slot,
-        // overwrite it with the latest value rather than storing a second row.
-        const existingInSlot = await TempMonReading.findOne({ device: tmDevice._id, recordedAt: readingData.recordedAt });
-        if (existingInSlot) {
-            if (existingInSlot.value === sensorRow.temp) {
+        // Deduplicate: two gateways may deliver the same sensor reading (same sensorId + recordedAt).
+        // Skip if identical, overwrite if same timestamp but different value (edge case).
+        const existingReading = await TempMonReading.findOne({ device: tmDevice._id, recordedAt: readingData.recordedAt });
+        if (existingReading) {
+            if (existingReading.value === sensorRow.temp) {
                 console.log(`[TempMon] Skipping duplicate reading: ${sensorRow.sensorId} @ ${readingData.recordedAt}`);
                 return;
             }
-            // Same slot, different value (two transmissions snapped to same boundary) — overwrite
-            await TempMonReading.updateOne({ _id: existingInSlot._id }, { $set: { value: sensorRow.temp, humidity: readingData.humidity, rssi: readingData.rssi, battery: readingData.battery, flagged, receivedAt: readingData.receivedAt } });
-            console.log(`[TempMon] Updated slot reading: ${sensorRow.sensorId} @ ${readingData.recordedAt} → ${sensorRow.temp}°C`);
+            // Same timestamp, different value — overwrite with latest
+            await TempMonReading.updateOne({ _id: existingReading._id }, { $set: { value: sensorRow.temp, humidity: readingData.humidity, rssi: readingData.rssi, battery: readingData.battery, flagged, receivedAt: readingData.receivedAt } });
+            console.log(`[TempMon] Updated reading: ${sensorRow.sensorId} @ ${readingData.recordedAt} → ${sensorRow.temp}°C`);
             return;
         }
 
@@ -984,15 +984,12 @@ function extractLoraSensorRows(payload) {
         }
     }
 
-    // Deduplicate: sensors transmit every 15 minutes by default.  Keep at most one reading
-    // per sensor per 15-minute window and snap its timestamp to the START of that window
-    // (e.g. a reading at 10:02:33 is stored as 10:00:00).  This produces a clean, regular
-    // time-series — one entry per slot — regardless of the exact sensor fire-time offset.
-    const BUCKET_MS = 15 * 60 * 1000;
+    // Deduplicate: two gateways can forward the same sensor reading (identical sensorId + recordedAt).
+    // Keep exact sensor RTC timestamp as-is — sensors transmit every 15 min so readings are
+    // naturally spaced without any snapping needed.
     const deduped = new Map();
     for (const r of rows) {
-        const bucketStart = Math.floor(new Date(r.recordedAt).getTime() / BUCKET_MS) * BUCKET_MS;
-        deduped.set(r.sensorId + '|' + bucketStart, { ...r, recordedAt: new Date(bucketStart) });
+        deduped.set(r.sensorId + '|' + new Date(r.recordedAt).getTime(), r);
     }
     return [...deduped.values()];
 }
@@ -1407,19 +1404,15 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
                 humidity: row.humidity,
                 rssi: row.rssi,
                 battery: row.battery,
-                // row.recordedAt is already snapped to the 15-min bucket start by
-                // extractLoraSensorRows.  Accept it only when it is within ±2 hours of the
-                // server clock (guards against timezone-confused HTTP gateways whose RTC is
-                // e.g. MYT = UTC+8 → 8 h ahead).  Fall back to server receipt time,
-                // also snapped to the 15-min boundary, for rejected or missing RTCs.
+                // Accept sensor RTC as-is if it is within ±2 hours of server clock.
+                // Guards against timezone-confused HTTP gateways (e.g. MYT = UTC+8 → 8 h ahead).
+                // Fall back to server receipt time when RTC is absent or out of range.
                 recordedAt: (function() {
-                    const INTERVAL_MS = 15 * 60 * 1000;
-                    const sensorTs = row.recordedAt; // Date snapped to 15-min boundary
+                    const sensorTs = row.recordedAt;
                     if (sensorTs && Math.abs(new Date(sensorTs).getTime() - now.getTime()) < 2 * 60 * 60 * 1000) {
                         return new Date(sensorTs).toISOString();
                     }
-                    // Gateway RTC absent or timezone-confused — use server receipt time snapped
-                    return new Date(Math.floor(now.getTime() / INTERVAL_MS) * INTERVAL_MS).toISOString();
+                    return now.toISOString();
                 })(),
                 createdAt: now,
                 _loraDevice: mapped   // carry device doc for TempMon forwarding
