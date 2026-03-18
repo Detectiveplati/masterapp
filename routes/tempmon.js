@@ -157,12 +157,15 @@ router.post('/devices', requireAuth, async (req, res) => {
       const newUnitId = unit ? unit.toString() : null;
 
       if (oldUnitId && newUnitId && oldUnitId !== newUnitId) {
-        // Migrate all readings and alerts from old unit to new unit
-        const [readingsMigrated, alertsMigrated] = await Promise.all([
+        // Migrate all readings, alerts, and corrective actions from old unit to new unit
+        const migratingAlertIds = (await TempMonAlert.find({ device: existing._id, unit: existing.unit }, '_id').lean()).map(a => a._id);
+
+        const [readingsMigrated, alertsMigrated, casMigrated] = await Promise.all([
           TempMonReading.updateMany({ device: existing._id, unit: existing.unit }, { $set: { unit: newUnitId } }),
-          TempMonAlert.updateMany({ device: existing._id, unit: existing.unit }, { $set: { unit: newUnitId } })
+          TempMonAlert.updateMany({ device: existing._id, unit: existing.unit }, { $set: { unit: newUnitId } }),
+          TempMonCorrectiveAction.updateMany({ alert: { $in: migratingAlertIds }, unit: oldUnitId }, { $set: { unit: newUnitId } })
         ]);
-        console.log(`✓ [TempMon] Migrated ${readingsMigrated.modifiedCount} readings, ${alertsMigrated.modifiedCount} alerts from unit ${oldUnitId} → ${newUnitId}`);
+        console.log(`✓ [TempMon] Migrated ${readingsMigrated.modifiedCount} readings, ${alertsMigrated.modifiedCount} alerts, ${casMigrated.modifiedCount} corrective actions from unit ${oldUnitId} → ${newUnitId}`);
 
         // Reactivate and re-link the existing device record
         existing.unit   = newUnitId;
@@ -211,17 +214,22 @@ router.put('/devices/:id', requireAuth, async (req, res) => {
     const update = {};
     fields.forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
 
-    // If unit is being changed, migrate readings + alerts and clean up old unit
+    // If unit is being changed, migrate readings + alerts + corrective actions and clean up old unit
     if (update.unit) {
       const device = await TempMonDevice.findById(req.params.id);
       if (device && device.unit && device.unit.toString() !== update.unit.toString()) {
         const oldUnitId = device.unit.toString();
         const newUnitId = update.unit.toString();
-        const [readingsMigrated, alertsMigrated] = await Promise.all([
+
+        // Fetch alert IDs for this device + old unit so we can migrate linked corrective actions
+        const migratingAlertIds = (await TempMonAlert.find({ device: device._id, unit: device.unit }, '_id').lean()).map(a => a._id);
+
+        const [readingsMigrated, alertsMigrated, casMigrated] = await Promise.all([
           TempMonReading.updateMany({ device: device._id, unit: device.unit }, { $set: { unit: newUnitId } }),
-          TempMonAlert.updateMany({ device: device._id, unit: device.unit }, { $set: { unit: newUnitId } })
+          TempMonAlert.updateMany({ device: device._id, unit: device.unit }, { $set: { unit: newUnitId } }),
+          TempMonCorrectiveAction.updateMany({ alert: { $in: migratingAlertIds }, unit: oldUnitId }, { $set: { unit: newUnitId } })
         ]);
-        console.log(`✓ [TempMon] Migrated ${readingsMigrated.modifiedCount} readings, ${alertsMigrated.modifiedCount} alerts from unit ${oldUnitId} → ${newUnitId}`);
+        console.log(`✓ [TempMon] Migrated ${readingsMigrated.modifiedCount} readings, ${alertsMigrated.modifiedCount} alerts, ${casMigrated.modifiedCount} corrective actions from unit ${oldUnitId} → ${newUnitId}`);
 
         // Auto-deactivate old unit if no active devices remain
         const remainingDevices = await TempMonDevice.countDocuments({ unit: oldUnitId, active: true, _id: { $ne: device._id } });

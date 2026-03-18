@@ -718,22 +718,39 @@
   }
   function closeEditDevice() { document.getElementById('editDeviceModal').style.display = 'none'; }
   async function saveEditDevice() {
-    const id = document.getElementById('edId').value;
+    const id        = document.getElementById('edId').value;
+    const newUnitId = document.getElementById('edUnit').value || undefined;
+
+    // Warn if the equipment assignment is changing — historical data will be migrated
+    const dev       = devices.find(x => x._id === id);
+    const oldUnitId = dev?.unit?._id;
+    if (newUnitId && oldUnitId && newUnitId !== oldUnitId) {
+      const oldName = dev.unit?.name || oldUnitId;
+      const newName = units.find(u => u._id === newUnitId)?.name || newUnitId;
+      const ok = confirm(
+        `Reassign sensor "${dev.label || dev.deviceId}" from "${oldName}" → "${newName}"?\n\n` +
+        `ALL historical readings, alerts, and corrective actions for this sensor will be moved to the new equipment. This cannot be undone.\n\nContinue?`
+      );
+      if (!ok) return;
+    }
+
     try {
       const r = await apiFetch(API + '/devices/' + id, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           label:                   document.getElementById('edLabel').value.trim(),
           firmware:                document.getElementById('edFirmware').value.trim(),
-          unit:                    document.getElementById('edUnit').value || undefined,
+          unit:                    newUnitId,
           expectedIntervalMinutes: parseInt(document.getElementById('edInterval').value) || 5,
           calibrationIntervalDays: parseInt(document.getElementById('edCalInterval').value) || 180
         })
       });
       if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
       closeEditDevice();
-      await loadDevices();
-      showNotice('deviceNotice', 'ok', '✅ Device updated!');
+      // Reload both lists — unit may have been auto-deactivated after losing its last sensor
+      await Promise.all([loadDevices(), loadUnits()]);
+      const movedMsg = (newUnitId && oldUnitId && newUnitId !== oldUnitId) ? ' Historical data migrated.' : '';
+      showNotice('deviceNotice', 'ok', '✅ Device updated!' + movedMsg);
     } catch (err) {
       const n = document.getElementById('edNotice');
       n.className = 'notice err'; n.textContent = '❌ ' + err.message; n.style.display = 'block';
