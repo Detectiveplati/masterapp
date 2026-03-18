@@ -55,6 +55,43 @@
     .notice.err { background: rgba(198,40,40,.1); color: #c62828; }
     .no-data { text-align: center; padding: 30px; color: var(--muted); font-style: italic; }
     @media (max-width: 600px) { main { padding: 16px; } .grid-form { grid-template-columns: 1fr; } }
+    /* ── LoRa Gateway tab styles ──────────────────────────── */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 2px 6px var(--shadow); padding: 22px 24px; margin-bottom: 20px; }
+    .card-title { font-size: 1.05rem; font-weight: 800; margin: 0 0 4px; }
+    .card-sub { font-size: 0.82rem; color: var(--muted); margin: 0 0 18px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 16px; }
+    .btn-ghost { background: #f5f5f5; color: var(--ink); border: 1px solid var(--border); }
+    .badge { border-radius: 20px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+    .badge-blue   { background: rgba(21,101,192,.1); color: #1565c0; }
+    .badge-green  { background: rgba(39,174,96,.1); color: #2e7d32; }
+    .badge-orange { background: rgba(255,152,0,.15); color: #e65100; }
+    .badge-red    { background: rgba(198,40,40,.1); color: #c62828; }
+    .badge-grey   { background: #f0f0f0; color: #666; }
+    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
+    .dot-green  { background: #4caf50; box-shadow: 0 0 0 3px rgba(76,175,80,.2); }
+    .dot-orange { background: #ff9800; }
+    .dot-grey   { background: #bdbdbd; }
+    .dot-pulse  { animation: gw-pulse 1.5s infinite; }
+    @keyframes gw-pulse { 0%,100%{box-shadow:0 0 0 3px rgba(76,175,80,.2)} 50%{box-shadow:0 0 0 6px rgba(76,175,80,.05)} }
+    .tbl { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    .tbl th { padding: 9px 12px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); border-bottom: 2px solid var(--border); text-align: left; font-weight: 800; }
+    .tbl td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .tbl tr:last-child td { border-bottom: none; }
+    .tbl tr.dim td { opacity: .45; }
+    .banner { padding: 12px 16px; border-radius: 10px; font-size: 0.88rem; font-weight: 600; margin-bottom: 16px; }
+    .banner-green  { background: rgba(39,174,96,.1); color: #2e7d32; border: 1px solid rgba(39,174,96,.2); }
+    .banner-orange { background: rgba(255,193,7,.1); color: #f57f17; border: 1px solid rgba(255,193,7,.3); }
+    .url-box { background: #f5f5f5; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: monospace; font-size: 0.9rem; word-break: break-all; user-select: all; }
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+    .step { background: #fff; border: 1px solid #c8e6c9; border-radius: 12px; padding: 16px 18px; }
+    .step-num { font-size: 1.4rem; margin-bottom: 6px; }
+    .step-title { font-weight: 800; font-size: 0.92rem; color: #1b5e20; margin-bottom: 6px; }
+    .step-body { font-size: 0.82rem; color: #555; line-height: 1.65; margin: 0; }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #bdbdbd; display: inline-block; transition: background .3s; }
+    .live-dot.on { background: #4caf50; animation: gw-pulse 1.5s infinite; }
+    details summary { cursor: pointer; font-weight: 700; font-size: 0.88rem; color: var(--muted); padding: 4px 0; user-select: none; }
+    details summary:hover { color: var(--ink); }
+    details[open] summary { color: var(--ink); margin-bottom: 12px; }
   </style>
 </head>
 <body data-module="tempmon">
@@ -63,7 +100,7 @@
     <a href="/tempmon/" class="nav-link">📡 Live Dashboard</a>
     <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
     <a href="/tempmon/setup.html" class="nav-link active">⚙️ Setup</a>
-    <a href="/tempmon/gateway.html" class="nav-link">📶 LoRa Gateway</a>
+    <a href="/tempmon/setup.html?tab=gateway" class="nav-link">📶 LoRa Gateway</a>
     <a href="/tempmon/gateway-log.html" class="nav-link">🪵 Raw Log</a>
     <a href="/tempmon/dev-test.html" class="nav-link">🧪 Dev Test</a>
   </div>
@@ -75,9 +112,8 @@
 
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="units" onclick="switchTab('units')">🏭 Equipment</button>
-    <button class="tab-btn" data-tab="devices" onclick="switchTab('devices')">🏷️ TAG Temp Sensors</button>
+    <button class="tab-btn" data-tab="gateway" onclick="switchTab('gateway')">📶 LoRa Gateway</button>
     <button class="tab-btn" data-tab="thresholds" onclick="switchTab('thresholds')">🔔 Thresholds</button>
-
   </div>
 
   <!-- ── UNITS TAB ─────────────────────────────────────── -->
@@ -122,31 +158,192 @@
     </div>
   </div>
 
-  <!-- ── DEVICES TAB ─────────────────────────────────────── -->
-  <div id="tab-devices" class="tab-panel">
-    <div class="section-card">
-      <h2>➕ Register Device</h2>
-      <div class="grid-form">
-        <div class="fg"><label>Equipment <span style="color:#c62828">*</span></label><select id="dUnit"><option value="">Select equipment…</option></select></div>
-        <div class="fg"><label>Device ID <span style="color:#c62828">*</span></label><input id="dDeviceId" type="text" placeholder="Hardware MAC / token e.g. TH-A1B2C3"></div>
-        <div class="fg"><label>Label</label><input id="dLabel" type="text" placeholder="e.g. Probe A — Top shelf"></div>
-        <div class="fg"><label>Firmware version</label><input id="dFirmware" type="text" placeholder="e.g. v1.2.0"></div>
-        <div class="fg"><label>Expected interval (min)</label><input id="dInterval" type="number" value="5" min="1"></div>
-        <div class="fg"><label>Calibration interval (days)</label><input id="dCalInterval" type="number" value="180" min="1"></div>
-      </div>
-      <div id="deviceNotice" class="notice"></div>
-      <button class="btn btn-primary" onclick="addDevice()">📡 Register Device</button>
-    </div>
+  <!-- ── LORA GATEWAY TAB ──────────────────────────────────── -->
+  <div id="tab-gateway" class="tab-panel">
 
-    <div class="section-card">
-      <h2>📡 Registered Devices</h2>
+    <!-- 1. GATEWAY CONNECTION STATUS -->
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+        <div>
+          <div class="card-title">📡 Gateway TCP/IP Connection</div>
+          <div class="card-sub">Enter these details into TZConfig.exe → Data Transfer Protocol → TCP/IP → Server IP &amp; Port</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="loadLoraEvents()">🔄 Refresh</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Server IP</span>
+          <div class="url-box" id="loraGatewayIp" style="min-width:160px">—</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">TCP Port</span>
+          <div class="url-box" id="loraGatewayPort" style="min-width:80px">4001</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Protocol</span>
+          <div class="url-box" style="min-width:80px;color:var(--muted)">TCP</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="copyGatewayUrl()" id="loraCopyBtn" style="margin-top:20px">📋 Copy IP:Port</button>
+      </div>
+      <div id="gwBannerOnline"  class="banner banner-green"  style="display:none">✅ Gateway <strong>online</strong></div>
+      <div id="gwBannerOffline" class="banner banner-orange" style="display:none">⚠️ No data received yet — configure TCP/IP in TZConfig and ensure the gateway is on the same network</div>
       <div style="overflow-x:auto">
-        <table class="data-table">
-          <thead><tr><th>Device ID</th><th>Label</th><th>Equipment</th><th>Battery</th><th>Last Seen</th><th>Calibration Due</th><th>Status</th><th></th></tr></thead>
-          <tbody id="devicesBody"><tr><td colspan="8" class="no-data">Loading…</td></tr></tbody>
+        <table class="tbl">
+          <thead><tr><th>Received</th><th>Gateway ID</th><th>Sensors</th><th>Stored</th><th>Unmatched</th><th>Seq#</th><th>FW</th></tr></thead>
+          <tbody id="eventsBody"><tr><td colspan="7" class="no-data">Loading…</td></tr></tbody>
         </table>
       </div>
     </div>
+
+    <!-- 2. LIVE SENSOR SCANNER -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <span class="live-dot" id="scanDot"></span>
+        <div>
+          <div class="card-title" style="font-size:1rem">🔍 Live Sensor Scanner</div>
+          <div class="card-sub" style="margin:0">Sensors that transmitted in the last 30 seconds — press any tag button to see it appear instantly</div>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <label style="font-size:0.8rem;font-weight:700;display:flex;align-items:center;gap:5px;cursor:pointer">
+            <input type="checkbox" id="scanAutoChk" onchange="toggleScanAuto()"> Auto (10s)
+          </label>
+          <button class="btn btn-primary btn-sm" onclick="runScan()" id="scanBtn">🔍 Scan Now</button>
+          <span style="font-size:0.75rem;color:var(--muted)" id="scanUpdated"></span>
+        </div>
+      </div>
+      <div id="scanPanel"><div class="no-data">Click Scan Now — or press a tag button (1 second) to see it appear here</div></div>
+    </div>
+
+    <!-- 3. DETECTED SENSORS -->
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:10px">
+        <div>
+          <div class="card-title" style="font-size:1rem">🆕 Detected Sensors</div>
+          <div class="card-sub" style="margin:0">Seen by the gateway but not yet registered — select model &amp; equipment then click Register</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <select id="discoverWindow" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:inherit">
+            <option value="1">Last 1 hour</option>
+            <option value="6">Last 6 hours</option>
+            <option value="24" selected>Last 24 hours</option>
+            <option value="168">Last 7 days</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="scanDetected()" id="detectBtn">🔍 Scan</button>
+        </div>
+      </div>
+      <div id="detectResult" style="display:none;overflow-x:auto">
+        <table class="tbl">
+          <thead><tr><th>Sensor ID</th><th>Detected Type</th><th>Last Temp</th><th>Last Seen</th><th>Count</th><th>Quick Register</th></tr></thead>
+          <tbody id="detectBody"></tbody>
+        </table>
+      </div>
+      <div id="detectNotice" class="notice" style="margin-top:10px"></div>
+    </div>
+
+    <!-- 4. REGISTER SENSOR TAG -->
+    <div class="card" id="regCard">
+      <div class="card-title" style="font-size:1rem;margin-bottom:4px">➕ Register a Sensor Tag</div>
+      <p class="card-sub">Map a physical sensor to an equipment unit so its readings are stored in the dashboard</p>
+      <div id="regPrefillBanner" style="display:none;padding:10px 14px;background:#e3f2fd;border:1px solid #90caf9;border-radius:8px;font-size:0.84rem;color:#1565c0;margin-bottom:14px"></div>
+      <div class="form-grid">
+        <div class="fg">
+          <label>Sensor ID <span style="color:#c62828">*</span><span style="font-size:0.72rem;font-weight:400;color:var(--muted);margin-left:4px">8-char on tag sticker</span></label>
+          <input id="fSensorId" type="text" placeholder="e.g. 09240127">
+        </div>
+        <div class="fg">
+          <label>Tag Model <span style="color:#c62828">*</span></label>
+          <select id="fModel">
+            <option value="TAG09">TAG09 — Temperature only (channel 3)</option>
+            <option value="TAG08B">TAG08B — Temp + Humidity (channel 2)</option>
+            <option value="TAG07">TAG07 — Temp + Humidity (legacy)</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Link to Unit <span style="color:#c62828">*</span><span style="font-size:0.72rem;font-weight:400;color:var(--muted);margin-left:4px">Chiller / Freezer / Warmer</span></label>
+          <select id="fUnit"><option value="">Loading units…</option></select>
+        </div>
+        <div class="fg">
+          <label>Friendly Name <span style="font-size:0.72rem;font-weight:400;color:var(--muted)">(optional)</span></label>
+          <input id="fAlias" type="text" placeholder="e.g. Walk-in Chiller Probe">
+        </div>
+        <div class="fg">
+          <label>Notes <span style="font-size:0.72rem;font-weight:400;color:var(--muted)">(optional)</span></label>
+          <input id="fNotes" type="text" placeholder="e.g. Top shelf rear">
+        </div>
+      </div>
+      <div id="regNotice" class="notice" style="margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary" onclick="registerSensor()">🏷️ Register Sensor</button>
+        <button class="btn btn-ghost btn-sm" id="regCancelBtn" style="display:none" onclick="cancelPrefill()">✖ Clear</button>
+      </div>
+    </div>
+
+    <!-- 5. REGISTERED SENSORS / DEVICE MONITOR -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+        <div class="card-title" style="font-size:1rem">🏷️ Registered Sensors</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="monitorUpdated" style="font-size:0.75rem;color:var(--muted)"></span>
+          <button class="btn btn-ghost btn-sm" onclick="loadMonitor()" id="monitorBtn">🔄 Refresh</button>
+        </div>
+      </div>
+      <p class="card-sub">Live status — only registered sensors store readings. Auto-refreshes every 30s.</p>
+      <div id="monitorPanel"><div class="no-data">Loading…</div></div>
+    </div>
+
+    <!-- 6. SETUP GUIDE -->
+    <div class="card" style="background:linear-gradient(160deg,#e8f5e9 0%,#f9fbe7 100%);border-color:#a5d6a7">
+      <div class="card-title" style="color:#1b5e20;margin-bottom:6px">📖 RD07 WiFi Gateway — Setup Guide</div>
+      <p style="font-size:0.84rem;color:#388e3c;margin:0 0 18px">Step-by-step for TAG09 (temp, ch 3) and TAG08B (temp + humidity, ch 2)</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">🔌</div>
+          <div class="step-title">Step 1 — Power on</div>
+          <p class="step-body">Screw on the RF antenna <em>before</em> powering on.<br><br>Switch: <strong>Left = ON, Right = OFF</strong><br><br>3 LEDs flash simultaneously = working.<br><br>LED guide:<br>🔵 Blue 0.1s flash = tag data received<br>🟢 Green 2s blink = forwarded to server<br>🔴 Red solid = power connected</p>
+        </div>
+        <div class="step">
+          <div class="step-num">💻</div>
+          <div class="step-title">Step 2 — Connect TZConfig</div>
+          <p class="step-body">1. Install PL-2303 RS232 driver (Win 10+)<br>2. Connect USB RS232 cable: small plug → gateway, large → PC<br>3. Device Manager → Ports → note COM port<br>4. TZConfig.exe → select COM port → <strong>Connect</strong><br><br>In <strong>WiFi tab</strong>:<br>• Mode: <strong>WIFI</strong><br>• SSID: kitchen WiFi name<br>• Password: WiFi password → <strong>Save</strong></p>
+        </div>
+        <div class="step">
+          <div class="step-num">🌐</div>
+          <div class="step-title">Step 3 — TCP/IP server address</div>
+          <p class="step-body">In <strong>Data Transfer Protocol</strong>:<br>• Protocol: <strong>TCP/IP</strong><br>• Transfer mode: <strong>TCP</strong> (not UDP)<br>• Server IP: copy from box at top ↑<br>• Port: copy from box at top ↑<br><br>• Interval: <strong>10 seconds</strong><br>• Click <strong>Save</strong> then <strong>Read</strong> to verify<br><br><strong>Railway:</strong> Add TCP Proxy in Railway dashboard → Settings → Networking → Add TCP Proxy → port 4001</p>
+        </div>
+        <div class="step">
+          <div class="step-num">🏷️</div>
+          <div class="step-title">Step 4 — Tag Settings ⚠️ Critical</div>
+          <p class="step-body">In <strong>Tag Settings</strong> tab — add each sensor:<br><br><strong style="color:#1565c0">TAG09 → Channel 3</strong><br><strong style="color:#7b1fa2">TAG08B → Channel 2</strong><br><br>For each tag: Add → Type → Channel → 8-char TAG ID → <strong>Save</strong><br><br>⚠️ Once any tag is added, gateway <em>only forwards listed tags</em>. Add <em>all</em> your sensors or they will be silently dropped.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">🔘</div>
+          <div class="step-title">Step 5 — Wake &amp; verify</div>
+          <p class="step-body">Press each tag button for <strong>~1 second</strong> to force an immediate transmission.<br><br>🔵 Blue LED flash = gateway received the signal<br>🟢 Green blink = sent to server<br><br>Check the <strong>Live Scanner</strong> panel above. The tag should appear within a few seconds.<br><br>Default auto-interval: every <strong>15 minutes</strong>.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">✅</div>
+          <div class="step-title">Step 6 — Register in app</div>
+          <p class="step-body">Once a tag appears in Live Scanner or Detected Sensors:<br><br>1. Click <strong>Register</strong> next to it<br>2. Confirm model (TAG09 / TAG08B)<br>3. Choose equipment (Chiller / Freezer / Warmer)<br>4. Click <strong>Register Sensor</strong><br><br>All future readings are stored automatically in the database.</p>
+        </div>
+      </div>
+      <div style="margin-top:16px;padding:12px 16px;background:#fff3e0;border:1px solid #ffcc80;border-radius:10px;font-size:0.83rem;color:#bf360c;line-height:1.6">
+        <strong>🔋 Battery:</strong> ≥3.5V Good 🟢 &nbsp;|&nbsp; 3.3–3.5V Acceptable 🟡 &nbsp;|&nbsp; &lt;3.3V Replace now 🔴<br>
+        <strong>📶 RSSI:</strong> 0 to −50 dBm Excellent &nbsp;|&nbsp; −51 to −80 dBm Good &nbsp;|&nbsp; below −80 dBm Weak — move gateway closer
+      </div>
+      <details style="margin-top:14px">
+        <summary>ℹ️ TAG09 vs TAG08B — differences explained</summary>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:0.83rem;margin-top:10px">
+          <div style="background:#e3f2fd;border-radius:10px;padding:14px;border:1px solid #90caf9">
+            <strong style="color:#1565c0;font-size:0.9rem">TAG09 — Temperature only</strong><br><br>• No humidity sensor (payload humi = FF = absent)<br>• Channel: <strong>3</strong> in TZConfig Tag Settings<br>• Good for: cold rooms, freezers, dry stores
+          </div>
+          <div style="background:#f3e5f5;border-radius:10px;padding:14px;border:1px solid #ce93d8">
+            <strong style="color:#7b1fa2;font-size:0.9rem">TAG08B — Temp + Humidity</strong><br><br>• Humidity resolution: 0.1% (2-byte field)<br>• Channel: <strong>2</strong> in TZConfig Tag Settings<br>• Good for: rooms where humidity matters
+          </div>
+        </div>
+      </details>
+    </div>
+
   </div>
 
   <!-- ── THRESHOLDS TAB ──────────────────────────────────────── -->
@@ -284,48 +481,6 @@
 
 </main>
 
-<!-- Edit Device Modal -->
-<div id="editDeviceModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeEditDevice()">
-  <div style="background:#fff;border-radius:16px;padding:28px 24px;width:min(96vw,480px);max-height:90vh;overflow-y:auto">
-    <h3 style="font-size:1.05rem;font-weight:800;margin-bottom:18px">✏️ Edit TAG Sensor</h3>
-    <input type="hidden" id="edId">
-    <div class="grid-form">
-      <div class="fg"><label>Device ID</label><input id="edDeviceId" type="text" disabled style="background:#f5f5f5;color:var(--muted)"></div>
-      <div class="fg"><label>Label</label><input id="edLabel" type="text" placeholder="e.g. Probe A — Top shelf"></div>
-      <div class="fg"><label>Equipment</label><select id="edUnit"><option value="">Select equipment…</option></select></div>
-      <div class="fg"><label>Firmware version</label><input id="edFirmware" type="text" placeholder="e.g. v1.2.0"></div>
-      <div class="fg"><label>Expected interval (min)</label><input id="edInterval" type="number" min="1"></div>
-      <div class="fg"><label>Calibration interval (days)</label><input id="edCalInterval" type="number" min="1"></div>
-    </div>
-    <div id="edNotice" class="notice"></div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
-      <button class="btn btn-grey" onclick="closeEditDevice()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEditDevice()">💾 Save Changes</button>
-    </div>
-  </div>
-</div>
-
-<!-- Add TAG Modal -->
-<div id="addTagModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeAddTag()">
-  <div style="background:#fff;border-radius:16px;padding:28px 24px;width:min(96vw,480px);max-height:90vh;overflow-y:auto">
-    <h3 style="font-size:1.05rem;font-weight:800;margin-bottom:6px">📡 Register TAG Sensor</h3>
-    <p id="addTagUnitLabel" style="font-size:0.85rem;color:var(--muted);margin-bottom:18px"></p>
-    <input type="hidden" id="atUnitId">
-    <div class="grid-form">
-      <div class="fg"><label>Device ID <span style="color:#c62828">*</span></label><input id="atDeviceId" type="text" placeholder="e.g. TAG08B-A1B2C3 or LoRa sensor ID"></div>
-      <div class="fg"><label>Label</label><input id="atLabel" type="text" placeholder="e.g. Probe A — Top shelf"></div>
-      <div class="fg"><label>Firmware version</label><input id="atFirmware" type="text" placeholder="e.g. v1.2.0"></div>
-      <div class="fg"><label>Expected interval (min)</label><input id="atInterval" type="number" value="5" min="1"></div>
-      <div class="fg"><label>Calibration interval (days)</label><input id="atCalInterval" type="number" value="180" min="1"></div>
-    </div>
-    <div id="atNotice" class="notice"></div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
-      <button class="btn btn-grey" onclick="closeAddTag()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveAddTag()">📡 Register Device</button>
-    </div>
-  </div>
-</div>
-
 <!-- Edit Unit Modal -->
 <div id="editUnitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeEditUnit()">
   <div style="background:#fff;border-radius:16px;padding:28px 24px;width:min(96vw,520px);max-height:90vh;overflow-y:auto">
@@ -427,7 +582,8 @@
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
       }
       await loadUnits();
-      await Promise.all([loadDevices(), loadAreas()]);
+      populateUnitDropdowns(); // keep LoRa Gateway unit selects in sync
+      await loadAreas();
       // Support ?tab=thresholds etc. from external links
       const tabParam = new URLSearchParams(location.search).get('tab');
       if (tabParam) switchTab(tabParam);
@@ -443,6 +599,7 @@
     const panel = document.getElementById('tab-' + name);
     if (panel) panel.classList.add('active');
     if (name === 'thresholds') { renderThresholds(); loadPushConfig(); }
+    if (name === 'gateway')    { initGateway(); }
   }
 
   function showNotice(id, type, msg) {
@@ -510,17 +667,13 @@
         <td>${u.active ? '<span style="color:#2e7d32;font-weight:700">Active</span>' : '<span style="color:var(--muted)">Inactive</span>'} ${notInUseBadge}</td>
         <td style="display:flex;gap:5px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="openEditUnit('${u._id}')">✏️</button>
-          <button class="btn btn-primary btn-sm" onclick="openAddTag('${u._id}', '${escHtml(u.name).replace(/'/g,'\\&#39;')}')" title="Register a TAG sensor for this unit">📡 Add TAG</button>
           <button class="btn btn-danger btn-sm" onclick="deleteUnit('${u._id}', '${escHtml(u.name).replace(/'/g,'\\&#39;')}')">🗑️</button>
         </td>
       </tr>`;
     }).join('');
   }
 
-  function populateUnitSelectors() {
-    const sel = document.getElementById('dUnit');
-    if (sel) sel.innerHTML = '<option value="">Select unit…</option>' + units.map(u => `<option value="${u._id}">${escHtml(u.name)}</option>`).join('');
-  }
+  function populateUnitSelectors() { /* no-op: dUnit removed with devices tab */ }
 
   async function addUnit() {
     const name = document.getElementById('uName').value.trim();
@@ -576,49 +729,6 @@
   }
   function closeEditUnit() { document.getElementById('editUnitModal').style.display = 'none'; }
 
-  // ── Quick Add TAG Modal ────────────────────────────────
-  function openAddTag(unitId, unitName) {
-    document.getElementById('atUnitId').value = unitId;
-    document.getElementById('addTagUnitLabel').textContent = 'Unit: ' + unitName;
-    ['atDeviceId','atLabel','atFirmware'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('atInterval').value = '5';
-    document.getElementById('atCalInterval').value = '180';
-    document.getElementById('atNotice').style.display = 'none';
-    document.getElementById('addTagModal').style.display = 'flex';
-    setTimeout(() => document.getElementById('atDeviceId').focus(), 50);
-  }
-  function closeAddTag() { document.getElementById('addTagModal').style.display = 'none'; }
-  async function saveAddTag() {
-    const unitId   = document.getElementById('atUnitId').value;
-    const deviceId = document.getElementById('atDeviceId').value.trim();
-    if (!deviceId) {
-      const n = document.getElementById('atNotice');
-      n.className = 'notice err'; n.textContent = '⚠️ Device ID is required.'; n.style.display = 'block';
-      return;
-    }
-    try {
-      const r = await apiFetch(API + '/devices', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          unit:                    unitId,
-          deviceId,
-          label:                   document.getElementById('atLabel').value.trim(),
-          firmware:                document.getElementById('atFirmware').value.trim(),
-          expectedIntervalMinutes: parseInt(document.getElementById('atInterval').value) || 5,
-          calibrationIntervalDays: parseInt(document.getElementById('atCalInterval').value) || 180
-        })
-      });
-      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
-      closeAddTag();
-      await loadDevices();
-      switchTab('devices');
-      showNotice('deviceNotice', 'ok', `✅ Device ${escHtml(deviceId)} registered!`);
-    } catch (err) {
-      const n = document.getElementById('atNotice');
-      n.className = 'notice err'; n.textContent = '❌ ' + err.message; n.style.display = 'block';
-    }
-  }
-
   async function deleteUnit(id, name) {
     if (!confirm(`Delete unit "${name}"? This will deactivate it and remove it from the dashboard. Historical readings are preserved.`)) return;
     try {
@@ -657,113 +767,12 @@
     }
   }
 
-  // ── Devices ─────────────────────────────────────────────────────
+  // ── Devices (populated for diagnostics; no UI table rendered here) ──────────
   async function loadDevices() {
-    const r = await apiFetch(API + '/devices');
-    devices = (await r.json()).filter(d => d.active);
-    const tbody = document.getElementById('devicesBody');
-    if (!devices.length) { tbody.innerHTML = '<tr><td colspan="8" class="no-data">No devices yet.</td></tr>'; return; }
-    tbody.innerHTML = devices.map(d => {
-      const dueDays = d.calibrationDue ? Math.ceil((new Date(d.calibrationDue) - Date.now()) / 86400000) : null;
-      const dueStr  = d.calibrationDue ? (dueDays <= 30 ? `⚠️ ${dueDays}d` : fmtDate(d.calibrationDue)) : '—';
-      return `<tr>
-        <td><code style="font-size:0.8rem">${escHtml(d.deviceId)}</code></td>
-        <td>${escHtml(d.label || '—')}</td>
-        <td>${d.unit ? escHtml(d.unit.name) : '—'}</td>
-        <td>${d.batteryPct != null ? d.batteryPct + '%' : '—'}</td>
-        <td style="font-size:0.78rem">${d.lastSeenAt ? fmtDateTime(d.lastSeenAt) : 'Never'}</td>
-        <td style="font-size:0.78rem;${dueDays != null && dueDays <= 30 ? 'color:#c62828;font-weight:700' : ''}">${dueStr}</td>
-        <td><span style="color:#2e7d32;font-weight:700">Active</span></td>
-        <td><button class="btn btn-outline btn-sm" onclick="openEditDevice('${d._id}')">✏️ Edit</button> <button class="btn btn-outline btn-sm" onclick="openDiag('${d._id}')" title="Diagnose why this sensor may not be saving data">🔍</button> <button class="btn btn-danger btn-sm" onclick="deleteDevice('${d._id}', '${escHtml(d.label || d.deviceId).replace(/'/g,'\\&#39;')}')">🗑️ Delete</button></td>
-      </tr>`;
-    }).join('');
-  }
-
-  async function addDevice() {
-    const unit     = document.getElementById('dUnit').value;
-    const deviceId = document.getElementById('dDeviceId').value.trim();
-    if (!unit || !deviceId) return showNotice('deviceNotice', 'err', 'Unit and Device ID are required.');
     try {
-      const r = await apiFetch(API + '/devices', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          unit, deviceId,
-          label:                   document.getElementById('dLabel').value.trim(),
-          firmware:                document.getElementById('dFirmware').value.trim(),
-          expectedIntervalMinutes: parseInt(document.getElementById('dInterval').value) || 5,
-          calibrationIntervalDays: parseInt(document.getElementById('dCalInterval').value) || 180
-        })
-      });
-      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
-      showNotice('deviceNotice', 'ok', '✅ Device registered!');
-      ['dDeviceId','dLabel','dFirmware'].forEach(id => document.getElementById(id).value = '');
-      await loadDevices();
-    } catch (err) { showNotice('deviceNotice', 'err', '❌ ' + err.message); }
-  }
-
-  // ── Edit Device Modal ────────────────────────────────────
-  function openEditDevice(id) {
-    const d = devices.find(x => x._id === id);
-    if (!d) return;
-    document.getElementById('edId').value          = id;
-    document.getElementById('edDeviceId').value    = d.deviceId;
-    document.getElementById('edLabel').value       = d.label || '';
-    document.getElementById('edFirmware').value    = d.firmware || '';
-    document.getElementById('edInterval').value    = d.expectedIntervalMinutes || 5;
-    document.getElementById('edCalInterval').value = d.calibrationIntervalDays || 180;
-    const sel = document.getElementById('edUnit');
-    sel.innerHTML = '<option value="">Select equipment…</option>' + units.map(u => `<option value="${u._id}"${d.unit && d.unit._id === u._id ? ' selected' : ''}>${escHtml(u.name)}</option>`).join('');
-    document.getElementById('edNotice').style.display = 'none';
-    document.getElementById('editDeviceModal').style.display = 'flex';
-  }
-  function closeEditDevice() { document.getElementById('editDeviceModal').style.display = 'none'; }
-  async function saveEditDevice() {
-    const id        = document.getElementById('edId').value;
-    const newUnitId = document.getElementById('edUnit').value || undefined;
-
-    // Warn if the equipment assignment is changing — historical data will be migrated
-    const dev       = devices.find(x => x._id === id);
-    const oldUnitId = dev?.unit?._id;
-    if (newUnitId && oldUnitId && newUnitId !== oldUnitId) {
-      const oldName = dev.unit?.name || oldUnitId;
-      const newName = units.find(u => u._id === newUnitId)?.name || newUnitId;
-      const ok = confirm(
-        `Reassign sensor "${dev.label || dev.deviceId}" from "${oldName}" → "${newName}"?\n\n` +
-        `ALL historical readings, alerts, and corrective actions for this sensor will be moved to the new equipment. This cannot be undone.\n\nContinue?`
-      );
-      if (!ok) return;
-    }
-
-    try {
-      const r = await apiFetch(API + '/devices/' + id, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          label:                   document.getElementById('edLabel').value.trim(),
-          firmware:                document.getElementById('edFirmware').value.trim(),
-          unit:                    newUnitId,
-          expectedIntervalMinutes: parseInt(document.getElementById('edInterval').value) || 5,
-          calibrationIntervalDays: parseInt(document.getElementById('edCalInterval').value) || 180
-        })
-      });
-      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
-      closeEditDevice();
-      // Reload both lists — unit may have been auto-deactivated after losing its last sensor
-      await Promise.all([loadDevices(), loadUnits()]);
-      const movedMsg = (newUnitId && oldUnitId && newUnitId !== oldUnitId) ? ' Historical data migrated.' : '';
-      showNotice('deviceNotice', 'ok', '✅ Device updated!' + movedMsg);
-    } catch (err) {
-      const n = document.getElementById('edNotice');
-      n.className = 'notice err'; n.textContent = '❌ ' + err.message; n.style.display = 'block';
-    }
-  }
-
-  async function deleteDevice(id, label) {
-    if (!confirm(`Delete TAG device "${label}"? It will be decommissioned and removed from this list.`)) return;
-    try {
-      const r = await apiFetch(API + '/devices/' + id, { method: 'DELETE' });
-      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
-      await loadDevices();
-    } catch (err) { alert('❌ ' + err.message); }
+      const r = await apiFetch(API + '/devices');
+      devices = (await r.json()).filter(d => d.active);
+    } catch (_) { devices = []; }
   }
 
   // ── Push config ─────────────────────────────────────────────────
@@ -869,6 +878,475 @@
 
   applyTypeDefaults('u'); // pre-fill Add Unit form with freezer defaults on load
   init();
+</script>
+
+<!-- LoRa Gateway tab JavaScript -->
+<script>
+  let registeredDevices = [];
+  let scanEvents        = [];
+  let scanAutoTimer     = null;
+  let monitorTimer      = null;
+  let gatewayInitialized = false;
+
+  const typeEmojiGw = { freezer: '🧊', chiller: '❄️', warmer: '🔥', ambient: '🌡️' };
+  function unitLabelGw(u) {
+    const loc = u.area || u.location || '';
+    return `${typeEmojiGw[u.type] || '🌡️'} ${u.name}${loc ? ' — ' + loc : ''}`;
+  }
+
+  function renderUnitOptions(selectedId) {
+    const sorted = [...units].sort((a, b) => a.name.localeCompare(b.name));
+    const placeholder = '<option value="">Select a unit…</option>';
+    if (!sorted.length) return placeholder + '<option value="" disabled>No units configured — add one in the Equipment tab</option>';
+    return placeholder + sorted.map(u =>
+      `<option value="${u._id}"${u._id === selectedId ? ' selected' : ''}>${escHtml(unitLabelGw(u))}</option>`
+    ).join('');
+  }
+
+  function populateUnitDropdowns() {
+    const fUnit = document.getElementById('fUnit');
+    if (fUnit) fUnit.innerHTML = renderUnitOptions('');
+  }
+
+  // gwNotice() — short-lived inline notice inside gateway cards
+  function gwNotice(id, type, msg, ttl = 5000) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'notice ' + type;
+    el.textContent = msg;
+    el.style.display = 'block';
+    if (ttl) setTimeout(() => { el.style.display = 'none'; }, ttl);
+  }
+
+  function resolveUnitName(tempmonUnitId) {
+    if (tempmonUnitId) {
+      const u = units.find(u => u._id === tempmonUnitId);
+      return u
+        ? `<span class="badge badge-blue">${escHtml(unitLabelGw(u))}</span>`
+        : `<span class="badge badge-grey" title="Unit ID: ${escHtml(tempmonUnitId)}">Deleted unit</span>`;
+    }
+    return `<span class="badge badge-orange" title="Not linked — readings won't appear in the dashboard. Click ✏️ to link.">⚠️ Not linked</span>`;
+  }
+
+  function timeAgo(ts) {
+    if (!ts) return '—';
+    const sec = Math.round((Date.now() - new Date(ts).getTime()) / 1000);
+    if (sec < 60)    return sec + 's ago';
+    if (sec < 3600)  return Math.floor(sec / 60) + 'm ago';
+    if (sec < 86400) return Math.floor(sec / 3600) + 'h ago';
+    return Math.floor(sec / 86400) + 'd ago';
+  }
+
+  function batteryHtml(v) {
+    if (v == null) return '<span style="color:var(--muted)">—</span>';
+    if (v >= 3.5)  return `<span class="badge badge-green" title="${v}V">🔋 ${v}V</span>`;
+    if (v >= 3.3)  return `<span class="badge badge-orange" title="${v}V">🪫 ${v}V</span>`;
+    return `<span class="badge badge-red" title="${v}V">⚠️ ${v}V LOW</span>`;
+  }
+
+  function rssiHtml(r) {
+    if (r == null) return '<span style="color:var(--muted)">—</span>';
+    const abs = Math.abs(r);
+    if (abs <= 50) return `<span class="badge badge-green"  title="${r} dBm">📶 ${r} dBm</span>`;
+    if (abs <= 80) return `<span class="badge badge-blue"   title="${r} dBm">📶 ${r} dBm</span>`;
+    return `<span class="badge badge-orange" title="${r} dBm">📶 ${r} dBm</span>`;
+  }
+
+  function statusDot(s) {
+    if (s === 'active')  return '<span class="dot dot-green dot-pulse"></span><span style="color:#2e7d32;font-weight:700">Active</span>';
+    if (s === 'delayed') return '<span class="dot dot-orange"></span><span style="color:#e65100;font-weight:700">Delayed</span>';
+    return '<span class="dot dot-grey"></span><span style="color:var(--muted);font-weight:700">Offline</span>';
+  }
+
+  function normalizeModel(v) {
+    const m = String(v || '').trim().toUpperCase();
+    if (m.startsWith('TAG09')) return 'TAG09';
+    if (m.startsWith('TAG08')) return 'TAG08B';
+    if (m.startsWith('TAG07')) return 'TAG07';
+    return '';
+  }
+
+  function modelBadge(model) {
+    const m = normalizeModel(model) || escHtml(model);
+    if (m === 'TAG09')  return `<span class="badge badge-blue">${m}</span>`;
+    if (m === 'TAG08B') return `<span class="badge" style="background:rgba(123,31,162,.1);color:#7b1fa2">${m}</span>`;
+    return `<span class="badge badge-grey">${m || '—'}</span>`;
+  }
+
+  async function initGateway() {
+    if (gatewayInitialized) return;
+    gatewayInitialized = true;
+    populateUnitDropdowns();
+    await loadTcpConfig();
+    await Promise.all([loadLoraEvents(), loadMonitor(), runScan()]);
+    monitorTimer = setInterval(loadMonitor, 30000);
+  }
+
+  async function loadTcpConfig() {
+    try {
+      const r   = await apiFetch('/templog/api/lora/tcp-config');
+      const cfg = await r.json();
+      const host = cfg.host || window.location.hostname;
+      const port = String(cfg.port || '4001');
+      const ipEl   = document.getElementById('loraGatewayIp');
+      const portEl = document.getElementById('loraGatewayPort');
+      if (ipEl)   ipEl.textContent   = host;
+      if (portEl) portEl.textContent = port;
+      if (cfg.via === 'railway-proxy' && ipEl) {
+        ipEl.title   = 'Railway TCP Proxy hostname';
+        portEl.title = 'Railway TCP Proxy public port';
+      }
+    } catch (_) {
+      const ipEl = document.getElementById('loraGatewayIp');
+      if (ipEl) ipEl.textContent = window.location.hostname;
+    }
+  }
+
+  function copyGatewayUrl() {
+    const ip   = document.getElementById('loraGatewayIp')?.textContent  || '';
+    const port = document.getElementById('loraGatewayPort')?.textContent || '';
+    navigator.clipboard.writeText(ip + ':' + port).then(() => {
+      const btn = document.getElementById('loraCopyBtn');
+      if (btn) { btn.textContent = '✅ Copied!'; setTimeout(() => btn.textContent = '📋 Copy IP:Port', 2000); }
+    });
+  }
+
+  async function loadLoraEvents() {
+    try {
+      const r      = await apiFetch('/templog/api/lora/events?limit=10');
+      const events = await r.json();
+      const tbody  = document.getElementById('eventsBody');
+      if (!tbody) return;
+      if (!Array.isArray(events) || !events.length) {
+        document.getElementById('gwBannerOffline').style.display = 'block';
+        document.getElementById('gwBannerOnline').style.display  = 'none';
+        tbody.innerHTML = '<tr><td colspan="7" class="no-data">No gateway events yet — configure the server URL in TZConfig and save.</td></tr>';
+        return;
+      }
+      const ageMin = (Date.now() - new Date(events[0].receivedAt).getTime()) / 60000;
+      const banner = document.getElementById('gwBannerOnline');
+      banner.style.display = 'block';
+      document.getElementById('gwBannerOffline').style.display = 'none';
+      if (ageMin > 5) {
+        banner.className = 'banner banner-orange';
+        banner.innerHTML = `⚠️ Last contact <strong>${timeAgo(events[0].receivedAt)}</strong> — gateway may be offline`;
+      } else {
+        const fw = events[0].payload?.fw;
+        banner.className = 'banner banner-green';
+        banner.innerHTML = `✅ Gateway <strong>online</strong> — heartbeat ${timeAgo(events[0].receivedAt)}${fw ? ' | FW: ' + escHtml(fw) : ''}`;
+      }
+      tbody.innerHTML = events.map(ev => {
+        const p = ev.payload || {};
+        const unmatched = (ev.unmatched || []).filter(u => u.sensorId && u.reason !== 'disabled');
+        const umHtml = unmatched.length
+          ? `<span style="color:#c62828;font-weight:700">${unmatched.length}</span> <span style="font-size:0.76rem;color:#c62828">(${unmatched.slice(0,3).map(u=>`<code>${escHtml(u.sensorId)}</code>`).join(', ')}${unmatched.length>3?'…':''})</span>`
+          : '<span style="color:#2e7d32">0</span>';
+        return `<tr>
+          <td style="font-size:0.8rem;white-space:nowrap">${fmtTime(ev.receivedAt)}</td>
+          <td><code style="font-size:0.78rem">${escHtml(ev.gatewayId || '—')}</code></td>
+          <td>${ev.sensorCount > 0 ? `<strong style="color:#1565c0">${ev.sensorCount}</strong>` : '<span style="color:var(--muted)">0 ♥</span>'}</td>
+          <td>${ev.ingestedCount > 0 ? `<strong style="color:#2e7d32">${ev.ingestedCount}</strong>` : '<span style="color:var(--muted)">—</span>'}</td>
+          <td>${umHtml}</td>
+          <td style="color:var(--muted);font-size:0.8rem">${escHtml(p.sn ?? '—')}</td>
+          <td style="color:var(--muted);font-size:0.78rem">${escHtml(p.fw || '—')}</td>
+        </tr>`;
+      }).join('');
+    } catch (_) {}
+  }
+
+  async function runScan() {
+    const dot = document.getElementById('scanDot');
+    const btn = document.getElementById('scanBtn');
+    if (dot) dot.classList.remove('on');
+    if (btn) btn.disabled = true;
+    try {
+      const r = await apiFetch('/templog/api/lora/events?limit=50');
+      scanEvents = await r.json();
+      await loadRegisteredDevices();
+      renderScanner();
+      const upd = document.getElementById('scanUpdated');
+      if (upd) upd.textContent = fmtTime(new Date());
+      if (dot) { dot.classList.add('on'); setTimeout(() => dot.classList.remove('on'), 3000); }
+    } catch (_) {
+    } finally { if (btn) btn.disabled = false; }
+  }
+
+  function renderScanner() {
+    const panel = document.getElementById('scanPanel');
+    if (!panel) return;
+    const cutoff = Date.now() - 30 * 1000;
+    const regSet = new Set(registeredDevices.map(d => String(d.sensorId || '').toUpperCase()));
+    const latestById = new Map();
+    for (const ev of scanEvents) {
+      const evTime = new Date(ev.receivedAt).getTime();
+      const data   = ev.payload?.data || {};
+      for (const [key, arr] of Object.entries(data)) {
+        if (!Array.isArray(arr) || !/^tag/i.test(key)) continue;
+        for (const s of arr) {
+          if (!s) continue;
+          const sid = String(s.id || s.sensorId || '').trim().toUpperCase();
+          if (!sid) continue;
+          const existing = latestById.get(sid);
+          if (!existing || existing.evTime < evTime)
+            latestById.set(sid, { tagKey: key, evTime, temp: s.temp, humi: s.humi, bat: s.bat, rssi: s.rssi, sta: s.sta });
+        }
+      }
+    }
+    const active = [...latestById.entries()].filter(([,v]) => v.evTime >= cutoff).sort(([,a],[,b]) => b.evTime - a.evTime);
+    if (!active.length) {
+      panel.innerHTML = '<div class="no-data" style="padding:16px">No transmissions in the last 30s — press a tag button (hold ~1 second) to see it here</div>';
+      return;
+    }
+    panel.innerHTML = `<div style="overflow-x:auto"><table class="tbl">
+      <thead><tr><th>Sensor ID</th><th>Type</th><th>Registered</th><th>Temp</th><th>Humidity</th><th>Battery</th><th>Signal</th><th>Status Flags</th><th>Seen</th></tr></thead>
+      <tbody>${active.map(([sid, info]) => {
+        const isReg  = regSet.has(sid);
+        const ageSec = Math.round((Date.now() - info.evTime) / 1000);
+        const sta    = parseInt(info.sta, 10);
+        const flags  = [];
+        if (!isNaN(sta)) {
+          if (sta & 0x80) flags.push('LOW BAT ⚠️');
+          if (sta & 0x40) flags.push('TEMP ALARM');
+          if (sta & 0x20) flags.push('BTN PRESS');
+        }
+        return `<tr>
+          <td><code style="font-weight:800;font-size:0.88rem">${escHtml(sid)}</code></td>
+          <td>${modelBadge(info.tagKey)}</td>
+          <td>${isReg ? '<span class="badge badge-green">✅ Registered</span>' : '<span class="badge badge-orange">⚠️ Unregistered</span>'}</td>
+          <td style="font-weight:700">${info.temp != null ? info.temp + '°C' : '<span style="color:var(--muted)">—</span>'}</td>
+          <td>${info.humi != null ? info.humi + '%' : '<span style="color:var(--muted)">—</span>'}</td>
+          <td>${batteryHtml(info.bat)}</td>
+          <td>${rssiHtml(info.rssi)}</td>
+          <td style="font-size:0.76rem">${flags.length ? flags.join(', ') : '—'}</td>
+          <td style="color:var(--muted);font-size:0.8rem">${ageSec}s ago</td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+  }
+
+  function toggleScanAuto() {
+    if (document.getElementById('scanAutoChk')?.checked) {
+      scanAutoTimer = setInterval(runScan, 10000);
+    } else {
+      clearInterval(scanAutoTimer);
+      scanAutoTimer = null;
+    }
+  }
+
+  async function scanDetected() {
+    const btn = document.getElementById('detectBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
+    document.getElementById('detectNotice')?.style && (document.getElementById('detectNotice').style.display = 'none');
+    try {
+      const hours = document.getElementById('discoverWindow')?.value || '24';
+      const r = await apiFetch(`/templog/api/lora/discover?scan=200&hours=${encodeURIComponent(hours)}`);
+      const data = await r.json();
+      const sensors = data.sensors || [];
+      const detectResult = document.getElementById('detectResult');
+      if (detectResult) detectResult.style.display = 'block';
+      const tbody = document.getElementById('detectBody');
+      if (!tbody) return;
+      if (!sensors.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="no-data">No unregistered sensors found in this window. All detected sensors are already registered — or press a tag to generate a new event.</td></tr>';
+        gwNotice('detectNotice', 'ok', `✅ Scanned ${data.scannedEvents} events — all sensors registered.`);
+      } else {
+        tbody.innerHTML = sensors.map(s => {
+          const sm = normalizeModel(s.model);
+          const unitOpts = renderUnitOptions('');
+          return `<tr id="drow-${escHtml(s.sensorId)}">
+            <td><code style="font-weight:800">${escHtml(s.sensorId)}</code></td>
+            <td>${modelBadge(s.model)}</td>
+            <td>${s.lastTemp != null ? `<strong>${s.lastTemp}°C</strong>` : '<span style="color:var(--muted)">—</span>'}</td>
+            <td style="font-size:0.8rem">${fmtDateTime(s.lastSeen)}</td>
+            <td style="text-align:center">${s.seenCount}</td>
+            <td>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                <select id="dm-${escHtml(s.sensorId)}" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;font-family:inherit">
+                  <option value="TAG09"  ${sm==='TAG09'  ?'selected':''}>TAG09</option>
+                  <option value="TAG08B" ${sm==='TAG08B' ?'selected':''}>TAG08B</option>
+                  <option value="TAG07"  ${sm==='TAG07'  ?'selected':''}>TAG07</option>
+                </select>
+                <select id="du-${escHtml(s.sensorId)}" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;font-family:inherit">${unitOpts}</select>
+                <button class="btn btn-primary btn-sm" onclick='quickRegister(${JSON.stringify(s.sensorId)})'>✅ Register</button>
+              </div>
+            </td>
+          </tr>`;
+        }).join('');
+        gwNotice('detectNotice', 'ok', `✅ Found ${sensors.length} unregistered sensor${sensors.length !== 1 ? 's' : ''} — set model and equipment then click Register.`);
+      }
+    } catch (err) {
+      gwNotice('detectNotice', 'err', '❌ Scan failed: ' + err.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🔍 Scan'; }
+    }
+  }
+
+  async function quickRegister(sensorId) {
+    const model         = document.getElementById('dm-' + sensorId)?.value || 'TAG09';
+    const tempmonUnitId = document.getElementById('du-' + sensorId)?.value || '';
+    const btn = event.target;
+    if (!tempmonUnitId) { gwNotice('detectNotice', 'err', '⚠️ Select a unit before registering.'); return; }
+    btn.disabled = true; btn.textContent = '⏳…';
+    try {
+      const r = await apiFetch('/templog/api/lora/devices', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sensorId, model, tempmonUnitId })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      const row = document.getElementById('drow-' + sensorId);
+      if (row) { row.style.background = '#e8f5e9'; row.cells[row.cells.length-1].innerHTML = '<span class="badge badge-green">✅ Registered</span>'; }
+      gwNotice('detectNotice', 'ok', `✅ "${sensorId}" registered!`);
+      await loadRegisteredDevices();
+      await loadMonitor();
+    } catch (err) {
+      btn.disabled = false; btn.textContent = '✅ Register';
+      gwNotice('detectNotice', 'err', '❌ ' + err.message);
+    }
+  }
+
+  async function loadRegisteredDevices() {
+    try {
+      const r = await apiFetch('/templog/api/lora/devices');
+      registeredDevices = await r.json();
+    } catch { registeredDevices = []; }
+  }
+
+  async function registerSensor() {
+    const sensorId      = document.getElementById('fSensorId')?.value.trim();
+    const model         = document.getElementById('fModel')?.value;
+    const tempmonUnitId = document.getElementById('fUnit')?.value;
+    const alias         = document.getElementById('fAlias')?.value.trim();
+    const notes         = document.getElementById('fNotes')?.value.trim();
+    if (!sensorId)      return gwNotice('regNotice', 'err', 'Sensor ID is required — check the sticker on the back of the tag');
+    if (!tempmonUnitId) return gwNotice('regNotice', 'err', 'Please select the unit this sensor will monitor');
+    try {
+      const r = await apiFetch('/templog/api/lora/devices', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sensorId, model, tempmonUnitId, alias, notes })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      gwNotice('regNotice', 'ok', `✅ "${sensorId}" registered — readings will flow into the TempMon dashboard.`);
+      ['fSensorId','fAlias','fNotes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      const fUnit = document.getElementById('fUnit'); if (fUnit) fUnit.value = '';
+      cancelPrefill();
+      const drow = document.getElementById('drow-' + sensorId.toUpperCase());
+      if (drow) drow.remove();
+      await loadRegisteredDevices();
+      await loadMonitor();
+    } catch (err) { gwNotice('regNotice', 'err', '❌ ' + err.message); }
+  }
+
+  function cancelPrefill() {
+    const banner = document.getElementById('regPrefillBanner');
+    const btn    = document.getElementById('regCancelBtn');
+    if (banner) banner.style.display = 'none';
+    if (btn)    btn.style.display    = 'none';
+  }
+
+  async function loadMonitor() {
+    const btn = document.getElementById('monitorBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
+    try {
+      // Load both LoRa registry and TempMon devices (for 🔍 diag lookup)
+      await Promise.all([loadRegisteredDevices(), loadDevices()]);
+      const r          = await apiFetch('/templog/api/lora/status');
+      const loraDevices = await r.json();
+      renderMonitor(loraDevices);
+      const upd = document.getElementById('monitorUpdated');
+      if (upd) upd.textContent = 'Updated ' + fmtTime(new Date());
+    } catch (err) {
+      const panel = document.getElementById('monitorPanel');
+      if (panel) panel.innerHTML = `<div class="no-data" style="color:#c62828">Failed to load: ${escHtml(err.message)}</div>`;
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh'; }
+    }
+  }
+
+  function renderMonitor(loraDevices) {
+    const panel = document.getElementById('monitorPanel');
+    if (!panel) return;
+    if (!loraDevices.length) {
+      panel.innerHTML = '<div class="no-data">No sensors registered yet — scan above or use the Register form.</div>';
+      return;
+    }
+    panel.innerHTML = `<div style="overflow-x:auto"><table class="tbl">
+      <thead><tr><th>Status</th><th>Sensor ID</th><th>Model</th><th>Linked Unit</th><th>Temperature</th><th>Humidity</th><th>Battery</th><th>Signal</th><th>Last Seen</th><th></th></tr></thead>
+      <tbody>${loraDevices.map(d => {
+        // Look up TempMonDevice for this sensorId (to get _id for 🔍 diag)
+        const tmDev  = devices.find(x => x.deviceId === d.sensorId);
+        const diagBtn = tmDev
+          ? `<button class="btn btn-ghost btn-sm" onclick="openDiag('${escHtml(tmDev._id)}')" title="Sensor diagnostics">🔍</button>`
+          : '';
+        return `<tr class="${!d.enabled ? 'dim' : ''}" id="mrow-${escHtml(d.sensorId)}">
+          <td style="white-space:nowrap">${statusDot(d.status)}</td>
+          <td>
+            <code style="font-size:0.82rem;font-weight:700">${escHtml(d.sensorId)}</code>
+            ${d.alias ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:2px">${escHtml(d.alias)}</div>` : ''}
+          </td>
+          <td>${modelBadge(d.model)}</td>
+          <td id="eq-${escHtml(d.sensorId)}">${resolveUnitName(d.tempmonUnitId)}</td>
+          <td style="font-size:0.95rem;font-weight:700">${d.temp != null ? d.temp + '°C' : '<span style="color:var(--muted)">—</span>'}</td>
+          <td>${d.humidity != null ? d.humidity + '%' : '<span style="color:var(--muted)">—</span>'}</td>
+          <td>${batteryHtml(d.battery)}</td>
+          <td>${rssiHtml(d.rssi)}</td>
+          <td style="font-size:0.8rem;color:var(--muted);white-space:nowrap" title="${d.lastSeen ? fmtDateTime(d.lastSeen) : ''}">${timeAgo(d.lastSeen)}</td>
+          <td><div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" title="Change linked unit" onclick="editUnit('${escHtml(d.sensorId)}','${escHtml(d.tempmonUnitId||'')}')">✏️</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleDevice('${escHtml(d.sensorId)}',${!d.enabled})">${d.enabled ? '⏸' : '▶️'}</button>
+            ${diagBtn}
+            <button class="btn btn-danger btn-sm" onclick="removeDevice('${escHtml(d.sensorId)}')">🗑️</button>
+          </div></td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+  }
+
+  async function toggleDevice(sensorId, enabled) {
+    try {
+      const r = await apiFetch('/templog/api/lora/devices/' + encodeURIComponent(sensorId), {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      await loadMonitor();
+    } catch (err) { alert('Error: ' + err.message); }
+  }
+
+  async function removeDevice(sensorId) {
+    if (!confirm(`Remove "${sensorId}"? Historical readings are kept but new data will be ignored.`)) return;
+    try {
+      const r = await apiFetch('/templog/api/lora/devices/' + encodeURIComponent(sensorId), { method: 'DELETE' });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      await loadMonitor();
+    } catch (err) { alert('Error: ' + err.message); }
+  }
+
+  function editUnit(sensorId, currentUnitId) {
+    const cell = document.getElementById('eq-' + sensorId);
+    if (!cell) return;
+    const opts = renderUnitOptions(currentUnitId);
+    cell.innerHTML = `<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+      <select id="eqsel-${sensorId}" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;font-family:inherit">${opts}</select>
+      <button class="btn btn-primary btn-sm" onclick="saveUnit('${escHtml(sensorId)}')">✅</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadMonitor()">✖</button>
+    </div>`;
+  }
+
+  async function saveUnit(sensorId) {
+    const sel = document.getElementById('eqsel-' + sensorId);
+    if (!sel) return;
+    const tempmonUnitId = sel.value || null;
+    sel.disabled = true;
+    try {
+      const r = await apiFetch('/templog/api/lora/devices/' + encodeURIComponent(sensorId), {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tempmonUnitId })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      await loadMonitor();
+    } catch (err) {
+      sel.disabled = false;
+      alert('Save failed: ' + err.message);
+    }
+  }
 </script>
 
 <!-- Diagnostics Modal -->

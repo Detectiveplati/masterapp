@@ -30,7 +30,7 @@
 
 ### 1.2 Using Your Custom HTTP Server (this setup)
 1. Register the tag in the gateway's TAG Settings whitelist (TZConfig.exe) **or** leave the whitelist empty to accept all
-2. Register the sensor ID in the app at `/tempmon/gateway.html` → Register a Sensor Tag
+2. Register the sensor ID in the app at `/tempmon/setup.html?tab=gateway` → Register a Sensor Tag
 3. Power on / wake the tag — it will begin transmitting automatically
 
 ---
