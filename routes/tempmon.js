@@ -275,10 +275,26 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
 
     for (const raw of rawReadings) {
       const { deviceId, value, recordedAt, batteryPct } = raw;
-      if (typeof value !== 'number' || !deviceId) { results.skipped++; continue; }
+      if (typeof value !== 'number' || !deviceId) {
+        console.warn(`⚠ [TempMon] Ingest skip — missing deviceId or non-numeric value:`, JSON.stringify(raw));
+        results.skipped++; continue;
+      }
 
       const device = await TempMonDevice.findOne({ deviceId, active: true }).populate('unit');
-      if (!device || !device.unit) { results.skipped++; continue; }
+      if (!device) {
+        // Check if device exists but is inactive or unregistered
+        const anyDevice = await TempMonDevice.findOne({ deviceId }).lean();
+        if (anyDevice && !anyDevice.active) {
+          console.warn(`⚠ [TempMon] Ingest skip — device "${deviceId}" is registered but INACTIVE (active=false)`);
+        } else if (!anyDevice) {
+          console.warn(`⚠ [TempMon] Ingest skip — device "${deviceId}" is NOT REGISTERED in the database`);
+        }
+        results.skipped++; continue;
+      }
+      if (!device.unit) {
+        console.warn(`⚠ [TempMon] Ingest skip — device "${deviceId}" has NO UNIT assigned`);
+        results.skipped++; continue;
+      }
 
       const unit = device.unit;
       const ts   = recordedAt ? new Date(recordedAt) : new Date();
@@ -422,6 +438,92 @@ async function closeOfflineAlertIfOpen(deviceId) {
     { $set: { status: 'resolved', resolvedAt: new Date(), resolveNote: 'Device resumed reporting' } }
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// DEVICE DIAGNOSTICS
+// ═══════════════════════════════════════════════════════════════════
+
+// GET /api/tempmon/devices/:id/diag — diagnostic snapshot for a single device
+// Returns registration state, linked unit, recent readings and issues list.
+router.get('/devices/:id/diag', requireAuth, async (req, res) => {
+  try {
+    const device = await TempMonDevice.findById(req.params.id).populate('unit').lean();
+    if (!device) return res.status(404).json({ error: 'Device not found' });
+
+    const issues = [];
+
+    // Check 1 — device active?
+    if (!device.active) issues.push({ level: 'error', msg: 'Device is marked inactive (active=false). It will be skipped at ingest.' });
+
+    // Check 2 — unit assigned?
+    if (!device.unit) {
+      issues.push({ level: 'error', msg: 'Device has no equipment assigned. Ingest silently skips readings without a linked unit.' });
+    } else {
+      // Check 3 — unit active?
+      if (!device.unit.active) {
+        issues.push({ level: 'warn', msg: `Linked equipment "${device.unit.name}" is inactive. It will not appear on the dashboard.` });
+      }
+      // Check 4 — unit paused?
+      if (device.unit.inUse === false) {
+        issues.push({ level: 'warn', msg: `Linked equipment "${device.unit.name}" is marked "Not in use" — alert creation is suppressed but readings are still stored.` });
+      }
+    }
+
+    // Fetch last 10 readings for this device
+    const recentReadings = await TempMonReading.find({ device: device._id })
+      .sort({ recordedAt: -1 }).limit(10).lean();
+
+    // Check 5 — any readings at all?
+    if (recentReadings.length === 0) {
+      issues.push({ level: 'error', msg: 'No readings stored for this device. Either the gateway has not sent data yet, or every ingest payload is being skipped (check server logs).' });
+    } else {
+      // Check 6 — last reading age
+      const lastTs  = new Date(recentReadings[0].recordedAt);
+      const ageMin  = Math.round((Date.now() - lastTs.getTime()) / 60000);
+      const expected = device.expectedIntervalMinutes || 5;
+      if (ageMin > expected * 3) {
+        issues.push({ level: ageMin > expected * 10 ? 'error' : 'warn',
+          msg: `Last reading is ${ageMin} min old (expected every ${expected} min). Device may be offline or gateway not forwarding.` });
+      }
+    }
+
+    // Check 7 — lastSeenAt vs recordedAt divergence (gateway time drift)
+    if (device.lastSeenAt && recentReadings.length > 0) {
+      const lastRecorded = new Date(recentReadings[0].recordedAt);
+      const driftMin = Math.abs(new Date(device.lastSeenAt).getTime() - lastRecorded.getTime()) / 60000;
+      if (driftMin > 60) {
+        issues.push({ level: 'warn', msg: `Server received time (lastSeenAt) differs from sensor recordedAt by ${Math.round(driftMin)} min — possible gateway clock drift or cached/replayed frames.` });
+      }
+    }
+
+    if (issues.length === 0) issues.push({ level: 'ok', msg: 'All checks passed — device is active, linked, and sending data.' });
+
+    res.json({
+      device: {
+        _id:                    device._id,
+        deviceId:               device.deviceId,
+        label:                  device.label,
+        active:                 device.active,
+        lastSeenAt:             device.lastSeenAt,
+        batteryPct:             device.batteryPct,
+        expectedIntervalMinutes:device.expectedIntervalMinutes,
+        firmware:               device.firmware,
+        calibrationDue:         device.calibrationDue
+      },
+      unit: device.unit ? {
+        _id:    device.unit._id,
+        name:   device.unit.name,
+        type:   device.unit.type,
+        active: device.unit.active,
+        inUse:  device.unit.inUse
+      } : null,
+      recentReadings: recentReadings.reverse(), // ascending order
+      issues
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════════
 // READINGS

@@ -674,7 +674,7 @@
         <td style="font-size:0.78rem">${d.lastSeenAt ? fmtDateTime(d.lastSeenAt) : 'Never'}</td>
         <td style="font-size:0.78rem;${dueDays != null && dueDays <= 30 ? 'color:#c62828;font-weight:700' : ''}">${dueStr}</td>
         <td><span style="color:#2e7d32;font-weight:700">Active</span></td>
-        <td><button class="btn btn-outline btn-sm" onclick="openEditDevice('${d._id}')">✏️ Edit</button> <button class="btn btn-danger btn-sm" onclick="deleteDevice('${d._id}', '${escHtml(d.label || d.deviceId).replace(/'/g,'\\&#39;')}')">🗑️ Delete</button></td>
+        <td><button class="btn btn-outline btn-sm" onclick="openEditDevice('${d._id}')">✏️ Edit</button> <button class="btn btn-outline btn-sm" onclick="openDiag('${d._id}')" title="Diagnose why this sensor may not be saving data">🔍</button> <button class="btn btn-danger btn-sm" onclick="deleteDevice('${d._id}', '${escHtml(d.label || d.deviceId).replace(/'/g,'\\&#39;')}')">🗑️ Delete</button></td>
       </tr>`;
     }).join('');
   }
@@ -869,6 +869,104 @@
 
   applyTypeDefaults('u'); // pre-fill Add Unit form with freezer defaults on load
   init();
+</script>
+
+<!-- Diagnostics Modal -->
+<div id="diagModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9100;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeDiag()">
+  <div style="background:#fff;border-radius:16px;padding:28px 24px;width:min(96vw,560px);max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h3 style="font-size:1.05rem;font-weight:800;margin:0">🔍 Sensor Diagnostics</h3>
+      <button class="btn btn-grey btn-sm" onclick="closeDiag()">✕ Close</button>
+    </div>
+    <div id="diagContent"><div style="text-align:center;padding:24px;color:var(--muted)">Loading…</div></div>
+  </div>
+</div>
+
+<script>
+  async function openDiag(id) {
+    document.getElementById('diagContent').innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">Loading…</div>';
+    document.getElementById('diagModal').style.display = 'flex';
+    try {
+      const r = await apiFetch(API + '/devices/' + id + '/diag');
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+      const d = await r.json();
+      renderDiag(d);
+    } catch(err) {
+      document.getElementById('diagContent').innerHTML =
+        `<div style="color:#c62828;padding:12px">❌ Failed to load diagnostics: ${escHtml(err.message)}</div>`;
+    }
+  }
+  function closeDiag() { document.getElementById('diagModal').style.display = 'none'; }
+
+  function renderDiag(d) {
+    const dev  = d.device;
+    const unit = d.unit;
+    const now  = Date.now();
+
+    const issueHtml = d.issues.map(i => {
+      const col = i.level === 'ok' ? '#2e7d32' : i.level === 'warn' ? '#e65100' : '#c62828';
+      const bg  = i.level === 'ok' ? 'rgba(46,125,50,.08)' : i.level === 'warn' ? 'rgba(230,81,0,.08)' : 'rgba(198,40,40,.08)';
+      const ico = i.level === 'ok' ? '✅' : i.level === 'warn' ? '⚠️' : '🔴';
+      return `<div style="background:${bg};border-radius:8px;padding:9px 13px;margin-bottom:7px;font-size:0.85rem;color:${col};font-weight:600">${ico} ${escHtml(i.msg)}</div>`;
+    }).join('');
+
+    const fmtAge = ms => {
+      if (ms === null) return 'Never';
+      const s = Math.round(ms / 1000);
+      if (s < 60)    return s + 's ago';
+      if (s < 3600)  return Math.round(s / 60) + 'm ago';
+      if (s < 86400) return Math.round(s / 3600) + 'h ago';
+      return Math.round(s / 86400) + 'd ago';
+    };
+    const ageMs = dev.lastSeenAt ? now - new Date(dev.lastSeenAt).getTime() : null;
+
+    const stateRows = [
+      ['Device ID',         `<code>${escHtml(dev.deviceId)}</code>`],
+      ['Label',             escHtml(dev.label || '—')],
+      ['Active',            dev.active ? '<span style="color:#2e7d32;font-weight:700">Yes</span>' : '<span style="color:#c62828;font-weight:700">No ❌</span>'],
+      ['Equipment',         unit ? `${escHtml(unit.name)}${unit.active ? '' : ' <span style="color:#c62828">(inactive)</span>'}` : '<span style="color:#c62828">None assigned ❌</span>'],
+      ['Last seen',         dev.lastSeenAt ? `${fmtDateTime(new Date(dev.lastSeenAt))} (${fmtAge(ageMs)})` : '<span style="color:#c62828">Never ❌</span>'],
+      ['Battery',           dev.batteryPct != null ? dev.batteryPct + '%' : '—'],
+      ['Expected interval', (dev.expectedIntervalMinutes || 5) + ' min'],
+      ['Firmware',          escHtml(dev.firmware || '—')],
+      ['Cal due',           dev.calibrationDue ? fmtDate(new Date(dev.calibrationDue)) : '—']
+    ].map(([k, v]) =>
+      `<tr><td style="padding:6px 10px 6px 0;font-weight:700;font-size:0.82rem;white-space:nowrap;color:var(--ink)">${k}</td><td style="padding:6px 0;font-size:0.82rem">${v}</td></tr>`
+    ).join('');
+
+    let readingsHtml;
+    if (!d.recentReadings.length) {
+      readingsHtml = '<p style="color:#c62828;font-size:0.85rem;font-weight:600">🔴 No readings stored — device has not saved any data to this server.</p>';
+    } else {
+      const rows = d.recentReadings.slice().reverse().map(r => {
+        const rAge    = fmtAge(now - new Date(r.recordedAt).getTime());
+        const flagged = r.flagged ? ' <span style="color:#c62828;font-size:0.72rem;font-weight:700">⚠ OUT OF RANGE</span>' : '';
+        return `<tr>
+          <td style="font-size:0.78rem;padding:5px 8px">${fmtDateTime(new Date(r.recordedAt))}</td>
+          <td style="padding:5px 8px;font-weight:700">${r.value != null ? r.value.toFixed(1) + '°C' : '—'}${flagged}</td>
+          <td style="font-size:0.75rem;padding:5px 8px;color:var(--muted)">${rAge}</td>
+        </tr>`;
+      }).join('');
+      readingsHtml = `<table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+        <thead><tr>
+          <th style="text-align:left;padding:4px 8px;color:var(--muted);font-size:0.72rem;text-transform:uppercase">Timestamp</th>
+          <th style="text-align:left;padding:4px 8px;color:var(--muted);font-size:0.72rem;text-transform:uppercase">Value</th>
+          <th style="text-align:left;padding:4px 8px;color:var(--muted);font-size:0.72rem;text-transform:uppercase">Age</th>
+        </tr></thead><tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    document.getElementById('diagContent').innerHTML = `
+      <div style="margin-bottom:16px">${issueHtml}</div>
+      <div style="margin-bottom:16px">
+        <p style="font-size:0.82rem;font-weight:800;color:var(--ink);margin-bottom:8px">Device state</p>
+        <table style="width:100%;border-collapse:collapse">${stateRows}</table>
+      </div>
+      <div>
+        <p style="font-size:0.82rem;font-weight:800;color:var(--ink);margin-bottom:8px">Last 10 readings (newest first)</p>
+        ${readingsHtml}
+      </div>`;
+  }
 </script>
 <script src="/js/shell.js"></script>
 </body>
