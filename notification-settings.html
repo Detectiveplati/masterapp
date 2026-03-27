@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Notification Settings — Central Kitchen</title>
+  <script src="/auth-guard.js"></script>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .settings-wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 32px 20px 80px;
+    }
+    .settings-page-title {
+      font-size: 1.55rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+    .settings-page-sub {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-bottom: 32px;
+    }
+
+    /* Push toggle card */
+    .push-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 24px;
+      margin-bottom: 28px;
+      box-shadow: 0 2px 10px var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .push-card .push-info h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin: 0 0 4px;
+    }
+    .push-card .push-info p {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 0;
+    }
+    .push-status {
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: var(--border);
+      color: var(--muted);
+    }
+    .push-status.active { background: #d4efdf; color: #1a7a44; }
+    .push-status.denied { background: #fde8e8; color: #a30000; }
+
+    /* Module section */
+    .module-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      margin-bottom: 18px;
+      box-shadow: 0 2px 10px var(--shadow);
+      overflow: hidden;
+    }
+    .module-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .module-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .module-icon {
+      font-size: 1.3rem;
+      line-height: 1;
+    }
+    .module-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .module-desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .module-events {
+      padding: 8px 22px 16px;
+    }
+    .module-events.disabled {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+    .event-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .event-row:last-child { border-bottom: none; }
+    .event-label {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .event-label strong {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .event-label span {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: #cdd0d5;
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 18px;
+      height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+    .toggle input:checked + .toggle-slider { background: var(--accent, #ff7a18); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+    .toggle input:focus-visible + .toggle-slider { outline: 2px solid var(--accent, #ff7a18); outline-offset: 2px; }
+
+    /* Larger module-level toggle */
+    .toggle.lg {
+      width: 52px;
+      height: 28px;
+    }
+    .toggle.lg .toggle-slider::before { width: 22px; height: 22px; }
+    .toggle.lg input:checked + .toggle-slider::before { transform: translateX(24px); }
+
+    /* Action bar */
+    .action-bar {
+      position: sticky;
+      bottom: 16px;
+      background: var(--bg, #f5f6fa);
+      padding: 14px 0 0;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .save-banner {
+      font-size: 0.85rem;
+      color: var(--muted);
+      align-self: center;
+      flex: 1;
+    }
+    .save-banner.success { color: #1a7a44; font-weight: 600; }
+    .save-banner.error   { color: #c0392b; font-weight: 600; }
+
+    .no-access-note {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body data-module="settings">
+<main>
+  <div class="settings-wrap">
+    <div class="settings-page-title">🔔 Notification Settings</div>
+    <div class="settings-page-sub">Choose which notifications you receive for each module you have access to.</div>
+
+    <!-- Push Notifications master toggle -->
+    <div class="push-card">
+      <div class="push-info">
+        <h3>📲 Push Notifications</h3>
+        <p>Receive alerts on this device even when the browser is closed. You must allow browser notifications when prompted.</p>
+        <span class="push-status" id="pushStatusBadge">Checking…</span>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn" id="btnEnablePush" onclick="enablePush()" style="display:none">Enable Notifications</button>
+        <button class="btn" id="btnDisablePush" onclick="disablePush()" style="background:var(--danger,#e74c3c);display:none">Disable Notifications</button>
+      </div>
+    </div>
+
+    <!-- Module sections rendered by JS -->
+    <div id="moduleSections">
+      <div class="no-access-note">Loading your notification settings…</div>
+    </div>
+
+    <!-- Save bar -->
+    <div class="action-bar">
+      <div class="save-banner" id="saveBanner"></div>
+      <button class="btn" id="btnSave" onclick="savePreferences()">Save Settings</button>
+    </div>
+  </div>
+</main>
+
+<script src="/js/shell.js"></script>
+<script>
+  'use strict';
+
+  // ── Module definitions ────────────────────────────────────────────────────
+  var MODULES = [
+    {
+      key: 'maintenance', perm: 'maintenance',
+      icon: '🔧', name: 'Maintenance',
+      desc: 'Equipment service, overdue maintenance, and reported issues.',
+      events: [
+        { key: 'overdue',       label: 'Maintenance Overdue',     desc: 'An equipment item has passed its service date.' },
+        { key: 'upcoming',      label: 'Maintenance Due Soon',    desc: 'An equipment item is due for service within 7 days.' },
+        { key: 'issueReported', label: 'New Issue Reported',      desc: 'A fault or issue has been logged on any equipment.' },
+        { key: 'resolved',      label: 'Issue Resolved',          desc: 'An open issue has been marked as resolved.' },
+      ]
+    },
+    {
+      key: 'foodsafety', perm: 'foodsafety',
+      icon: '🍽️', name: 'Food Safety',
+      desc: 'Non-conformance reports and handler certification expiry.',
+      events: [
+        { key: 'ncReported',   label: 'NC Report Submitted',    desc: 'A new food safety non-conformance has been logged.' },
+        { key: 'ncResolved',   label: 'NC Resolved',            desc: 'An open non-conformance has been closed.' },
+        { key: 'certExpiring', label: 'Certification Expiring', desc: 'A food handler certification is due to expire within 30 days.' },
+      ]
+    },
+    {
+      key: 'tempmon', perm: 'tempmon',
+      icon: '🌡️', name: 'Equipment Temp Monitor',
+      desc: 'Live LoRa sensor alerts and device health.',
+      events: [
+        { key: 'tempAlert',     label: 'Temperature Warning',    desc: 'A sensor has entered the warning temperature zone.' },
+        { key: 'tempCritical',  label: 'Critical Temperature',   desc: 'A sensor has breached the critical threshold.' },
+        { key: 'deviceOffline', label: 'Device Offline',         desc: 'A sensor has not reported within its expected interval.' },
+      ]
+    },
+    {
+      key: 'procurement', perm: 'procurement',
+      icon: '🛒', name: 'Procurement',
+      desc: 'Purchase request lifecycle updates.',
+      events: [
+        { key: 'requestSubmitted', label: 'Request Submitted',  desc: 'A new purchase request has been submitted.' },
+        { key: 'requestApproved',  label: 'Request Approved',   desc: 'A purchase request you submitted has been approved.' },
+        { key: 'requestRejected',  label: 'Request Rejected',   desc: 'A purchase request has been rejected.' },
+      ]
+    },
+    {
+      key: 'pest', perm: 'pest',
+      icon: '🐭', name: 'Pest Control',
+      desc: 'Surveillance findings and critical pest activity.',
+      events: [
+        { key: 'findingReported', label: 'Finding Recorded',     desc: 'A new pest finding has been recorded at a station.' },
+        { key: 'criticalFinding', label: 'Critical Finding',     desc: 'A high-severity pest activity has been flagged.' },
+      ]
+    },
+    {
+      key: 'iso', perm: 'iso',
+      icon: '📂', name: 'ISO Records',
+      desc: 'ISO record due dates and overdue documents.',
+      events: [
+        { key: 'recordDue',     label: 'Record Due Soon',    desc: 'An ISO record is due for review within 7 days.' },
+        { key: 'recordOverdue', label: 'Record Overdue',     desc: 'An ISO record has passed its review date.' },
+      ]
+    },
+  ];
+
+  var currentPrefs = {};
+  var pendingPrefs = {};
+
+  // ── Wait for user to be ready ─────────────────────────────────────────────
+  function waitForUser(cb) {
+    if (window._authUser) return cb(window._authUser);
+    var tries = 0;
+    var t = setInterval(function () {
+      if (window._authUser) { clearInterval(t); cb(window._authUser); }
+      else if (++tries > 30) { clearInterval(t); }
+    }, 100);
+  }
+
+  // ── Build module sections ─────────────────────────────────────────────────
+  function buildModuleSections(user, prefs) {
+    var isAdmin = user.role === 'admin';
+    var perms   = user.permissions || {};
+    var visible = MODULES.filter(function (m) {
+      return isAdmin || perms[m.perm];
+    });
+
+    if (!visible.length) {
+      document.getElementById('moduleSections').innerHTML =
+        '<div class="no-access-note">You don\'t have access to any modules yet. Contact your administrator.</div>';
+      return;
+    }
+
+    var html = '';
+    visible.forEach(function (mod) {
+      var modPrefs   = (prefs && prefs[mod.key]) || {};
+      var modEnabled = modPrefs.enabled !== false; // default on
+      var eventsDisabledClass = modEnabled ? '' : ' disabled';
+
+      html += '<div class="module-section" id="section-' + mod.key + '">';
+
+      // Header row
+      html +=
+        '<div class="module-header">' +
+          '<div class="module-header-left">' +
+            '<span class="module-icon">' + mod.icon + '</span>' +
+            '<div>' +
+              '<div class="module-name">' + mod.name + '</div>' +
+              '<div class="module-desc">' + mod.desc + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<label class="toggle lg" title="Enable/disable all ' + mod.name + ' notifications">' +
+            '<input type="checkbox" id="mod-' + mod.key + '-enabled"' + (modEnabled ? ' checked' : '') +
+              ' onchange="onModuleToggle(\'' + mod.key + '\', this.checked)">' +
+            '<span class="toggle-slider"></span>' +
+          '</label>' +
+        '</div>';
+
+      // Events list
+      html += '<div class="module-events' + eventsDisabledClass + '" id="events-' + mod.key + '">';
+      mod.events.forEach(function (evt) {
+        var checked = modPrefs[evt.key] !== false; // default on
+        html +=
+          '<div class="event-row">' +
+            '<div class="event-label">' +
+              '<strong>' + evt.label + '</strong>' +
+              '<span>'   + evt.desc  + '</span>' +
+            '</div>' +
+            '<label class="toggle">' +
+              '<input type="checkbox" id="evt-' + mod.key + '-' + evt.key + '"' + (checked ? ' checked' : '') +
+                ' onchange="onEventToggle(\'' + mod.key + '\', \'' + evt.key + '\', this.checked)">' +
+              '<span class="toggle-slider"></span>' +
+            '</label>' +
+          '</div>';
+      });
+      html += '</div>'; // module-events
+      html += '</div>'; // module-section
+    });
+
+    document.getElementById('moduleSections').innerHTML = html;
+  }
+
+  function onModuleToggle(modKey, enabled) {
+    if (!pendingPrefs[modKey]) pendingPrefs[modKey] = {};
+    pendingPrefs[modKey].enabled = enabled;
+    var eventsDiv = document.getElementById('events-' + modKey);
+    if (eventsDiv) {
+      if (enabled) eventsDiv.classList.remove('disabled');
+      else eventsDiv.classList.add('disabled');
+    }
+    clearSaveBanner();
+  }
+
+  function onEventToggle(modKey, evtKey, enabled) {
+    if (!pendingPrefs[modKey]) pendingPrefs[modKey] = {};
+    pendingPrefs[modKey][evtKey] = enabled;
+    clearSaveBanner();
+  }
+
+  // ── Save preferences ──────────────────────────────────────────────────────
+  function savePreferences() {
+    var btn = document.getElementById('btnSave');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    // Collect current state from all rendered checkboxes
+    var payload = {};
+    MODULES.forEach(function (mod) {
+      var modCheck = document.getElementById('mod-' + mod.key + '-enabled');
+      if (!modCheck) return;
+      payload[mod.key] = { enabled: modCheck.checked };
+      mod.events.forEach(function (evt) {
+        var evtCheck = document.getElementById('evt-' + mod.key + '-' + evt.key);
+        if (evtCheck) payload[mod.key][evt.key] = evtCheck.checked;
+      });
+    });
+
+    fetch('/api/auth/notification-preferences', {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        btn.disabled = false;
+        btn.textContent = 'Save Settings';
+        if (data.ok) {
+          setSaveBanner('✓ Settings saved successfully.', 'success');
+          currentPrefs = data.preferences || {};
+          pendingPrefs = {};
+        } else {
+          setSaveBanner('✗ ' + (data.error || 'Save failed.'), 'error');
+        }
+      })
+      .catch(function (err) {
+        btn.disabled = false;
+        btn.textContent = 'Save Settings';
+        setSaveBanner('✗ Network error. Please try again.', 'error');
+      });
+  }
+
+  function setSaveBanner(msg, type) {
+    var b = document.getElementById('saveBanner');
+    b.textContent = msg;
+    b.className = 'save-banner ' + (type || '');
+    if (type === 'success') setTimeout(function () { b.textContent = ''; b.className = 'save-banner'; }, 4000);
+  }
+
+  function clearSaveBanner() {
+    var b = document.getElementById('saveBanner');
+    if (b.className.indexOf('success') !== -1 || b.className.indexOf('error') !== -1) {
+      b.textContent = ''; b.className = 'save-banner';
+    }
+  }
+
+  // ── Push notification control ─────────────────────────────────────────────
+  var vapidPublicKey = null;
+
+  function urlBase64ToUint8Array(base64String) {
+    var padding = '='.repeat((4 - base64String.length % 4) % 4);
+    var base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    var raw     = window.atob(base64);
+    var output  = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+    return output;
+  }
+
+  function setPushStatusUI(state) {
+    var badge      = document.getElementById('pushStatusBadge');
+    var btnEnable  = document.getElementById('btnEnablePush');
+    var btnDisable = document.getElementById('btnDisablePush');
+    badge.className = 'push-status';
+
+    if (state === 'active') {
+      badge.textContent = '✓ Active on this device';
+      badge.classList.add('active');
+      btnEnable.style.display  = 'none';
+      btnDisable.style.display = '';
+    } else if (state === 'denied') {
+      badge.textContent = '🚫 Notifications blocked — update browser settings';
+      badge.classList.add('denied');
+      btnEnable.style.display  = 'none';
+      btnDisable.style.display = 'none';
+    } else if (state === 'unsupported') {
+      badge.textContent = 'Not supported in this browser';
+      btnEnable.style.display  = 'none';
+      btnDisable.style.display = 'none';
+    } else {
+      badge.textContent = 'Off on this device';
+      btnEnable.style.display  = '';
+      btnDisable.style.display = 'none';
+    }
+  }
+
+  async function checkPushStatus() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setPushStatusUI('unsupported'); return;
+    }
+    var perm = Notification.permission;
+    if (perm === 'denied') { setPushStatusUI('denied'); return; }
+
+    try {
+      var reg  = await navigator.serviceWorker.ready;
+      var sub  = await reg.pushManager.getSubscription();
+      if (sub) {
+        // Ensure VAPID key is loaded
+        if (!vapidPublicKey) {
+          var vr = await fetch('/api/push/vapid-public-key');
+          var vd = await vr.json();
+          vapidPublicKey = vd.publicKey;
+        }
+        setPushStatusUI('active');
+      } else {
+        setPushStatusUI('off');
+      }
+    } catch (e) {
+      setPushStatusUI('off');
+    }
+  }
+
+  async function enablePush() {
+    try {
+      if (!vapidPublicKey) {
+        var vr = await fetch('/api/push/vapid-public-key');
+        var vd = await vr.json();
+        vapidPublicKey = vd.publicKey;
+        if (!vapidPublicKey) { alert('Push notifications are not configured on this server yet.'); return; }
+      }
+
+      var perm = await Notification.requestPermission();
+      if (perm !== 'granted') { checkPushStatus(); return; }
+
+      var reg = await navigator.serviceWorker.ready;
+      var sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+      });
+
+      var r = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sub.toJSON())
+      });
+      if (r.ok) {
+        // Sync pushEnabled=true to user preferences
+        fetch('/api/auth/notification-preferences', {
+          method: 'PATCH', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pushEnabled: true })
+        });
+        checkPushStatus();
+      }
+    } catch (e) {
+      alert('Could not enable push notifications: ' + e.message);
+    }
+  }
+
+  async function disablePush() {
+    try {
+      var reg = await navigator.serviceWorker.ready;
+      var sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await fetch('/api/push/unsubscribe', {
+          method: 'DELETE', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint: sub.endpoint })
+        });
+        await sub.unsubscribe();
+        // Sync pushEnabled=false to user preferences
+        fetch('/api/auth/notification-preferences', {
+          method: 'PATCH', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pushEnabled: false })
+        });
+      }
+      checkPushStatus();
+    } catch (e) {
+      alert('Error disabling push: ' + e.message);
+    }
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  (function init() {
+    // Load push status
+    checkPushStatus();
+
+    // Fetch preferences then build UI
+    fetch('/api/auth/notification-preferences', { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : { ok: false }; })
+      .then(function (data) {
+        currentPrefs = (data.ok && data.preferences) ? data.preferences : {};
+        waitForUser(function (user) {
+          buildModuleSections(user, currentPrefs);
+        });
+      })
+      .catch(function () {
+        waitForUser(function (user) {
+          buildModuleSections(user, {});
+        });
+      });
+  }());
+</script>
+</body>
+</html>

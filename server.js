@@ -341,6 +341,10 @@ app.get('/push-test/', requirePageAccess('__admin__'), (req, res) => res.sendFil
 // Hub page — any authenticated user
 app.get('/', requirePageAccess(null), (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
+// Notification Settings — any authenticated user
+app.get('/notification-settings', requirePageAccess(null), (req, res) => res.sendFile(path.join(__dirname, 'notification-settings.html')));
+app.get('/notification-settings.html', requirePageAccess(null), (req, res) => res.sendFile(path.join(__dirname, 'notification-settings.html')));
+
 // Maintenance Dashboard — requires 'maintenance' permission
 app.use('/maintenance', requirePageAccess('maintenance'), express.static(path.join(__dirname, 'maintenance'), noCacheHtml));
 

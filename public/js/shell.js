@@ -56,7 +56,8 @@
       var mod = document.body ? document.body.getAttribute('data-module') : '';
       var THEME = {
         maintenance: '#ff7a18', foodsafety: '#16a085', pest: '#2e7d32',
-        templog: '#3aa6ff', procurement: '#27ae60', admin: '#7f5af0', hub: '#ff7a18'
+        templog: '#3aa6ff', procurement: '#27ae60', admin: '#7f5af0',
+        hub: '#ff7a18', settings: '#ff7a18'
       };
       var tc = document.createElement('meta');
       tc.name = 'theme-color'; tc.content = THEME[mod] || '#ff7a18';
@@ -79,6 +80,7 @@
     pest:        { label: '🐭 Rat Trap Surveillance' },
     templog:     { label: '🌡️ Kitchen Logs'      },
     procurement: { label: '📦 Procurement'        },
+    settings:    { label: '🔔 Notifications'      },
     admin:       { label: '⚙️ Admin'             },
     'push-test': { label: '🔔 Push Test'         },
     tempmon:     { label: '🌡️ Temp Monitor'         },
@@ -88,6 +90,7 @@
   /* ── Navigation tree ─────────────────────────────────────────── */
   var NAV = [
     { href: '/', icon: '🏠', label: 'Hub', module: 'hub' },
+    { href: '/notification-settings', icon: '🔔', label: 'Notifications', module: 'settings' },
     { divider: true },
     {
       icon: '🔧', label: 'Maintenance', module: 'maintenance',

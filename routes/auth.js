@@ -72,4 +72,65 @@ router.get('/me', (req, res, next) => {
   }
 });
 
+// GET /api/auth/notification-preferences — returns current user's preferences
+router.get('/notification-preferences', (req, res, next) => {
+  if (BYPASS_AUTH) return res.json({ ok: true, preferences: {} });
+  return requireAuth(req, res, next);
+}, async (req, res) => {
+  try {
+    const dbUser = await User.findById(req.user.id, 'notificationPreferences');
+    if (!dbUser) return res.status(404).json({ error: 'User not found' });
+    res.json({ ok: true, preferences: dbUser.notificationPreferences || {} });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/auth/notification-preferences — update current user's preferences
+const ALLOWED_MODULES = ['maintenance', 'foodsafety', 'tempmon', 'procurement', 'pest', 'iso'];
+const ALLOWED_EVENTS = {
+  maintenance:  ['enabled', 'overdue', 'upcoming', 'issueReported', 'resolved'],
+  foodsafety:   ['enabled', 'ncReported', 'ncResolved', 'certExpiring'],
+  tempmon:      ['enabled', 'tempAlert', 'tempCritical', 'deviceOffline'],
+  procurement:  ['enabled', 'requestSubmitted', 'requestApproved', 'requestRejected'],
+  pest:         ['enabled', 'findingReported', 'criticalFinding'],
+  iso:          ['enabled', 'recordDue', 'recordOverdue'],
+};
+
+router.patch('/notification-preferences', (req, res, next) => {
+  if (BYPASS_AUTH) return res.json({ ok: true });
+  return requireAuth(req, res, next);
+}, async (req, res) => {
+  try {
+    const dbUser = await User.findById(req.user.id);
+    if (!dbUser) return res.status(404).json({ error: 'User not found' });
+
+    const body = req.body;
+    if (!dbUser.notificationPreferences) dbUser.notificationPreferences = {};
+
+    // Top-level pushEnabled flag
+    if (typeof body.pushEnabled === 'boolean') {
+      dbUser.notificationPreferences.pushEnabled = body.pushEnabled;
+    }
+
+    // Per-module event toggles
+    for (const mod of ALLOWED_MODULES) {
+      if (body[mod] && typeof body[mod] === 'object') {
+        if (!dbUser.notificationPreferences[mod]) dbUser.notificationPreferences[mod] = {};
+        for (const evt of ALLOWED_EVENTS[mod]) {
+          if (typeof body[mod][evt] === 'boolean') {
+            dbUser.notificationPreferences[mod][evt] = body[mod][evt];
+          }
+        }
+      }
+    }
+
+    dbUser.markModified('notificationPreferences');
+    await dbUser.save();
+    res.json({ ok: true, preferences: dbUser.notificationPreferences });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

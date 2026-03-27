@@ -14,6 +14,44 @@ const UserSchema = new mongoose.Schema({
     procurement:  { type: Boolean, default: false },
     pest:         { type: Boolean, default: false },
     tempmon:      { type: Boolean, default: false }
+  },
+  notificationPreferences: {
+    pushEnabled: { type: Boolean, default: false },
+    maintenance: {
+      enabled:       { type: Boolean, default: true },
+      overdue:       { type: Boolean, default: true },
+      upcoming:      { type: Boolean, default: true },
+      issueReported: { type: Boolean, default: true },
+      resolved:      { type: Boolean, default: false },
+    },
+    foodsafety: {
+      enabled:      { type: Boolean, default: true },
+      ncReported:   { type: Boolean, default: true },
+      ncResolved:   { type: Boolean, default: false },
+      certExpiring: { type: Boolean, default: true },
+    },
+    tempmon: {
+      enabled:       { type: Boolean, default: true },
+      tempAlert:     { type: Boolean, default: true },
+      tempCritical:  { type: Boolean, default: true },
+      deviceOffline: { type: Boolean, default: true },
+    },
+    procurement: {
+      enabled:          { type: Boolean, default: true },
+      requestSubmitted: { type: Boolean, default: true },
+      requestApproved:  { type: Boolean, default: true },
+      requestRejected:  { type: Boolean, default: true },
+    },
+    pest: {
+      enabled:         { type: Boolean, default: true },
+      findingReported: { type: Boolean, default: true },
+      criticalFinding: { type: Boolean, default: true },
+    },
+    iso: {
+      enabled:       { type: Boolean, default: true },
+      recordDue:     { type: Boolean, default: true },
+      recordOverdue: { type: Boolean, default: true },
+    },
   }
 }, { timestamps: true });
 
