@@ -78,10 +78,20 @@
 
       <section class="section-card report-panel">
         <div class="report-toolbar">
-          <h2 id="report-title">Report</h2>
-          <input id="dish-search" class="search-input" type="search" placeholder="Filter dishes">
+          <div class="report-title-group">
+            <h2 id="report-title">Report</h2>
+            <div id="report-view-label" class="report-view-label"></div>
+          </div>
+          <div class="report-toolbar-actions">
+            <div class="view-switch" aria-label="Report view mode">
+              <button id="timeline-view-button" class="view-switch-btn is-active" type="button">Timeline</button>
+              <button id="grid-view-button" class="view-switch-btn" type="button">Grid</button>
+            </div>
+            <input id="dish-search" class="search-input" type="search" placeholder="Filter dishes">
+          </div>
         </div>
         <div id="report-meta" class="report-meta"></div>
+        <div id="timeline-strip" class="timeline-strip hidden"></div>
         <div id="report-table-wrap" class="table-wrap"></div>
       </section>
     </section>
