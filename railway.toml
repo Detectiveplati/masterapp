@@ -1,6 +1,6 @@
 [build]
 builder = "RAILPACK"
-buildCommand = "npx playwright install --with-deps chromium"
+buildCommand = "npx playwright install chromium"
 
 [deploy]
 startCommand = "node server.js"
