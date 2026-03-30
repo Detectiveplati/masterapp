@@ -11,9 +11,25 @@
 <body data-module="order-manager">
   <main class="page-shell order-extractor-page">
     <section class="page-header section-card hero">
-      <p class="eyebrow">Order Manager</p>
-      <h1>Admin extraction, order summaries, and kitchen execution in one isolated module.</h1>
-      <p class="lede">This module is self-contained inside masterapp. All workflows and links stay within the order manager namespace.</p>
+      <div>
+        <p class="eyebrow">Order Manager</p>
+        <h1>Extraction, planning, and execution in one place.</h1>
+        <p class="lede">Use this module to pull the latest order data, review daily totals, and prepare departments before service starts.</p>
+      </div>
+      <div class="hero-meta-grid">
+        <div class="hero-meta-card">
+          <span>Auto Runs</span>
+          <strong>4 AM, 2 PM, 8 PM</strong>
+        </div>
+        <div class="hero-meta-card">
+          <span>Current Scope</span>
+          <strong>Orders and prep only</strong>
+        </div>
+        <div class="hero-meta-card">
+          <span>Best Starting Point</span>
+          <strong>Order Summary</strong>
+        </div>
+      </div>
     </section>
 
     <section class="section-card control-panel">
@@ -24,11 +40,55 @@
         <a href="./chef-preorder.html" class="nav-link">Chef Pre-Order</a>
         <a href="./kitchen/kitchentemplog.html" class="nav-link">Kitchen</a>
       </div>
+      <div class="page-actions">
+        <div class="control-copy">
+          <h2>Choose the task, not the page hunt.</h2>
+          <p>The main actions are below. Manual extraction is for admin checks. Order Summary and Chef Pre-Order are the everyday planning views.</p>
+        </div>
+        <div class="page-actions-side">
+          <a class="btn-primary" href="./order-summary.html">Open Order Summary</a>
+          <a class="btn-outline" href="./extractor.html">Run Manual Extract</a>
+        </div>
+      </div>
       <div class="summary">
-        <div class="summary-card"><span>Admin</span><strong><a href="./extractor.html">Run manual extraction</a></strong></div>
-        <div class="summary-card"><span>Schedule</span><strong>2 PM / 8 PM</strong></div>
-        <div class="summary-card"><span>Kitchen</span><strong><a href="./kitchen/kitchentemplog.html">Kitchen temp log</a></strong></div>
-        <div class="summary-card"><span>Planning</span><strong><a href="./chef-preorder.html">Chef pre-order</a></strong></div>
+        <div class="summary-card"><span>Current Day Snapshot</span><strong>4:00 AM Auto</strong></div>
+        <div class="summary-card"><span>Next Day Initial</span><strong>2:00 PM Auto</strong></div>
+        <div class="summary-card"><span>Next Day Refresh</span><strong>8:00 PM Auto</strong></div>
+      </div>
+    </section>
+
+    <section class="section-card control-panel">
+      <div class="section-heading">
+        <div>
+          <h2>Workflows</h2>
+          <p>Use the planning pages for normal daily work. Keep manual extract for admin intervention and validation.</p>
+        </div>
+      </div>
+      <div class="module-grid">
+        <a href="./order-summary.html" class="module-card">
+          <div class="module-icon">01</div>
+          <h2>Order Summary</h2>
+          <p>See total dishes, quantities, and chef volume for the selected report date.</p>
+          <span class="module-link">Open Summary</span>
+        </a>
+        <a href="./chef-preorder.html" class="module-card">
+          <div class="module-icon">02</div>
+          <h2>Chef Pre-Order</h2>
+          <p>Filter by department to prepare stock orders and station-level mise en place.</p>
+          <span class="module-link">Open Pre-Order</span>
+        </a>
+        <a href="./extractor.html" class="module-card">
+          <div class="module-icon">03</div>
+          <h2>Manual Extract</h2>
+          <p>Run a manual pull when you need to validate data or recover from an extractor issue.</p>
+          <span class="module-link">Open Extractor</span>
+        </a>
+        <a href="./kitchen/kitchentemplog.html" class="module-card">
+          <div class="module-icon">04</div>
+          <h2>Kitchen</h2>
+          <p>Move into kitchen execution after planning is complete and batches are ready to cook.</p>
+          <span class="module-link">Open Kitchen</span>
+        </a>
       </div>
     </section>
   </main>

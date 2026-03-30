@@ -11,9 +11,25 @@
 <body data-module="order-manager">
   <main class="page-shell order-extractor-page">
     <section class="page-header section-card hero">
-      <p class="eyebrow">Order Extractor</p>
-      <h1>Pull live chef and dish report data by date.</h1>
-      <p class="lede">Choose a date, run both WordPress exports, then download one merged CSV with chef timeline, prep time, order number, quantity, and notes.</p>
+      <div>
+        <p class="eyebrow">Order Extractor</p>
+        <h1>Pull live chef and dish reports by date.</h1>
+        <p class="lede">Run this only when you need a manual refresh. The system already schedules automatic extractions, so this page should stay focused and fast.</p>
+      </div>
+      <div class="hero-meta-grid">
+        <div class="hero-meta-card">
+          <span>Primary Action</span>
+          <strong>Manual extract</strong>
+        </div>
+        <div class="hero-meta-card">
+          <span>Output</span>
+          <strong>Merged CSV</strong>
+        </div>
+        <div class="hero-meta-card">
+          <span>Use After Run</span>
+          <strong>Chef sections below</strong>
+        </div>
+      </div>
     </section>
 
     <section class="section-card control-panel">
@@ -25,13 +41,27 @@
         <a href="./chef-preorder.html" class="nav-link">Chef Pre-Order</a>
         <a href="./kitchen/kitchentemplog.html" class="nav-link">Kitchen</a>
       </div>
-      <form id="extract-form" class="extract-form">
-        <label class="field">
-          <span>Date</span>
-          <input id="report-date" name="date" type="date" required>
-        </label>
-        <button id="run-button" class="btn-primary" type="submit">Run Extract</button>
-        <a id="download-link" class="btn-outline hidden" href="#">Download CSV</a>
+      <div class="page-actions">
+        <div class="page-actions-main">
+          <div class="control-copy">
+            <h2>Run only one clean manual action.</h2>
+            <p>Pick the report date, run the extract, then use the CSV or chef tables below. Keep the primary button close to the date field so the flow is obvious.</p>
+          </div>
+        </div>
+      </div>
+      <form id="extract-form" class="extract-form page-actions">
+        <div class="page-actions-main">
+          <div class="form-grid">
+            <label class="field">
+              <span>Report Date</span>
+              <input id="report-date" name="date" type="date" required>
+            </label>
+          </div>
+        </div>
+        <div class="page-actions-side form-actions">
+          <button id="run-button" class="btn-primary" type="submit">Run Extract</button>
+          <a id="download-link" class="btn-outline hidden" href="#">Download CSV</a>
+        </div>
       </form>
       <p id="status" class="status">No data loaded yet.</p>
       <div id="summary" class="summary hidden"></div>
@@ -40,8 +70,8 @@
     <section id="workspace" class="workspace hidden">
       <aside class="section-card sidebar">
         <div class="sidebar-head">
-          <h2>Chefs</h2>
-          <input id="chef-search" type="search" placeholder="Filter chefs">
+          <h2>Chef Sections</h2>
+          <input id="chef-search" class="search-input" type="search" placeholder="Filter chefs">
         </div>
         <div id="chef-list" class="chef-list"></div>
       </aside>
@@ -49,7 +79,7 @@
       <section class="section-card report-panel">
         <div class="report-toolbar">
           <h2 id="report-title">Report</h2>
-          <input id="dish-search" type="search" placeholder="Filter dishes">
+          <input id="dish-search" class="search-input" type="search" placeholder="Filter dishes">
         </div>
         <div id="report-meta" class="report-meta"></div>
         <div id="report-table-wrap" class="table-wrap"></div>

@@ -11,9 +11,25 @@
 <body data-module="order-manager">
   <main class="page-shell order-extractor-page">
     <section class="page-header section-card hero">
-      <p class="eyebrow">Chef Pre-Order</p>
-      <h1>Latest dishes and quantities for department ordering and stock preparation.</h1>
-      <p class="lede">Each date shows only its latest updated report. Use the department filter to focus on one station at a time.</p>
+      <div>
+        <p class="eyebrow">Chef Pre-Order</p>
+        <h1>Latest dishes and quantities for departmental prep.</h1>
+        <p class="lede">This page is for focused ordering and stock checks. The filter bar should let you switch date and department quickly without oversized controls.</p>
+      </div>
+      <div class="hero-meta-grid">
+        <div class="hero-meta-card">
+          <span>Best Use</span>
+          <strong>Department ordering</strong>
+        </div>
+        <div class="hero-meta-card">
+          <span>Filter By</span>
+          <strong>Date and department</strong>
+        </div>
+        <div class="hero-meta-card">
+          <span>Source</span>
+          <strong>Latest saved report</strong>
+        </div>
+      </div>
     </section>
 
     <section class="section-card control-panel">
@@ -24,16 +40,26 @@
         <a href="./chef-preorder.html" class="nav-link active">Chef Pre-Order</a>
         <a href="./kitchen/kitchentemplog.html" class="nav-link">Kitchen</a>
       </div>
-      <div class="extract-form">
-        <label class="field">
-          <span>Report Date</span>
-          <select id="date-filter" class="summary-select"></select>
-        </label>
-        <label class="field">
-          <span>Department</span>
-          <select id="department-filter" class="summary-select"></select>
-        </label>
-        <button id="refresh-button" class="btn-primary" type="button">Reload</button>
+      <div class="page-actions">
+        <div class="page-actions-main">
+          <div class="control-copy">
+            <h2>Use filters, then refresh once.</h2>
+            <p>Date and department are the only high-value controls here, so they should stay grouped and readable.</p>
+          </div>
+          <div class="form-grid">
+            <label class="field">
+              <span>Report Date</span>
+              <select id="date-filter" class="summary-select"></select>
+            </label>
+            <label class="field">
+              <span>Department</span>
+              <select id="department-filter" class="summary-select"></select>
+            </label>
+          </div>
+        </div>
+        <div class="page-actions-side form-actions">
+          <button id="refresh-button" class="btn-primary" type="button">Reload View</button>
+        </div>
       </div>
       <p id="status" class="status">Loading latest chef pre-order report…</p>
       <div id="summary" class="summary"></div>

@@ -11,9 +11,25 @@
 <body data-module="order-manager">
   <main class="page-shell order-extractor-page">
     <section class="page-header section-card hero">
-      <p class="eyebrow">Order Summary</p>
-      <h1>Daily totals by chef and dish.</h1>
-      <p class="lede">Use this to see daily production volume before operations start, so each station can plan ingredients and ordering.</p>
+      <div>
+        <p class="eyebrow">Order Summary</p>
+        <h1>Daily totals by chef and dish.</h1>
+        <p class="lede">This should be the quickest page to scan before production starts. The controls below are trimmed down to just date selection and refresh.</p>
+      </div>
+      <div class="hero-meta-grid">
+        <div class="hero-meta-card">
+          <span>Best Use</span>
+          <strong>Morning planning</strong>
+        </div>
+        <div class="hero-meta-card">
+          <span>Shows</span>
+          <strong>Chef and dish totals</strong>
+        </div>
+        <div class="hero-meta-card">
+          <span>Input</span>
+          <strong>Selected report date</strong>
+        </div>
+      </div>
     </section>
 
     <section class="section-card control-panel">
@@ -24,12 +40,22 @@
         <a href="./chef-preorder.html" class="nav-link">Chef Pre-Order</a>
         <a href="./kitchen/kitchentemplog.html" class="nav-link">Kitchen</a>
       </div>
-      <div class="extract-form">
-        <label class="field">
-          <span>Report Date</span>
-          <select id="summary-date" class="summary-select"></select>
-        </label>
-        <button id="summary-refresh" class="btn-primary" type="button">Reload Summary</button>
+      <div class="page-actions">
+        <div class="page-actions-main">
+          <div class="control-copy">
+            <h2>Keep the refresh action close to the date.</h2>
+            <p>Most users only change the report date, then reload. The page should not make them hunt for the button.</p>
+          </div>
+          <div class="form-grid">
+            <label class="field">
+              <span>Report Date</span>
+              <select id="summary-date" class="summary-select"></select>
+            </label>
+          </div>
+        </div>
+        <div class="page-actions-side form-actions">
+          <button id="summary-refresh" class="btn-primary" type="button">Reload Summary</button>
+        </div>
       </div>
       <p id="summary-status" class="status">Loading order summary…</p>
       <div id="summary-top" class="summary"></div>
