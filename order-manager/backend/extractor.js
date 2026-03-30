@@ -85,13 +85,28 @@ async function login(page, config) {
 
   await page.locator("#user_login").fill(config.username);
   await page.locator("#user_pass").fill(config.password);
-  await Promise.all([
-    page.waitForURL((url) => !url.toString().includes("wp-login.php")),
-    page.locator("#wp-submit").click()
-  ]);
+  await page.locator("#wp-submit").click();
+
+  try {
+    await page.waitForURL(
+      (url) => !url.toString().includes("wp-login.php"),
+      { waitUntil: "domcontentloaded", timeout: config.timeoutMs }
+    );
+  } catch (error) {
+    const loginError = await readLoginError(page);
+    if (loginError) {
+      throw new Error(`Login appears to have failed. ${loginError}`);
+    }
+    throw new Error(
+      `Login did not leave the WordPress login page within ${config.timeoutMs}ms. Current URL: ${page.url()}`
+    );
+  }
 
   if (page.url().includes("wp-login.php")) {
-    throw new Error("Login appears to have failed. Still on the WordPress login page.");
+    const loginError = await readLoginError(page);
+    throw new Error(loginError
+      ? `Login appears to have failed. ${loginError}`
+      : "Login appears to have failed. Still on the WordPress login page.");
   }
 }
 
@@ -623,6 +638,29 @@ function escapeCsv(value) {
     return `"${text.replace(/"/g, "\"\"")}"`;
   }
   return text;
+}
+
+async function readLoginError(page) {
+  const selectors = [
+    "#login_error",
+    ".message",
+    ".login .notice",
+    ".login .notice-error",
+    ".login .notice-warning",
+    ".login .notice-info"
+  ];
+
+  for (const selector of selectors) {
+    const locator = page.locator(selector).first();
+    if (await locator.count()) {
+      const text = String(await locator.textContent() || "").replace(/\s+/g, " ").trim();
+      if (text) {
+        return text;
+      }
+    }
+  }
+
+  return "";
 }
 
 function requiredEnv(primaryName) {
