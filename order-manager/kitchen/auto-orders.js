@@ -905,6 +905,16 @@
       return;
     }
 
+    const matchingEntry = (latestCookedEntries || []).find((entry) => String(entry.sessionId || "").trim() === nextSessionId);
+    const batchCount = Number(matchingEntry && matchingEntry.batchCount) || 0;
+    const foodLabel = String(matchingEntry && matchingEntry.food || "").trim();
+    const message = batchCount > 1
+      ? `确定要撤销这整批已完成订单吗？\n\n${foodLabel ? `${foodLabel}\n` : ""}${batchCount} items will be moved out of Done.\n\nAre you sure you want to undo this completed batch?`
+      : `确定要撤销这条已完成订单吗？\n\n${foodLabel ? `${foodLabel}\n` : ""}This item will be moved out of Done.\n\nAre you sure you want to undo this completed order?`;
+    if (typeof window.confirm === "function" && !window.confirm(message)) {
+      return;
+    }
+
     try {
       await deleteCookData(nextSessionId);
       latestCookedEntries = (latestCookedEntries || []).filter((entry) => String(entry.sessionId || "").trim() !== nextSessionId);
