@@ -1,7 +1,11 @@
 const cron = require("node-cron");
 
 const { executeExtractionRun, isExtractionRunning } = require("./extractionService");
-const { getConfiguredTimeZone, getTomorrowDateInTimeZone } = require("./dateUtils");
+const {
+  getConfiguredTimeZone,
+  getCurrentDateInTimeZone,
+  getTomorrowDateInTimeZone
+} = require("./dateUtils");
 const { getMissingExtractorEnvVars, isExtractorConfigured } = require("./extractor");
 const {
   acquireScheduledJobLock,
@@ -28,6 +32,7 @@ function startScheduler() {
     return;
   }
 
+  cron.schedule("0 4 * * *", () => runScheduledJob("current_day_morning", timeZone), { timezone: timeZone });
   cron.schedule("0 14 * * *", () => runScheduledJob("daily_initial", timeZone), { timezone: timeZone });
   cron.schedule("0 20 * * *", () => runScheduledJob("daily_refresh", timeZone), { timezone: timeZone });
   console.log(`Order manager scheduler active (timezone: ${timeZone})`);
@@ -39,7 +44,7 @@ async function runScheduledJob(runType, timeZone) {
     return;
   }
 
-  const reportDate = getTomorrowDateInTimeZone(timeZone);
+  const reportDate = resolveScheduledReportDate(runType, timeZone);
   const jobKey = `order-manager:${runType}`;
   const locked = await acquireScheduledJobLock(jobKey, reportDate);
   if (!locked) {
@@ -58,6 +63,13 @@ async function runScheduledJob(runType, timeZone) {
     await markScheduledJobFailed(jobKey, reportDate, error.message || error);
     console.error(`Scheduled ${runType} extraction failed for ${reportDate}:`, error.message || error);
   }
+}
+
+function resolveScheduledReportDate(runType, timeZone) {
+  if (runType === "current_day_morning") {
+    return getCurrentDateInTimeZone(timeZone);
+  }
+  return getTomorrowDateInTimeZone(timeZone);
 }
 
 function parseBoolean(value, fallback) {

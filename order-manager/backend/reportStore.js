@@ -269,6 +269,8 @@ function buildRunLabel(run) {
     ? "2:00 PM"
     : runType === "daily_refresh"
       ? "8:00 PM refresh"
+      : runType === "current_day_morning"
+        ? "4:00 AM current day"
       : "manual";
   const updateSuffix = run.refreshSummary && (run.refreshSummary.editedRowCount || run.refreshSummary.newRowCount)
     ? ` • ! ${run.refreshSummary.editedRowCount + run.refreshSummary.newRowCount} updates`
@@ -278,7 +280,12 @@ function buildRunLabel(run) {
 
 function normalizeRunType(value) {
   const text = String(value || "").trim();
-  if (text === "daily_initial" || text === "daily_refresh" || text === "manual") {
+  if (
+    text === "daily_initial"
+    || text === "daily_refresh"
+    || text === "current_day_morning"
+    || text === "manual"
+  ) {
     return text;
   }
   return "manual";

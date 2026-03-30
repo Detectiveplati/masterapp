@@ -17,13 +17,18 @@ function getCurrentDateInTimeZone(timeZone = getConfiguredTimeZone()) {
   return formatDateInTimeZone(new Date(), timeZone);
 }
 
-function getTomorrowDateInTimeZone(timeZone = getConfiguredTimeZone()) {
+function getDateOffsetInTimeZone(offsetDays = 0, timeZone = getConfiguredTimeZone()) {
   const now = new Date();
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  return formatDateInTimeZone(tomorrow, timeZone);
+  const nextDate = new Date(now.getTime() + Number(offsetDays || 0) * 24 * 60 * 60 * 1000);
+  return formatDateInTimeZone(nextDate, timeZone);
+}
+
+function getTomorrowDateInTimeZone(timeZone = getConfiguredTimeZone()) {
+  return getDateOffsetInTimeZone(1, timeZone);
 }
 
 module.exports = {
+  getDateOffsetInTimeZone,
   formatDateInTimeZone,
   getConfiguredTimeZone,
   getCurrentDateInTimeZone,

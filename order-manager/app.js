@@ -196,6 +196,7 @@ function formatDateTime(value) {
 }
 
 function formatRunType(value) {
+  if (value === "current_day_morning") return "4:00 AM Current Day";
   if (value === "daily_initial") return "2:00 PM Auto";
   if (value === "daily_refresh") return "8:00 PM Refresh";
   return "Manual";
