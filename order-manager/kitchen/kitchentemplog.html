@@ -1,0 +1,994 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"/>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Kitchen Temp Log - Multi Cook</title>
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    /* ── Page header ── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .page-header img {
+      width: 52px;
+      height: 52px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .page-header h1 {
+      margin: 0;
+      font-size: 1.3rem;
+      text-align: center;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #5a616c;
+      text-decoration: none;
+      padding: 5px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,0,0,0.1);
+      background: #fff;
+      margin-bottom: 10px;
+    }
+    /* ── BT panel ── */
+    .bt-panel {
+      margin: 0 0 16px;
+      padding: 10px 14px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      border-left: 4px solid #1565c0;
+    }
+    .bt-status {
+      color: #444;
+      font-size: 0.88rem;
+      flex: 1;
+      min-width: 160px;
+      text-align: center;
+    }
+    .bt-temp {
+      font-weight: 800;
+      color: #d32f2f;
+      font-size: 1.5rem;
+      min-width: 80px;
+      text-align: center;
+    }
+    .bt-target-row {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: #999;
+      padding-top: 6px;
+      border-top: 1px solid #f0f0f0;
+      margin-top: 2px;
+    }
+    .bt-target-row span { font-weight: 700; color: #1565c0; }
+    /* ── Log / recent table ── */
+    #log {
+      margin-top: 32px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    }
+    #log h3 {
+      margin: 0 0 12px;
+      font-size: 0.95rem;
+      color: #444;
+      font-weight: 700;
+    }
+    .export-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 14px;
+    }
+    /* ── Favourites ── */
+    .fav-btn {
+      position: absolute;
+      top: 4px;
+      right: 5px;
+      background: none;
+      border: none;
+      font-size: 1rem;
+      line-height: 1;
+      color: #ccc;
+      cursor: pointer;
+      padding: 2px;
+      z-index: 2;
+      touch-action: manipulation;
+      transition: color 0.15s, transform 0.15s;
+    }
+    .fav-btn:active { transform: scale(1.3); }
+    .fav-btn.fav-active { color: #f5a623; }
+    .food-card { position: relative; }
+    .food-card.fav-active {
+      border: 2px solid #f5a623;
+      background: #fffbf0;
+    }
+    #favs-section {
+      margin-bottom: 18px;
+    }
+    #favs-section .category-header {
+      color: #b8820a;
+    }
+    #favs-grid .food-card {
+      border: 2px solid #f5a623;
+      background: #fffbf0;
+    }
+    .favs-empty {
+      font-size: 0.75rem;
+      color: #bbb;
+      padding: 6px 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <a href="../index.html" class="back-link">← 厨房日志 Kitchen Logs</a>
+
+  <div class="page-header">
+    <img src="../assets/Chilli-Api-Logo-170px.png" alt="ChilliApi">
+    <h1>厨房温度记录 Kitchen Temp Log</h1>
+  </div>
+
+  <!-- Bluetooth Thermometer Panel -->
+  <div class="bt-panel">
+    <button id="bt-connect" class="export-btn">🌡️ 连接温度计 Connect Thermometer</button>
+    <span id="bt-temp" class="bt-temp"></span>
+    <span id="bt-status" class="bt-status">未连接 Not connected</span>
+    <div class="bt-target-row">
+      🎯 目标 Target: <span id="bt-target-label">自动 — 目标为最后停止的烹饪 Auto — targets last ended cook</span>
+    </div>
+  </div>
+
+  <div id="staff-selector">
+    <strong>厨师名字 Chef Name</strong>
+    <button class="staff-btn" id="staff-AhDong" onclick="setGlobalStaff('Ah Dong')">啊东Ah Dong</button>
+    <button class="staff-btn" id="staff-HuaYun" onclick="setGlobalStaff('Hua Yun')">华云Hua Yun</button>
+    <button class="staff-btn" id="staff-Siva" onclick="setGlobalStaff('Siva')">Siva</button>
+    <button class="staff-btn" id="staff-XiaoHe" onclick="setGlobalStaff('Xiao He')">小赫Xiao He</button>
+  </div>
+
+  <div id="active-cooks">
+    <div class="active-header">
+      <h2>现煮的食品 Active / Running Cooks</h2>
+      <div class="bulk-actions">
+        <button class="bulk-btn start-all-btn" onclick="startAllCooks()">🔥 开始全部 Start All</button>
+        <button class="bulk-btn end-all-btn" onclick="endAllCooks()">⏹️ 停止全部 End All</button>
+      </div>
+    </div>
+    <p class="card-instructions">👆 点击卡片开始 / 停止烹饪 &nbsp;·&nbsp; Tap a card to start or end cooking</p>
+    <div class="active-grid" id="active-grid"></div>
+  </div>
+
+  <div id="menu">
+    <h2>选择要开始烹饪的食物 Select Food to Start Cooking</h2>
+
+    <!-- Favourites Section (populated by JS) -->
+    <div id="favs-section" style="display:none;">
+      <h3 class="category-header">⭐ 收藏 Favourites</h3>
+      <div class="food-grid" id="favs-grid"></div>
+    </div>
+
+    <!-- Chicken Category -->
+    <div class="food-category">
+      <h3 class="category-header">🐔 鸡肉 Chicken</h3>
+      <div class="food-grid">
+        <div class="food-card" onclick="addNewCook('烤蜜汁鸡翅膀 Grilled Honey Chicken Wings')">
+          <span>
+            <div class="chinese">烤蜜汁鸡翅膀</div>
+            <div class="english">Grilled Honey Chicken Wings</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('泰式香兰叶鸡 Roasted Chicken W Pandan Asian Spices')">
+          <span>
+            <div class="chinese">泰式香兰叶鸡</div>
+            <div class="english">Roasted Chicken W Pandan Asian Spices</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('蜜汁鸡 Honey Glazed Chicken')">
+          <span>
+            <div class="chinese">蜜汁鸡</div>
+            <div class="english">Honey Glazed Chicken</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤日式鸡 Grilled Teriyaki Chicken')">
+          <span>
+            <div class="chinese">烤日式鸡</div>
+            <div class="english">Grilled Teriyaki Chicken</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('鸡肉卷,牛油挞子酱 Chicken Roulade with Butter Berry Raisin Sauce')">
+          <span>
+            <div class="chinese">鸡肉卷,牛油挞子酱</div>
+            <div class="english">Chicken Roulade with Butter Berry Raisin Sauce</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤无骨鸡肉与BBQ酱和黄梨番茄莎莎 Grilled Chicken w Pineapple Salsa')">
+          <span>
+            <div class="chinese">烤无骨鸡肉与BBQ酱和黄梨番茄莎莎</div>
+            <div class="english">Grilled Chicken w Pineapple Salsa</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('鸡肉沙爹(大) Jumbo Chicken Satay')">
+          <span>
+            <div class="chinese">鸡肉沙爹(大)</div>
+            <div class="english">Jumbo Chicken Satay</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤印第安鸡与小番茄 Grilled Cajun Chicken Breast')">
+          <span>
+            <div class="chinese">烤印第安鸡与小番茄</div>
+            <div class="english">Grilled Cajun Chicken Breast</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('黄姜娘惹烤鸡 Ayam Panggang Kunyit')">
+          <span>
+            <div class="chinese">黄姜娘惹烤鸡</div>
+            <div class="english">Ayam Panggang Kunyit</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤鸡与迷迭香草药 Grilled Chicken with Rosemary')">
+          <span>
+            <div class="chinese">烤鸡与迷迭香草药</div>
+            <div class="english">Grilled Chicken with Rosemary</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('药材鸡 Baked Herbal Chicken')">
+          <span>
+            <div class="chinese">药材鸡</div>
+            <div class="english">Baked Herbal Chicken</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('黑胡椒鸡肉与灯笼椒串 Black Pepper Capsicum Skewer (Kebab)')">
+          <span>
+            <div class="chinese">黑胡椒鸡肉与灯笼椒串</div>
+            <div class="english">Black Pepper Capsicum Skewer (Kebab)</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('黑胡椒烤鸡 Grilled Black Pepper Chicken')">
+          <span>
+            <div class="chinese">黑胡椒烤鸡</div>
+            <div class="english">Grilled Black Pepper Chicken</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('日式鸡翅膀 Japanese Chicken Wings')">
+          <span>
+            <div class="chinese">日式鸡翅膀</div>
+            <div class="english">Japanese Chicken Wings</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('印第安小鸡翅 Cajun Chicken Winglets')">
+          <span>
+            <div class="chinese">印第安小鸡翅</div>
+            <div class="english">Cajun Chicken Winglets</div>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fish Category -->
+    <div class="food-category">
+      <h3 class="category-header">🐟 鱼类 Fish</h3>
+      <div class="food-grid">
+        <div class="food-card" onclick="addNewCook('港式蒸鱼与炸蒜，酱青和姜丝 HK Style Baked Fish w Garlic Soya Sauce')">
+          <span>
+            <div class="chinese">港式蒸鱼与炸蒜，酱青和姜丝</div>
+            <div class="english">HK Style Baked Fish w Garlic Soya Sauce</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤鱼片与参巴辣椒，烤洋葱 Grilled Fish Fillet w Chef Sambal Belachan & Sweet Onion')">
+          <span>
+            <div class="chinese">烤鱼片与参巴辣椒，烤洋葱</div>
+            <div class="english">Grilled Fish Fillet w Chef Sambal Belachan & Sweet Onion</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('咖喱亚参鱼头 Nonya Curry Assam Ikan')">
+          <span>
+            <div class="chinese">咖喱亚参鱼头</div>
+            <div class="english">Nonya Curry Assam Ikan</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('咖喱亚参鱼片 Curry Assam Fish Fillet')">
+          <span>
+            <div class="chinese">咖喱亚参鱼片</div>
+            <div class="english">Curry Assam Fish Fillet</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤鱼片与娘惹香料 Grilled Fish Fillet with Nonya Spices')">
+          <span>
+            <div class="chinese">烤鱼片与娘惹香料</div>
+            <div class="english">Grilled Fish Fillet with Nonya Spices</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤鱼片与日式酱 Grilled Fish Fillet w Teriyaki Sauce')">
+          <span>
+            <div class="chinese">烤鱼片与日式酱</div>
+            <div class="english">Grilled Fish Fillet w Teriyaki Sauce</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤辣椒澳洲肺鱼片 Grilled Whole Barramundi Fillet Balado')">
+          <span>
+            <div class="chinese">烤辣椒澳洲肺鱼片</div>
+            <div class="english">Grilled Whole Barramundi Fillet Balado</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤三文鱼片，日式酱 Grilled Salmon Fillet w Teriyaki Sauce')">
+          <span>
+            <div class="chinese">烤三文鱼片，日式酱</div>
+            <div class="english">Grilled Salmon Fillet w Teriyaki Sauce</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('意式香草烤鱼 Grilled Fish Fillet w Italian Herbs & White Sauce')">
+          <span>
+            <div class="chinese">意式香草烤鱼</div>
+            <div class="english">Grilled Fish Fillet w Italian Herbs & White Sauce</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤鱼片与白酱 Grilled Fish w Creamy White Sauce')">
+          <span>
+            <div class="chinese">烤鱼片与白酱</div>
+            <div class="english">Grilled Fish w Creamy White Sauce</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤鲈鱼全鱼自制辣椒(整只) Grilled Whole Seabass w Homemade Sambal')">
+          <span>
+            <div class="chinese">烤鲈鱼全鱼自制辣椒(整只)</div>
+            <div class="english">Grilled Whole Seabass w Homemade Sambal</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('参巴鱼片与灯笼椒和红葱头 Ikan Goreng Sambal Tumis')">
+          <span>
+            <div class="chinese">参巴鱼片与灯笼椒和红葱头</div>
+            <div class="english">Ikan Goreng Sambal Tumis</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('泰式烤鱼与酸橙蒜茸和香菜 Thai Style Baked Fish w Lime Garlic & Cilantro')">
+          <span>
+            <div class="chinese">泰式烤鱼与酸橙蒜茸和香菜</div>
+            <div class="english">Thai Style Baked Fish w Lime Garlic & Cilantro</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤白酱东炎鱼片 Grilled Fish Fillet w Creamy Tom Yum Sauce')">
+          <span>
+            <div class="chinese">烤白酱东炎鱼片</div>
+            <div class="english">Grilled Fish Fillet w Creamy Tom Yum Sauce</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤鱼片与黄梨和红葱头 Baked Fish Fillet Topped w Sarawak Pineapple & Red Onions')">
+          <span>
+            <div class="chinese">烤鱼片与黄梨和红葱头</div>
+            <div class="english">Baked Fish Fillet Topped w Sarawak Pineapple & Red Onions</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('咖喱亚参鱼头 Curry Assam Fish head')">
+          <span>
+            <div class="chinese">咖喱亚参鱼头</div>
+            <div class="english">Curry Assam Fish head</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤亚参鱼与番茄，茄子和羊角豆 Assam Fish Fillet w Tomato, Lady's finger and Brinjal')">
+          <span>
+            <div class="chinese">烤亚参鱼与番茄，茄子和羊角豆</div>
+            <div class="english">Assam Fish Fillet w Tomato, Lady's finger and Brinjal</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤澳洲肺鱼头片与参巴酱 Grilled Barramundi Fish Head with Chef Sambal Topped With Lady's Finger')">
+          <span>
+            <div class="chinese">烤澳洲肺鱼头片与参巴酱</div>
+            <div class="english">Grilled Barramundi Fish Head with Chef Sambal Topped With Lady's Finger</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤澳洲肺鱼片与参巴酱 Grilled Barramundi Fillet w Chef's Sambal')">
+          <span>
+            <div class="chinese">烤澳洲肺鱼片与参巴酱</div>
+            <div class="english">Grilled Barramundi Fillet w Chef's Sambal</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤澳洲肺鱼片与参巴酱 Grilled Barramundi Fillet w Creamy Italian Herbs & Tomato Confit')">
+          <span>
+            <div class="chinese">烤澳洲肺鱼片与参巴酱</div>
+            <div class="english">Grilled Barramundi Fillet w Creamy Italian Herbs & Tomato Confit</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤澳洲肺鱼片与白酱东炎 Grilled Barramundi Fillet w Creamy Tom Yum Sauce')">
+          <span>
+            <div class="chinese">烤澳洲肺鱼片与白酱东炎</div>
+            <div class="english">Grilled Barramundi Fillet w Creamy Tom Yum Sauce</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('咖喱亚参澳洲肺鱼片 Curry Assam Barramundi Fish Fillet')">
+          <span>
+            <div class="chinese">咖喱亚参澳洲肺鱼片</div>
+            <div class="english">Curry Assam Barramundi Fish Fillet</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('泰式烤鱼 Thai Style Grilled Fish')">
+          <span>
+            <div class="chinese">泰式烤鱼</div>
+            <div class="english">Thai Style Grilled Fish</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('亚参鱼 Ikan Assam Pedas')">
+          <span>
+            <div class="chinese">亚参鱼</div>
+            <div class="english">Ikan Assam Pedas</div>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vegetable Category -->
+    <div class="food-category">
+      <h3 class="category-header">🥬 蔬菜 Vegetables</h3>
+      <div class="food-grid">
+        <div class="food-card" onclick="addNewCook('烤根茎类蔬菜 Roasted Root Vegetable')">
+          <span>
+            <div class="chinese">烤根茎类蔬菜</div>
+            <div class="english">Roasted Root Vegetable</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤金瓜 Roasted Pumpkin')">
+          <span>
+            <div class="chinese">烤金瓜</div>
+            <div class="english">Roasted Pumpkin</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤土豆与蒜茸和迷迭香 Oven Baked Potato w Garlic & Rosemary')">
+          <span>
+            <div class="chinese">烤土豆与蒜茸和迷迭香</div>
+            <div class="english">Oven Baked Potato w Garlic & Rosemary</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤土豆与香草和甜洋葱 Roasted Potato with Herbs & Sweet Onions')">
+          <span>
+            <div class="chinese">烤土豆与香草和甜洋葱</div>
+            <div class="english">Roasted Potato with Herbs & Sweet Onions</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('烤土豆与金瓜 Grilled Potato and Pumpkin')">
+          <span>
+            <div class="chinese">烤土豆与金瓜</div>
+            <div class="english">Grilled Potato and Pumpkin</div>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Others Category -->
+    <div class="food-category">
+      <h3 class="category-header">🍽️ 其他 Others</h3>
+      <div class="food-grid">
+        <div class="food-card" onclick="addNewCook('烤参巴虾 Grilled Prawn w Homemade Sambal')">
+          <span>
+            <div class="chinese">烤参巴虾</div>
+            <div class="english">Grilled Prawn w Homemade Sambal</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('亚参汁 Assam Gravy')">
+          <span>
+            <div class="chinese">亚参汁</div>
+            <div class="english">Assam Gravy</div>
+          </span>
+        </div>
+        <div class="food-card" onclick="addNewCook('其他 Others')">
+          <span>
+            <div class="chinese">其他</div>
+            <div class="english">Others</div>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="log">
+    <h3>最近记录（最后8条） Recent Entries (last 8)</h3>
+    <table id="recent-table">
+      <thead>
+          <tr>
+            <th class="food-col">食物 Food Item</th>
+            <th>订单批次 Orders Cooked</th>
+            <th class="date-col">开始日期 Start Date</th>
+            <th class="time-col">开始时间 Start Time</th>
+            <th class="time-col">结束时间 End Time</th>
+          <th class="small-col">时长(分) Duration (min)</th>
+          <th class="small-col">核心温度(°C) Core Temp</th>
+          <th class="small-col">厨师 Staff</th>
+          <th class="small-col">数量 Qty</th>
+        </tr>
+      </thead>
+      <tbody id="recent-body"></tbody>
+    </table>
+    <button onclick="exportFullCSV()" class="export-btn">
+      下载完整CSV Download Full CSV
+    </button>
+  </div>
+
+  <div id="runtime-log-panel">
+    <div class="runtime-log-header">
+      <h3>运行日志 Runtime Log</h3>
+      <div class="runtime-log-actions">
+        <span id="runtime-log-count">0</span>
+        <button type="button" class="export-btn runtime-log-clear-btn" onclick="clearOrderManagerRuntimeLog()">清除 Clear</button>
+      </div>
+    </div>
+    <div id="runtime-log-body"></div>
+  </div>
+
+  <script src="../data.js"></script>
+  <script src="./app.js"></script>
+  <script src="./auto-orders.js"></script>
+  <script>
+    // ============================================================
+    // BLUETOOTH — ETI Thermapen One Blue (ETI GATT Spec v2.0)
+    // Private Service:  45544942-4c55-4554-4845-524db87ad700
+    // Sensor 1 Reading: 45544942-4c55-4554-4845-524db87ad701 (Read & Notify)
+    //   IEEE-754 float32 little-endian, always in °C
+    //   Fault = [0xff,0xff,0xff,0xff]
+    // Commands:         45544942-4c55-4554-4845-524db87ad705 (Read/Write & Notify)
+    //   Write 0x0010 (uint16 LE) to trigger a measurement
+    //   Notification 0x0001 = button pressed (reading incoming)
+    // ============================================================
+    const ETI_SERVICE = '45544942-4c55-4554-4845-524db87ad700';
+    const ETI_SENSOR1 = '45544942-4c55-4554-4845-524db87ad701';
+    const ETI_COMMAND = '45544942-4c55-4554-4845-524db87ad705';
+    const CMD_MEASURE = new Uint8Array([0x10, 0x00]); // 0x0010 LE
+
+    const btStatus  = document.getElementById('bt-status');
+    const btConnect = document.getElementById('bt-connect');
+    const btTemp    = document.getElementById('bt-temp');
+
+    let btDevice       = null;
+    let btSensor1      = null;
+    let btCommandChar  = null;
+    let _buttonPressed = false; // true when physical Thermapen button triggered this read
+
+    // ── Feedback: vibration + audio beep on lock-in ──
+    function feedbackLockIn() {
+      // Vibration: strong triple-buzz (Android Chrome)
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+      // Audio: three sharp beeps — square wave cuts through kitchen noise better than sine
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        function beep(freq, startAt, dur) {
+          const osc  = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.type = 'square';          // sharp/piercing — much louder-sounding than sine
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.9, startAt);
+          gain.gain.exponentialRampToValueAtTime(0.001, startAt + dur);
+          osc.start(startAt);
+          osc.stop(startAt + dur + 0.01);
+        }
+        const t = ctx.currentTime;
+        beep(1200, t,        0.12);   // short high beep
+        beep(1200, t + 0.17, 0.12);   // repeat
+        beep(1800, t + 0.36, 0.22);  // final higher confirming tone
+      } catch(e) { /* audio not available */ }
+    }
+
+    function setBtStatus(msg) { btStatus.textContent = msg; }
+
+    function setBtTemp(temp) {
+      btTemp.textContent = (temp !== null && !isNaN(temp)) ? `${temp.toFixed(1)} °C` : '';
+    }
+
+    // ETI format: 4 bytes float32 LE in °C; fault = 0xFFFFFFFF
+    function parseEtiTemp(dataView) {
+      if (dataView.byteLength < 4) return null;
+      if (dataView.getUint8(0) === 0xff && dataView.getUint8(1) === 0xff &&
+          dataView.getUint8(2) === 0xff && dataView.getUint8(3) === 0xff) {
+        setBtStatus('⚠️ 探头故障 — 检查探头连接 Sensor fault — check probe connection');
+        return null;
+      }
+      const t = dataView.getFloat32(0, true);
+      if (t < -200 || t > 1372) { console.warn('ETI temp out of range:', t); return null; }
+      return t;
+    }
+
+    // ── Shared GATT connection logic (used by both auto and manual connect) ──
+    async function gattConnect(device) {
+      btDevice = device;
+      setBtStatus('连接中… Connecting…');
+
+      const server  = await btDevice.gatt.connect();
+      setBtStatus('获取ETI服务… Getting ETI service…');
+      const service = await server.getPrimaryService(ETI_SERVICE);
+
+      setBtStatus('获取特性… Getting characteristics…');
+      btSensor1     = await service.getCharacteristic(ETI_SENSOR1);
+      btCommandChar = await service.getCharacteristic(ETI_COMMAND);
+
+      await btSensor1.startNotifications();
+      btSensor1.addEventListener('characteristicvaluechanged', handleTempNotification);
+
+      await btCommandChar.startNotifications();
+      btCommandChar.addEventListener('characteristicvaluechanged', (ev) => {
+        const code = ev.target.value.getUint16(0, true);
+        if (code === 0x0001) {
+          _buttonPressed = true;  // next Sensor1 notification should lock in + save
+          setBtStatus('🔴 按键已按下 — 锁定温度中… Button pressed — locking in temp…');
+        }
+        if (code === 0x0002) { setBtStatus('⏻ Thermapen 正在关机 Shutting down'); setBtTemp(null); }
+      });
+
+      const name = btDevice.name || 'Thermapen';
+      localStorage.setItem('bt_device_name', name);
+      clearTimeout(_autoConnectTimer);
+      setBtStatus(`✓ ${name} 已连接 Connected — 按设备按键锁定温度 press button to lock in temp`);
+      btConnect.textContent = '🔄 重新配对 Re-pair';
+
+      // Remove any old listeners before adding new ones to avoid duplicates
+      btDevice.removeEventListener('gattserverdisconnected', onDisconnected);
+      btDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+      // ── watchAdvertisements: auto-reconnect when device wakes/comes in range ──
+      // After first connect we start watching BLE adverts. When the device advertises
+      // (e.g. it was sleeping or briefly out of range) we reconnect with no user tap needed.
+      if (typeof btDevice.watchAdvertisements === 'function' && !btDevice._watchingAds) {
+        try {
+          await btDevice.watchAdvertisements();
+          btDevice._watchingAds = true;
+          btDevice.addEventListener('advertisementreceived', () => {
+            // Device is advertising — if we're waiting to reconnect, do it immediately
+            // instead of waiting for the 5s scheduleReconnect timeout
+            if (btDevice && !btDevice.gatt.connected && _reconnectTimeout !== null) {
+              console.log('[BT] Advertisement received — connecting immediately');
+              clearTimeout(_reconnectTimeout);
+              _reconnectTimeout = null;
+              _reconnectAttempt = 0;
+              gattConnect(btDevice).catch(() => {});
+            }
+          });
+          console.log('[BT] watchAdvertisements active');
+        } catch (e) {
+          console.warn('[BT] watchAdvertisements not available:', e.message);
+        }
+      }
+    }
+
+    // ── Auto-reconnect on unexpected disconnect — retries every 5 s until success ──
+    let _reconnectTimeout = null;
+    let _reconnectAttempt  = 0;
+
+    function onDisconnected() {
+      setBtTemp(null);
+      btSensor1 = null;
+      btCommandChar = null;
+      _reconnectAttempt = 0;
+      clearTimeout(_reconnectTimeout);
+      scheduleReconnect();
+    }
+
+    function scheduleReconnect() {
+      if (!btDevice) return;
+      _reconnectAttempt++;
+      setBtStatus(`⚠️ 已断开 — 5秒后第${_reconnectAttempt}次重连… Disconnected — reconnecting in 5s (attempt ${_reconnectAttempt})…`);
+      _reconnectTimeout = setTimeout(async () => {
+        if (!btDevice) return;
+        try {
+          setBtStatus(`🔄 第${_reconnectAttempt}次重连中… Reconnecting (attempt ${_reconnectAttempt})…`);
+          await gattConnect(btDevice);
+          _reconnectAttempt = 0; // success — reset counter
+        } catch (err) {
+          // Device still unavailable — schedule another attempt
+          scheduleReconnect();
+        }
+      }, 5000);
+    }
+
+    // ── Auto-connect on page load using previously permitted device ──
+    // Retries every 8 s until the device comes in range — no click needed after first pairing.
+    let _autoConnectTimer = null;
+    let _autoConnecting   = false;
+
+    async function autoConnectThermometer() {
+      if (_autoConnecting || (btDevice && btDevice.gatt && btDevice.gatt.connected)) return;
+
+      // Check for Web Bluetooth API at all
+      if (!navigator.bluetooth) {
+        setBtStatus('⚠️ 此浏览器不支持蓝牙 Bluetooth not supported in this browser (use Chrome/Edge)');
+        return;
+      }
+
+      // getDevices() = silent auto-reconnect (Chrome 85+ desktop, some Android versions).
+      // If unavailable, fall through to prompt user to tap Connect instead.
+      if (!navigator.bluetooth.getDevices) {
+        const savedName = localStorage.getItem('bt_device_name');
+        if (savedName) {
+          setBtStatus(`📡 ${savedName} — 点击"连接"以重新连接 Tap "Connect" to reconnect`);
+        } else {
+          setBtStatus('📡 点击"连接温度计"完成首次配对 Tap "Connect Thermometer" to pair');
+        }
+        return;
+      }
+
+      _autoConnecting = true;
+      clearTimeout(_autoConnectTimer);
+      try {
+        const devices = await navigator.bluetooth.getDevices();
+        console.log('[BT] getDevices returned:', devices.map(d => d.name || '(unnamed)'));
+
+        // Match saved device by exact name first, then any Thermapen prefix, then first available
+        const savedName = localStorage.getItem('bt_device_name');
+        let thermapen = null;
+        if (savedName) thermapen = devices.find(d => d.name === savedName);
+        if (!thermapen)  thermapen = devices.find(d => d.name && d.name.toLowerCase().includes('thermapen'));
+        if (!thermapen && devices.length === 1) thermapen = devices[0]; // only one permitted device — use it
+
+        if (!thermapen) {
+          if (devices.length > 0) {
+            // Permitted devices exist but none matched our filter — use first one
+            thermapen = devices[0];
+            console.warn('[BT] No Thermapen matched by name, trying first permitted device:', thermapen.name);
+          } else {
+            // No remembered device — prompt user to pair first time
+            if (savedName) {
+              setBtStatus(`⚠️ ${savedName} — Chrome权限已重置，需要重新配对一次 Chrome cleared permissions — tap Connect once to re-pair`);
+            } else {
+              setBtStatus('📡 点击"连接温度计"完成首次配对 Tap "Connect Thermometer" to pair for the first time');
+            }
+            _autoConnecting = false;
+            return;
+          }
+        }
+
+        // Device found — store name and connect
+        if (thermapen.name) localStorage.setItem('bt_device_name', thermapen.name);
+        setBtStatus(`🔵 ${thermapen.name || 'Thermapen'} — 自动连接中… Auto-connecting…`);
+        btConnect.disabled = true;
+        await gattConnect(thermapen);
+        btConnect.disabled = false;
+        _autoConnecting = false;
+      } catch (err) {
+        // Device off or out of range — retry in 8 s
+        const saved = localStorage.getItem('bt_device_name') || 'Thermapen';
+        setBtStatus(`💤 ${saved} — 未在范围内，8秒后重试… Not in range — retrying in 8s…`);
+        btConnect.disabled = false;
+        _autoConnecting = false;
+        _autoConnectTimer = setTimeout(autoConnectThermometer, 8000);
+      }
+    }
+
+    // ── Manual connect button: shows picker (first-time or re-pair) ──
+    async function connectThermometer() {
+      try {
+        setBtStatus('打开设备选择器… Opening device picker…');
+        setBtTemp(null);
+        btConnect.disabled = true;
+
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [
+            { namePrefix: 'Thermapen' },
+            { manufacturerData: [{ companyIdentifier: 0x0376 }] }
+          ],
+          optionalServices: [ETI_SERVICE]
+        });
+
+        await gattConnect(device);
+        btConnect.disabled = false;
+      } catch (err) {
+        console.error('BT connect error:', err);
+        if (err.name === 'NotFoundError') setBtStatus('❌ 未选择设备 No device selected.');
+        else if (err.name === 'SecurityError') setBtStatus('❌ 蓝牙被封锁 — 需要HTTPS Bluetooth blocked — needs HTTPS.');
+        else setBtStatus(`❌ ${err.message}`);
+        btConnect.disabled = false;
+      }
+    }
+
+    function handleTempNotification(event) {
+      const temp = parseEtiTemp(event.target.value);
+      if (temp === null) return;
+
+      setBtTemp(temp);
+      const name = btDevice ? btDevice.name || 'Thermapen' : 'Thermapen';
+
+      // Small hold: wait 120ms in case 0x0001 command notification is still in flight
+      setTimeout(() => {
+        const wasButtonPress = _buttonPressed;
+        _buttonPressed = false;
+        const label = document.getElementById('bt-target-label');
+
+        if (wasButtonPress) {
+          // ── Physical button press: lock ONLY the targeted card ──
+          // Auto-target if only one finished card and none explicitly targeted
+          const finished = (typeof cooks !== 'undefined') ? cooks.filter(c => c.endTime) : [];
+          let targetCook = finished.find(c => c.id === window.btTargetCookId);
+          if (!targetCook && finished.length === 1) targetCook = finished[0];
+
+          if (!targetCook) {
+            if (finished.length === 0) {
+              setBtStatus(`⚠️ ${name} — ${temp.toFixed(1)} °C — 没有已停止的烹饪 No finished cooks`);
+            } else {
+              setBtStatus(`⚠️ ${name} — ${temp.toFixed(1)} °C — 请先点击卡片选择 Tap a card to target it`);
+              if (label) label.textContent = `⚠️ 多个烹饪 — 请先点击卡片 Tap a card to target`;
+            }
+            return;
+          }
+
+          const tempStr = temp.toFixed(1);
+          targetCook.temp = tempStr;
+          const el = document.getElementById(`temp-input-${targetCook.id}`);
+          if (el) el.innerHTML = `<span class="temp-value">${tempStr}</span><span class="temp-unit">°C</span>`;
+          setBtStatus(`🔒 ${name} — ${tempStr} °C → ${targetCook.food} — 按保存 press SAVE`);
+          if (label) label.textContent = `🔒 ${targetCook.food} — ${tempStr} °C — 请按保存 press SAVE`;
+          feedbackLockIn();
+          if (typeof window.lockCookTemp === 'function') window.lockCookTemp(targetCook.id);
+          // Clear target after locking so next card must be tapped
+          window.btTargetCookId = null;
+        } else {
+          // ── Manual Read button or auto-triggered: display on targeted card only ──
+          const updatedId = (typeof setLatestCookTemp === 'function') ? setLatestCookTemp(temp.toFixed(1)) : null;
+          setBtStatus(`✓ ${name} — ${temp.toFixed(1)} °C`);
+          if (label) {
+            const cook = (typeof cooks !== 'undefined' && updatedId !== null) ? cooks.find(c => c.id === updatedId) : null;
+            label.textContent = cook
+              ? `✓ ${cook.food.split(' ').slice(0,3).join(' ')} — ${temp.toFixed(1)} °C (按保存 press SAVE)`
+              : `✓ ${temp.toFixed(1)} °C`;
+          }
+        }
+      }, 120);
+    }
+
+    // Read Temp button: write Measure command (0x0010) → response fires as Sensor 1 notification
+    async function readTemperature() {
+      if (!btCommandChar) { setBtStatus('❌ Not connected'); return; }
+      try {
+        setBtStatus('请求测量中… Requesting measurement…');
+        await btCommandChar.writeValue(CMD_MEASURE);
+      } catch (err) {
+        console.error('Read error:', err);
+        setBtStatus(`❌ ${err.message}`);
+      }
+    }
+
+    // Attach event listeners
+    btConnect.addEventListener('click', connectThermometer);
+
+    // Update button label if device was previously paired
+    (function() {
+      const savedName = localStorage.getItem('bt_device_name');
+      if (savedName) btConnect.textContent = `🔄 重连 Reconnect ${savedName}`;
+    })();
+
+    // Auto-connect to remembered device on page load (no picker shown)
+    autoConnectThermometer();
+
+    // Called automatically by endCook() in app.js when a cook is stopped.
+    // Sends the BT Measure command so the reading arrives in that card.
+    window.requestBtReadForCook = function(cookId) {
+      const label = document.getElementById('bt-target-label');
+      const cook = (typeof cooks !== 'undefined') ? cooks.find(c => c.id === cookId) : null;
+      if (label) label.textContent = cook
+        ? `🌡️ 目标: ${cook.food.split(' ').slice(0,3).join(' ')} — 按设备按键锁定 Target set — press device button to lock in`
+        : '🌡️ 目标已设定 Target set — press device button to lock in';
+      if (btCommandChar) {
+        readTemperature();
+      }
+      // If not connected, just leave target set — chef can connect and press Read Temp
+    };
+
+    // ============================================================
+    // FAVOURITES
+    // ============================================================
+    const FAV_KEY = 'combi_favourites';
+
+    function getFavs() {
+      try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); } catch(e) { return []; }
+    }
+    function saveFavs(arr) {
+      localStorage.setItem(FAV_KEY, JSON.stringify(arr));
+    }
+
+    function toggleFav(foodName, btn) {
+      let favs = getFavs();
+      const idx = favs.indexOf(foodName);
+      if (idx === -1) {
+        favs.push(foodName);
+      } else {
+        favs.splice(idx, 1);
+      }
+      saveFavs(favs);
+      renderFavs();
+      // Update all star buttons for this food (card + favs grid)
+      document.querySelectorAll('.fav-btn').forEach(b => {
+        if (b.dataset.food === foodName) {
+          b.classList.toggle('fav-active', favs.includes(foodName));
+          b.textContent = favs.includes(foodName) ? '★' : '☆';
+        }
+      });
+      // Update original card highlight
+      document.querySelectorAll('.food-card').forEach(card => {
+        if (card.dataset.food === foodName) {
+          card.classList.toggle('fav-active', favs.includes(foodName));
+        }
+      });
+    }
+
+    function renderFavs() {
+      const favs = getFavs();
+      const section = document.getElementById('favs-section');
+      const grid = document.getElementById('favs-grid');
+      grid.innerHTML = '';
+      if (!favs.length) {
+        section.style.display = 'none';
+        return;
+      }
+      section.style.display = '';
+      favs.forEach(food => {
+        // Find original card to clone its span content
+        const orig = [...document.querySelectorAll('.food-card')].find(c => c.dataset.food === food);
+        if (!orig) return;
+        const clone = document.createElement('div');
+        clone.className = 'food-card fav-active';
+        clone.dataset.food = food;
+        clone.innerHTML = orig.querySelector('span').outerHTML;
+        clone.addEventListener('click', () => addNewCook(food));
+        // star button on clone
+        const star = document.createElement('button');
+        star.className = 'fav-btn fav-active';
+        star.textContent = '★';
+        star.dataset.food = food;
+        star.addEventListener('click', e => { e.stopPropagation(); toggleFav(food, star); });
+        clone.appendChild(star);
+        grid.appendChild(clone);
+      });
+    }
+
+    function initFavorites() {
+      const favs = getFavs();
+      // Add star button to every original food card
+      document.querySelectorAll('#menu .food-card').forEach(card => {
+        const food = card.getAttribute('onclick')?.match(/addNewCook\('(.+)'\)/)?.[1];
+        if (!food) return;
+        card.dataset.food = food;
+        // Replace inline onclick with addEventListener to allow stopPropagation on star
+        card.removeAttribute('onclick');
+        card.addEventListener('click', () => addNewCook(food));
+        const isFav = favs.includes(food);
+        if (isFav) card.classList.add('fav-active');
+        const star = document.createElement('button');
+        star.className = 'fav-btn' + (isFav ? ' fav-active' : '');
+        star.textContent = isFav ? '★' : '☆';
+        star.dataset.food = food;
+        star.addEventListener('click', e => { e.stopPropagation(); toggleFav(food, star); });
+        card.appendChild(star);
+      });
+      renderFavs();
+    }
+
+    // ============================================================
+    // APP INITIALIZATION
+    // ============================================================
+    initFavorites();
+    // Auto-select first staff member
+    autoSelectFirstStaff();
+    // Load recent entries on page load
+    loadRecent();
+  </script>
+</body>
+</html>

@@ -272,57 +272,69 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
     }
 
     const results = { saved: 0, skipped: 0, alerts: 0 };
+    const requestedDeviceIds = Array.from(new Set(
+      rawReadings
+        .map((raw) => String(raw && raw.deviceId || '').trim())
+        .filter(Boolean)
+    ));
+    const knownDevices = requestedDeviceIds.length
+      ? await TempMonDevice.find({ deviceId: { $in: requestedDeviceIds } }).populate('unit').lean()
+      : [];
+    const deviceMap = new Map(knownDevices.map((device) => [device.deviceId, device]));
 
     for (const raw of rawReadings) {
       const { deviceId, value, recordedAt, batteryPct } = raw;
-      if (typeof value !== 'number' || !deviceId) {
+      const normalizedDeviceId = String(deviceId || '').trim();
+      if (typeof value !== 'number' || !normalizedDeviceId) {
         console.warn(`⚠ [TempMon] Ingest skip — missing deviceId or non-numeric value:`, JSON.stringify(raw));
         results.skipped++; continue;
       }
 
-      const device = await TempMonDevice.findOne({ deviceId, active: true }).populate('unit');
-      if (!device) {
-        // Check if device exists but is inactive or unregistered
-        const anyDevice = await TempMonDevice.findOne({ deviceId }).lean();
-        if (anyDevice && !anyDevice.active) {
-          console.warn(`⚠ [TempMon] Ingest skip — device "${deviceId}" is registered but INACTIVE (active=false)`);
-        } else if (!anyDevice) {
-          console.warn(`⚠ [TempMon] Ingest skip — device "${deviceId}" is NOT REGISTERED in the database`);
+      const device = deviceMap.get(normalizedDeviceId);
+      if (!device || !device.active) {
+        if (device && !device.active) {
+          console.warn(`⚠ [TempMon] Ingest skip — device "${normalizedDeviceId}" is registered but INACTIVE (active=false)`);
+        } else {
+          console.warn(`⚠ [TempMon] Ingest skip — device "${normalizedDeviceId}" is NOT REGISTERED in the database`);
         }
         results.skipped++; continue;
       }
       if (!device.unit) {
-        console.warn(`⚠ [TempMon] Ingest skip — device "${deviceId}" has NO UNIT assigned`);
+        console.warn(`⚠ [TempMon] Ingest skip — device "${normalizedDeviceId}" has NO UNIT assigned`);
         results.skipped++; continue;
       }
 
       const unit = device.unit;
       const ts   = recordedAt ? new Date(recordedAt) : new Date();
 
-      // Skip duplicate — same device + same sensor timestamp + same value already stored
-      const exists = await TempMonReading.exists({ device: device._id, recordedAt: ts, value });
-      if (exists) { results.skipped++; continue; }
-
       // Determine if reading is flagged
       const flagged = value < unit.criticalMin || value > unit.criticalMax;
 
-      // Save reading
-      const reading = new TempMonReading({
-        device:     device._id,
-        unit:       unit._id,
-        value,
-        recordedAt: ts,
-        receivedAt: new Date(),
-        gatewayId,
-        flagged
-      });
-      await reading.save();
-      results.saved++;
+      let readingId;
+      try {
+        const reading = await TempMonReading.create({
+          device:     device._id,
+          unit:       unit._id,
+          value,
+          recordedAt: ts,
+          receivedAt: new Date(),
+          gatewayId,
+          flagged
+        });
+        readingId = reading._id;
+        results.saved++;
+      } catch (err) {
+        if (err && err.code === 11000) {
+          results.skipped++;
+          continue;
+        }
+        throw err;
+      }
 
       // Update device heartbeat
-      device.lastSeenAt = new Date();
-      if (batteryPct !== undefined) device.batteryPct = batteryPct;
-      await device.save();
+      const deviceUpdate = { lastSeenAt: new Date() };
+      if (batteryPct !== undefined) deviceUpdate.batteryPct = batteryPct;
+      await TempMonDevice.updateOne({ _id: device._id }, { $set: deviceUpdate });
 
       // Close any open device_offline alert for this device
       await closeOfflineAlertIfOpen(device._id);
@@ -333,7 +345,7 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
       // Alert logic
       const alertType = evaluateAlertType(value, unit);
       if (alertType) {
-        const created = await maybeCreateOrNotifyAlert(unit, device, reading._id, alertType, value, ts);
+        const created = await maybeCreateOrNotifyAlert(unit, device, readingId, alertType, value, ts);
         if (created) results.alerts++;
       } else {
         // Value back in range — auto-resolve open warning/critical alerts for this unit

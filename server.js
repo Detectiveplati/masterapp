@@ -204,6 +204,7 @@ async function seedLoraLinks(db) {
             linked++;
         }
         console.log(`✓ [TempMon] Linked ${linked} LoRa device(s) → TempMon units in TempLog DB`);
+        invalidateLoraDeviceCache();
     } catch (err) {
         console.error('✗ [TempMon] seedLoraLinks error:', err.message);
     }
@@ -352,6 +353,10 @@ app.use('/maintenance', requirePageAccess('maintenance'), express.static(path.jo
 app.use('/templog', requirePageAccess('templog'), express.static(path.join(__dirname, 'templog'), noCacheHtml));
 app.get('/templog', requirePageAccess('templog'), (req, res) => res.sendFile(path.join(__dirname, 'templog', 'index.html')));
 
+// Order Manager — isolated order extraction and kitchen execution module
+app.use('/order-manager', requirePageAccess('templog'), express.static(path.join(__dirname, 'order-manager'), noCacheHtml));
+app.get('/order-manager', requirePageAccess('templog'), (req, res) => res.sendFile(path.join(__dirname, 'order-manager', 'index.html')));
+
 // Pest Control — requires 'pest' permission
 app.use('/pest', requirePageAccess('pest'), express.static(path.join(__dirname, 'pest'), noCacheHtml));
 app.get('/pest',       requirePageAccess('pest'), (req, res) => res.sendFile(path.join(__dirname, 'pest', 'index.html')));
@@ -378,6 +383,7 @@ app.get('/procurement/request/:id', requirePageAccess('procurement'), (req, res)
 // All routes are declared in routes/index.js — add new modules there, not here.
 const apiRouter            = require('./routes');
 const sendPushToPermission = apiRouter.sendPushToPermission;
+const { startScheduler: startOrderManagerScheduler } = require('./order-manager/backend/scheduler');
 app.use('/api', apiRouter);
 
 // POST /api/tempmon/admin/seed — force re-seed all 31 equipment units + LoRa links (admin only)
@@ -1083,6 +1089,7 @@ app.post('/templog/api/lora/devices', requireTemplogDb, async (req, res) => {
             );
         }
 
+        invalidateLoraDeviceCache();
         res.json({ ok: true, device: doc });
     } catch (e) {
         console.error(e);
@@ -1145,6 +1152,7 @@ app.put('/templog/api/lora/devices/:sensorId', requireTemplogDb, async (req, res
             }
         }
 
+        invalidateLoraDeviceCache();
         const device = await req.templogDb.collection('lora_devices').findOne({ sensorId });
         res.json({ ok: true, device });
     } catch (e) {
@@ -1164,6 +1172,7 @@ app.delete('/templog/api/lora/devices/:sensorId', requireTemplogDb, async (req, 
 
         const result = await req.templogDb.collection('lora_devices').deleteOne({ sensorId });
         if (!result.deletedCount) return res.status(404).json({ error: 'Device not found' });
+        invalidateLoraDeviceCache();
         res.json({ ok: true });
     } catch (e) {
         console.error(e);
@@ -1366,13 +1375,7 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
         const sensorRows = extractLoraSensorRows(payload);
         const now = new Date();
 
-        const devices = await req.templogDb.collection('lora_devices').find({}).toArray();
-        const enabledMap = new Map(
-            devices
-                .filter(d => d.enabled !== false)
-                .map(d => [normalizeSensorId(d.sensorId), d])
-        );
-        const allMap = new Map(devices.map(d => [normalizeSensorId(d.sensorId), d]));
+        const { enabledMap, allMap } = await getLoraDeviceMaps(req.templogDb);
         const mappedReadings = [];
         const unmatched = [];
 
@@ -1688,11 +1691,13 @@ app.use((err, req, res, next) => {
 // ─── Start ───────────────────────────────────────────────────────────────────
 
 app.listen(PORT, '0.0.0.0', () => {
+    startOrderManagerScheduler();
     console.log(`\n🍽  Master Kitchen Management App`);
     console.log(`   Server running on http://localhost:${PORT}`);
     console.log(`   `);
     console.log(`   📋 Maintenance Dashboard → http://localhost:${PORT}/maintenance/`);
     console.log(`   🌡️  Kitchen Temp Log      → http://localhost:${PORT}/templog/`);
+    console.log(`   📦 Order Manager         → http://localhost:${PORT}/order-manager/`);
     console.log(`   🛒 Procurement           → http://localhost:${PORT}/procurement/`);
     console.log(`   🍽️  Food Safety NC        → http://localhost:${PORT}/foodsafety/`);
     console.log(`   🔐 Login                 → http://localhost:${PORT}/login`);
@@ -1740,6 +1745,17 @@ const LORA_TCP_PORT = parseInt(process.env.LORA_TCP_PORT || '4001', 10);
 const TCP_LOG_MAX   = 500;
 const TCP_LOG_FILE  = path.join(__dirname, 'logs', 'lora-tcp.log');
 const loraTcpLog    = [];   // ring buffer
+const TCP_LOG_ROTATE_BYTES = 2 * 1024 * 1024;
+const TCP_FILE_LOG_ENABLED = String(process.env.LORA_TCP_FILE_LOG_ENABLED || 'false').toLowerCase() === 'true';
+const LORA_DEVICE_CACHE_TTL_MS = Math.max(5000, parseInt(process.env.LORA_DEVICE_CACHE_TTL_MS || '30000', 10) || 30000);
+let tcpLogBuffer = [];
+let tcpLogFlushTimer = null;
+let tcpLogFlushInFlight = false;
+let loraDeviceCache = {
+    loadedAt: 0,
+    enabledMap: new Map(),
+    allMap: new Map()
+};
 
 try { fs.mkdirSync(path.join(__dirname, 'logs'), { recursive: true }); } catch (_) {}
 
@@ -1747,15 +1763,87 @@ function logTcpFrame(entry) {
     const line = JSON.stringify(entry);
     loraTcpLog.push(entry);
     if (loraTcpLog.length > TCP_LOG_MAX) loraTcpLog.shift();
+    if (!TCP_FILE_LOG_ENABLED) return;
+    tcpLogBuffer.push(line);
+    scheduleTcpLogFlush();
+}
+
+function scheduleTcpLogFlush() {
+    if (tcpLogFlushTimer || tcpLogFlushInFlight || !tcpLogBuffer.length) return;
+    tcpLogFlushTimer = setTimeout(() => {
+        tcpLogFlushTimer = null;
+        flushTcpLogBuffer().catch(() => {});
+    }, 250);
+}
+
+async function flushTcpLogBuffer() {
+    if (tcpLogFlushInFlight || !tcpLogBuffer.length || !TCP_FILE_LOG_ENABLED) return;
+    tcpLogFlushInFlight = true;
+    const lines = tcpLogBuffer;
+    tcpLogBuffer = [];
     try {
-        // Rotate when file exceeds 2 MB
-        try {
-            if (fs.statSync(TCP_LOG_FILE).size > 2 * 1024 * 1024) {
-                fs.renameSync(TCP_LOG_FILE, TCP_LOG_FILE + '.old');
-            }
-        } catch (_) {}
-        fs.appendFileSync(TCP_LOG_FILE, line + '\n');
+        await rotateTcpLogIfNeeded();
+        await fs.promises.appendFile(TCP_LOG_FILE, `${lines.join('\n')}\n`);
+    } catch (_) {
+        tcpLogBuffer = lines.concat(tcpLogBuffer);
+    } finally {
+        tcpLogFlushInFlight = false;
+        if (tcpLogBuffer.length) scheduleTcpLogFlush();
+    }
+}
+
+async function rotateTcpLogIfNeeded() {
+    try {
+        const stats = await fs.promises.stat(TCP_LOG_FILE);
+        if (stats.size > TCP_LOG_ROTATE_BYTES) {
+            await fs.promises.rename(TCP_LOG_FILE, TCP_LOG_FILE + '.old');
+        }
     } catch (_) {}
+}
+
+function invalidateLoraDeviceCache() {
+    loraDeviceCache = {
+        loadedAt: 0,
+        enabledMap: new Map(),
+        allMap: new Map()
+    };
+}
+
+async function getLoraDeviceMaps(db, options = {}) {
+    const forceRefresh = options.forceRefresh === true;
+    if (!forceRefresh && loraDeviceCache.loadedAt && (Date.now() - loraDeviceCache.loadedAt) < LORA_DEVICE_CACHE_TTL_MS) {
+        return loraDeviceCache;
+    }
+
+    const devices = await db.collection('lora_devices').find({}, {
+        projection: {
+            sensorId: 1,
+            equipment: 1,
+            model: 1,
+            enabled: 1,
+            tempmonUnitId: 1,
+            alias: 1,
+            notes: 1
+        }
+    }).toArray();
+    const enabledMap = new Map();
+    const allMap = new Map();
+
+    for (const device of devices) {
+        const normalizedSensorId = normalizeSensorId(device.sensorId);
+        if (!normalizedSensorId) continue;
+        allMap.set(normalizedSensorId, device);
+        if (device.enabled !== false) {
+            enabledMap.set(normalizedSensorId, device);
+        }
+    }
+
+    loraDeviceCache = {
+        loadedAt: Date.now(),
+        enabledMap,
+        allMap
+    };
+    return loraDeviceCache;
 }
 
 // Parse a 4-byte BCD sensor ID (e.g. 0x09 0x24 0x01 0x27 → "09240127")
@@ -1843,12 +1931,7 @@ async function ingestTcpTagRecords(gatewayImei, tags, tagModel, gatewayRtc) {
     };
     const gatewayId = String(gatewayImei || '').trim();
     const sensorRows = extractLoraSensorRows(payload);
-    const devices = await templogDb.collection('lora_devices').find({}).toArray();
-    const enabledMap = new Map(
-        devices.filter(d => d.enabled !== false)
-               .map(d => [normalizeSensorId(d.sensorId), d])
-    );
-    const allMap = new Map(devices.map(d => [normalizeSensorId(d.sensorId), d]));
+    const { enabledMap, allMap } = await getLoraDeviceMaps(templogDb);
     const mappedReadings = [];
     const unmatched = [];
     for (const row of sensorRows) {

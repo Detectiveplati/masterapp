@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Order Manager Extractor</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body data-module="order-manager">
+  <main class="page-shell order-extractor-page">
+    <section class="page-header section-card hero">
+      <p class="eyebrow">Order Extractor</p>
+      <h1>Pull live chef and dish report data by date.</h1>
+      <p class="lede">Choose a date, run both WordPress exports, then download one merged CSV with chef timeline, prep time, order number, quantity, and notes.</p>
+    </section>
+
+    <section class="section-card control-panel">
+      <div class="nav-links">
+        <a href="./index.html" class="nav-link">Order Manager</a>
+        <a href="#" class="nav-link active">Food Export</a>
+        <a href="./order-summary.html" class="nav-link">Order Summary</a>
+        <a href="#workspace" class="nav-link">Chef Sections</a>
+        <a href="./chef-preorder.html" class="nav-link">Chef Pre-Order</a>
+        <a href="./kitchen/kitchentemplog.html" class="nav-link">Kitchen</a>
+      </div>
+      <form id="extract-form" class="extract-form">
+        <label class="field">
+          <span>Date</span>
+          <input id="report-date" name="date" type="date" required>
+        </label>
+        <button id="run-button" class="btn-primary" type="submit">Run Extract</button>
+        <a id="download-link" class="btn-outline hidden" href="#">Download CSV</a>
+      </form>
+      <p id="status" class="status">No data loaded yet.</p>
+      <div id="summary" class="summary hidden"></div>
+    </section>
+
+    <section id="workspace" class="workspace hidden">
+      <aside class="section-card sidebar">
+        <div class="sidebar-head">
+          <h2>Chefs</h2>
+          <input id="chef-search" type="search" placeholder="Filter chefs">
+        </div>
+        <div id="chef-list" class="chef-list"></div>
+      </aside>
+
+      <section class="section-card report-panel">
+        <div class="report-toolbar">
+          <h2 id="report-title">Report</h2>
+          <input id="dish-search" type="search" placeholder="Filter dishes">
+        </div>
+        <div id="report-meta" class="report-meta"></div>
+        <div id="report-table-wrap" class="table-wrap"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="/js/shell.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

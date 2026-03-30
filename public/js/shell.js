@@ -4,7 +4,7 @@
  * Injects the top navbar and side navigation into every page.
  * Include at the END of <body>:  <script src="/js/shell.js"></script>
  *
- * Each page must declare its module via:  <body data-module="maintenance|foodsafety|templog|procurement|admin|hub">
+ * Each page must declare its module via:  <body data-module="maintenance|foodsafety|templog|order-manager|procurement|admin|hub">
  *
  * Coordinates with auth-guard.js — reads window._authUser to avoid
  * a second round-trip to /api/auth/me.
@@ -56,7 +56,7 @@
       var mod = document.body ? document.body.getAttribute('data-module') : '';
       var THEME = {
         maintenance: '#ff7a18', foodsafety: '#16a085', pest: '#2e7d32',
-        templog: '#3aa6ff', procurement: '#27ae60', admin: '#7f5af0',
+        templog: '#3aa6ff', 'order-manager': '#ff7a18', procurement: '#27ae60', admin: '#7f5af0',
         hub: '#ff7a18', settings: '#ff7a18'
       };
       var tc = document.createElement('meta');
@@ -79,6 +79,7 @@
     foodsafety:  { label: '🥗 Food Safety'        },
     pest:        { label: '🐭 Rat Trap Surveillance' },
     templog:     { label: '🌡️ Kitchen Logs'      },
+    'order-manager': { label: '📋 Order Manager' },
     procurement: { label: '📦 Procurement'        },
     settings:    { label: '🔔 Notifications'      },
     admin:       { label: '⚙️ Admin'             },
@@ -125,6 +126,17 @@
       children: [
         { href: '/templog/',                               label: '🏠 Overview'   },
         { href: '/templog/departments/combioven.html',     label: '🔥 Combi Oven' },
+      ],
+    },
+    {
+      icon: '📋', label: 'Order Manager', module: 'order-manager',
+      href: '/order-manager/', perm: 'templog',
+      children: [
+        { href: '/order-manager/',                         label: '🏠 Overview'        },
+        { href: '/order-manager/extractor.html',           label: '🧲 Manual Extract'  },
+        { href: '/order-manager/order-summary.html',       label: '📊 Order Summary'   },
+        { href: '/order-manager/chef-preorder.html',       label: '🧾 Chef Pre-Order'  },
+        { href: '/order-manager/kitchen/kitchentemplog.html', label: '🔥 Kitchen Temp Log' },
       ],
     },
     {

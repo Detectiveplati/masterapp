@@ -41,6 +41,7 @@
 /* Per-module accent colour, applied via <body data-module="..."> */
 body[data-module="maintenance"] { --accent: #ff7a18; --accent-2: #e74c3c; }
 body[data-module="templog"]     { --accent: #3aa6ff; --accent-2: #0e7fd6; }
+body[data-module="order-manager"] { --accent: #ff7a18; --accent-2: #e74c3c; }
 body[data-module="procurement"] { --accent: #27ae60; --accent-2: #1e8449; }
 body[data-module="foodsafety"]  { --accent: #16a085; --accent-2: #1abc9c; }
 body[data-module="admin"]       { --accent: #7f5af0; --accent-2: #5e3fce; }
@@ -223,6 +224,7 @@ body.nav-open #sidenav { transform: translateX(0); }
 }
 /* Per-module active colour (overrides .active default orange) */
 body[data-module="templog"]     .sidenav-link.active { background: rgba(58,166,255,0.07);  border-left-color: #3aa6ff; color: #3aa6ff; }
+body[data-module="order-manager"] .sidenav-link.active { background: rgba(255,122,24,0.08); border-left-color: #ff7a18; color: #ff7a18; }
 body[data-module="procurement"] .sidenav-link.active { background: rgba(39,174,96,0.07);   border-left-color: #27ae60; color: #27ae60; }
 body[data-module="foodsafety"]  .sidenav-link.active { background: rgba(22,160,133,0.07);  border-left-color: #16a085; color: #16a085; }
 body[data-module="admin"]       .sidenav-link.active { background: rgba(127,90,240,0.07);  border-left-color: #7f5af0; color: #7f5af0; }
@@ -381,6 +383,7 @@ section h2 {
 /* Module-specific accent strips */
 .hub-card.maintenance::before { background: linear-gradient(90deg, var(--clr-maintenance), #e74c3c); }
 .hub-card.templog::before     { background: linear-gradient(90deg, var(--clr-templog), #0e7fd6); }
+.hub-card.order-manager::before { background: linear-gradient(90deg, #ff7a18, #e74c3c); }
 .hub-card.procurement::before { background: linear-gradient(90deg, var(--clr-procurement), #1e8449); }
 .hub-card.foodsafety::before  { background: linear-gradient(90deg, var(--clr-foodsafety), #1abc9c); }
 .hub-card.admin::before       { background: linear-gradient(90deg, var(--clr-admin), #5e3fce); }
@@ -389,6 +392,7 @@ section h2 {
 
 .hub-card.maintenance .go-btn { color: var(--clr-maintenance); }
 .hub-card.templog .go-btn     { color: var(--clr-templog); }
+.hub-card.order-manager .go-btn { color: #ff7a18; }
 .hub-card.procurement .go-btn { color: var(--clr-procurement); }
 .hub-card.foodsafety .go-btn  { color: var(--clr-foodsafety); }
 .hub-card.admin .go-btn       { color: var(--clr-admin); }

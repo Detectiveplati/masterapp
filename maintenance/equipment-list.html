@@ -534,6 +534,8 @@
         let allEquipment = [];
         let issueCounts = {};
         let currentView = 'grid';
+        let filterTimer = null;
+        const FILTER_DEBOUNCE_MS = 180;
 
         // Equipment type colour classes
         const typeColorClass = {
@@ -561,7 +563,7 @@
         });
 
         function setupEventListeners() {
-            document.getElementById('searchInput').addEventListener('input', filterEquipment);
+            document.getElementById('searchInput').addEventListener('input', scheduleFilterEquipment);
             document.getElementById('filterType').addEventListener('change', filterEquipment);
             document.getElementById('filterStatus').addEventListener('change', filterEquipment);
             document.getElementById('sortBy').addEventListener('change', filterEquipment);
@@ -595,12 +597,22 @@
                     emptyState.style.display = 'none';
                     updateStats();
                     populateTypeFilter();
-                    displayEquipment(allEquipment);
+                    filterEquipment();
                 }
             } catch (error) {
                 console.error('Error loading equipment:', error);
                 loadingState.innerHTML = '<p style="color: var(--accent);">❌ Failed to load equipment. Please check server connection.</p>';
             }
+        }
+
+        function scheduleFilterEquipment() {
+            if (filterTimer) {
+                clearTimeout(filterTimer);
+            }
+            filterTimer = setTimeout(() => {
+                filterTimer = null;
+                filterEquipment();
+            }, FILTER_DEBOUNCE_MS);
         }
 
         function populateTypeFilter() {
@@ -824,7 +836,6 @@
             currentView = view;
             document.getElementById('btnGridView').classList.toggle('active', view === 'grid');
             document.getElementById('btnListView').classList.toggle('active', view === 'list');
-            displayEquipment(allEquipment);
             filterEquipment(); // Re-apply current filters
         }
 

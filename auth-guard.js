@@ -21,8 +21,11 @@
   if      (path.indexOf('/maintenance') === 0) module = 'maintenance';
   else if (path.indexOf('/foodsafety')  === 0) module = 'foodsafety';
   else if (path.indexOf('/templog')     === 0) module = 'templog';
+  else if (path.indexOf('/order-manager') === 0) module = 'templog';
   else if (path.indexOf('/procurement') === 0) module = 'procurement';
   else if (path.indexOf('/pest')        === 0) module = 'pest';
+  else if (path.indexOf('/tempmon')     === 0) module = 'tempmon';
+  else if (path.indexOf('/iso')         === 0) module = 'iso';
   else if (path.indexOf('/admin')       === 0) module = '__admin__';
 
   function reveal() {
@@ -32,6 +35,9 @@
   function redirect(url) {
     window.location.replace(url);
   }
+
+  // The server already protects these routes, so avoid a blank-screen wait here.
+  reveal();
 
   fetch('/api/auth/me', { credentials: 'include' })
     .then(function (r) {

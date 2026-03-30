@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Order Manager</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body data-module="order-manager">
+  <main class="page-shell order-extractor-page">
+    <section class="page-header section-card hero">
+      <p class="eyebrow">Order Manager</p>
+      <h1>Admin extraction, order summaries, and kitchen execution in one isolated module.</h1>
+      <p class="lede">This module is self-contained inside masterapp. All workflows and links stay within the order manager namespace.</p>
+    </section>
+
+    <section class="section-card control-panel">
+      <div class="nav-links">
+        <a href="./index.html" class="nav-link active">Order Manager</a>
+        <a href="./extractor.html" class="nav-link">Manual Extract</a>
+        <a href="./order-summary.html" class="nav-link">Order Summary</a>
+        <a href="./chef-preorder.html" class="nav-link">Chef Pre-Order</a>
+        <a href="./kitchen/kitchentemplog.html" class="nav-link">Kitchen</a>
+      </div>
+      <div class="summary">
+        <div class="summary-card"><span>Admin</span><strong><a href="./extractor.html">Run manual extraction</a></strong></div>
+        <div class="summary-card"><span>Schedule</span><strong>2 PM / 8 PM</strong></div>
+        <div class="summary-card"><span>Kitchen</span><strong><a href="./kitchen/kitchentemplog.html">Kitchen temp log</a></strong></div>
+        <div class="summary-card"><span>Planning</span><strong><a href="./chef-preorder.html">Chef pre-order</a></strong></div>
+      </div>
+    </section>
+  </main>
+  <script src="/js/shell.js"></script>
+</body>
+</html>

@@ -45,6 +45,7 @@ router.use('/tempmon',          require('./tempmon'));
 
 // Procurement
 router.use('/requests',         require('./procurementRequests'));
+router.use('/order-manager',    require('./orderManager'));
 
 // ISO Records Keeper
 router.use('/iso-records',      require('./isoRecords'));

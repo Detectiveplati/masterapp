@@ -1,0 +1,365 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+}
+
+.prep-page {
+  width: min(1400px, calc(100vw - 40px));
+  margin: 0 auto;
+  padding: 28px 0 48px;
+}
+
+.hero-panel,
+.control-panel,
+.chef-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: 0 8px 24px var(--shadow);
+}
+
+.hero-panel {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px 30px;
+  align-items: flex-start;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.78rem;
+  color: var(--accent);
+}
+
+h1 {
+  margin: 0 0 10px;
+  font-size: clamp(2rem, 3.2vw, 3rem);
+  line-height: 1.04;
+}
+
+.lede {
+  margin: 0;
+  max-width: 860px;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.back-link,
+.btn-primary,
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.back-link,
+.btn-secondary {
+  padding: 12px 18px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.btn-primary {
+  padding: 12px 18px;
+  color: #fff;
+  border: none;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+}
+
+.back-link:hover,
+.btn-primary:hover,
+.btn-secondary:hover {
+  transform: translateY(-1px);
+}
+
+.control-panel {
+  margin-top: 18px;
+  padding: 22px 24px;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field span {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 0 14px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+}
+
+.control-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.status {
+  margin: 16px 0 0;
+  color: var(--muted);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.summary-card {
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 122, 24, 0.06), rgba(255, 255, 255, 0.98));
+  border: 1px solid var(--border);
+}
+
+.summary-card span {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.summary-card strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.3rem;
+}
+
+.board {
+  margin-top: 18px;
+  display: grid;
+  gap: 16px;
+}
+
+.chef-card {
+  padding: 20px 22px;
+}
+
+.chef-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+
+.chef-head h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.chef-meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.slot-list {
+  display: grid;
+  gap: 12px;
+}
+
+.slot-card {
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  overflow: hidden;
+}
+
+.slot-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(90deg, rgba(255, 122, 24, 0.10), rgba(255, 255, 255, 0.96));
+  border-bottom: 1px solid var(--border);
+}
+
+.slot-head strong {
+  font-size: 1.05rem;
+}
+
+.slot-head span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.item-list {
+  display: grid;
+}
+
+.prep-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  padding: 16px;
+  border-top: 1px solid rgba(18, 19, 22, 0.08);
+}
+
+.prep-item:first-child {
+  border-top: none;
+}
+
+.prep-item.done {
+  background: var(--done);
+}
+
+.prep-check {
+  width: 22px;
+  height: 22px;
+  margin-top: 4px;
+}
+
+.prep-main {
+  min-width: 0;
+}
+
+.prep-title {
+  margin: 0 0 8px;
+  font-size: 1.02rem;
+}
+
+.prep-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.prep-tag {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 122, 24, 0.08);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.prep-item.done .prep-tag {
+  background: rgba(255, 255, 255, 0.64);
+  color: var(--done-ink);
+}
+
+.prep-notes {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+}
+
+.prep-qty {
+  min-width: 92px;
+  text-align: right;
+}
+
+.prep-qty strong {
+  display: block;
+  font-size: 1.45rem;
+}
+
+.prep-qty span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.empty-state {
+  padding: 28px;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+@media (max-width: 920px) {
+  .filter-grid,
+  .summary {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-panel,
+  .chef-head,
+  .slot-head,
+  .prep-item {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .control-actions {
+    flex-direction: column;
+  }
+
+  .prep-qty {
+    text-align: left;
+  }
+}
+
+/* Readability hardening after masterapp shell integration */
+body[data-module="order-manager"] {
+  color: var(--ink);
+}
+
+body[data-module="order-manager"] .hero-panel,
+body[data-module="order-manager"] .control-panel,
+body[data-module="order-manager"] .chef-card,
+body[data-module="order-manager"] .slot-card,
+body[data-module="order-manager"] .summary-card,
+body[data-module="order-manager"] .prep-item {
+  color: var(--ink);
+}
+
+body[data-module="order-manager"] .lede,
+body[data-module="order-manager"] .status,
+body[data-module="order-manager"] .chef-meta,
+body[data-module="order-manager"] .summary-card span,
+body[data-module="order-manager"] .field span,
+body[data-module="order-manager"] .prep-notes,
+body[data-module="order-manager"] .prep-tag,
+body[data-module="order-manager"] .prep-qty span {
+  color: var(--muted);
+}
+
+body[data-module="order-manager"] .back-link,
+body[data-module="order-manager"] .btn-secondary {
+  color: var(--ink);
+  background: #fff;
+}
+
+body[data-module="order-manager"] .btn-primary {
+  color: #fff;
+}
+
+body[data-module="order-manager"] .field input,
+body[data-module="order-manager"] .field select,
+body[data-module="order-manager"] .prep-title,
+body[data-module="order-manager"] .prep-qty strong {
+  color: var(--ink);
+}

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chef Pre-Order</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body data-module="order-manager">
+  <main class="page-shell order-extractor-page">
+    <section class="page-header section-card hero">
+      <p class="eyebrow">Chef Pre-Order</p>
+      <h1>Latest dishes and quantities for department ordering and stock preparation.</h1>
+      <p class="lede">Each date shows only its latest updated report. Use the department filter to focus on one station at a time.</p>
+    </section>
+
+    <section class="section-card control-panel">
+      <div class="nav-links">
+        <a href="./index.html" class="nav-link">Order Manager</a>
+        <a href="./extractor.html" class="nav-link">Food Export</a>
+        <a href="./order-summary.html" class="nav-link">Order Summary</a>
+        <a href="./chef-preorder.html" class="nav-link active">Chef Pre-Order</a>
+        <a href="./kitchen/kitchentemplog.html" class="nav-link">Kitchen</a>
+      </div>
+      <div class="extract-form">
+        <label class="field">
+          <span>Report Date</span>
+          <select id="date-filter" class="summary-select"></select>
+        </label>
+        <label class="field">
+          <span>Department</span>
+          <select id="department-filter" class="summary-select"></select>
+        </label>
+        <button id="refresh-button" class="btn-primary" type="button">Reload</button>
+      </div>
+      <p id="status" class="status">Loading latest chef pre-order report…</p>
+      <div id="summary" class="summary"></div>
+    </section>
+
+    <section id="board" class="summary-board"></section>
+  </main>
+
+  <script src="/js/shell.js"></script>
+  <script src="./chef-preorder.js"></script>
+</body>
+</html>

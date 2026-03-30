@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Order Summary</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body data-module="order-manager">
+  <main class="page-shell order-extractor-page">
+    <section class="page-header section-card hero">
+      <p class="eyebrow">Order Summary</p>
+      <h1>Daily totals by chef and dish.</h1>
+      <p class="lede">Use this to see daily production volume before operations start, so each station can plan ingredients and ordering.</p>
+    </section>
+
+    <section class="section-card control-panel">
+      <div class="nav-links">
+        <a href="./index.html" class="nav-link">Order Manager</a>
+        <a href="./extractor.html" class="nav-link">Food Export</a>
+        <a href="./order-summary.html" class="nav-link active">Order Summary</a>
+        <a href="./chef-preorder.html" class="nav-link">Chef Pre-Order</a>
+        <a href="./kitchen/kitchentemplog.html" class="nav-link">Kitchen</a>
+      </div>
+      <div class="extract-form">
+        <label class="field">
+          <span>Report Date</span>
+          <select id="summary-date" class="summary-select"></select>
+        </label>
+        <button id="summary-refresh" class="btn-primary" type="button">Reload Summary</button>
+      </div>
+      <p id="summary-status" class="status">Loading order summary…</p>
+      <div id="summary-top" class="summary"></div>
+    </section>
+
+    <section id="summary-board" class="summary-board"></section>
+  </main>
+
+  <script src="/js/shell.js"></script>
+  <script src="./order-summary.js"></script>
+</body>
+</html>
