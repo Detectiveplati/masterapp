@@ -354,6 +354,12 @@
       if (!item) {
         return false;
       }
+      if (card.classList.contains("cooked") !== Boolean(item.isCooked)) {
+        return false;
+      }
+      if (card.classList.contains("pending") !== Boolean(item.isPending && !item.isCooked)) {
+        return false;
+      }
       applyCardState(card, item);
     }
 
