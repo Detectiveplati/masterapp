@@ -46,7 +46,7 @@ function createChefPreorderRouter() {
 function buildChefPreorderPayload(rows, meta) {
   const filteredRows = [];
   for (const row of rows) {
-    if (!(row.resolvedDepartment || row.chef) || row.unmatchedReason) {
+    if (!row.resolvedDepartment || row.needsDepartmentReview || row.unmatchedReason) {
       continue;
     }
     filteredRows.push(enrichCombinedRow(row));
@@ -74,7 +74,7 @@ function groupByChef(rows) {
   const chefMap = new Map();
 
   for (const row of rows) {
-    const departmentName = row.resolvedDepartment || row.chef;
+    const departmentName = row.resolvedDepartment;
     if (!chefMap.has(departmentName)) {
       chefMap.set(departmentName, {
         chef: departmentName,

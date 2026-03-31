@@ -39,7 +39,7 @@ async function loadDashboard() {
     const response = await fetch(`${API_BASE}/dashboard?${params.toString()}`);
     const payload = await response.json();
     if (!response.ok) {
-      throw new Error(payload.error || "Could not load department rules.");
+      throw new Error(payload.error || "Could not load the department rules.");
     }
 
     dashboardState = payload;
@@ -94,7 +94,7 @@ function renderDepartmentFilter(departments) {
 
 function renderDepartmentList(departments) {
   if (!departments.length) {
-    departmentListEl.innerHTML = `<div class="empty-state">No departments saved yet.</div>`;
+    departmentListEl.innerHTML = `<div class="empty-state">No departments have been saved yet.</div>`;
     return;
   }
 
@@ -142,7 +142,7 @@ function renderDepartmentList(departments) {
 
 function renderDishCatalog(dishes, departments) {
   if (!dishes.length) {
-    dishCatalogEl.innerHTML = `<div class="empty-state">No dishes match the current filter.</div>`;
+    dishCatalogEl.innerHTML = `<div class="empty-state">No dishes match the current filters.</div>`;
     return;
   }
 

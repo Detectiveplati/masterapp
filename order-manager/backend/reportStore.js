@@ -3,6 +3,7 @@ const { ObjectId } = require("mongodb");
 const { COLLECTIONS } = require("../../config/databaseLayout");
 const { getDb } = require("./db");
 const { getCurrentDateInTimeZone } = require("./dateUtils");
+const { enrichCombinedRow, normalizeText, parseTimeLabel } = require("./reportRowUtils");
 
 let indexPromise = null;
 const RUN_COLLECTION = COLLECTIONS.orderManager.EXTRACTION_RUNS;
@@ -224,11 +225,9 @@ function summarizeResult(run) {
     return null;
   }
 
-  const sections = Array.isArray(run.sections) ? run.sections : [];
-  const chefs = Array.isArray(run.chefs) && run.chefs.length
-    ? run.chefs
-    : sections.map((section) => section.chef).filter(Boolean);
   const csvRows = Array.isArray(run.csvRows) ? run.csvRows : [];
+  const resolvedSections = buildResolvedDepartmentSections(csvRows);
+  const chefs = resolvedSections.map((section) => section.chef).filter(Boolean);
   const mappingSummary = summarizeDepartmentMapping(csvRows);
 
   return {
@@ -238,16 +237,99 @@ function summarizeResult(run) {
     extractedAt: run.extractedAt,
     reportType: run.reportType,
     sourceUrl: run.sourceUrl,
-    sectionCount: run.sectionCount,
-    rowCount: csvRows.length || (Array.isArray(run.rows) ? run.rows.length : countSectionRows(sections)),
-    entryCount: Array.isArray(run.entries) ? run.entries.length : countSectionEntries(sections),
+    sectionCount: resolvedSections.length,
+    rowCount: countSectionRows(resolvedSections),
+    entryCount: countSectionEntries(resolvedSections),
     mergeSummary: run.mergeSummary || null,
     mappingSummary,
     refreshSummary: run.refreshSummary || null,
     chefs,
-    sections,
+    sections: resolvedSections,
     outputFiles: run.outputFiles || null
   };
+}
+
+function buildResolvedDepartmentSections(rows) {
+  const sectionMap = new Map();
+
+  for (const rawRow of Array.isArray(rows) ? rows : []) {
+    const row = enrichCombinedRow(rawRow);
+    const departmentName = normalizeText(row.resolvedDepartment);
+    if (!departmentName || row.unmatchedReason || !row.dish) {
+      continue;
+    }
+
+    if (!sectionMap.has(departmentName)) {
+      sectionMap.set(departmentName, {
+        chef: departmentName,
+        department: departmentName,
+        timeSet: new Set(),
+        dishMap: new Map()
+      });
+    }
+
+    const section = sectionMap.get(departmentName);
+    const timeLabel = normalizeText(row.prepTimeLabel || row.prepTime || "");
+    if (timeLabel) {
+      section.timeSet.add(timeLabel);
+    }
+
+    if (!section.dishMap.has(row.dish)) {
+      section.dishMap.set(row.dish, {
+        dish: row.dish,
+        totalQty: 0,
+        timeQtyMap: new Map()
+      });
+    }
+
+    const dish = section.dishMap.get(row.dish);
+    dish.totalQty += row.qtyNumber;
+    if (timeLabel) {
+      dish.timeQtyMap.set(timeLabel, (dish.timeQtyMap.get(timeLabel) || 0) + row.qtyNumber);
+    }
+  }
+
+  return Array.from(sectionMap.values())
+    .map((section) => {
+      const times = Array.from(section.timeSet).sort(compareTimeLabels);
+      const rowsForSection = Array.from(section.dishMap.values())
+        .map((dish) => {
+          const row = {
+            chef: section.chef,
+            dish: dish.dish,
+            total: formatQuantity(dish.totalQty)
+          };
+          for (const timeLabel of times) {
+            const qty = dish.timeQtyMap.get(timeLabel) || 0;
+            row[timeLabel] = qty ? formatQuantity(qty) : "";
+          }
+          return row;
+        })
+        .sort((left, right) => parseInt(right.total || "0", 10) - parseInt(left.total || "0", 10) || left.dish.localeCompare(right.dish));
+
+      const entries = rowsForSection.flatMap((row) =>
+        times
+          .filter((timeLabel) => row[timeLabel])
+          .map((timeLabel) => ({
+            chef: section.chef,
+            dish: row.dish,
+            time: timeLabel,
+            rawTime: timeLabel,
+            value: row[timeLabel],
+            total: row.total
+          }))
+      );
+
+      return {
+        chef: section.chef,
+        department: section.department,
+        headers: ["Dish", ...times, "Total"],
+        times,
+        rows: rowsForSection,
+        entries
+      };
+    })
+    .sort((left, right) => left.chef.localeCompare(right.chef));
 }
 
 function buildFindOptions(baseOptions, options = {}) {
@@ -264,6 +346,18 @@ function countSectionRows(sections) {
 
 function countSectionEntries(sections) {
   return sections.reduce((sum, section) => sum + (Array.isArray(section.entries) ? section.entries.length : 0), 0);
+}
+
+function compareTimeLabels(left, right) {
+  return parseTimeLabel(left) - parseTimeLabel(right) || left.localeCompare(right);
+}
+
+function formatQuantity(value) {
+  const quantity = Number(value);
+  if (!Number.isFinite(quantity)) {
+    return "";
+  }
+  return Number.isInteger(quantity) ? String(quantity) : String(quantity);
 }
 
 function buildRunLabel(run) {

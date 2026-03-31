@@ -169,9 +169,9 @@ function buildCombiOrder(row) {
   return {
     id: [normalizedRow.reportDate, normalizedRow.prepTime, normalizedRow.orderNumber, normalizedRow.dish].join("||"),
     reportDate: normalizedRow.reportDate || "",
-    chef: normalizedRow.chef || "",
+    chef: normalizedRow.resolvedDepartment || "",
     sourceDepartment: normalizedRow.sourceDepartment || "",
-    resolvedDepartment: normalizedRow.resolvedDepartment || normalizedRow.chef || "",
+    resolvedDepartment: normalizedRow.resolvedDepartment || "",
     dish: normalizedRow.dish || "",
     dishChinese: dishName.chinese,
     dishEnglish: dishName.english,
@@ -200,11 +200,14 @@ function buildCombiOrder(row) {
 }
 
 function isCombiOvenRow(row, combiDepartmentCodes) {
-  const resolvedDepartmentCode = normalizeDepartmentCode(row && (row.resolvedDepartmentCode || row.resolvedDepartment || row.chef || ""));
+  if (!row || row.unmatchedReason || row.needsDepartmentReview) {
+    return false;
+  }
+  const resolvedDepartmentCode = normalizeDepartmentCode(row && (row.resolvedDepartmentCode || row.resolvedDepartment || ""));
   if (Array.isArray(combiDepartmentCodes) && combiDepartmentCodes.length) {
     return combiDepartmentCodes.includes(resolvedDepartmentCode);
   }
-  return /烤炉|oven/i.test(String(row && (row.resolvedDepartment || row.chef || "")));
+  return /烤炉|oven/i.test(String(row && (row.resolvedDepartment || "")));
 }
 
 function splitBilingualDish(value, preferredChinese = "", preferredEnglish = "") {

@@ -13,8 +13,8 @@
     <section class="page-header section-card hero">
       <div>
         <p class="eyebrow">Order Extractor</p>
-        <h1>Pull live chef and dish reports by date.</h1>
-        <p class="lede">Run this only when you need a manual refresh. The system already schedules automatic extractions, so this page should stay focused and fast.</p>
+        <h1>Run a manual extraction for the report date you need.</h1>
+        <p class="lede">This page is for manual intervention only. Automatic runs should handle the normal schedule, so the manual path should stay direct, readable, and easy to verify.</p>
       </div>
       <div class="hero-meta-grid">
         <div class="hero-meta-card">
@@ -23,11 +23,11 @@
         </div>
         <div class="hero-meta-card">
           <span>Output</span>
-          <strong>Merged CSV</strong>
+          <strong>Merged extraction dataset</strong>
         </div>
         <div class="hero-meta-card">
-          <span>Use After Run</span>
-          <strong>Chef sections below</strong>
+          <span>Next Step</span>
+          <strong>Department sections below</strong>
         </div>
       </div>
     </section>
@@ -35,18 +35,18 @@
     <section class="section-card control-panel">
       <div class="nav-links">
         <a href="./index.html" class="nav-link">Order Manager</a>
-        <a href="./extractor.html" class="nav-link active">Food Export</a>
+        <a href="./extractor.html" class="nav-link active">Manual Extract</a>
         <a href="./order-summary.html" class="nav-link">Order Summary</a>
         <a href="./department-mappings.html" class="nav-link">Department Rules</a>
-        <a href="#workspace" class="nav-link">Chef Sections</a>
+        <a href="#workspace" class="nav-link">Department Sections</a>
         <a href="./chef-preorder.html" class="nav-link">Chef Pre-Order</a>
         <a href="./kitchen/kitchentemplog.html" class="nav-link">Kitchen</a>
       </div>
       <div class="page-actions">
         <div class="page-actions-main">
           <div class="control-copy">
-            <h2>Run only one clean manual action.</h2>
-            <p>Pick the report date, run the extract, then review source sections here or assign departments in Department Rules. Keep the primary button close to the date field so the flow is obvious.</p>
+            <h2>Choose a date, run once, then review the resolved output.</h2>
+            <p>After the extraction finishes, review the resolved department sections here. If any dish still needs routing, send it to Department Rules before using the downstream planning pages.</p>
           </div>
         </div>
       </div>
@@ -72,8 +72,8 @@
     <section id="workspace" class="workspace hidden">
       <aside class="section-card sidebar">
         <div class="sidebar-head">
-          <h2>Chef Sections</h2>
-          <input id="chef-search" class="search-input" type="search" placeholder="Filter chefs">
+          <h2>Department Sections</h2>
+          <input id="chef-search" class="search-input" type="search" placeholder="Search departments">
         </div>
         <div id="chef-list" class="chef-list"></div>
       </aside>
@@ -89,7 +89,7 @@
               <button id="timeline-view-button" class="view-switch-btn is-active" type="button">Timeline</button>
               <button id="grid-view-button" class="view-switch-btn" type="button">Grid</button>
             </div>
-            <input id="dish-search" class="search-input" type="search" placeholder="Filter dishes">
+            <input id="dish-search" class="search-input" type="search" placeholder="Search dishes">
           </div>
         </div>
         <div id="report-meta" class="report-meta"></div>

@@ -24,7 +24,7 @@ function createOrderSummaryRouter() {
 
       const rows = [];
       for (const row of Array.isArray(run.csvRows) ? run.csvRows : []) {
-        if (row.unmatchedReason || !row.reportDate || !(row.resolvedDepartment || row.chef) || !row.dish) {
+        if (row.unmatchedReason || !row.reportDate || !row.resolvedDepartment || row.needsDepartmentReview || !row.dish) {
           continue;
         }
         rows.push(enrichCombinedRow(row));
@@ -59,7 +59,7 @@ function buildSummaryPayload(rows, meta) {
   let totalQty = 0;
 
   for (const row of rows) {
-    const departmentName = row.resolvedDepartment || row.chef;
+    const departmentName = row.resolvedDepartment;
     const qtyNumber = row.qtyNumber;
     totalQty += qtyNumber;
     if (row.orderNumber) orderSet.add(row.orderNumber);

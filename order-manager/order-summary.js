@@ -20,7 +20,7 @@ async function loadSummary(date) {
     const response = await fetch(url);
     const payload = await response.json();
     if (!response.ok) {
-      throw new Error(payload.error || "Could not load order summary.");
+      throw new Error(payload.error || "Could not load the order summary.");
     }
 
     dateSelectEl.innerHTML = payload.reportDates
@@ -54,7 +54,7 @@ function readRequestedDate() {
 
 function renderBoard(chefs) {
   if (!chefs.length) {
-    boardEl.innerHTML = `<div class="empty-state">No order summary data for this date.</div>`;
+    boardEl.innerHTML = `<div class="empty-state">No order summary data is available for this date.</div>`;
     return;
   }
 

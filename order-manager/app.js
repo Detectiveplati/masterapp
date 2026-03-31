@@ -48,7 +48,7 @@ async function loadLatest() {
     }
     selectedChef = latestResult.chefs[0] || "";
     renderAll();
-    setStatus(`Loaded ${formatLongDate(latestResult.reportDate)} extracted at ${formatDateTime(latestResult.extractedAt)}.`);
+    setStatus(`Loaded ${formatLongDate(latestResult.reportDate)}. Extraction saved at ${formatDateTime(latestResult.extractedAt)}.`);
   }
 }
 
@@ -106,7 +106,7 @@ function renderSummary() {
   const cards = [
     summaryCard("Viewing Date", formatLongDate(latestResult.reportDate || dateInput.value || "-")),
     summaryCard("Run Type", formatRunType(latestResult.runType)),
-    summaryCard("Source Sections", latestResult.sectionCount),
+      summaryCard("Department Sections", latestResult.sectionCount),
     summaryCard("Rows", latestResult.rowCount),
     summaryCard("Filled Cells", latestResult.entryCount),
     summaryCard("Extracted", formatDateTime(latestResult.extractedAt))
@@ -123,7 +123,7 @@ function renderSummary() {
   if (latestResult.mappingSummary) {
     cards.push(
       summaryCard("Resolved Departments", latestResult.mappingSummary.resolvedDepartmentCount || 0),
-      summaryCard("Need Review", latestResult.mappingSummary.reviewRowCount || 0)
+      summaryCard("Needs Review", latestResult.mappingSummary.reviewRowCount || 0)
     );
   }
 
@@ -144,7 +144,7 @@ function renderMappingNotice() {
   mappingNoticeEl.innerHTML = `
     <strong>Department setup needed.</strong>
     ${escapeHtml(String(reviewDishCount))} ${label} from this extraction still do not have a resolved department.
-    <a href="./department-mappings.html">Open Department Rules</a> to assign them before relying on the planning views.
+    <a href="./department-mappings.html">Open Department Rules</a> to assign them before relying on the planning views. Unresolved dishes stay out of department-driven views until mapped.
   `;
 }
 
@@ -162,7 +162,7 @@ function renderChefList() {
       return `
         <button class="chef-button ${isActive ? "active" : ""}" data-chef="${escapeHtml(section.chef)}">
           ${escapeHtml(section.chef)}
-          <small>${section.rows.length} rows, ${section.entries.length} filled cells</small>
+          <small>${section.rows.length} dishes, ${section.entries.length} filled cells</small>
         </button>
       `;
     })
@@ -274,7 +274,7 @@ function renderTimelineStrip(slots) {
 
 function renderTimelineView(slots) {
   if (!slots.length) {
-    return `<div class="empty-state">No filled timeline cells for this chef on the current filter.</div>`;
+    return `<div class="empty-state">No filled timeline entries for this department on the current filter.</div>`;
   }
 
   return `
@@ -290,7 +290,7 @@ function renderTimelineView(slots) {
               <article class="timeline-entry">
                 <div class="timeline-entry-main">
                   <strong>${escapeHtml(item.dish)}</strong>
-                  <span>${item.total ? `Daily total ${escapeHtml(item.total)}` : "Chef timeline entry"}</span>
+                  <span>${item.total ? `Daily total ${escapeHtml(item.total)}` : "Department timeline entry"}</span>
                 </div>
                 <div class="timeline-entry-value">${escapeHtml(item.value)}</div>
               </article>

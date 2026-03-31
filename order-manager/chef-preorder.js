@@ -15,14 +15,14 @@ loadDataset();
 
 async function loadDataset() {
   const selectedDate = dateFilterEl.value;
-  setStatus("Loading latest chef pre-order report…");
+  setStatus("Loading the department prep list…");
 
   try {
     const url = selectedDate ? `${API_URL}?date=${encodeURIComponent(selectedDate)}` : API_URL;
     const response = await fetch(url);
     const payload = await response.json();
     if (!response.ok) {
-      throw new Error(payload.error || "Could not load chef pre-order data.");
+      throw new Error(payload.error || "Could not load the chef pre-order data.");
     }
     latestPayload = payload;
 
@@ -32,7 +32,7 @@ async function loadDataset() {
     if (payload.selectedDate) {
       dateFilterEl.value = payload.selectedDate;
     }
-    setStatus(`Loaded latest chef pre-order report for ${formatDate(payload.selectedDate)}.`);
+    setStatus(`Loaded the prep list for ${formatDate(payload.selectedDate)}.`);
     renderDepartmentOptions(payload.chefs || []);
     renderCurrentView();
   } catch (error) {
@@ -58,7 +58,7 @@ function renderDepartmentOptions(chefs) {
 function renderCurrentView() {
   if (!latestPayload) {
     summaryEl.innerHTML = "";
-    boardEl.innerHTML = `<div class="empty-state">No chef pre-order data loaded.</div>`;
+    boardEl.innerHTML = `<div class="empty-state">No prep list is loaded.</div>`;
     return;
   }
 
@@ -81,7 +81,7 @@ function renderCurrentView() {
 
 function renderBoard(chefs) {
   if (!chefs.length) {
-    boardEl.innerHTML = `<div class="empty-state">No chef pre-order data for this date.</div>`;
+    boardEl.innerHTML = `<div class="empty-state">No department prep data is available for this date.</div>`;
     return;
   }
 

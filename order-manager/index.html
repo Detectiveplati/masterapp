@@ -13,17 +13,17 @@
     <section class="page-header section-card hero">
       <div>
         <p class="eyebrow">Order Manager</p>
-        <h1>Extraction, planning, and execution in one place.</h1>
-        <p class="lede">Use this module to pull the latest order data, review daily totals, and prepare departments before service starts.</p>
+        <h1>Run extraction, assign departments, and prepare production.</h1>
+        <p class="lede">Order Manager should guide the full planning flow: extract the report, resolve department ownership, then move into summary and prep views without hunting for the next step.</p>
       </div>
       <div class="hero-meta-grid">
         <div class="hero-meta-card">
-          <span>Auto Runs</span>
+          <span>Automatic Runs</span>
           <strong>4 AM, 2 PM, 8 PM</strong>
         </div>
         <div class="hero-meta-card">
-          <span>Current Scope</span>
-          <strong>Orders and prep only</strong>
+          <span>Decision Layer</span>
+          <strong>Department rules before planning</strong>
         </div>
         <div class="hero-meta-card">
           <span>Best Starting Point</span>
@@ -43,8 +43,8 @@
       </div>
       <div class="page-actions">
         <div class="control-copy">
-          <h2>Choose the task, not the page hunt.</h2>
-          <p>The main actions are below. Manual extraction is for admin checks. Order Summary and Chef Pre-Order are the everyday planning views.</p>
+          <h2>Start with the task, not the navigation.</h2>
+          <p>Manual Extract is for intervention and validation. Order Summary and Chef Pre-Order are the daily working views. Department Rules is the correction layer when source grouping is wrong.</p>
         </div>
         <div class="page-actions-side">
           <a class="btn-primary" href="./order-summary.html">Open Order Summary</a>
@@ -52,9 +52,9 @@
         </div>
       </div>
       <div class="summary">
-        <div class="summary-card"><span>Current Day Snapshot</span><strong>4:00 AM Auto</strong></div>
-        <div class="summary-card"><span>Next Day Initial</span><strong>2:00 PM Auto</strong></div>
-        <div class="summary-card"><span>Next Day Refresh</span><strong>8:00 PM Auto</strong></div>
+        <div class="summary-card"><span>Current-Day Snapshot</span><strong>4:00 AM automatic run</strong></div>
+        <div class="summary-card"><span>Next-Day First Pass</span><strong>2:00 PM automatic run</strong></div>
+        <div class="summary-card"><span>Next-Day Refresh</span><strong>8:00 PM automatic run</strong></div>
       </div>
     </section>
 
@@ -62,14 +62,14 @@
       <div class="section-heading">
         <div>
           <h2>Workflows</h2>
-          <p>Use the planning pages for normal daily work. Keep manual extract for admin intervention and validation.</p>
+          <p>Use the planning views for daily operations. Keep the extractor for manual checks, and use Department Rules whenever dish ownership needs correction.</p>
         </div>
       </div>
       <div class="module-grid">
         <a href="./order-summary.html" class="module-card">
           <div class="module-icon">01</div>
           <h2>Order Summary</h2>
-          <p>See total dishes, quantities, and chef volume for the selected report date.</p>
+          <p>Review department totals, dish counts, and production volume for the selected report date.</p>
           <span class="module-link">Open Summary</span>
         </a>
         <a href="./chef-preorder.html" class="module-card">
@@ -81,13 +81,13 @@
         <a href="./extractor.html" class="module-card">
           <div class="module-icon">03</div>
           <h2>Manual Extract</h2>
-          <p>Run a manual pull when you need to validate data or recover from an extractor issue.</p>
+          <p>Run a manual extraction when you need a fresh pull, a validation pass, or recovery after a failed schedule.</p>
           <span class="module-link">Open Extractor</span>
         </a>
         <a href="./department-mappings.html" class="module-card">
           <div class="module-icon">04</div>
           <h2>Department Rules</h2>
-          <p>Review imported dishes, assign them to departments, and override outdated source groupings.</p>
+          <p>Review imported dishes, assign the right department, and override outdated source grouping before planning views update.</p>
           <span class="module-link">Open Rules</span>
         </a>
         <a href="./kitchen/kitchentemplog.html" class="module-card">
