@@ -26,8 +26,8 @@
           <strong>Latest and saved runs</strong>
         </div>
         <div class="hero-meta-card">
-          <span>Pilot Hook</span>
-          <strong>Combi oven department flag</strong>
+          <span>Default Rule</span>
+          <strong>Source department unless you override it</strong>
         </div>
       </div>
     </section>
@@ -45,7 +45,7 @@
         <div class="page-actions-main">
           <div class="control-copy">
             <h2>Clear the review queue before relying on the planning pages.</h2>
-            <p>Unmapped dishes are the highest-risk records because they still depend on the source system. Save the department here and stored runs are rebuilt to use it.</p>
+            <p>Dishes now default to the source department. Only save an override when you want Master App to route that dish somewhere else, or when a department has been deactivated and the dish needs reassignment.</p>
           </div>
           <div class="form-grid">
             <label class="field">
@@ -95,10 +95,6 @@
             </div>
           </div>
           <div class="page-actions-side form-actions">
-            <label class="toggle-field">
-              <input id="department-combioven" type="checkbox">
-              <span>Use for combi oven pilot</span>
-            </label>
             <button class="btn-outline" type="submit">Add Department</button>
           </div>
         </form>
@@ -109,7 +105,7 @@
         <div class="section-heading">
           <div>
             <h2>Dish Catalog</h2>
-            <p>Every extracted dish lands here. Assign a resolved department to control future planning views.</p>
+            <p>Every extracted dish lands here. If you leave the assignment blank, Master App uses the source department by default.</p>
           </div>
         </div>
         <div id="dish-catalog" class="mapping-table-wrap"></div>

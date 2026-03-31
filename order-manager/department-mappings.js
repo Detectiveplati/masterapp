@@ -9,7 +9,6 @@ const statusFilterEl = document.getElementById("status-filter");
 const departmentFilterEl = document.getElementById("department-filter");
 const departmentFormEl = document.getElementById("department-form");
 const departmentNameEl = document.getElementById("department-name");
-const departmentCombiEl = document.getElementById("department-combioven");
 const departmentListEl = document.getElementById("department-list");
 const dishCatalogEl = document.getElementById("dish-catalog");
 
@@ -114,10 +113,6 @@ function renderDepartmentList(departments) {
             <input class="department-active-input" type="checkbox"${department.active ? " checked" : ""}>
             <span>Active</span>
           </label>
-          <label class="toggle-field">
-            <input class="department-combi-input" type="checkbox"${department.feedsCombiOven ? " checked" : ""}>
-            <span>Combi oven pilot</span>
-          </label>
         </div>
         <div class="department-card-actions">
           <button class="btn-outline department-save-button" type="button">Save</button>
@@ -132,8 +127,7 @@ function renderDepartmentList(departments) {
       const code = card.dataset.code;
       const body = {
         name: card.querySelector(".department-name-input").value.trim(),
-        active: card.querySelector(".department-active-input").checked,
-        feedsCombiOven: card.querySelector(".department-combi-input").checked
+        active: card.querySelector(".department-active-input").checked
       };
       await saveDepartment(code, body);
     });
@@ -147,7 +141,7 @@ function renderDishCatalog(dishes, departments) {
   }
 
   const departmentOptions = [
-    `<option value="">Use source department</option>`,
+    `<option value="">Use source department (default)</option>`,
     ...departments
       .filter((department) => department.active)
       .map((department) => `<option value="${escapeHtml(department.code)}">${escapeHtml(department.name)}</option>`)
@@ -159,7 +153,7 @@ function renderDishCatalog(dishes, departments) {
         <tr>
           <th>Dish</th>
           <th>Source Department</th>
-          <th>Resolved Department</th>
+          <th>Assigned Department</th>
           <th>Status</th>
           <th>Last Seen</th>
           <th>Action</th>
@@ -177,11 +171,12 @@ function renderDishCatalog(dishes, departments) {
               ${dish.sourceDepartmentsSeen.length > 1 ? `<small>${escapeHtml(dish.sourceDepartmentsSeen.join(", "))}</small>` : ""}
             </td>
             <td>
+              <div class="mapping-dish-subtitle">${escapeHtml(dish.hasManualOverride ? "Manual override" : `Default: ${dish.effectiveDepartment || dish.sourceDepartment || "Needs review"}`)}</div>
               <select class="mapping-department-select">
                 ${departmentOptions}
               </select>
             </td>
-            <td><span class="mapping-status-pill ${dish.needsReview ? "review" : "mapped"}">${dish.needsReview ? "Needs review" : "Mapped"}</span></td>
+            <td><span class="mapping-status-pill ${dish.needsReview ? "review" : "mapped"}">${dish.needsReview ? "Needs review" : dish.hasManualOverride ? "Overridden" : "Using source"}</span></td>
             <td>${escapeHtml(formatDateTime(dish.lastSeenAt) || "-")}</td>
             <td><button class="btn-outline mapping-save-button" type="button">Save</button></td>
           </tr>
@@ -192,7 +187,7 @@ function renderDishCatalog(dishes, departments) {
 
   dishCatalogEl.querySelectorAll("tbody tr").forEach((row, index) => {
     const dish = dishes[index];
-    row.querySelector(".mapping-department-select").value = dish.resolvedDepartmentCode || "";
+    row.querySelector(".mapping-department-select").value = dish.hasManualOverride ? dish.resolvedDepartmentCode || "" : "";
   });
 
   dishCatalogEl.querySelectorAll(".mapping-save-button").forEach((button) => {
@@ -219,8 +214,7 @@ async function handleCreateDepartment(event) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        name,
-        feedsCombiOven: departmentCombiEl.checked
+        name
       })
     });
     const payload = await response.json();
@@ -228,7 +222,6 @@ async function handleCreateDepartment(event) {
       throw new Error(payload.error || "Could not save department.");
     }
     departmentNameEl.value = "";
-    departmentCombiEl.checked = false;
     setStatus(`Saved department ${payload.department.name}. Rebuilt ${payload.rebuild.updatedRunCount} runs.`);
     await loadDashboard();
   } catch (error) {

@@ -50,34 +50,42 @@ function applyDepartmentResolution(rows, context) {
     const sourceDepartmentCode = normalizeDepartmentCode(sourceDepartment);
     const dishKey = normalizeDishKey(row.dish || row.dishChinese || row.dishEnglish || "");
     const catalogEntry = dishCatalogMap.get(dishKey);
-    const resolvedDepartmentCode = catalogEntry && catalogEntry.resolvedDepartmentCode
+    const manualDepartmentCode = catalogEntry && catalogEntry.resolvedDepartmentCode
       ? normalizeDepartmentCode(catalogEntry.resolvedDepartmentCode)
       : "";
-    const resolvedDepartmentRecord = resolvedDepartmentCode
-      ? departmentMap.get(resolvedDepartmentCode)
+    const manualDepartmentRecord = manualDepartmentCode
+      ? departmentMap.get(manualDepartmentCode)
       : null;
-    const resolvedDepartment = resolvedDepartmentRecord
-      ? resolvedDepartmentRecord.name
-      : sourceDepartment;
-    const effectiveDepartmentCode = resolvedDepartmentRecord
-      ? resolvedDepartmentRecord.code
-      : sourceDepartmentCode;
-    const mappingSource = resolvedDepartmentRecord
-      ? "catalog"
-      : sourceDepartment
+    const activeManualDepartment = manualDepartmentRecord && manualDepartmentRecord.active !== false
+      ? manualDepartmentRecord
+      : null;
+    const sourceDepartmentRecord = sourceDepartmentCode
+      ? departmentMap.get(sourceDepartmentCode)
+      : null;
+    const activeSourceDepartment = sourceDepartmentRecord && sourceDepartmentRecord.active !== false
+      ? sourceDepartmentRecord
+      : null;
+    const effectiveDepartment = manualDepartmentCode
+      ? activeManualDepartment
+      : activeSourceDepartment;
+    const mappingSource = manualDepartmentCode
+      ? activeManualDepartment
+        ? "catalog"
+        : "review"
+      : activeSourceDepartment
         ? "source"
-        : "unassigned";
+        : "review";
 
     return {
       ...row,
       sourceChef: sourceDepartment,
       sourceDepartment,
       sourceDepartmentCode,
-      resolvedDepartment,
-      resolvedDepartmentCode: effectiveDepartmentCode,
+      resolvedDepartment: effectiveDepartment ? effectiveDepartment.name : "",
+      resolvedDepartmentCode: effectiveDepartment ? effectiveDepartment.code : "",
       mappingSource,
-      needsDepartmentReview: !resolvedDepartmentRecord,
-      chef: resolvedDepartment
+      needsDepartmentReview: !effectiveDepartment,
+      chef: effectiveDepartment ? effectiveDepartment.name : ""
     };
   });
 }
@@ -146,15 +154,8 @@ async function reapplyDepartmentAssignmentsToAllRuns() {
 
 async function getCombiOvenDepartmentCodes() {
   const departments = await listDepartments();
-  const configuredCodes = departments
-    .filter((department) => department.active && department.feedsCombiOven)
-    .map((department) => department.code);
-  if (configuredCodes.length) {
-    return configuredCodes;
-  }
-
   return departments
-    .filter((department) => /烤炉|oven/i.test(department.name))
+    .filter((department) => department.active && /烤炉|oven/i.test(department.name))
     .map((department) => department.code);
 }
 
