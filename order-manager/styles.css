@@ -705,26 +705,25 @@ select:focus {
   font-size: 0.84rem;
 }
 
-.mapping-department-checklist {
+.mapping-department-selectors {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.mapping-department-field {
   display: grid;
   gap: 6px;
-  margin-top: 8px;
 }
 
-.mapping-department-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 34px;
-  padding: 6px 8px;
-  border-radius: 10px;
-  background: rgba(244, 232, 216, 0.35);
+.mapping-department-field span {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--om-muted);
 }
 
-.mapping-department-checkbox {
-  width: auto;
-  min-height: 0;
-  margin: 0;
+.mapping-department-select {
+  min-width: 220px;
 }
 
 .mapping-status-pill {

@@ -262,6 +262,42 @@ function initializeKitchenStationUi() {
   if (recentTitleEl) {
     recentTitleEl.textContent = `最近记录（最后8条） Recent ${kitchenStation.title} Entries (last 8)`;
   }
+  initializeKitchenBoardSelector();
+}
+
+function initializeKitchenBoardSelector() {
+  const selectorWrap = document.getElementById('kitchen-board-selector-wrap');
+  const selector = document.getElementById('kitchen-board-selector');
+  const stationMap = window.ORDER_MANAGER_KITCHEN_STATIONS || {};
+  const stations = Object.values(stationMap);
+
+  if (!selectorWrap || !selector) {
+    return;
+  }
+
+  if (stations.length < 2) {
+    selectorWrap.hidden = true;
+    return;
+  }
+
+  selectorWrap.hidden = false;
+  selector.innerHTML = '';
+
+  stations.forEach((station) => {
+    const option = document.createElement('option');
+    option.value = station.key;
+    option.textContent = station.pageTitle || station.title || station.key;
+    option.selected = station.key === kitchenStation.key;
+    selector.appendChild(option);
+  });
+
+  selector.addEventListener('change', (event) => {
+    const nextStation = String(event.target.value || '').trim().toLowerCase();
+    const params = new URLSearchParams(window.location.search);
+    params.set('station', nextStation);
+    const query = params.toString();
+    window.location.href = `./kitchentemplog.html${query ? `?${query}` : ''}${window.location.hash || ''}`;
+  });
 }
 
 function setGlobalStaff(staff) {

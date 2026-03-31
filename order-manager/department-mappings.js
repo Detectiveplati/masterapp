@@ -166,15 +166,12 @@ function renderDishCatalog(dishes, departments) {
             </td>
             <td>
               <div class="mapping-dish-subtitle">${escapeHtml(dish.hasManualOverride ? `Manual override: ${dish.effectiveDepartments.join(", ") || "Needs review"}` : `Default: ${dish.effectiveDepartments.join(", ") || dish.sourceDepartmentsSeen.join(", ") || dish.sourceDepartment || "Needs review"}`)}</div>
-              <div class="mapping-department-checklist">
-                ${activeDepartments.map((department) => `
-                  <label class="mapping-department-option">
-                    <input class="mapping-department-checkbox" type="checkbox" value="${escapeHtml(department.code)}">
-                    <span>${escapeHtml(department.name)}</span>
-                  </label>
-                `).join("")}
+              <div class="mapping-department-selectors">
+                ${renderDepartmentSelector("Primary Department", "primary", activeDepartments)}
+                ${renderDepartmentSelector("Second Department", "secondary", activeDepartments, true)}
+                ${renderDepartmentSelector("Third Department", "tertiary", activeDepartments, true)}
               </div>
-              <div class="mapping-dish-subtitle">Leave all options unselected to use the source department default.</div>
+              <div class="mapping-dish-subtitle">Leave all selectors blank to use the source department default.</div>
             </td>
             <td><span class="mapping-status-pill ${dish.needsReview ? "review" : "mapped"}">${dish.needsReview ? "Needs review" : dish.hasManualOverride ? "Overridden" : "Using source"}</span></td>
             <td>${escapeHtml(formatDateTime(dish.lastSeenAt) || "-")}</td>
@@ -187,17 +184,62 @@ function renderDishCatalog(dishes, departments) {
   dishCatalogEl.querySelectorAll("tbody tr").forEach((row, index) => {
     const dish = dishes[index];
     const selectedCodes = dish.hasManualOverride ? dish.resolvedDepartmentCodes || [] : [];
-    row.querySelectorAll(".mapping-department-checkbox").forEach((checkbox) => {
-      checkbox.checked = selectedCodes.includes(checkbox.value);
+    row.querySelectorAll(".mapping-department-select").forEach((select, selectIndex) => {
+      select.value = selectedCodes[selectIndex] || "";
     });
+    syncDepartmentSelectOptions(row, selectedCodes);
   });
 
-  dishCatalogEl.querySelectorAll(".mapping-department-checkbox").forEach((checkbox) => {
-    checkbox.addEventListener("change", async () => {
-      const row = checkbox.closest("tr");
+  dishCatalogEl.querySelectorAll(".mapping-department-select").forEach((select) => {
+    select.addEventListener("change", async () => {
+      const row = select.closest("tr");
       const dishKey = row.dataset.dishKey;
-      const resolvedDepartmentCodes = Array.from(row.querySelectorAll(".mapping-department-checkbox:checked")).map((input) => input.value);
+      const resolvedDepartmentCodes = collectSelectedDepartmentCodes(row);
+      syncDepartmentSelectOptions(row, resolvedDepartmentCodes);
       await saveDishAssignment(dishKey, { resolvedDepartmentCodes });
+    });
+  });
+}
+
+function renderDepartmentSelector(label, slot, departments, allowBlankOnly = false) {
+  const blankLabel = allowBlankOnly ? "None" : "Use source default";
+  return `
+    <label class="mapping-department-field">
+      <span>${escapeHtml(label)}</span>
+      <select class="mapping-department-select summary-select" data-slot="${escapeHtml(slot)}">
+        <option value="">${escapeHtml(blankLabel)}</option>
+        ${departments.map((department) => `
+          <option value="${escapeHtml(department.code)}">${escapeHtml(department.name)}</option>
+        `).join("")}
+      </select>
+    </label>
+  `;
+}
+
+function collectSelectedDepartmentCodes(row) {
+  const seen = new Set();
+  const selected = [];
+  row.querySelectorAll(".mapping-department-select").forEach((select) => {
+    const code = String(select.value || "").trim();
+    if (!code || seen.has(code)) {
+      return;
+    }
+    seen.add(code);
+    selected.push(code);
+  });
+  return selected;
+}
+
+function syncDepartmentSelectOptions(row, selectedCodes) {
+  const selectedSet = new Set(selectedCodes);
+  row.querySelectorAll(".mapping-department-select").forEach((select) => {
+    const currentValue = String(select.value || "").trim();
+    Array.from(select.options).forEach((option) => {
+      if (!option.value) {
+        option.disabled = false;
+        return;
+      }
+      option.disabled = option.value !== currentValue && selectedSet.has(option.value);
     });
   });
 }

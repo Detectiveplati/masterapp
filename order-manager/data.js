@@ -15,6 +15,8 @@ const ORDER_MANAGER_KITCHEN_STATIONS = {
   }
 };
 
+window.ORDER_MANAGER_KITCHEN_STATIONS = ORDER_MANAGER_KITCHEN_STATIONS;
+
 function getKitchenStationConfig() {
   const station = String(new URLSearchParams(window.location.search).get("station") || "combioven").trim().toLowerCase();
   return ORDER_MANAGER_KITCHEN_STATIONS[station] || ORDER_MANAGER_KITCHEN_STATIONS.combioven;

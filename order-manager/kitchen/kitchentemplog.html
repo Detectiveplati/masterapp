@@ -14,9 +14,17 @@
     .page-header {
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: space-between;
       gap: 12px;
       margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .page-header-main {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex: 1 1 320px;
     }
     .page-header img {
       width: 52px;
@@ -28,6 +36,34 @@
       margin: 0;
       font-size: 1.3rem;
       text-align: center;
+    }
+    .board-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 220px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.08);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .board-selector label {
+      font-size: 0.76rem;
+      font-weight: 800;
+      color: #57606a;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .board-selector select {
+      width: 100%;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit;
+      font-weight: 700;
+      background: #f8fafc;
+      color: #1f2933;
     }
     .back-link {
       display: inline-flex;
@@ -148,8 +184,14 @@
   <a href="../index.html" class="back-link">← 厨房日志 Kitchen Logs</a>
 
   <div class="page-header">
-    <img src="../assets/Chilli-Api-Logo-170px.png" alt="ChilliApi">
-    <h1>厨房温度记录 Kitchen Temp Log</h1>
+    <div class="page-header-main">
+      <img src="../assets/Chilli-Api-Logo-170px.png" alt="ChilliApi">
+      <h1>厨房温度记录 Kitchen Temp Log</h1>
+    </div>
+    <div class="board-selector" id="kitchen-board-selector-wrap" hidden>
+      <label for="kitchen-board-selector">Kitchen Board</label>
+      <select id="kitchen-board-selector" aria-label="Select kitchen board"></select>
+    </div>
   </div>
 
   <!-- Bluetooth Thermometer Panel -->

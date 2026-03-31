@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chef Pre-Order</title>
+  <title>Chef Ordering</title>
   <link rel="stylesheet" href="/css/app.css">
   <link rel="stylesheet" href="./styles.css">
 </head>
@@ -12,22 +12,22 @@
   <main class="page-shell order-extractor-page">
     <section class="page-header section-card hero">
       <div>
-        <p class="eyebrow">Chef Pre-Order</p>
-        <h1>Review the department prep list for ordering and mise en place.</h1>
-        <p class="lede">This page should stay narrow in scope: choose the date, narrow to a department if needed, and read the dish quantities without visual clutter.</p>
+        <p class="eyebrow">Chef Ordering</p>
+        <h1>Review ordering quantities and export a printable kitchen sheet.</h1>
+        <p class="lede">Use this page to review the department ordering list, then export a vertical A4 print layout with Chinese dish names, prep times, and quantities sized for practical kitchen use.</p>
       </div>
       <div class="hero-meta-grid">
         <div class="hero-meta-card">
           <span>Best Use</span>
-          <strong>Department ordering</strong>
+          <strong>Chef ordering and print export</strong>
         </div>
         <div class="hero-meta-card">
           <span>Filter By</span>
           <strong>Date and department</strong>
         </div>
         <div class="hero-meta-card">
-          <span>Source</span>
-          <strong>Latest saved report</strong>
+          <span>Print Format</span>
+          <strong>Vertical A4 with large dish labels</strong>
         </div>
       </div>
     </section>
@@ -37,7 +37,7 @@
         <a href="./index.html" class="nav-link">Order Manager</a>
         <a href="./extractor.html" class="nav-link">Manual Extract</a>
         <a href="./order-summary.html" class="nav-link">Order Summary</a>
-        <a href="./chef-preorder.html" class="nav-link active">Chef Pre-Order</a>
+        <a href="./chef-preorder.html" class="nav-link active">Chef Ordering</a>
         <a href="./department-mappings.html" class="nav-link">Department Rules</a>
         <a href="./kitchen/kitchentemplog.html" class="nav-link">Kitchen</a>
       </div>
@@ -45,7 +45,7 @@
         <div class="page-actions-main">
           <div class="control-copy">
             <h2>Filter by date and department, then refresh once.</h2>
-            <p>The page only needs two filters. Keep them grouped, readable, and close to the reload action.</p>
+            <p>Use the main filters to review the live list. The export manager below controls which departments are included in the printable A4 layout.</p>
           </div>
           <div class="form-grid">
             <label class="field">
@@ -62,8 +62,31 @@
           <button id="refresh-button" class="btn-primary" type="button">Reload View</button>
         </div>
       </div>
-      <p id="status" class="status">Loading latest chef pre-order report…</p>
+      <p id="status" class="status">Loading chef ordering data…</p>
       <div id="summary" class="summary"></div>
+    </section>
+
+    <section class="section-card control-panel">
+      <div class="section-heading">
+        <div>
+          <h2>Export Manager</h2>
+          <p>Build a vertical A4 printout with readable Chinese dish names, prep times, and quantities. Clear departments here if you do not want them included.</p>
+        </div>
+      </div>
+      <div class="page-actions">
+        <div class="page-actions-main">
+          <div class="export-manager-toolbar">
+            <div id="export-department-list" class="export-department-list"></div>
+          </div>
+        </div>
+        <div class="page-actions-side form-actions">
+          <button id="export-select-all" class="btn-outline" type="button">Select All</button>
+          <button id="export-clear-all" class="btn-outline" type="button">Clear All</button>
+          <button id="print-button" class="btn-primary" type="button">Print A4 Export</button>
+        </div>
+      </div>
+      <p id="export-status" class="status">Prepare the printable export by choosing the departments to include.</p>
+      <div id="print-preview" class="print-preview"></div>
     </section>
 
     <section id="board" class="summary-board"></section>
