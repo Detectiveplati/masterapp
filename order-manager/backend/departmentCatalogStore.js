@@ -1,4 +1,5 @@
 const { getDb } = require("./db");
+const { COLLECTIONS } = require("../../config/databaseLayout");
 const {
   normalizeDepartmentCode,
   normalizeDishKey,
@@ -6,8 +7,8 @@ const {
   splitBilingualDish
 } = require("./reportRowUtils");
 
-const DEPARTMENT_COLLECTION = "order_manager_departments";
-const DISH_COLLECTION = "order_manager_dish_catalog";
+const DEPARTMENT_COLLECTION = COLLECTIONS.orderManager.DEPARTMENTS;
+const DISH_COLLECTION = COLLECTIONS.orderManager.DISH_CATALOG;
 
 let indexPromise = null;
 

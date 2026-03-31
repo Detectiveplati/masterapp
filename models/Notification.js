@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 const notificationSchema = new mongoose.Schema({
     type: {
@@ -40,6 +41,6 @@ notificationSchema.index({ read: 1 });
 notificationSchema.index({ type: 1 });
 notificationSchema.index({ createdAt: -1 });
 
-const Notification = mongoose.model('Notification', notificationSchema);
+const Notification = mongoose.model('Notification', notificationSchema, COLLECTIONS.core.NOTIFICATIONS);
 
 module.exports = Notification;

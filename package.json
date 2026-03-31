@@ -6,7 +6,11 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "db:audit-layout": "node scripts/audit-atlas-layout.js",
+    "db:migrate-layout": "node scripts/migrate-atlas-layout.js",
+    "db:verify-layout": "node scripts/verify-atlas-layout.js",
+    "db:merge-test": "node scripts/merge-test-into-layout.js --execute"
   },
   "keywords": [],
   "author": "",

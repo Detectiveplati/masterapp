@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 const ProcurementRequestSchema = new mongoose.Schema({
     // ── Item details ─────────────────────────────────────────────────────────
@@ -49,4 +50,4 @@ ProcurementRequestSchema.pre('save', function (next) {
     next();
 });
 
-module.exports = mongoose.model('ProcurementRequest', ProcurementRequestSchema);
+module.exports = mongoose.model('ProcurementRequest', ProcurementRequestSchema, COLLECTIONS.core.PROCUREMENT_REQUESTS);

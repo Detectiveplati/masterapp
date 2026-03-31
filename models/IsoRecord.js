@@ -1,5 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 const IsoRecordSchema = new mongoose.Schema(
   {
@@ -15,4 +16,4 @@ const IsoRecordSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model('IsoRecord', IsoRecordSchema);
+module.exports = mongoose.model('IsoRecord', IsoRecordSchema, COLLECTIONS.core.ISO_RECORDS);

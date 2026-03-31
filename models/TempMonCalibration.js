@@ -1,5 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 /**
  * TempMonCalibration — calibration event log for an IoT probe.
@@ -19,4 +20,4 @@ const TempMonCalibrationSchema = new mongoose.Schema({
   notes:         { type: String, default: '', trim: true }
 }, { timestamps: true });
 
-module.exports = mongoose.model('TempMonCalibration', TempMonCalibrationSchema);
+module.exports = mongoose.model('TempMonCalibration', TempMonCalibrationSchema, COLLECTIONS.core.TEMP_MON_CALIBRATIONS);

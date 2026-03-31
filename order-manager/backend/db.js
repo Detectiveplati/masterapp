@@ -1,13 +1,10 @@
 const { MongoClient } = require("mongodb");
+const { getOrderManagerDbName, getOrderManagerMongoUri } = require("../../config/databaseLayout");
 
 let clientPromise = null;
 
 function getMongoUri() {
-  const configuredUri = (
-    process.env.ORDER_MANAGER_MONGODB_URI ||
-    process.env.TEMPLOG_MONGODB_URI ||
-    process.env.MONGODB_URI
-  );
+  const configuredUri = getOrderManagerMongoUri();
 
   if (configuredUri) {
     return configuredUri;
@@ -21,19 +18,14 @@ function getMongoUri() {
 }
 
 function getDbName() {
-  return (
-    process.env.ORDER_MANAGER_DB_NAME ||
-    process.env.TEMPLOG_DB_NAME ||
-    process.env.MONGODB_DB_NAME ||
-    "kitchenlog"
-  );
+  return getOrderManagerDbName();
 }
 
 async function getDb() {
   if (!clientPromise) {
     const mongoUri = getMongoUri();
     if (!mongoUri) {
-      throw new Error("Order manager MongoDB URI is not configured. Set ORDER_MANAGER_MONGODB_URI or TEMPLOG_MONGODB_URI.");
+      throw new Error("Order manager MongoDB URI is not configured. Set MASTERAPP_ORDER_MANAGER_MONGODB_URI, ORDER_MANAGER_MONGODB_URI, or TEMPLOG_MONGODB_URI.");
     }
     clientPromise = MongoClient.connect(mongoUri, getMongoClientOptions(mongoUri)).catch((error) => {
       clientPromise = null;

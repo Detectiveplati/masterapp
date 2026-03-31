@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 const areaIssueSchema = new mongoose.Schema({
     issueId: {
@@ -99,6 +100,6 @@ areaIssueSchema.index({ status: 1 });
 areaIssueSchema.index({ priority: 1 });
 areaIssueSchema.index({ area: 1 });
 
-const AreaIssue = mongoose.model('AreaIssue', areaIssueSchema);
+const AreaIssue = mongoose.model('AreaIssue', areaIssueSchema, COLLECTIONS.core.AREA_ISSUES);
 
 module.exports = AreaIssue;

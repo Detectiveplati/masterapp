@@ -124,12 +124,23 @@ Copy `.env.example` to `.env` and fill in your values:
 ```env
 PORT=3000
 
-# Maintenance Dashboard DB
-MAINTENANCE_MONGODB_URI=mongodb://localhost:27017/central_kitchen_maintenance
+# Core app DB (preferred)
+MASTERAPP_CORE_MONGODB_URI=mongodb://localhost:27017
+MASTERAPP_CORE_DB_NAME=masterapp_core
 
-# Kitchen Temp Log DB
+# TempLog DB (preferred)
+MASTERAPP_TEMPLOG_MONGODB_URI=mongodb://localhost:27017
+MASTERAPP_TEMPLOG_DB_NAME=masterapp_templog
+
+# Order Manager DB (preferred)
+MASTERAPP_ORDER_MANAGER_MONGODB_URI=mongodb://localhost:27017
+MASTERAPP_ORDER_MANAGER_DB_NAME=masterapp_order_manager
+
+# Backward-compatible legacy variables still work during migration
+MAINTENANCE_MONGODB_URI=mongodb://localhost:27017/central_kitchen_maintenance
 TEMPLOG_MONGODB_URI=mongodb://localhost:27017
 TEMPLOG_DB_NAME=kitchenlog
+ORDER_MANAGER_DB_NAME=kitchenlog
 
 # Cloudinary (photo uploads for issues, maintenance records, procurement, food safety NCs)
 CLOUDINARY_CLOUD_NAME=your_cloud_name
@@ -292,9 +303,12 @@ Open `http://localhost:3000` for the hub page.
 ### Required Railway Environment Variables
 
 ```
-MAINTENANCE_MONGODB_URI
-TEMPLOG_MONGODB_URI
-TEMPLOG_DB_NAME
+MASTERAPP_CORE_MONGODB_URI
+MASTERAPP_CORE_DB_NAME
+MASTERAPP_TEMPLOG_MONGODB_URI
+MASTERAPP_TEMPLOG_DB_NAME
+MASTERAPP_ORDER_MANAGER_MONGODB_URI
+MASTERAPP_ORDER_MANAGER_DB_NAME
 CLOUDINARY_CLOUD_NAME
 CLOUDINARY_API_KEY
 CLOUDINARY_API_SECRET

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 const FoodSafetyNCSchema = new mongoose.Schema({
   unit: { type: String, required: true },
@@ -16,4 +17,4 @@ const FoodSafetyNCSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-module.exports = mongoose.model('FoodSafetyNC', FoodSafetyNCSchema);
+module.exports = mongoose.model('FoodSafetyNC', FoodSafetyNCSchema, COLLECTIONS.core.FOOD_SAFETY_NCS);

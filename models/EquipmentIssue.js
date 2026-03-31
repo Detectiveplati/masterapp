@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 const equipmentIssueSchema = new mongoose.Schema({
     equipmentId: {
@@ -45,6 +46,6 @@ const equipmentIssueSchema = new mongoose.Schema({
 equipmentIssueSchema.index({ equipmentId: 1 });
 equipmentIssueSchema.index({ status: 1 });
 
-const EquipmentIssue = mongoose.model('EquipmentIssue', equipmentIssueSchema);
+const EquipmentIssue = mongoose.model('EquipmentIssue', equipmentIssueSchema, COLLECTIONS.core.EQUIPMENT_ISSUES);
 
 module.exports = EquipmentIssue;

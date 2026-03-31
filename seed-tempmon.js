@@ -6,11 +6,19 @@
  *
  * Run once:  node seed-tempmon.js
  * Safe to re-run — uses upsert on name / deviceId / sensorId.
+ * Uses the configured core/templog database layout with legacy env fallbacks.
  */
 'use strict';
 require('dotenv').config();
 const mongoose   = require('mongoose');
 const { MongoClient } = require('mongodb');
+const {
+  COLLECTIONS,
+  getCoreDbName,
+  getCoreMongoUri,
+  getTemplogDbName,
+  getTemplogMongoUri
+} = require('./config/databaseLayout');
 
 // ── Models ────────────────────────────────────────────────────────────────────
 const TempMonUnit   = require('./models/TempMonUnit');
@@ -76,19 +84,20 @@ const SENSORS = [
 
 // ─────────────────────────────────────────────────────────────────────────────
 async function main() {
-  const MAINTENANCE_URI = process.env.MAINTENANCE_MONGODB_URI;
-  const TEMPLOG_URI     = process.env.TEMPLOG_MONGODB_URI;
-  const TEMPLOG_DB      = process.env.TEMPLOG_DB_NAME || 'kitchenlog';
+  const MAINTENANCE_URI = getCoreMongoUri();
+  const TEMPLOG_URI     = getTemplogMongoUri();
+  const MAINTENANCE_DB  = getCoreDbName();
+  const TEMPLOG_DB      = getTemplogDbName();
 
   if (!MAINTENANCE_URI || !TEMPLOG_URI) {
-    console.error('❌ Missing MAINTENANCE_MONGODB_URI or TEMPLOG_MONGODB_URI in .env');
+    console.error('❌ Missing maintenance or templog MongoDB configuration in .env');
     process.exit(1);
   }
 
   // Connect Mongoose (TempMon models)
   console.log('🔗 Connecting to Maintenance DB…');
-  await mongoose.connect(MAINTENANCE_URI);
-  console.log('   ✓ Connected');
+  await mongoose.connect(MAINTENANCE_URI, { dbName: MAINTENANCE_DB });
+  console.log(`   ✓ Connected (${MAINTENANCE_DB})`);
 
   // Connect native driver (lora_devices)
   console.log('🔗 Connecting to TempLog DB…');
@@ -96,7 +105,7 @@ async function main() {
     TEMPLOG_URI.startsWith('mongodb+srv') ? { tls: true } : {}
   );
   const templogDb = templogClient.db(TEMPLOG_DB);
-  console.log('   ✓ Connected\n');
+  console.log(`   ✓ Connected (${TEMPLOG_DB})\n`);
 
   let created = 0, updated = 0, skipped = 0;
 
@@ -136,7 +145,7 @@ async function main() {
 
     // 3 ── Upsert lora_devices in TempLog DB ─────────────────────────────────
     const now = new Date();
-    const loraResult = await templogDb.collection('lora_devices').updateOne(
+    const loraResult = await templogDb.collection(COLLECTIONS.templog.LORA_DEVICES).updateOne(
       { sensorId: sn },
       {
         $set: {

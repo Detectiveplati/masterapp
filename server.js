@@ -20,6 +20,15 @@ const path = require('path');
 const fs  = require('fs');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const {
+    COLLECTIONS,
+    getCoreDbName,
+    getCoreMongoUri,
+    getOrderManagerDbName,
+    getTemplogDbName,
+    getTemplogMongoUri
+} = require('./config/databaseLayout');
+const { getDb: getOrderManagerDb } = require('./order-manager/backend/db');
 const { requirePageAccess, requireAuth, requireAdmin } = require('./services/auth-middleware');
 
 // Try to load puppeteer (optional - for PDF generation)
@@ -188,7 +197,7 @@ async function seedLoraLinks(db) {
             const sn   = normalizeSensorId(sensor.sn);
             const unit = await TempMonUnit.findOne({ name: sensor.name }).lean();
             if (!unit) continue;
-            await db.collection('lora_devices').updateOne(
+            await db.collection(COLLECTIONS.templog.LORA_DEVICES).updateOne(
                 { sensorId: sn },
                 {
                     $set: {
@@ -211,18 +220,19 @@ async function seedLoraLinks(db) {
 }
 
 // 1. Mongoose — Maintenance Dashboard
-const MAINTENANCE_MONGO_URI = process.env.MAINTENANCE_MONGODB_URI || 'mongodb://localhost:27017/central_kitchen_maintenance';
-mongoose.connect(MAINTENANCE_MONGO_URI)
+const CORE_MONGO_URI = getCoreMongoUri() || 'mongodb://localhost:27017';
+const CORE_DB_NAME = getCoreDbName();
+mongoose.connect(CORE_MONGO_URI, { dbName: CORE_DB_NAME })
     .then(async () => {
-        console.log('✓ [Maintenance] MongoDB (Mongoose) connected');
+        console.log(`✓ [Maintenance] MongoDB (Mongoose) connected (db: ${CORE_DB_NAME})`);
         await seedAdmin();
         await seedTempMonUnits();
     })
     .catch(err => console.error('✗ [Maintenance] MongoDB connection error:', err));
 
 // 2. Native driver — Kitchen Temp Log
-const TEMPLOG_MONGO_URI = process.env.TEMPLOG_MONGODB_URI || 'mongodb://localhost:27017';
-const TEMPLOG_DB_NAME   = process.env.TEMPLOG_DB_NAME || 'kitchenlog';
+const TEMPLOG_MONGO_URI = getTemplogMongoUri() || 'mongodb://localhost:27017';
+const TEMPLOG_DB_NAME   = getTemplogDbName();
 let templogDb;
 
 // Build MongoClient options — add serverApi when connecting to Atlas (srv URI)
@@ -256,8 +266,8 @@ MongoClient.connect(TEMPLOG_MONGO_URI, templogClientOptions)
  */
 function requireTemplogDb(req, res, next) {
     if (!templogDb) {
-        console.error('[TempLog] DB not ready — TEMPLOG_MONGODB_URI may be misconfigured');
-        return res.status(503).json({ error: 'TempLog database not ready. Check TEMPLOG_MONGODB_URI env var.' });
+        console.error('[TempLog] DB not ready — TempLog MongoDB configuration may be misconfigured');
+        return res.status(503).json({ error: 'TempLog database not ready. Check MASTERAPP_TEMPLOG_MONGODB_URI or TEMPLOG_MONGODB_URI.' });
     }
     req.templogDb = templogDb;
     next();
@@ -394,7 +404,7 @@ app.post('/api/tempmon/admin/seed', requireAuth, requireAdmin, requireTemplogDb,
         await seedLoraLinks(req.templogDb);
         const TempMonUnit = require('./models/TempMonUnit');
         const units  = await TempMonUnit.countDocuments({ active: true });
-        const linked = await req.templogDb.collection('lora_devices')
+        const linked = await req.templogDb.collection(COLLECTIONS.templog.LORA_DEVICES)
             .countDocuments({ tempmonUnitId: { $exists: true, $ne: '' } });
         res.json({ ok: true, units, linked });
     } catch (err) {
@@ -446,14 +456,43 @@ app.get('/api/public-url', async (req, res) => {
 
 // Health check
 const { isCloudinaryConfigured } = require('./services/cloudinary-upload');
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
+    let orderManagerStatus = 'Disconnected';
+    let orderManagerError = '';
+
+    try {
+        const orderManagerDb = await getOrderManagerDb();
+        await orderManagerDb.command({ ping: 1 });
+        orderManagerStatus = 'Connected';
+    } catch (error) {
+        orderManagerError = error.message || 'Order manager database not reachable';
+    }
+
+    const maintenanceStatus = mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected';
+    const templogStatus = templogDb ? 'Connected' : 'Disconnected';
+    const overallStatus = [maintenanceStatus, templogStatus, orderManagerStatus].every((status) => status === 'Connected')
+        ? 'OK'
+        : 'DEGRADED';
+
     res.json({
-        status: 'OK',
+        status: overallStatus,
         timestamp: new Date().toISOString(),
-        maintenance_db:  mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
-        templog_db:      templogDb ? 'Connected' : 'Disconnected',
-        procurement_db:  mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
-        cloudinary:      isCloudinaryConfigured ? 'Configured' : 'NOT CONFIGURED — photo uploads disabled',
+        databases: {
+            core: {
+                status: maintenanceStatus,
+                dbName: getCoreDbName()
+            },
+            templog: {
+                status: templogStatus,
+                dbName: getTemplogDbName()
+            },
+            orderManager: {
+                status: orderManagerStatus,
+                dbName: getOrderManagerDbName(),
+                error: orderManagerError || undefined
+            }
+        },
+        cloudinary: isCloudinaryConfigured ? 'Configured' : 'NOT CONFIGURED — photo uploads disabled'
     });
 });
 
@@ -531,7 +570,7 @@ function sanitizeConfigInput(raw, equipment) {
 }
 
 async function getEquipmentConfig(db, equipment) {
-    const saved = await db.collection('equipment_temp_configs').findOne({ equipment });
+    const saved = await db.collection(COLLECTIONS.templog.EQUIPMENT_TEMP_CONFIGS).findOne({ equipment });
     return { ...defaultConfigForEquipment(equipment), ...(saved || {}) };
 }
 
@@ -563,7 +602,7 @@ async function ingestEquipmentReadings(req, readings) {
 
     // Normalize equipment name so legacy 'warmer' entries are treated as 'food-warmer'
     const normalized = readings.map(r => ({ ...r, equipment: normalizeEquipmentName(r.equipment) }));
-    await req.templogDb.collection('equipment_temp_readings').insertMany(normalized);
+    await req.templogDb.collection(COLLECTIONS.templog.EQUIPMENT_TEMP_READINGS).insertMany(normalized);
 
     const processed = [];
     for (const reading of normalized) {
@@ -611,7 +650,7 @@ app.put('/templog/api/equipment-temp/config/:equipment', requireTemplogDb, async
             ...parsed.config,
             updatedAt: new Date()
         };
-        await req.templogDb.collection('equipment_temp_configs').updateOne(
+        await req.templogDb.collection(COLLECTIONS.templog.EQUIPMENT_TEMP_CONFIGS).updateOne(
             { equipment },
             { $set: doc },
             { upsert: true }
@@ -1023,7 +1062,7 @@ function validateLoraIngestAuth(req) {
  */
 app.get('/templog/api/lora/devices', requireTemplogDb, async (req, res) => {
     try {
-        const docs = await req.templogDb.collection('lora_devices')
+        const docs = await req.templogDb.collection(COLLECTIONS.templog.LORA_DEVICES)
             .find({})
             .sort({ createdAt: -1 })
             .toArray();
@@ -1074,7 +1113,7 @@ app.post('/templog/api/lora/devices', requireTemplogDb, async (req, res) => {
             updatedAt: now
         };
 
-        await req.templogDb.collection('lora_devices').updateOne(
+        await req.templogDb.collection(COLLECTIONS.templog.LORA_DEVICES).updateOne(
             { sensorId },
             { $set: doc, $setOnInsert: { createdAt: now } },
             { upsert: true }
@@ -1133,7 +1172,7 @@ app.put('/templog/api/lora/devices/:sensorId', requireTemplogDb, async (req, res
         if (req.body.notes !== undefined) update.notes = String(req.body.notes || '').trim();
         if (req.body.enabled !== undefined) update.enabled = !!req.body.enabled;
 
-        const result = await req.templogDb.collection('lora_devices').updateOne(
+        const result = await req.templogDb.collection(COLLECTIONS.templog.LORA_DEVICES).updateOne(
             { sensorId },
             { $set: update }
         );
@@ -1153,7 +1192,7 @@ app.put('/templog/api/lora/devices/:sensorId', requireTemplogDb, async (req, res
         }
 
         invalidateLoraDeviceCache();
-        const device = await req.templogDb.collection('lora_devices').findOne({ sensorId });
+        const device = await req.templogDb.collection(COLLECTIONS.templog.LORA_DEVICES).findOne({ sensorId });
         res.json({ ok: true, device });
     } catch (e) {
         console.error(e);
@@ -1170,7 +1209,7 @@ app.delete('/templog/api/lora/devices/:sensorId', requireTemplogDb, async (req, 
         const sensorId = normalizeSensorId(req.params.sensorId);
         if (!sensorId) return res.status(400).json({ error: 'Invalid sensorId' });
 
-        const result = await req.templogDb.collection('lora_devices').deleteOne({ sensorId });
+        const result = await req.templogDb.collection(COLLECTIONS.templog.LORA_DEVICES).deleteOne({ sensorId });
         if (!result.deletedCount) return res.status(404).json({ error: 'Device not found' });
         invalidateLoraDeviceCache();
         res.json({ ok: true });
@@ -1226,7 +1265,7 @@ app.get('/templog/api/lora/tcp-config', requirePageAccess('tempmon'), (req, res)
 app.get('/templog/api/lora/events', requireTemplogDb, async (req, res) => {
     try {
         const limit = Math.max(1, Math.min(200, parseInt(req.query.limit || '50', 10)));
-        const events = await req.templogDb.collection('lora_gateway_events')
+        const events = await req.templogDb.collection(COLLECTIONS.templog.LORA_GATEWAY_EVENTS)
             .find({})
             .sort({ receivedAt: -1 })
             .limit(limit)
@@ -1244,12 +1283,12 @@ app.get('/templog/api/lora/events', requireTemplogDb, async (req, res) => {
  */
 app.get('/templog/api/lora/status', requireTemplogDb, async (req, res) => {
     try {
-        const devices = await req.templogDb.collection('lora_devices').find({}).toArray();
+        const devices = await req.templogDb.collection(COLLECTIONS.templog.LORA_DEVICES).find({}).toArray();
         if (!devices.length) return res.json([]);
 
         // Scan recent gateway events to find latest reading per sensor
         const scanLimit = Math.max(50, Math.min(1000, parseInt(req.query.scan || '500', 10)));
-        const events = await req.templogDb.collection('lora_gateway_events')
+        const events = await req.templogDb.collection(COLLECTIONS.templog.LORA_GATEWAY_EVENTS)
             .find({})
             .sort({ receivedAt: -1 })
             .limit(scanLimit)
@@ -1318,7 +1357,7 @@ app.get('/templog/api/lora/discover', requireTemplogDb, async (req, res) => {
         const scanLimit = Math.max(10, Math.min(500, parseInt(req.query.scan || '200', 10)));
         const hours = Math.max(1, Math.min(720, parseFloat(req.query.hours || '24')));
         const since = new Date(Date.now() - hours * 60 * 60 * 1000);
-        const events = await req.templogDb.collection('lora_gateway_events')
+        const events = await req.templogDb.collection(COLLECTIONS.templog.LORA_GATEWAY_EVENTS)
             .find({ unmatchedCount: { $gt: 0 }, receivedAt: { $gte: since } })
             .sort({ receivedAt: -1 })
             .limit(scanLimit)
@@ -1347,7 +1386,7 @@ app.get('/templog/api/lora/discover', requireTemplogDb, async (req, res) => {
         }
 
         // Exclude already-registered sensor IDs
-        const registered = await req.templogDb.collection('lora_devices')
+        const registered = await req.templogDb.collection(COLLECTIONS.templog.LORA_DEVICES)
             .find({}, { projection: { sensorId: 1 } }).toArray();
         const registeredIds = new Set(registered.map(r => normalizeSensorId(r.sensorId)));
 
@@ -1437,7 +1476,7 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
             ingested = result.count;
         }
 
-        await req.templogDb.collection('lora_gateway_events').insertOne({
+        await req.templogDb.collection(COLLECTIONS.templog.LORA_GATEWAY_EVENTS).insertOne({
             gatewayId,
             sensorCount: sensorRows.length,
             ingestedCount: ingested,
@@ -1473,7 +1512,7 @@ app.get('/templog/api/equipment-temp/readings', requireTemplogDb, async (req, re
         const limit = Math.max(10, Math.min(2000, parseInt(req.query.limit || '480', 10)));
         const since = new Date(Date.now() - minutes * 60 * 1000);
 
-        const readings = await req.templogDb.collection('equipment_temp_readings')
+        const readings = await req.templogDb.collection(COLLECTIONS.templog.EQUIPMENT_TEMP_READINGS)
             .find({ equipment, recordedAt: { $gte: since } })
             .sort({ recordedAt: 1 })
             .limit(limit)
@@ -1500,7 +1539,7 @@ app.get('/templog/api/equipment-temp/latest', requireTemplogDb, async (req, res)
     try {
         const latest = await Promise.all(EQUIPMENT_TEMPERATURES.map(async (equipment) => {
             const config = await getEquipmentConfig(req.templogDb, equipment);
-            const reading = await req.templogDb.collection('equipment_temp_readings')
+            const reading = await req.templogDb.collection(COLLECTIONS.templog.EQUIPMENT_TEMP_READINGS)
                 .find({ equipment })
                 .sort({ recordedAt: -1 })
                 .limit(1)
@@ -1530,7 +1569,7 @@ app.get('/templog/api/equipment-temp/alerts', requireTemplogDb, async (req, res)
             filter.equipment = equipment;
         }
 
-        const alerts = await req.templogDb.collection('equipment_temp_alerts')
+        const alerts = await req.templogDb.collection(COLLECTIONS.templog.EQUIPMENT_TEMP_ALERTS)
             .find(filter)
             .sort({ createdAt: -1 })
             .limit(limit)
@@ -1558,7 +1597,7 @@ app.get('/templog/api/equipment-temp/stream', requireTemplogDb, async (req, res)
     try {
         const snapshot = await Promise.all(EQUIPMENT_TEMPERATURES.map(async (equipment) => {
             const config = await getEquipmentConfig(req.templogDb, equipment);
-            const reading = await req.templogDb.collection('equipment_temp_readings')
+            const reading = await req.templogDb.collection(COLLECTIONS.templog.EQUIPMENT_TEMP_READINGS)
                 .find({ equipment })
                 .sort({ recordedAt: -1 })
                 .limit(1)
@@ -1588,7 +1627,7 @@ app.post('/templog/api/cooks', requireTemplogDb, async (req, res) => {
         const cook = req.body;
         const err = validateCook(cook);
         if (err) return res.status(400).json({ error: err });
-        await req.templogDb.collection('cooks_combioven').insertOne({ ...cook, createdAt: new Date() });
+        await req.templogDb.collection(COLLECTIONS.templog.COOKS_COMBIOVEN).insertOne({ ...cook, createdAt: new Date() });
         res.json({ ok: true });
     } catch (e) {
         console.error(e);
@@ -1604,7 +1643,7 @@ app.get('/templog/api/cooks', requireTemplogDb, async (req, res) => {
     try {
         const limit  = parseInt(req.query.limit || '8', 10);
         const filter = buildDateFilter(req.query);
-        const cooks  = await req.templogDb.collection('cooks_combioven')
+        const cooks  = await req.templogDb.collection(COLLECTIONS.templog.COOKS_COMBIOVEN)
             .find(filter).sort({ createdAt: -1 }).limit(limit).toArray();
         res.json(cooks);
     } catch (e) {
@@ -1621,7 +1660,7 @@ app.get('/templog/api/cooks/export', requireTemplogDb, async (req, res) => {
     try {
         const { year, month } = req.query;
         const filter = buildDateFilter(req.query);
-        const cooks  = await req.templogDb.collection('cooks_combioven').find(filter).sort({ createdAt: 1 }).toArray();
+        const cooks  = await req.templogDb.collection(COLLECTIONS.templog.COOKS_COMBIOVEN).find(filter).sort({ createdAt: 1 }).toArray();
 
         const headers = ['Food Item','Start Date','Start Time','End Time','Duration (min)','Core Temp (°C)','Staff','Numbers','Units'];
         const rows    = cooks.map(c => [c.food, c.startDate, c.startTime, c.endTime, c.duration, c.temp, c.staff, c.trays, c.units||'']);
@@ -1815,7 +1854,7 @@ async function getLoraDeviceMaps(db, options = {}) {
         return loraDeviceCache;
     }
 
-    const devices = await db.collection('lora_devices').find({}, {
+    const devices = await db.collection(COLLECTIONS.templog.LORA_DEVICES).find({}, {
         projection: {
             sensorId: 1,
             equipment: 1,
@@ -1967,7 +2006,7 @@ async function ingestTcpTagRecords(gatewayImei, tags, tagModel, gatewayRtc) {
             ingested = result.count;
         } catch (e) { console.error('[TCP] ingest error:', e.message); }
     }
-    await templogDb.collection('lora_gateway_events').insertOne({
+    await templogDb.collection(COLLECTIONS.templog.LORA_GATEWAY_EVENTS).insertOne({
         gatewayId, sensorCount: sensorRows.length, ingestedCount: ingested,
         unmatchedCount: unmatched.length, unmatched, payload,
         receivedAt: now, proto: 'tcp'
@@ -2112,7 +2151,7 @@ async function processTcpBuffer(socket, state) {
                 rawHex: buf.slice(i, i + totalLen).toString('hex').toUpperCase().match(/.{1,2}/g).join(' ')
             });
             if (templogDb) {
-                templogDb.collection('lora_gateway_events').insertOne({
+                templogDb.collection(COLLECTIONS.templog.LORA_GATEWAY_EVENTS).insertOne({
                     gatewayId: state.imei || socket.remoteAddress,
                     sensorCount: 0, ingestedCount: 0, unmatchedCount: 0, unmatched: [],
                     payload: { source: 'lora-tcp', imei: state.imei || '', fw: fwStr,

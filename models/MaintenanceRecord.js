@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 const maintenanceRecordSchema = new mongoose.Schema({
     equipmentId: {
@@ -97,6 +98,6 @@ maintenanceRecordSchema.index({ equipmentId: 1 });
 maintenanceRecordSchema.index({ date: -1 });
 maintenanceRecordSchema.index({ maintenanceType: 1 });
 
-const MaintenanceRecord = mongoose.model('MaintenanceRecord', maintenanceRecordSchema);
+const MaintenanceRecord = mongoose.model('MaintenanceRecord', maintenanceRecordSchema, COLLECTIONS.core.MAINTENANCE_RECORDS);
 
 module.exports = MaintenanceRecord;

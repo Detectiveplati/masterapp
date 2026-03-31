@@ -1,6 +1,7 @@
 const express = require("express");
 const { ObjectId } = require("mongodb");
 
+const { COLLECTIONS } = require("../../config/databaseLayout");
 const { getCombiOvenDepartmentCodes } = require("./departmentResolver");
 const { applyDemoRefreshOverlay } = require("./demoRefreshOverlay");
 const { getDb } = require("./db");
@@ -384,7 +385,7 @@ function selectReportDate(reportDates, requestedDate) {
 
 async function getCookSessionCollection() {
   const db = await getDb();
-  const collection = db.collection("order_manager_cook_sessions");
+  const collection = db.collection(COLLECTIONS.orderManager.COOK_SESSIONS);
   if (!cookSessionIndexPromise) {
     cookSessionIndexPromise = collection.createIndexes([
       { key: { station: 1, createdAt: -1 } },

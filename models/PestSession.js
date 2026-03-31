@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 /**
  * PestSession — one weekly inspection round.
@@ -12,4 +13,4 @@ const PestSessionSchema = new mongoose.Schema({
   periodLabel:  { type: String, default: '' }              // '' = current period, set = archived
 }, { timestamps: true });
 
-module.exports = mongoose.model('PestSession', PestSessionSchema);
+module.exports = mongoose.model('PestSession', PestSessionSchema, COLLECTIONS.core.PEST_SESSIONS);

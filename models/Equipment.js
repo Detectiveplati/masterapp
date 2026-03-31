@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 const equipmentSchema = new mongoose.Schema({
     equipmentId: {
@@ -136,6 +137,6 @@ if (mongoose.models.Equipment) {
     mongoose.deleteModel('Equipment');
 }
 
-const Equipment = mongoose.model('Equipment', equipmentSchema);
+const Equipment = mongoose.model('Equipment', equipmentSchema, COLLECTIONS.core.EQUIPMENT);
 
 module.exports = Equipment;

@@ -1,5 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 /**
  * TempMonConfig — singleton global config document (key: 'global').
@@ -11,4 +12,4 @@ const schema = new mongoose.Schema({
   pushDelayWarningMinutes:   { type: Number, default: 120 },  // push after N min of sustained warning
 }, { timestamps: true });
 
-module.exports = mongoose.model('TempMonConfig', schema);
+module.exports = mongoose.model('TempMonConfig', schema, COLLECTIONS.core.TEMP_MON_CONFIGS);

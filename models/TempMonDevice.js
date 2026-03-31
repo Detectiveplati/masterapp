@@ -1,5 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 /**
  * TempMonDevice — an IoT-enabled thermometer/probe registered to a TempMonUnit.
@@ -19,4 +20,4 @@ const TempMonDeviceSchema = new mongoose.Schema({
   active:                  { type: Boolean, default: true }
 }, { timestamps: true });
 
-module.exports = mongoose.model('TempMonDevice', TempMonDeviceSchema);
+module.exports = mongoose.model('TempMonDevice', TempMonDeviceSchema, COLLECTIONS.core.TEMP_MON_DEVICES);

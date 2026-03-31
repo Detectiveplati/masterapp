@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 /**
  * PestFinding — the actual observation recorded for one station in one session.
@@ -28,4 +29,4 @@ const PestFindingSchema = new mongoose.Schema({
 // One finding per station per session
 PestFindingSchema.index({ sessionId: 1, stationId: 1 }, { unique: true });
 
-module.exports = mongoose.model('PestFinding', PestFindingSchema);
+module.exports = mongoose.model('PestFinding', PestFindingSchema, COLLECTIONS.core.PEST_FINDINGS);

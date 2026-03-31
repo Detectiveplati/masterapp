@@ -1,10 +1,12 @@
 # Copilot Instructions — Central Kitchen Master App
 
+Read `AGENTS.md` first. Its database layout and naming rules are canonical for this repository.
+
 ## Stack
 
 - **Runtime**: Node.js ≥ 18, CommonJS (`require`/`module.exports` — no ESM `import/export`)
 - **Server**: Express 5 (`server.js` — single entry point, ~1100 lines)
-- **Database**: MongoDB via Mongoose (ODM) for all modules; native `MongoClient` only in the legacy templog module
+- **Database**: MongoDB via Mongoose for `masterapp_core`; native `MongoClient` for `masterapp_templog` and `masterapp_order_manager`
 - **Auth**: JWT stored in an HTTP-only cookie (`ck_auth`), validated by `services/auth-middleware.js`
 - **File uploads**: Multer (memory storage) → Cloudinary via `services/cloudinary-upload.js`
 - **Frontend**: Plain HTML + Vanilla JS + CSS — no frameworks, no bundler, no TypeScript
@@ -22,6 +24,48 @@
 | Procurement | `/procurement/` | `/api/requests/` |
 | Pest Control | `/pest/` | `/api/pest/` |
 | Admin | `/admin/` | `/api/admin/` |
+
+---
+
+## Database Architecture
+
+- Canonical database layout is defined in `config/databaseLayout.js`
+- Production target databases are:
+  - `masterapp_core`
+  - `masterapp_templog`
+  - `masterapp_order_manager`
+- Legacy databases such as `central_kitchen_maintenance`, `maintenance_dashboard`, `kitchenlog`, `iso_records`, `procurementapp`, and `test` are migration sources, not the target design
+- Never hardcode new collection names in application code; add them to `config/databaseLayout.js` and use the exported constants
+- Every new Mongoose model must bind to an explicit collection name as the third argument to `mongoose.model(...)`
+- Do not create a new database without explicit user approval
+- Do not write new production data into `test`
+
+### Collection Naming
+
+- Core collections: `core_<domain>`
+- TempLog collections: `templog_<domain>`
+- Order Manager collections: `order_manager_<domain>`
+
+Examples:
+
+- `core_supplier_contacts`
+- `templog_probe_health_events`
+- `order_manager_menu_snapshots`
+
+### Environment Variables
+
+Preferred Mongo variables:
+
+```env
+MASTERAPP_CORE_MONGODB_URI
+MASTERAPP_CORE_DB_NAME
+MASTERAPP_TEMPLOG_MONGODB_URI
+MASTERAPP_TEMPLOG_DB_NAME
+MASTERAPP_ORDER_MANAGER_MONGODB_URI
+MASTERAPP_ORDER_MANAGER_DB_NAME
+```
+
+Legacy variables still exist only for fallback/migration compatibility.
 
 ---
 
@@ -57,10 +101,11 @@ pest/              ← HTML pages
 ### Backend (Node / Express / Mongoose)
 
 - Use `CommonJS` exclusively — never `import`/`export`
-- New API routes go in `routes/` as their own file, then **registered in `routes/index.js`** — do NOT add `require`/`app.use` directly in `server.js`
+- New API routes go in `routes/` as their own file and must be mounted in the existing route structure used by the repo; do not scatter route mounting logic without checking the current pattern first
 - Route handlers must be `async`; wrap bodies in `try/catch` and return `res.status(4xx/5xx).json({ error: err.message })`
 - Business logic and DB queries go directly in route files (no separate service layer for new features — keep it consistent with existing code)
-- Mongoose models go in `models/` — use `{ timestamps: true }` on every schema
+- Mongoose models go in `models/` — use `{ timestamps: true }` on every schema unless the existing model intentionally avoids it
+- Every new model must use an explicit collection constant from `config/databaseLayout.js`
 - Always strip empty strings on optional enum fields before saving (pattern: `if (data[field] === '') delete data[field]`)
 - Auth: protect API routes with `requireAuth` middleware from `services/auth-middleware.js`; protect page routes with `requirePageAccess`
 - Never log sensitive values (passwords, JWT secrets, full tokens)
@@ -152,6 +197,7 @@ This ensures the next AI prompt reading the file and these instructions will not
 - Do **not** add a build step or bundler (no webpack, vite, etc.)
 - Do **not** introduce ESM (`import`/`export`) in backend files
 - Do **not** create new Mongoose models with `strict: false` — keep schemas explicit
+- Do **not** create new databases or collections outside the naming/layout rules in `AGENTS.md`
 - Do **not** expose raw MongoDB `_id` or internal fields in API responses unless already done in the module
 - Do **not** add new npm dependencies without flagging it — prefer using packages already in `package.json`
 - Do **not** add `console.log` debug statements that would remain in production code
@@ -162,10 +208,17 @@ This ensures the next AI prompt reading the file and these instructions will not
 ## Environment Variables (never hardcode)
 
 ```
-MONGODB_URI        ← Main Mongoose connection string
-MONGO_URI          ← Native MongoClient (templog)
-JWT_SECRET         ← JWT signing secret
-CLOUDINARY_URL     ← or CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET split vars
-BYPASS_AUTH        ← 'true' only for local testing
-NODE_ENV           ← 'production' on Railway
+MASTERAPP_CORE_MONGODB_URI
+MASTERAPP_CORE_DB_NAME
+MASTERAPP_TEMPLOG_MONGODB_URI
+MASTERAPP_TEMPLOG_DB_NAME
+MASTERAPP_ORDER_MANAGER_MONGODB_URI
+MASTERAPP_ORDER_MANAGER_DB_NAME
+JWT_SECRET
+CLOUDINARY_URL
+CLOUDINARY_CLOUD_NAME
+CLOUDINARY_API_KEY
+CLOUDINARY_API_SECRET
+BYPASS_AUTH
+NODE_ENV
 ```

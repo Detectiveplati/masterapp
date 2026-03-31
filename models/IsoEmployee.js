@@ -1,5 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 const IsoEmployeeSchema = new mongoose.Schema(
   {
@@ -8,4 +9,4 @@ const IsoEmployeeSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model('IsoEmployee', IsoEmployeeSchema);
+module.exports = mongoose.model('IsoEmployee', IsoEmployeeSchema, COLLECTIONS.core.ISO_EMPLOYEES);

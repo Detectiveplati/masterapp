@@ -13,24 +13,25 @@
  * Then inject readings with:
  *   node scripts/inject-test-readings.js
  *
- * Reads MAINTENANCE_MONGODB_URI from a .env file in the masterapp directory.
+ * Reads the core database configuration from the masterapp .env file.
  * If no .env is present, falls back to localhost.
  */
 
 require('dotenv').config();
 const mongoose = require('mongoose');
+const { getCoreDbName, getCoreMongoUri } = require('../config/databaseLayout');
 const TempMonUnit   = require('../models/TempMonUnit');
 const TempMonDevice = require('../models/TempMonDevice');
 
-const MONGO_URI = process.env.MAINTENANCE_MONGODB_URI
-  || 'mongodb://localhost:27017/central_kitchen_maintenance';
+const MONGO_URI = getCoreMongoUri() || 'mongodb://localhost:27017';
+const DB_NAME = getCoreDbName();
 
 const TEST_UNIT_NAME   = '[TEST] Warmer State Machine';
 const TEST_DEVICE_ID   = 'TEST-WARMER-001';
 
 async function run() {
-  await mongoose.connect(MONGO_URI);
-  console.log('✓ Connected to MongoDB');
+  await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
+  console.log(`✓ Connected to MongoDB (${DB_NAME})`);
 
   // Clean up any previous test unit + device
   const old = await TempMonUnit.findOneAndDelete({ name: TEST_UNIT_NAME });

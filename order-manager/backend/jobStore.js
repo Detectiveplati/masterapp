@@ -1,3 +1,4 @@
+const { COLLECTIONS } = require("../../config/databaseLayout");
 const { getDb } = require("./db");
 
 let indexPromise = null;
@@ -5,7 +6,7 @@ const JOB_LEASE_MS = 90 * 60 * 1000;
 
 async function getCollection() {
   const db = await getDb();
-  const collection = db.collection("order_manager_job_runs");
+  const collection = db.collection(COLLECTIONS.orderManager.JOB_RUNS);
   if (!indexPromise) {
     indexPromise = collection.createIndexes([
       { key: { jobKey: 1, scheduledFor: 1 }, unique: true },

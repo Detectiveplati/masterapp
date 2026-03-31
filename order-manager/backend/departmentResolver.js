@@ -1,4 +1,5 @@
 const { getDb } = require("./db");
+const { COLLECTIONS } = require("../../config/databaseLayout");
 const {
   ensureDepartmentsExist,
   getDepartmentMap,
@@ -12,7 +13,7 @@ const {
   normalizeText
 } = require("./reportRowUtils");
 
-const RUN_COLLECTION = "order_manager_extraction_runs";
+const RUN_COLLECTION = COLLECTIONS.orderManager.EXTRACTION_RUNS;
 
 async function resolveExtractionDepartments(rows, options = {}) {
   const normalizedRows = enrichCombinedRows(Array.isArray(rows) ? rows : []);
@@ -159,7 +160,7 @@ async function getCombiOvenDepartmentCodes() {
 
 async function getDishCatalogMap() {
   const db = await getDb();
-  const documents = await db.collection("order_manager_dish_catalog")
+  const documents = await db.collection(COLLECTIONS.orderManager.DISH_CATALOG)
     .find({}, { projection: { normalizedDishKey: 1, resolvedDepartmentCode: 1 } })
     .toArray();
 

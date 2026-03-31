@@ -1,5 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 /**
  * TempMonReading — a single temperature data point from an IoT probe.
@@ -28,4 +29,4 @@ TempMonReadingSchema.index({ device: 1, recordedAt: -1 });
 // Guards against duplicate ingest (gateway retries, double-delivery).
 TempMonReadingSchema.index({ device: 1, recordedAt: 1, value: 1 }, { unique: true });
 
-module.exports = mongoose.model('TempMonReading', TempMonReadingSchema);
+module.exports = mongoose.model('TempMonReading', TempMonReadingSchema, COLLECTIONS.core.TEMP_MON_READINGS);

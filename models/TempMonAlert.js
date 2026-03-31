@@ -1,5 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 /**
  * TempMonAlert — auto-created by the ingest handler when a reading violates
@@ -25,4 +26,4 @@ const TempMonAlertSchema = new mongoose.Schema({
 
 TempMonAlertSchema.index({ status: 1, unit: 1 });
 
-module.exports = mongoose.model('TempMonAlert', TempMonAlertSchema);
+module.exports = mongoose.model('TempMonAlert', TempMonAlertSchema, COLLECTIONS.core.TEMP_MON_ALERTS);

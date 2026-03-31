@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 /**
  * PestStation — one Rat Trap Station (RTS)
@@ -11,4 +12,4 @@ const PestStationSchema = new mongoose.Schema({
   isActive:            { type: Boolean, default: true }
 }, { timestamps: true });
 
-module.exports = mongoose.model('PestStation', PestStationSchema);
+module.exports = mongoose.model('PestStation', PestStationSchema, COLLECTIONS.core.PEST_STATIONS);

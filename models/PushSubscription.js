@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 const PushSubscriptionSchema = new mongoose.Schema({
   endpoint:   { type: String, required: true, unique: true },
@@ -15,4 +16,4 @@ const PushSubscriptionSchema = new mongoose.Schema({
 // Auto-clean stale subscriptions (TTL fallback — browser handles removal too)
 PushSubscriptionSchema.index({ createdAt: 1 });
 
-module.exports = mongoose.model('PushSubscription', PushSubscriptionSchema);
+module.exports = mongoose.model('PushSubscription', PushSubscriptionSchema, COLLECTIONS.core.PUSH_SUBSCRIPTIONS);

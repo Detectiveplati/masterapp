@@ -1,5 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 /**
  * TempMonCorrectiveAction — HACCP corrective action record linked to a TempMonAlert.
@@ -20,4 +21,4 @@ const TempMonCorrectiveActionSchema = new mongoose.Schema({
   outcome:                 { type: String, enum: ['product_safe', 'product_discarded', 'equipment_repaired', 'other', ''], default: '' }
 }, { timestamps: true });
 
-module.exports = mongoose.model('TempMonCorrectiveAction', TempMonCorrectiveActionSchema);
+module.exports = mongoose.model('TempMonCorrectiveAction', TempMonCorrectiveActionSchema, COLLECTIONS.core.TEMP_MON_CORRECTIVE_ACTIONS);

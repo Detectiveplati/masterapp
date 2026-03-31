@@ -111,10 +111,20 @@ masterapp/
 
 3. **Configure environment** (create `.env` file):
    ```env
-   # Maintenance Dashboard Database
-   MAINTENANCE_MONGODB_URI=mongodb://localhost:27017/central_kitchen_maintenance
+   # Core app database
+   MASTERAPP_CORE_MONGODB_URI=mongodb://localhost:27017
+   MASTERAPP_CORE_DB_NAME=masterapp_core
    
-   # Kitchen Temp Log Database
+   # Kitchen Temp Log database
+   MASTERAPP_TEMPLOG_MONGODB_URI=mongodb://localhost:27017
+   MASTERAPP_TEMPLOG_DB_NAME=masterapp_templog
+
+   # Order Manager database
+   MASTERAPP_ORDER_MANAGER_MONGODB_URI=mongodb://localhost:27017
+   MASTERAPP_ORDER_MANAGER_DB_NAME=masterapp_order_manager
+
+   # Legacy variables remain supported during migration
+   MAINTENANCE_MONGODB_URI=mongodb://localhost:27017/central_kitchen_maintenance
    TEMPLOG_MONGODB_URI=mongodb://localhost:27017
    TEMPLOG_DB_NAME=kitchenlog
    

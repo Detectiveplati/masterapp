@@ -1,5 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 /**
  * TempMonUnit — a piece of temperature-controlled equipment (freezer, chiller, warmer).
@@ -35,4 +36,4 @@ const TempMonUnitSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-module.exports = mongoose.model('TempMonUnit', TempMonUnitSchema);
+module.exports = mongoose.model('TempMonUnit', TempMonUnitSchema, COLLECTIONS.core.TEMP_MON_UNITS);

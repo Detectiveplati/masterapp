@@ -1,10 +1,11 @@
 const { ObjectId } = require("mongodb");
 
+const { COLLECTIONS } = require("../../config/databaseLayout");
 const { getDb } = require("./db");
 const { getCurrentDateInTimeZone } = require("./dateUtils");
 
 let indexPromise = null;
-const RUN_COLLECTION = "order_manager_extraction_runs";
+const RUN_COLLECTION = COLLECTIONS.orderManager.EXTRACTION_RUNS;
 const REPORT_DATE_CACHE_TTL_MS = 60 * 1000;
 let reportDateCache = {
   expiresAt: 0,

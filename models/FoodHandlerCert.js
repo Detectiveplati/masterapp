@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 const FoodHandlerCertSchema = new mongoose.Schema({
   businessEntity:     { type: String, required: true, trim: true },
@@ -23,4 +24,4 @@ FoodHandlerCertSchema.virtual('validityStatus').get(function () {
   return 'valid';
 });
 
-module.exports = mongoose.model('FoodHandlerCert', FoodHandlerCertSchema);
+module.exports = mongoose.model('FoodHandlerCert', FoodHandlerCertSchema, COLLECTIONS.core.FOOD_HANDLER_CERTS);

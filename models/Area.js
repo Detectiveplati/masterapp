@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { COLLECTIONS } = require('../config/databaseLayout');
 
 const areaSchema = new mongoose.Schema({
     areaId: {
@@ -43,6 +44,6 @@ areaSchema.pre('save', async function(next) {
 areaSchema.index({ areaId: 1 });
 areaSchema.index({ name: 1 });
 
-const Area = mongoose.model('Area', areaSchema);
+const Area = mongoose.model('Area', areaSchema, COLLECTIONS.core.AREAS);
 
 module.exports = Area;
