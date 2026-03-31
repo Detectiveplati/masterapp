@@ -192,24 +192,34 @@ function renderDishCatalog(dishes, departments) {
   });
 
   dishCatalogEl.querySelectorAll(".mapping-department-select").forEach((select) => {
-    const handleSelection = async () => {
+    const queueSave = () => {
       const row = select.closest("tr");
-      if (!row) {
-        return;
-      }
-      const dishKey = row.dataset.dishKey;
-      const resolvedDepartmentCodes = collectSelectedDepartmentCodes(row);
-      const nextSignature = JSON.stringify(resolvedDepartmentCodes);
-      syncDepartmentSelectOptions(row, resolvedDepartmentCodes);
-      if (row.dataset.assignmentSignature === nextSignature) {
-        return;
-      }
-      row.dataset.assignmentSignature = nextSignature;
-      await saveDishAssignment(dishKey, { resolvedDepartmentCodes });
+      if (!row) return;
+      window.clearTimeout(Number(row.dataset.assignmentTimer || 0));
+      const timerId = window.setTimeout(async () => {
+        row.dataset.assignmentTimer = "0";
+        const dishKey = row.dataset.dishKey;
+        const resolvedDepartmentCodes = collectSelectedDepartmentCodes(row);
+        const nextSignature = JSON.stringify(resolvedDepartmentCodes);
+        syncDepartmentSelectOptions(row, resolvedDepartmentCodes);
+        if (row.dataset.assignmentSignature === nextSignature || row.dataset.assignmentSaving === "true") {
+          return;
+        }
+        row.dataset.assignmentSaving = "true";
+        row.dataset.assignmentSignature = nextSignature;
+        try {
+          await saveDishAssignment(dishKey, { resolvedDepartmentCodes });
+        } finally {
+          row.dataset.assignmentSaving = "false";
+        }
+      }, 0);
+      row.dataset.assignmentTimer = String(timerId);
     };
 
-    select.addEventListener("input", handleSelection);
-    select.addEventListener("change", handleSelection);
+    select.addEventListener("input", queueSave);
+    select.addEventListener("change", queueSave);
+    select.addEventListener("blur", queueSave);
+    select.addEventListener("click", queueSave);
   });
 }
 
