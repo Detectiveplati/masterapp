@@ -46,7 +46,7 @@ function createChefPreorderRouter() {
 function buildChefPreorderPayload(rows, meta) {
   const filteredRows = [];
   for (const row of rows) {
-    if (!row.chef || row.unmatchedReason) {
+    if (!(row.resolvedDepartment || row.chef) || row.unmatchedReason) {
       continue;
     }
     filteredRows.push(enrichCombinedRow(row));
@@ -63,6 +63,7 @@ function buildChefPreorderPayload(rows, meta) {
     reportDates: Array.isArray(meta.reportDates) ? meta.reportDates : [],
     selectedDate,
     chefCount: chefs.length,
+    departmentCount: chefs.length,
     dishCount: chefs.reduce((sum, chef) => sum + chef.items.length, 0),
     totalQty: chefs.reduce((sum, chef) => sum + chef.totalQty, 0),
     chefs
@@ -73,15 +74,17 @@ function groupByChef(rows) {
   const chefMap = new Map();
 
   for (const row of rows) {
-    if (!chefMap.has(row.chef)) {
-      chefMap.set(row.chef, {
-        chef: row.chef,
+    const departmentName = row.resolvedDepartment || row.chef;
+    if (!chefMap.has(departmentName)) {
+      chefMap.set(departmentName, {
+        chef: departmentName,
+        department: departmentName,
         totalQty: 0,
         dishMap: new Map()
       });
     }
 
-    const chef = chefMap.get(row.chef);
+    const chef = chefMap.get(departmentName);
     chef.totalQty += row.qtyNumber;
 
     if (!chef.dishMap.has(row.dish)) {
@@ -104,6 +107,7 @@ function groupByChef(rows) {
   return Array.from(chefMap.values())
     .map((chef) => ({
       chef: chef.chef,
+      department: chef.department,
       totalQty: chef.totalQty,
       items: Array.from(chef.dishMap.values())
         .map((item) => ({

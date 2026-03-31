@@ -4,6 +4,7 @@ const form = document.getElementById("extract-form");
 const dateInput = document.getElementById("report-date");
 const runButton = document.getElementById("run-button");
 const statusEl = document.getElementById("status");
+const mappingNoticeEl = document.getElementById("mapping-notice");
 const summaryEl = document.getElementById("summary");
 const workspaceEl = document.getElementById("workspace");
 const chefListEl = document.getElementById("chef-list");
@@ -84,6 +85,8 @@ function renderAll() {
   if (!latestResult) {
     workspaceEl.classList.add("hidden");
     summaryEl.classList.add("hidden");
+    mappingNoticeEl.classList.add("hidden");
+    mappingNoticeEl.innerHTML = "";
     downloadLinkEl.classList.add("hidden");
     timelineStripEl.classList.add("hidden");
     return;
@@ -94,6 +97,7 @@ function renderAll() {
   downloadLinkEl.classList.remove("hidden");
   downloadLinkEl.href = `${API_BASE}/latest.csv`;
   renderSummary();
+  renderMappingNotice();
   renderChefList();
   renderSelectedChef();
 }
@@ -102,7 +106,7 @@ function renderSummary() {
   const cards = [
     summaryCard("Viewing Date", formatLongDate(latestResult.reportDate || dateInput.value || "-")),
     summaryCard("Run Type", formatRunType(latestResult.runType)),
-    summaryCard("Chef Sections", latestResult.sectionCount),
+    summaryCard("Source Sections", latestResult.sectionCount),
     summaryCard("Rows", latestResult.rowCount),
     summaryCard("Filled Cells", latestResult.entryCount),
     summaryCard("Extracted", formatDateTime(latestResult.extractedAt))
@@ -116,7 +120,32 @@ function renderSummary() {
     );
   }
 
+  if (latestResult.mappingSummary) {
+    cards.push(
+      summaryCard("Resolved Departments", latestResult.mappingSummary.resolvedDepartmentCount || 0),
+      summaryCard("Need Review", latestResult.mappingSummary.reviewRowCount || 0)
+    );
+  }
+
   summaryEl.innerHTML = cards.join("");
+}
+
+function renderMappingNotice() {
+  const mappingSummary = latestResult && latestResult.mappingSummary ? latestResult.mappingSummary : null;
+  const reviewDishCount = mappingSummary ? Number(mappingSummary.reviewDishCount || 0) : 0;
+  if (!reviewDishCount) {
+    mappingNoticeEl.classList.add("hidden");
+    mappingNoticeEl.innerHTML = "";
+    return;
+  }
+
+  const label = reviewDishCount === 1 ? "dish" : "dishes";
+  mappingNoticeEl.classList.remove("hidden");
+  mappingNoticeEl.innerHTML = `
+    <strong>Department setup needed.</strong>
+    ${escapeHtml(String(reviewDishCount))} ${label} from this extraction still do not have a resolved department.
+    <a href="./department-mappings.html">Open Department Rules</a> to assign them before relying on the planning views.
+  `;
 }
 
 function renderChefList() {

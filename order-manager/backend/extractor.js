@@ -605,6 +605,12 @@ function encodeCsvForExcel(text) {
 function resolveCsvHeaders(rows) {
   const combinedHeaders = [
     "reportDate",
+    "sourceDepartment",
+    "sourceDepartmentCode",
+    "resolvedDepartment",
+    "resolvedDepartmentCode",
+    "mappingSource",
+    "needsDepartmentReview",
     "chef",
     "dish",
     "prepTime",

@@ -1,5 +1,6 @@
 const process = require("process");
 
+const { resolveExtractionDepartments } = require("./departmentResolver");
 const { formatDateInTimeZone } = require("./dateUtils");
 const { runExtraction } = require("./extractor");
 const { buildComparisonKey, enrichCombinedRows, normalizeText } = require("./reportRowUtils");
@@ -30,6 +31,7 @@ async function performExtraction({ reportDate, runType }) {
     saveFiles: false,
     reportType: "combined"
   });
+  extraction.csvRows = await resolveExtractionDepartments(extraction.csvRows || []);
 
   let baselineRun = null;
   if (runType === "daily_refresh") {

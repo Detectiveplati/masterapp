@@ -24,7 +24,7 @@ function createOrderSummaryRouter() {
 
       const rows = [];
       for (const row of Array.isArray(run.csvRows) ? run.csvRows : []) {
-        if (row.unmatchedReason || !row.reportDate || !row.chef || !row.dish) {
+        if (row.unmatchedReason || !row.reportDate || !(row.resolvedDepartment || row.chef) || !row.dish) {
           continue;
         }
         rows.push(enrichCombinedRow(row));
@@ -54,18 +54,20 @@ function createOrderSummaryRouter() {
 }
 
 function buildSummaryPayload(rows, meta) {
-  const chefMap = new Map();
+  const departmentMap = new Map();
   const orderSet = new Set();
   let totalQty = 0;
 
   for (const row of rows) {
+    const departmentName = row.resolvedDepartment || row.chef;
     const qtyNumber = row.qtyNumber;
     totalQty += qtyNumber;
     if (row.orderNumber) orderSet.add(row.orderNumber);
 
-    if (!chefMap.has(row.chef)) {
-      chefMap.set(row.chef, {
-        chef: row.chef,
+    if (!departmentMap.has(departmentName)) {
+      departmentMap.set(departmentName, {
+        chef: departmentName,
+        department: departmentName,
         totalQty: 0,
         orderSet: new Set(),
         editedOrderSet: new Set(),
@@ -73,14 +75,14 @@ function buildSummaryPayload(rows, meta) {
       });
     }
 
-    const chef = chefMap.get(row.chef);
-    chef.totalQty += qtyNumber;
-    if (row.orderNumber) chef.orderSet.add(row.orderNumber);
-    if (row.hasAlert && row.orderNumber) chef.editedOrderSet.add(row.orderNumber);
+    const department = departmentMap.get(departmentName);
+    department.totalQty += qtyNumber;
+    if (row.orderNumber) department.orderSet.add(row.orderNumber);
+    if (row.hasAlert && row.orderNumber) department.editedOrderSet.add(row.orderNumber);
 
     const dishKey = row.dish;
-    if (!chef.dishMap.has(dishKey)) {
-      chef.dishMap.set(dishKey, {
+    if (!department.dishMap.has(dishKey)) {
+      department.dishMap.set(dishKey, {
         dish: row.dish,
         dishChinese: row.dishChinese || row.dish,
         dishEnglish: row.dishEnglish || "",
@@ -92,7 +94,7 @@ function buildSummaryPayload(rows, meta) {
       });
     }
 
-    const dish = chef.dishMap.get(dishKey);
+    const dish = department.dishMap.get(dishKey);
     dish.totalQty += qtyNumber;
     if (row.orderNumber) dish.orderSet.add(row.orderNumber);
     if (row.prepTimeLabel || row.prepTime) dish.prepTimes.add(row.prepTimeLabel || row.prepTime);
@@ -100,9 +102,10 @@ function buildSummaryPayload(rows, meta) {
     if (row.hasAlert) dish.hasUpdates = true;
   }
 
-  const chefs = Array.from(chefMap.values())
+  const chefs = Array.from(departmentMap.values())
     .map((chef) => ({
       chef: chef.chef,
+      department: chef.department,
       totalQty: chef.totalQty,
       orderCount: chef.orderSet.size,
       editedOrderCount: chef.editedOrderSet.size,
@@ -132,6 +135,7 @@ function buildSummaryPayload(rows, meta) {
         .map((row) => row.orderNumber)
     ).size,
     chefCount: chefs.length,
+    departmentCount: chefs.length,
     chefs
   };
 }

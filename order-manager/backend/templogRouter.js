@@ -1,11 +1,12 @@
 const express = require("express");
 const { ObjectId } = require("mongodb");
 
+const { getCombiOvenDepartmentCodes } = require("./departmentResolver");
 const { applyDemoRefreshOverlay } = require("./demoRefreshOverlay");
 const { getDb } = require("./db");
 const { getCurrentDateInTimeZone } = require("./dateUtils");
 const { findLatestExtractionRunForDate, listAvailableReportDates } = require("./reportStore");
-const { enrichCombinedRow, parseInteger, parseTimeLabel } = require("./reportRowUtils");
+const { enrichCombinedRow, normalizeDepartmentCode, parseInteger, parseTimeLabel } = require("./reportRowUtils");
 
 let cookSessionIndexPromise = null;
 
@@ -33,13 +34,14 @@ function createTemplogRouter() {
         preferredChefPattern: /烤炉|Oven/
       });
       const rows = overlay.rows;
+      const combiDepartmentCodes = await getCombiOvenDepartmentCodes();
       const reportDates = await listAvailableReportDates();
       const selectedDate = selectReportDate(reportDates, normalizeDate(requestedDate || run.reportDate || ""));
       const items = [];
       let totalQty = 0;
       let updatedItemCount = 0;
       for (const row of rows) {
-        if (row.chef !== "烤炉(Oven)" || row.unmatchedReason) {
+        if (!isCombiOvenRow(row, combiDepartmentCodes) || row.unmatchedReason) {
           continue;
         }
         if (selectedDate && row.reportDate !== selectedDate) {
@@ -167,6 +169,8 @@ function buildCombiOrder(row) {
     id: [normalizedRow.reportDate, normalizedRow.prepTime, normalizedRow.orderNumber, normalizedRow.dish].join("||"),
     reportDate: normalizedRow.reportDate || "",
     chef: normalizedRow.chef || "",
+    sourceDepartment: normalizedRow.sourceDepartment || "",
+    resolvedDepartment: normalizedRow.resolvedDepartment || normalizedRow.chef || "",
     dish: normalizedRow.dish || "",
     dishChinese: dishName.chinese,
     dishEnglish: dishName.english,
@@ -192,6 +196,14 @@ function buildCombiOrder(row) {
     changeAlertLabel: normalizedRow.changeAlertLabel || "",
     changedFields: Array.isArray(normalizedRow.changedFields) ? normalizedRow.changedFields : []
   };
+}
+
+function isCombiOvenRow(row, combiDepartmentCodes) {
+  const resolvedDepartmentCode = normalizeDepartmentCode(row && (row.resolvedDepartmentCode || row.resolvedDepartment || row.chef || ""));
+  if (Array.isArray(combiDepartmentCodes) && combiDepartmentCodes.length) {
+    return combiDepartmentCodes.includes(resolvedDepartmentCode);
+  }
+  return /烤炉|oven/i.test(String(row && (row.resolvedDepartment || row.chef || "")));
 }
 
 function splitBilingualDish(value, preferredChinese = "", preferredEnglish = "") {

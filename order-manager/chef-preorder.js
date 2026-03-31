@@ -90,7 +90,7 @@ function renderBoard(chefs) {
       <section class="section-card chef-summary-card">
         <div class="chef-summary-head">
           <div>
-            <h2>${escapeHtml(chef.chef)}</h2>
+            <h2>${escapeHtml(chef.department || chef.chef)}</h2>
             <p>${chef.items.length} dishes • ${chef.totalQty} qty</p>
           </div>
           <div class="chef-summary-total">${escapeHtml(String(chef.totalQty))}</div>

@@ -7,6 +7,7 @@ const { getMissingExtractorEnvVars, isExtractorConfigured } = require("../order-
 const { createExtractionRouter } = require("../order-manager/backend/router");
 const { createOrderSummaryRouter } = require("../order-manager/backend/orderSummaryRouter");
 const { createChefPreorderRouter } = require("../order-manager/backend/chefPrepRouter");
+const { createDepartmentCatalogRouter } = require("../order-manager/backend/departmentCatalogRouter");
 const { createTemplogRouter } = require("../order-manager/backend/templogRouter");
 
 const router = express.Router();
@@ -59,6 +60,7 @@ router.use(requireAuth, requirePermission("templog"));
 router.use("/extractions", createExtractionRouter());
 router.use("/order-summary", createOrderSummaryRouter());
 router.use("/chef-preorder", createChefPreorderRouter());
+router.use("/departments", createDepartmentCatalogRouter());
 router.use("/kitchen", createTemplogRouter());
 
 module.exports = router;

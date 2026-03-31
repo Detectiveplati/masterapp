@@ -227,6 +227,8 @@ function summarizeResult(run) {
   const chefs = Array.isArray(run.chefs) && run.chefs.length
     ? run.chefs
     : sections.map((section) => section.chef).filter(Boolean);
+  const csvRows = Array.isArray(run.csvRows) ? run.csvRows : [];
+  const mappingSummary = summarizeDepartmentMapping(csvRows);
 
   return {
     reportId: String(run._id),
@@ -236,9 +238,10 @@ function summarizeResult(run) {
     reportType: run.reportType,
     sourceUrl: run.sourceUrl,
     sectionCount: run.sectionCount,
-    rowCount: Array.isArray(run.rows) ? run.rows.length : countSectionRows(sections),
+    rowCount: csvRows.length || (Array.isArray(run.rows) ? run.rows.length : countSectionRows(sections)),
     entryCount: Array.isArray(run.entries) ? run.entries.length : countSectionEntries(sections),
     mergeSummary: run.mergeSummary || null,
+    mappingSummary,
     refreshSummary: run.refreshSummary || null,
     chefs,
     sections,
@@ -294,6 +297,43 @@ function normalizeRunType(value) {
 function normalizeDate(value) {
   const text = String(value || "").trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "";
+}
+
+function summarizeDepartmentMapping(rows) {
+  if (!Array.isArray(rows) || !rows.length) {
+    return {
+      reviewDishCount: 0,
+      resolvedRowCount: 0,
+      reviewRowCount: 0,
+      resolvedDepartmentCount: 0
+    };
+  }
+
+  const resolvedDepartments = new Set();
+  const reviewDishes = new Set();
+  let resolvedRowCount = 0;
+  let reviewRowCount = 0;
+
+  for (const row of rows) {
+    if (row && row.resolvedDepartment) {
+      resolvedDepartments.add(String(row.resolvedDepartment).trim());
+      resolvedRowCount += 1;
+    }
+    if (row && row.needsDepartmentReview) {
+      reviewRowCount += 1;
+      const dish = String(row.dish || "").trim();
+      if (dish) {
+        reviewDishes.add(dish);
+      }
+    }
+  }
+
+  return {
+    reviewDishCount: reviewDishes.size,
+    resolvedRowCount,
+    reviewRowCount,
+    resolvedDepartmentCount: resolvedDepartments.size
+  };
 }
 
 module.exports = {
