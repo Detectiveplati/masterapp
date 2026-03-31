@@ -211,9 +211,10 @@ function renderPrintPreview() {
 
   const exportDepartments = getExportDepartments();
   const exportDishCount = exportDepartments.reduce((sum, department) => sum + department.items.length, 0);
+  const exportTotalQty = exportDepartments.reduce((sum, department) => sum + department.totalQty, 0);
 
   exportStatusEl.textContent = exportDepartments.length
-    ? `Prepared ${exportDepartments.length} department${exportDepartments.length === 1 ? "" : "s"} for print with ${exportDishCount} dishes on vertical A4.`
+    ? `Prepared ${exportDepartments.length} department${exportDepartments.length === 1 ? "" : "s"} for print with ${exportDishCount} dishes and ${exportTotalQty} total quantity on vertical A4.`
     : "Select at least one department to prepare the printable export.";
 
   if (!exportDepartments.length) {
@@ -224,11 +225,37 @@ function renderPrintPreview() {
   printPreviewEl.innerHTML = `
     <div class="print-preview-toolbar">
       <strong>A4 preview</strong>
-      <span>${escapeHtml(formatDate(latestPayload.selectedDate || "-"))} • ${escapeHtml(String(exportDepartments.length))} departments</span>
+      <span>${escapeHtml(formatDate(latestPayload.selectedDate || "-"))} • ${escapeHtml(String(exportDepartments.length))} departments • ${escapeHtml(String(exportDishCount))} dishes</span>
     </div>
     <div id="print-sheet" class="print-sheet">
+      ${renderPrintSheetHeader(exportDepartments, exportDishCount, exportTotalQty)}
       ${exportDepartments.map(renderPrintDepartmentSection).join("")}
     </div>
+  `;
+}
+
+function renderPrintSheetHeader(departments, dishCount, totalQty) {
+  return `
+    <header class="print-sheet-header">
+      <div>
+        <p class="print-sheet-eyebrow">Chef Ordering Export</p>
+        <h2>${escapeHtml(formatDate(latestPayload.selectedDate || "-"))}</h2>
+      </div>
+      <div class="print-sheet-stats">
+        <div class="print-sheet-stat">
+          <span>Departments</span>
+          <strong>${escapeHtml(String(departments.length))}</strong>
+        </div>
+        <div class="print-sheet-stat">
+          <span>Dishes</span>
+          <strong>${escapeHtml(String(dishCount))}</strong>
+        </div>
+        <div class="print-sheet-stat">
+          <span>Total Qty</span>
+          <strong>${escapeHtml(String(totalQty))}</strong>
+        </div>
+      </div>
+    </header>
   `;
 }
 
@@ -239,25 +266,30 @@ function renderPrintDepartmentSection(department) {
         <h3>${escapeHtml(department.department || department.chef)}</h3>
         <span>${escapeHtml(String(department.items.length))} dishes • ${escapeHtml(String(department.totalQty))} qty</span>
       </header>
-      <table class="print-table">
-        <thead>
-          <tr>
-            <th class="print-col-dish">Chinese Dish</th>
-            <th class="print-col-prep">Prep Time</th>
-            <th class="print-col-qty">Qty</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${department.items.map((item) => `
-            <tr>
-              <td class="print-cell-dish">${escapeHtml(item.dishChinese || item.dish)}</td>
-              <td class="print-cell-prep">${escapeHtml(formatPrepSlots(item.prepSlots))}</td>
-              <td class="print-cell-qty">${escapeHtml(String(item.totalQty))}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
+      <div class="print-item-list">
+        ${department.items.map((item) => renderPrintItemRow(item)).join("")}
+      </div>
     </section>
+  `;
+}
+
+function renderPrintItemRow(item) {
+  return `
+    <article class="print-item-row">
+      <div class="print-item-main">
+        <div class="print-item-label">Chinese Dish</div>
+        <div class="print-item-dish">${escapeHtml(item.dishChinese || item.dish)}</div>
+        ${item.dishEnglish ? `<div class="print-item-english">${escapeHtml(item.dishEnglish)}</div>` : ""}
+      </div>
+      <div class="print-item-side print-item-prep">
+        <div class="print-item-label">Prep Time</div>
+        <div class="print-item-value">${escapeHtml(formatPrepSlots(item.prepSlots))}</div>
+      </div>
+      <div class="print-item-side print-item-qty">
+        <div class="print-item-label">Quantity</div>
+        <div class="print-item-qty-value">${escapeHtml(String(item.totalQty))}</div>
+      </div>
+    </article>
   `;
 }
 
