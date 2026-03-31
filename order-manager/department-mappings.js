@@ -188,16 +188,28 @@ function renderDishCatalog(dishes, departments) {
       select.value = selectedCodes[selectIndex] || "";
     });
     syncDepartmentSelectOptions(row, selectedCodes);
+    row.dataset.assignmentSignature = JSON.stringify(selectedCodes);
   });
 
   dishCatalogEl.querySelectorAll(".mapping-department-select").forEach((select) => {
-    select.addEventListener("change", async () => {
+    const handleSelection = async () => {
       const row = select.closest("tr");
+      if (!row) {
+        return;
+      }
       const dishKey = row.dataset.dishKey;
       const resolvedDepartmentCodes = collectSelectedDepartmentCodes(row);
+      const nextSignature = JSON.stringify(resolvedDepartmentCodes);
       syncDepartmentSelectOptions(row, resolvedDepartmentCodes);
+      if (row.dataset.assignmentSignature === nextSignature) {
+        return;
+      }
+      row.dataset.assignmentSignature = nextSignature;
       await saveDishAssignment(dishKey, { resolvedDepartmentCodes });
-    });
+    };
+
+    select.addEventListener("input", handleSelection);
+    select.addEventListener("change", handleSelection);
   });
 }
 
