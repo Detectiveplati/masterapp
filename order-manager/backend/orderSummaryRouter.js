@@ -2,7 +2,7 @@ const express = require("express");
 
 const { findPreferredExtractionRun, listAvailableReportDates } = require("./reportStore");
 const { getCurrentDateInTimeZone } = require("./dateUtils");
-const { enrichCombinedRow, parseTimeLabel } = require("./reportRowUtils");
+const { enrichCombinedRow, getResolvedDepartmentEntries, parseTimeLabel } = require("./reportRowUtils");
 
 function createOrderSummaryRouter() {
   const router = express.Router();
@@ -59,47 +59,54 @@ function buildSummaryPayload(rows, meta) {
   let totalQty = 0;
 
   for (const row of rows) {
-    const departmentName = row.resolvedDepartment;
     const qtyNumber = row.qtyNumber;
     totalQty += qtyNumber;
     if (row.orderNumber) orderSet.add(row.orderNumber);
 
-    if (!departmentMap.has(departmentName)) {
-      departmentMap.set(departmentName, {
-        chef: departmentName,
-        department: departmentName,
-        totalQty: 0,
-        orderSet: new Set(),
-        editedOrderSet: new Set(),
-        dishMap: new Map()
-      });
+    const departmentEntries = getResolvedDepartmentEntries(row);
+    for (const departmentEntry of departmentEntries) {
+      const departmentName = departmentEntry.name;
+      if (!departmentName) {
+        continue;
+      }
+
+      if (!departmentMap.has(departmentName)) {
+        departmentMap.set(departmentName, {
+          chef: departmentName,
+          department: departmentName,
+          totalQty: 0,
+          orderSet: new Set(),
+          editedOrderSet: new Set(),
+          dishMap: new Map()
+        });
+      }
+
+      const department = departmentMap.get(departmentName);
+      department.totalQty += qtyNumber;
+      if (row.orderNumber) department.orderSet.add(row.orderNumber);
+      if (row.hasAlert && row.orderNumber) department.editedOrderSet.add(row.orderNumber);
+
+      const dishKey = row.dish;
+      if (!department.dishMap.has(dishKey)) {
+        department.dishMap.set(dishKey, {
+          dish: row.dish,
+          dishChinese: row.dishChinese || row.dish,
+          dishEnglish: row.dishEnglish || "",
+          totalQty: 0,
+          orderSet: new Set(),
+          prepTimes: new Set(),
+          editedOrderSet: new Set(),
+          hasUpdates: false
+        });
+      }
+
+      const dish = department.dishMap.get(dishKey);
+      dish.totalQty += qtyNumber;
+      if (row.orderNumber) dish.orderSet.add(row.orderNumber);
+      if (row.prepTimeLabel || row.prepTime) dish.prepTimes.add(row.prepTimeLabel || row.prepTime);
+      if (row.hasAlert && row.orderNumber) dish.editedOrderSet.add(row.orderNumber);
+      if (row.hasAlert) dish.hasUpdates = true;
     }
-
-    const department = departmentMap.get(departmentName);
-    department.totalQty += qtyNumber;
-    if (row.orderNumber) department.orderSet.add(row.orderNumber);
-    if (row.hasAlert && row.orderNumber) department.editedOrderSet.add(row.orderNumber);
-
-    const dishKey = row.dish;
-    if (!department.dishMap.has(dishKey)) {
-      department.dishMap.set(dishKey, {
-        dish: row.dish,
-        dishChinese: row.dishChinese || row.dish,
-        dishEnglish: row.dishEnglish || "",
-        totalQty: 0,
-        orderSet: new Set(),
-        prepTimes: new Set(),
-        editedOrderSet: new Set(),
-        hasUpdates: false
-      });
-    }
-
-    const dish = department.dishMap.get(dishKey);
-    dish.totalQty += qtyNumber;
-    if (row.orderNumber) dish.orderSet.add(row.orderNumber);
-    if (row.prepTimeLabel || row.prepTime) dish.prepTimes.add(row.prepTimeLabel || row.prepTime);
-    if (row.hasAlert && row.orderNumber) dish.editedOrderSet.add(row.orderNumber);
-    if (row.hasAlert) dish.hasUpdates = true;
   }
 
   const chefs = Array.from(departmentMap.values())

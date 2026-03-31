@@ -90,6 +90,17 @@ function enrichCombinedRow(row) {
   const existingPrepSortKey = Number(nextRow.prepSortKey);
   const existingFunctionSortKey = Number(nextRow.functionSortKey);
 
+  const resolvedDepartmentNames = normalizeDepartmentList(
+    Array.isArray(nextRow.resolvedDepartments)
+      ? nextRow.resolvedDepartments
+      : [nextRow.resolvedDepartment || ""]
+  );
+  const resolvedDepartmentCodes = normalizeDepartmentCodeList(
+    Array.isArray(nextRow.resolvedDepartmentCodes)
+      ? nextRow.resolvedDepartmentCodes
+      : [nextRow.resolvedDepartmentCode || nextRow.resolvedDepartment || ""]
+  );
+
   return {
     ...nextRow,
     reportDate: normalizeDate(nextRow.reportDate) || String(nextRow.reportDate || "").trim(),
@@ -97,8 +108,10 @@ function enrichCombinedRow(row) {
     dishEnglish: String(nextRow.dishEnglish || "").trim() || dishNames.english,
     sourceDepartment: normalizeText(nextRow.sourceDepartment || nextRow.sourceChef || ""),
     sourceDepartmentCode: normalizeDepartmentCode(nextRow.sourceDepartmentCode || nextRow.sourceDepartment || nextRow.sourceChef || ""),
-    resolvedDepartment: normalizeText(nextRow.resolvedDepartment || ""),
-    resolvedDepartmentCode: normalizeDepartmentCode(nextRow.resolvedDepartmentCode || nextRow.resolvedDepartment || ""),
+    resolvedDepartment: resolvedDepartmentNames[0] || "",
+    resolvedDepartments: resolvedDepartmentNames,
+    resolvedDepartmentCode: resolvedDepartmentCodes[0] || "",
+    resolvedDepartmentCodes,
     mappingSource: normalizeText(nextRow.mappingSource || ""),
     needsDepartmentReview: Boolean(nextRow.needsDepartmentReview),
     qtyNumber: Number.isFinite(existingQtyNumber) ? existingQtyNumber : parseInteger(nextRow.qty),
@@ -115,12 +128,60 @@ function enrichCombinedRows(rows) {
   return rows.map(enrichCombinedRow);
 }
 
+function normalizeDepartmentList(values) {
+  return Array.from(new Set(
+    (Array.isArray(values) ? values : [])
+      .map((value) => normalizeText(value))
+      .filter(Boolean)
+  ));
+}
+
+function normalizeDepartmentCodeList(values) {
+  return Array.from(new Set(
+    (Array.isArray(values) ? values : [])
+      .map((value) => normalizeDepartmentCode(value))
+      .filter(Boolean)
+  ));
+}
+
+function getResolvedDepartmentEntries(row) {
+  const nextRow = enrichCombinedRow(row);
+  const names = nextRow.resolvedDepartments;
+  const codes = nextRow.resolvedDepartmentCodes;
+  const length = Math.max(names.length, codes.length);
+  const entries = [];
+
+  for (let index = 0; index < length; index += 1) {
+    const name = normalizeText(names[index] || "");
+    const code = normalizeDepartmentCode(codes[index] || name || "");
+    if (!name && !code) {
+      continue;
+    }
+    entries.push({
+      name,
+      code
+    });
+  }
+
+  if (!entries.length && nextRow.resolvedDepartment) {
+    entries.push({
+      name: nextRow.resolvedDepartment,
+      code: nextRow.resolvedDepartmentCode || normalizeDepartmentCode(nextRow.resolvedDepartment)
+    });
+  }
+
+  return entries;
+}
+
 module.exports = {
   buildComparisonKey,
   enrichCombinedRow,
   enrichCombinedRows,
+  getResolvedDepartmentEntries,
   normalizeDepartmentCode,
+  normalizeDepartmentCodeList,
   normalizeDishKey,
+  normalizeDepartmentList,
   normalizeLookupKey,
   normalizeDate,
   normalizeText,

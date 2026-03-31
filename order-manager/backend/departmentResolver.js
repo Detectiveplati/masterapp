@@ -47,32 +47,38 @@ function applyDepartmentResolution(rows, context) {
 
   return rows.map((row) => {
     const sourceDepartment = normalizeText(row.sourceDepartment || row.sourceChef || row.chef || "");
-    const sourceDepartmentCode = normalizeDepartmentCode(sourceDepartment);
+    const sourceDepartmentCodes = normalizeDepartmentCodeList(
+      Array.isArray(row.sourceDepartmentsSeen) && row.sourceDepartmentsSeen.length
+        ? row.sourceDepartmentsSeen
+        : [row.sourceDepartmentCode || sourceDepartment]
+    );
     const dishKey = normalizeDishKey(row.dish || row.dishChinese || row.dishEnglish || "");
     const catalogEntry = dishCatalogMap.get(dishKey);
-    const manualDepartmentCode = catalogEntry && catalogEntry.resolvedDepartmentCode
-      ? normalizeDepartmentCode(catalogEntry.resolvedDepartmentCode)
-      : "";
-    const manualDepartmentRecord = manualDepartmentCode
-      ? departmentMap.get(manualDepartmentCode)
-      : null;
-    const activeManualDepartment = manualDepartmentRecord && manualDepartmentRecord.active !== false
-      ? manualDepartmentRecord
-      : null;
-    const sourceDepartmentRecord = sourceDepartmentCode
-      ? departmentMap.get(sourceDepartmentCode)
-      : null;
-    const activeSourceDepartment = sourceDepartmentRecord && sourceDepartmentRecord.active !== false
-      ? sourceDepartmentRecord
-      : null;
-    const effectiveDepartment = manualDepartmentCode
-      ? activeManualDepartment
-      : activeSourceDepartment;
-    const mappingSource = manualDepartmentCode
-      ? activeManualDepartment
+    const manualDepartmentCodes = normalizeDepartmentCodeList(
+      catalogEntry && Array.isArray(catalogEntry.resolvedDepartmentCodes) && catalogEntry.resolvedDepartmentCodes.length
+        ? catalogEntry.resolvedDepartmentCodes
+        : [catalogEntry && catalogEntry.resolvedDepartmentCode ? catalogEntry.resolvedDepartmentCode : ""]
+    );
+    const manualDepartmentRecords = manualDepartmentCodes
+      .map((code) => departmentMap.get(code))
+      .filter(Boolean);
+    const activeManualDepartments = manualDepartmentRecords.filter((department) => department.active !== false);
+    const sourceDepartmentRecords = sourceDepartmentCodes
+      .map((code) => departmentMap.get(code))
+      .filter(Boolean);
+    const activeSourceDepartments = sourceDepartmentRecords.filter((department) => department.active !== false);
+    const effectiveDepartments = manualDepartmentCodes.length
+      ? activeManualDepartments
+      : activeSourceDepartments;
+    const hasInactiveSelection = (manualDepartmentCodes.length ? manualDepartmentCodes : sourceDepartmentCodes).some((code) => {
+      const department = departmentMap.get(code);
+      return !department || department.active === false;
+    });
+    const mappingSource = manualDepartmentCodes.length
+      ? activeManualDepartments.length
         ? "catalog"
         : "review"
-      : activeSourceDepartment
+      : activeSourceDepartments.length
         ? "source"
         : "review";
 
@@ -80,12 +86,17 @@ function applyDepartmentResolution(rows, context) {
       ...row,
       sourceChef: sourceDepartment,
       sourceDepartment,
-      sourceDepartmentCode,
-      resolvedDepartment: effectiveDepartment ? effectiveDepartment.name : "",
-      resolvedDepartmentCode: effectiveDepartment ? effectiveDepartment.code : "",
+      sourceDepartmentCode: sourceDepartmentCodes[0] || "",
+      sourceDepartmentsSeen: Array.isArray(row.sourceDepartmentsSeen) && row.sourceDepartmentsSeen.length
+        ? row.sourceDepartmentsSeen
+        : sourceDepartment ? [sourceDepartment] : [],
+      resolvedDepartment: effectiveDepartments[0] ? effectiveDepartments[0].name : "",
+      resolvedDepartments: effectiveDepartments.map((department) => department.name),
+      resolvedDepartmentCode: effectiveDepartments[0] ? effectiveDepartments[0].code : "",
+      resolvedDepartmentCodes: effectiveDepartments.map((department) => department.code),
       mappingSource,
-      needsDepartmentReview: !effectiveDepartment,
-      chef: effectiveDepartment ? effectiveDepartment.name : ""
+      needsDepartmentReview: hasInactiveSelection || !effectiveDepartments.length,
+      chef: effectiveDepartments[0] ? effectiveDepartments[0].name : ""
     };
   });
 }
@@ -162,7 +173,7 @@ async function getCombiOvenDepartmentCodes() {
 async function getDishCatalogMap() {
   const db = await getDb();
   const documents = await db.collection(COLLECTIONS.orderManager.DISH_CATALOG)
-    .find({}, { projection: { normalizedDishKey: 1, resolvedDepartmentCode: 1 } })
+    .find({}, { projection: { normalizedDishKey: 1, resolvedDepartmentCode: 1, resolvedDepartmentCodes: 1 } })
     .toArray();
 
   return new Map(
@@ -170,10 +181,23 @@ async function getDishCatalogMap() {
       normalizeDishKey(document.normalizedDishKey),
       {
         normalizedDishKey: normalizeDishKey(document.normalizedDishKey),
-        resolvedDepartmentCode: normalizeDepartmentCode(document.resolvedDepartmentCode || "")
+        resolvedDepartmentCode: normalizeDepartmentCode(document.resolvedDepartmentCode || ""),
+        resolvedDepartmentCodes: normalizeDepartmentCodeList(
+          Array.isArray(document.resolvedDepartmentCodes) && document.resolvedDepartmentCodes.length
+            ? document.resolvedDepartmentCodes
+            : [document.resolvedDepartmentCode || ""]
+        )
       }
     ])
   );
+}
+
+function normalizeDepartmentCodeList(values) {
+  return Array.from(new Set(
+    (Array.isArray(values) ? values : [])
+      .map((value) => normalizeDepartmentCode(value))
+      .filter(Boolean)
+  ));
 }
 
 module.exports = {

@@ -6,6 +6,13 @@ let globalTimerId = null;
 let currentStaff = null;  // 'Alice', 'Bob', 'Charlie' or null
 let wakeLock = null;
 let nextCookId = Date.now();
+const kitchenStation = window.ORDER_MANAGER_KITCHEN_STATION || {
+  key: 'combioven',
+  title: 'Kitchen Temp Log',
+  pageTitle: '厨房温度记录 Kitchen Temp Log',
+  boardTitle: '烤炉订单 Combi Oven Orders',
+  sourceLabel: 'combi oven'
+};
 
 // BT thermometer target: which cook card receives the next reading
 window.btTargetCookId = null;
@@ -18,9 +25,9 @@ function createCookId() {
 // ============================================================
 // LOCAL STORAGE PERSISTENCE
 // ============================================================
-const STORAGE_KEY = 'templog_cooks_order_manager_kitchen';
-const STAFF_KEY   = 'templog_staff_order_manager_kitchen';
-const RUNTIME_LOG_KEY = 'order_manager_kitchen_runtime_log';
+const STORAGE_KEY = `templog_cooks_order_manager_kitchen_${kitchenStation.key}`;
+const STAFF_KEY   = `templog_staff_order_manager_kitchen_${kitchenStation.key}`;
+const RUNTIME_LOG_KEY = `order_manager_kitchen_runtime_log_${kitchenStation.key}`;
 const ENABLE_RUNTIME_LOG = new URLSearchParams(window.location.search).has('debugRuntime');
 const LEGACY_COOK_KEYS = [
   'templog_cooks__order_manager_kitchen_combioven_html',
@@ -242,6 +249,20 @@ requestWakeLock();
 const activeGrid = document.getElementById('active-grid');
 const statusEl = document.getElementById('status');
 const recentBody = document.getElementById('recent-body');
+
+initializeKitchenStationUi();
+
+function initializeKitchenStationUi() {
+  document.title = `${kitchenStation.title} - Multi Cook`;
+  const pageTitleEl = document.querySelector('.page-header h1');
+  if (pageTitleEl) {
+    pageTitleEl.textContent = kitchenStation.pageTitle;
+  }
+  const recentTitleEl = document.querySelector('#log h3');
+  if (recentTitleEl) {
+    recentTitleEl.textContent = `最近记录（最后8条） Recent ${kitchenStation.title} Entries (last 8)`;
+  }
+}
 
 function setGlobalStaff(staff) {
   currentStaff = staff;

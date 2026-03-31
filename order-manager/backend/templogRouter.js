@@ -15,69 +15,19 @@ function createTemplogRouter() {
   const router = express.Router();
 
   router.get("/combioven/latest", async (req, res) => {
-    try {
-      const requestedDate = normalizeDate(req.query.date || "");
-      const run = await findLatestExtractionRunForDate(requestedDate, {
-        projection: {
-          reportDate: 1,
-          runType: 1,
-          extractedAt: 1,
-          refreshSummary: 1,
-          baselineRunId: 1,
-          csvRows: 1
-        }
-      });
-      if (!run) {
-        return res.status(404).json({ error: "No extracted report found in MongoDB. Run the extractor first." });
-      }
+    req.params = { ...(req.params || {}), station: "combioven" };
+    return handleStationLatest(req, res);
+  });
 
-      const overlay = applyDemoRefreshOverlay(run, Array.isArray(run.csvRows) ? run.csvRows : [], {
-        preferredChefPattern: /烤炉|Oven/
-      });
-      const rows = overlay.rows;
-      const combiDepartmentCodes = await getCombiOvenDepartmentCodes();
-      const reportDates = await listAvailableReportDates();
-      const selectedDate = selectReportDate(reportDates, normalizeDate(requestedDate || run.reportDate || ""));
-      const items = [];
-      let totalQty = 0;
-      let updatedItemCount = 0;
-      for (const row of rows) {
-        if (!isCombiOvenRow(row, combiDepartmentCodes) || row.unmatchedReason) {
-          continue;
-        }
-        if (selectedDate && row.reportDate !== selectedDate) {
-          continue;
-        }
-        const item = buildCombiOrder(row);
-        items.push(item);
-        totalQty += item.qtyNumber;
-        if (item.hasAlert) {
-          updatedItemCount += 1;
-        }
-      }
-      const prepSlots = groupPrepSlots(items);
-
-      res.json({
-        sourceFilename: `Latest report for ${selectedDate || run.reportDate || run.extractedAt.slice(0, 10)}`,
-        extractedAt: run.extractedAt,
-        runType: run.runType || "manual",
-        refreshSummary: overlay.refreshSummary,
-        reportDates,
-        selectedDate,
-        itemCount: items.length,
-        totalQty,
-        updatedItemCount,
-        prepSlots
-      });
-    } catch (error) {
-      res.status(500).json({ error: error.message || "Could not load combi oven orders." });
-    }
+  router.get("/stations/:station/latest", async (req, res) => {
+    return handleStationLatest(req, res);
   });
 
   router.get("/cooks", async (req, res) => {
     try {
       const limit = Math.max(1, Number(req.query.limit) || 50);
-      const entries = await loadCookEntries({ limit });
+      const station = getRequestedStation(req);
+      const entries = await loadCookEntries({ limit, station });
       res.json(entries);
     } catch (error) {
       res.status(500).json({ error: error.message || "Could not load cook log entries." });
@@ -87,7 +37,8 @@ function createTemplogRouter() {
   router.get("/cooks/status", async (req, res) => {
     try {
       const limit = Math.max(1, Number(req.query.limit) || 500);
-      const entries = await loadCookEntries({ limit, statusOnly: true });
+      const station = getRequestedStation(req);
+      const entries = await loadCookEntries({ limit, statusOnly: true, station });
       res.json(entries);
     } catch (error) {
       res.status(500).json({ error: error.message || "Could not load cook status entries." });
@@ -97,10 +48,11 @@ function createTemplogRouter() {
   router.post("/cooks", express.json(), async (req, res) => {
     try {
       const entry = sanitizeCookEntry(req.body || {});
+      const station = getRequestedStation(req);
       const collection = await getCookSessionCollection();
       const result = await collection.insertOne({
         ...entry,
-        station: "combioven",
+        station,
         createdAt: new Date().toISOString()
       });
       res.status(201).json({
@@ -121,6 +73,7 @@ function createTemplogRouter() {
   router.delete("/cooks/:sessionId", async (req, res) => {
     try {
       const sessionId = String(req.params.sessionId || "").trim();
+      const station = getRequestedStation(req);
       if (!ObjectId.isValid(sessionId)) {
         return res.status(400).json({ error: "Invalid cook session id." });
       }
@@ -128,7 +81,7 @@ function createTemplogRouter() {
       const collection = await getCookSessionCollection();
       const result = await collection.deleteOne({
         _id: new ObjectId(sessionId),
-        station: "combioven"
+        station
       });
 
       if (!result.deletedCount) {
@@ -143,11 +96,12 @@ function createTemplogRouter() {
 
   router.get("/cooks/export", async (req, res) => {
     try {
-      const entries = await loadCookEntries({ sortAscending: true });
+      const station = getRequestedStation(req);
+      const entries = await loadCookEntries({ sortAscending: true, station });
       const headers = ["food", "orderSummary", "batchCount", "orderCount", "totalQty", "startDate", "startTime", "endTime", "duration", "temp", "staff"];
       const csv = withUtf8Bom(toCsv(entries, headers));
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
-      res.setHeader("Content-Disposition", 'attachment; filename="order-manager-kitchen-temp-log.csv"');
+      res.setHeader("Content-Disposition", `attachment; filename="order-manager-${station}-temp-log.csv"`);
       res.send(csv);
     } catch (error) {
       res.status(500).json({ error: error.message || "Could not export cook log." });
@@ -157,7 +111,70 @@ function createTemplogRouter() {
   return router;
 }
 
-function buildCombiOrder(row) {
+async function handleStationLatest(req, res) {
+  try {
+    const station = getRequestedStation(req);
+    const stationConfig = getKitchenStationConfig(station);
+    const requestedDate = normalizeDate(req.query.date || "");
+    const run = await findLatestExtractionRunForDate(requestedDate, {
+      projection: {
+        reportDate: 1,
+        runType: 1,
+        extractedAt: 1,
+        refreshSummary: 1,
+        baselineRunId: 1,
+        csvRows: 1
+      }
+    });
+    if (!run) {
+      return res.status(404).json({ error: "No extracted report found in MongoDB. Run the extractor first." });
+    }
+
+    const overlay = applyDemoRefreshOverlay(run, Array.isArray(run.csvRows) ? run.csvRows : [], {
+      preferredChefPattern: stationConfig.departmentPattern
+    });
+    const rows = overlay.rows;
+    const stationDepartmentCodes = await getStationDepartmentCodes(station);
+    const reportDates = await listAvailableReportDates();
+    const selectedDate = selectReportDate(reportDates, normalizeDate(requestedDate || run.reportDate || ""));
+    const items = [];
+    let totalQty = 0;
+    let updatedItemCount = 0;
+    for (const row of rows) {
+      if (!isKitchenStationRow(row, stationDepartmentCodes, stationConfig.departmentPattern) || row.unmatchedReason) {
+        continue;
+      }
+      if (selectedDate && row.reportDate !== selectedDate) {
+        continue;
+      }
+      const item = buildKitchenOrder(row);
+      items.push(item);
+      totalQty += item.qtyNumber;
+      if (item.hasAlert) {
+        updatedItemCount += 1;
+      }
+    }
+    const prepSlots = groupPrepSlots(items);
+
+    res.json({
+      station,
+      sourceFilename: `Latest report for ${selectedDate || run.reportDate || run.extractedAt.slice(0, 10)}`,
+      extractedAt: run.extractedAt,
+      runType: run.runType || "manual",
+      refreshSummary: overlay.refreshSummary,
+      reportDates,
+      selectedDate,
+      itemCount: items.length,
+      totalQty,
+      updatedItemCount,
+      prepSlots
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Could not load kitchen orders." });
+  }
+}
+
+function buildKitchenOrder(row) {
   const normalizedRow = enrichCombinedRow(row);
   const dishName = splitBilingualDish(
     normalizedRow.dish || "",
@@ -199,15 +216,20 @@ function buildCombiOrder(row) {
   };
 }
 
-function isCombiOvenRow(row, combiDepartmentCodes) {
+function isKitchenStationRow(row, stationDepartmentCodes, departmentPattern) {
   if (!row || row.unmatchedReason || row.needsDepartmentReview) {
     return false;
   }
-  const resolvedDepartmentCode = normalizeDepartmentCode(row && (row.resolvedDepartmentCode || row.resolvedDepartment || ""));
-  if (Array.isArray(combiDepartmentCodes) && combiDepartmentCodes.length) {
-    return combiDepartmentCodes.includes(resolvedDepartmentCode);
+  const resolvedDepartmentCodes = Array.from(new Set(
+    (Array.isArray(row.resolvedDepartmentCodes) ? row.resolvedDepartmentCodes : [row && (row.resolvedDepartmentCode || row.resolvedDepartment || "")])
+      .map((value) => normalizeDepartmentCode(value))
+      .filter(Boolean)
+  ));
+  if (Array.isArray(stationDepartmentCodes) && stationDepartmentCodes.length) {
+    return resolvedDepartmentCodes.some((code) => stationDepartmentCodes.includes(code));
   }
-  return /烤炉|oven/i.test(String(row && (row.resolvedDepartment || "")));
+  return (Array.isArray(row.resolvedDepartments) ? row.resolvedDepartments : [row && (row.resolvedDepartment || "")])
+    .some((departmentName) => departmentPattern.test(String(departmentName || "")));
 }
 
 function splitBilingualDish(value, preferredChinese = "", preferredEnglish = "") {
@@ -402,6 +424,7 @@ async function getCookSessionCollection() {
 async function loadCookEntries(options = {}) {
   const collection = await getCookSessionCollection();
   const limit = Math.max(0, Number(options.limit) || 0);
+  const station = normalizeStationKey(options.station);
   const projection = options.statusOnly
     ? {
         batchCount: 1,
@@ -429,7 +452,7 @@ async function loadCookEntries(options = {}) {
         staff: 1,
         createdAt: 1
       };
-  let cursor = collection.find({ station: "combioven" }).project(projection);
+  let cursor = collection.find({ station }).project(projection);
 
   cursor = cursor.sort({ createdAt: options.sortAscending ? 1 : -1 });
   if (limit > 0) {
@@ -570,6 +593,44 @@ function buildFoodKey(value) {
 module.exports = {
   createTemplogRouter
 };
+
+function getRequestedStation(req) {
+  return normalizeStationKey((req.params && req.params.station) || req.query.station || "");
+}
+
+function normalizeStationKey(value) {
+  const station = String(value || "").trim().toLowerCase();
+  return station === "stirfry" ? "stirfry" : "combioven";
+}
+
+function getKitchenStationConfig(station) {
+  if (station === "stirfry") {
+    return {
+      key: "stirfry",
+      departmentPattern: /炒|stir[\s-]?fry|wok/i
+    };
+  }
+
+  return {
+    key: "combioven",
+    departmentPattern: /烤炉|oven/i
+  };
+}
+
+async function getStationDepartmentCodes(station) {
+  if (station === "combioven") {
+    return getCombiOvenDepartmentCodes();
+  }
+
+  const db = await getDb();
+  const departments = await db.collection(COLLECTIONS.orderManager.DEPARTMENTS)
+    .find({ active: { $ne: false } }, { projection: { code: 1, name: 1 } })
+    .toArray();
+
+  return departments
+    .filter((department) => /炒|stir[\s-]?fry|wok/i.test(String(department.name || "")))
+    .map((department) => normalizeDepartmentCode(department.code || department.name || ""));
+}
 
 const ENGLISH_TO_CHINESE_DISH_NAMES = {
   "ayam panggang kunyit": "黄姜娘惹烤鸡",

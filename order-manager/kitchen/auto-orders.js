@@ -1,6 +1,11 @@
 (function () {
-  const API_URL = "/api/order-manager/kitchen/combioven/latest";
-  const COOKS_STATUS_API_URL = "/api/order-manager/kitchen/cooks/status?limit=500";
+  const station = window.ORDER_MANAGER_KITCHEN_STATION || {
+    key: "combioven",
+    boardTitle: "烤炉订单 Combi Oven Orders",
+    sourceLabel: "combi oven"
+  };
+  const API_URL = `/api/order-manager/kitchen/stations/${encodeURIComponent(station.key)}/latest`;
+  const COOKS_STATUS_API_URL = `/api/order-manager/kitchen/cooks/status?limit=500&station=${encodeURIComponent(station.key)}`;
   let currentSortMode = "dish";
   let latestOrdersPayload = null;
   let latestCookedEntries = [];
@@ -19,8 +24,8 @@
     const shell = document.createElement("div");
     shell.className = "auto-order-shell";
     shell.innerHTML = `
-      <div class="food-category auto-order-panel">
-        <h2>烤炉订单 Combi Oven Orders</h2>
+        <div class="food-category auto-order-panel">
+        <h2>${escapeHtml(station.boardTitle)}</h2>
         <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:14px">
           <label style="display:flex;flex-direction:column;gap:6px;font-weight:700;color:#444">
             <span>日期 Date</span>
@@ -127,7 +132,7 @@
       params.set("date", options.date);
     }
 
-    summary.textContent = "读取烤炉订单中… Loading combi oven orders…";
+    summary.textContent = `读取${station.sourceLabel}订单中… Loading ${station.sourceLabel} orders…`;
     board.innerHTML = "";
 
     try {
@@ -140,7 +145,7 @@
       const payload = await ordersResponse.json();
       latestCookedEntries = cooksResponse.ok ? await cooksResponse.json() : [];
       if (!ordersResponse.ok) {
-        throw new Error(payload.error || "Could not load combi oven orders.");
+        throw new Error(payload.error || `Could not load ${station.sourceLabel} orders.`);
       }
 
       latestOrdersPayload = payload;
@@ -197,7 +202,7 @@
     window.__combiOrderGroups = {};
 
     if (!prepSlots.length) {
-      board.innerHTML = `<div style="padding:16px;border:1px dashed rgba(0,0,0,0.15);border-radius:12px;background:#fff;color:#666">没有烤炉订单 No combi oven orders for this date.</div>`;
+      board.innerHTML = `<div style="padding:16px;border:1px dashed rgba(0,0,0,0.15);border-radius:12px;background:#fff;color:#666">没有${escapeHtml(station.sourceLabel)}订单 No ${escapeHtml(station.sourceLabel)} orders for this date.</div>`;
       return;
     }
 

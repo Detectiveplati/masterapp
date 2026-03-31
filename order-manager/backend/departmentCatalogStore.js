@@ -29,7 +29,7 @@ async function ensureIndexes(db) {
     ]),
     db.collection(DISH_COLLECTION).createIndexes([
       { key: { normalizedDishKey: 1 }, unique: true },
-      { key: { resolvedDepartmentCode: 1, lastSeenAt: -1 } },
+      { key: { resolvedDepartmentCodes: 1, lastSeenAt: -1 } },
       { key: { needsReview: 1, lastSeenAt: -1 } },
       { key: { updatedAt: -1 } }
     ])
@@ -162,6 +162,7 @@ async function syncDishCatalog(rows) {
           $setOnInsert: {
             normalizedDishKey: entry.normalizedDishKey,
             resolvedDepartmentCode: "",
+            resolvedDepartmentCodes: [],
             needsReview: false,
             notes: "",
             createdAt: now
@@ -213,9 +214,15 @@ async function saveDishDepartmentAssignment(normalizedDishKey, input) {
     throw new Error("A valid dish key is required.");
   }
 
-  const resolvedDepartmentCode = normalizeDepartmentCode(input.resolvedDepartmentCode || "");
-  if (resolvedDepartmentCode) {
-    await ensureDepartmentsExist([input.resolvedDepartmentName || resolvedDepartmentCode]);
+  const resolvedDepartmentCodes = normalizeDepartmentCodeList(
+    Array.isArray(input.resolvedDepartmentCodes)
+      ? input.resolvedDepartmentCodes
+      : [input.resolvedDepartmentCode || ""]
+  );
+  if (resolvedDepartmentCodes.length) {
+    await ensureDepartmentsExist(
+      resolvedDepartmentCodes.map((code) => input.resolvedDepartmentName || code)
+    );
   }
 
   const now = new Date().toISOString();
@@ -223,7 +230,8 @@ async function saveDishDepartmentAssignment(normalizedDishKey, input) {
     { normalizedDishKey: key },
     {
       $set: {
-        resolvedDepartmentCode,
+        resolvedDepartmentCode: resolvedDepartmentCodes[0] || "",
+        resolvedDepartmentCodes,
         notes: normalizeText(input.notes || ""),
         updatedAt: now
       },
@@ -236,6 +244,7 @@ async function saveDishDepartmentAssignment(normalizedDishKey, input) {
         sourceDepartment: "",
         sourceDepartmentCode: "",
         sourceDepartmentsSeen: [],
+        resolvedDepartmentCodes: [],
         seenCount: 0,
         lastSeenAt: ""
       }
@@ -244,13 +253,18 @@ async function saveDishDepartmentAssignment(normalizedDishKey, input) {
   );
 
   const departmentMap = await getDepartmentMap();
-  const department = resolvedDepartmentCode ? departmentMap.get(resolvedDepartmentCode) : null;
+  const selectedDepartments = resolvedDepartmentCodes
+    .map((code) => departmentMap.get(code))
+    .filter(Boolean);
   await db.collection(DISH_COLLECTION).updateOne(
     { normalizedDishKey: key },
     {
       $set: {
-        needsReview: !resolvedDepartmentCode || !department || department.active === false,
-        resolvedDepartmentNameSnapshot: department ? department.name : ""
+        needsReview: resolvedDepartmentCodes.some((code) => {
+          const department = departmentMap.get(code);
+          return !department || department.active === false;
+        }),
+        resolvedDepartmentNameSnapshot: selectedDepartments.map((department) => department.name).join(", ")
       }
     }
   );
@@ -264,7 +278,7 @@ async function getDepartmentCatalogDashboard(filters = {}) {
     listDepartments(),
     listDishCatalog(filters),
     db.collection(DISH_COLLECTION)
-      .find({}, { projection: { resolvedDepartmentCode: 1, sourceDepartment: 1, sourceDepartmentCode: 1 } })
+      .find({}, { projection: { resolvedDepartmentCode: 1, resolvedDepartmentCodes: 1, sourceDepartment: 1, sourceDepartmentCode: 1, sourceDepartmentsSeen: 1 } })
       .toArray()
   ]);
   const departmentMap = new Map(departments.map((department) => [department.code, department]));
@@ -275,12 +289,14 @@ async function getDepartmentCatalogDashboard(filters = {}) {
 
   for (const document of allDishDocuments) {
     const mappedDish = mapDishDocument(document, departmentMap);
-    if (!mappedDish.needsReview && mappedDish.effectiveDepartmentCode) {
+    if (!mappedDish.needsReview && mappedDish.effectiveDepartmentCodes.length) {
       mappedDishCount += 1;
-      countsByDepartment.set(
-        mappedDish.effectiveDepartmentCode,
-        (countsByDepartment.get(mappedDish.effectiveDepartmentCode) || 0) + 1
-      );
+      mappedDish.effectiveDepartmentCodes.forEach((departmentCode) => {
+        countsByDepartment.set(
+          departmentCode,
+          (countsByDepartment.get(departmentCode) || 0) + 1
+        );
+      });
     } else {
       needsReviewCount += 1;
     }
@@ -371,22 +387,41 @@ function mapDepartmentDocument(document) {
 function mapDishDocument(document, departmentMap) {
   const sourceDepartment = normalizeText(document.sourceDepartment);
   const sourceDepartmentCode = normalizeDepartmentCode(document.sourceDepartmentCode || document.sourceDepartment || "");
-  const sourceDepartmentRecord = sourceDepartmentCode ? departmentMap.get(sourceDepartmentCode) : null;
-  const resolvedDepartmentCode = normalizeDepartmentCode(document.resolvedDepartmentCode || "");
-  const manualDepartmentRecord = resolvedDepartmentCode ? departmentMap.get(resolvedDepartmentCode) : null;
-  const hasManualOverride = Boolean(resolvedDepartmentCode);
-  const activeSourceDepartment = sourceDepartmentRecord && sourceDepartmentRecord.active !== false
-    ? sourceDepartmentRecord
-    : null;
-  const activeManualDepartment = manualDepartmentRecord && manualDepartmentRecord.active !== false
-    ? manualDepartmentRecord
-    : null;
-  const effectiveDepartment = hasManualOverride
-    ? activeManualDepartment
-    : activeSourceDepartment;
-  const needsReview = hasManualOverride
-    ? !activeManualDepartment
-    : !activeSourceDepartment;
+  const sourceDepartmentsSeen = Array.isArray(document.sourceDepartmentsSeen)
+    ? document.sourceDepartmentsSeen.map((item) => normalizeText(item)).filter(Boolean)
+    : [];
+  const sourceDepartmentCodes = normalizeDepartmentCodeList(
+    sourceDepartmentsSeen.length
+      ? sourceDepartmentsSeen
+      : [sourceDepartmentCode]
+  );
+  const sourceDepartmentRecords = sourceDepartmentCodes
+    .map((code) => departmentMap.get(code))
+    .filter(Boolean);
+  const resolvedDepartmentCodes = normalizeDepartmentCodeList(
+    Array.isArray(document.resolvedDepartmentCodes) && document.resolvedDepartmentCodes.length
+      ? document.resolvedDepartmentCodes
+      : [document.resolvedDepartmentCode || ""]
+  );
+  const manualDepartmentRecords = resolvedDepartmentCodes
+    .map((code) => departmentMap.get(code))
+    .filter(Boolean);
+  const hasManualOverride = resolvedDepartmentCodes.length > 0;
+  const activeSourceDepartments = sourceDepartmentRecords.filter((department) => department.active !== false);
+  const activeManualDepartments = manualDepartmentRecords.filter((department) => department.active !== false);
+  const effectiveDepartments = hasManualOverride
+    ? activeManualDepartments
+    : activeSourceDepartments;
+  const inactiveSelectedDepartmentCodes = hasManualOverride
+    ? resolvedDepartmentCodes.filter((code) => {
+        const department = departmentMap.get(code);
+        return !department || department.active === false;
+      })
+    : sourceDepartmentCodes.filter((code) => {
+        const department = departmentMap.get(code);
+        return !department || department.active === false;
+      });
+  const needsReview = inactiveSelectedDepartmentCodes.length > 0 || !effectiveDepartments.length;
 
   return {
     id: String(document._id),
@@ -396,15 +431,19 @@ function mapDishDocument(document, departmentMap) {
     dishEnglish: normalizeText(document.dishEnglish),
     sourceDepartment,
     sourceDepartmentCode,
-    sourceDepartmentsSeen: Array.isArray(document.sourceDepartmentsSeen)
-      ? document.sourceDepartmentsSeen.map((item) => normalizeText(item)).filter(Boolean)
-      : [],
-    resolvedDepartmentCode,
-    resolvedDepartment: activeManualDepartment ? activeManualDepartment.name : "",
-    effectiveDepartmentCode: effectiveDepartment ? effectiveDepartment.code : "",
-    effectiveDepartment: effectiveDepartment ? effectiveDepartment.name : "",
+    sourceDepartmentsSeen,
+    sourceDepartmentCodes,
+    resolvedDepartmentCode: resolvedDepartmentCodes[0] || "",
+    resolvedDepartmentCodes,
+    resolvedDepartment: activeManualDepartments.map((department) => department.name).join(", "),
+    resolvedDepartments: activeManualDepartments.map((department) => department.name),
+    effectiveDepartmentCode: effectiveDepartments[0] ? effectiveDepartments[0].code : "",
+    effectiveDepartmentCodes: effectiveDepartments.map((department) => department.code),
+    effectiveDepartment: effectiveDepartments.map((department) => department.name).join(", "),
+    effectiveDepartments: effectiveDepartments.map((department) => department.name),
     usesSourceDepartment: !hasManualOverride,
     hasManualOverride,
+    inactiveSelectedDepartmentCodes,
     notes: normalizeText(document.notes || ""),
     lastSeenAt: document.lastSeenAt || "",
     seenCount: Number.isFinite(Number(document.seenCount)) ? Number(document.seenCount) : 0,
@@ -436,7 +475,7 @@ function matchesDishCatalogFilters(document, filters) {
   }
 
   const departmentCode = normalizeDepartmentCode(filters.departmentCode || "");
-  if (departmentCode && document.effectiveDepartmentCode !== departmentCode) {
+  if (departmentCode && !document.effectiveDepartmentCodes.includes(departmentCode)) {
     return false;
   }
 
@@ -472,3 +511,11 @@ module.exports = {
   syncDishCatalog,
   upsertDepartment
 };
+
+function normalizeDepartmentCodeList(values) {
+  return Array.from(new Set(
+    (Array.isArray(values) ? values : [])
+      .map((value) => normalizeDepartmentCode(value))
+      .filter(Boolean)
+  ));
+}

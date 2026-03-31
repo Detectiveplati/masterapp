@@ -3,7 +3,7 @@ const { ObjectId } = require("mongodb");
 const { COLLECTIONS } = require("../../config/databaseLayout");
 const { getDb } = require("./db");
 const { getCurrentDateInTimeZone } = require("./dateUtils");
-const { enrichCombinedRow, normalizeText, parseTimeLabel } = require("./reportRowUtils");
+const { enrichCombinedRow, getResolvedDepartmentEntries, normalizeText, parseTimeLabel } = require("./reportRowUtils");
 
 let indexPromise = null;
 const RUN_COLLECTION = COLLECTIONS.orderManager.EXTRACTION_RUNS;
@@ -254,38 +254,45 @@ function buildResolvedDepartmentSections(rows) {
 
   for (const rawRow of Array.isArray(rows) ? rows : []) {
     const row = enrichCombinedRow(rawRow);
-    const departmentName = normalizeText(row.resolvedDepartment);
-    if (!departmentName || row.unmatchedReason || !row.dish) {
+    const departmentEntries = getResolvedDepartmentEntries(row);
+    if (!departmentEntries.length || row.unmatchedReason || !row.dish || row.needsDepartmentReview) {
       continue;
     }
 
-    if (!sectionMap.has(departmentName)) {
-      sectionMap.set(departmentName, {
-        chef: departmentName,
-        department: departmentName,
-        timeSet: new Set(),
-        dishMap: new Map()
-      });
-    }
+    for (const departmentEntry of departmentEntries) {
+      const departmentName = normalizeText(departmentEntry.name);
+      if (!departmentName) {
+        continue;
+      }
 
-    const section = sectionMap.get(departmentName);
-    const timeLabel = normalizeText(row.prepTimeLabel || row.prepTime || "");
-    if (timeLabel) {
-      section.timeSet.add(timeLabel);
-    }
+      if (!sectionMap.has(departmentName)) {
+        sectionMap.set(departmentName, {
+          chef: departmentName,
+          department: departmentName,
+          timeSet: new Set(),
+          dishMap: new Map()
+        });
+      }
 
-    if (!section.dishMap.has(row.dish)) {
-      section.dishMap.set(row.dish, {
-        dish: row.dish,
-        totalQty: 0,
-        timeQtyMap: new Map()
-      });
-    }
+      const section = sectionMap.get(departmentName);
+      const timeLabel = normalizeText(row.prepTimeLabel || row.prepTime || "");
+      if (timeLabel) {
+        section.timeSet.add(timeLabel);
+      }
 
-    const dish = section.dishMap.get(row.dish);
-    dish.totalQty += row.qtyNumber;
-    if (timeLabel) {
-      dish.timeQtyMap.set(timeLabel, (dish.timeQtyMap.get(timeLabel) || 0) + row.qtyNumber);
+      if (!section.dishMap.has(row.dish)) {
+        section.dishMap.set(row.dish, {
+          dish: row.dish,
+          totalQty: 0,
+          timeQtyMap: new Map()
+        });
+      }
+
+      const dish = section.dishMap.get(row.dish);
+      dish.totalQty += row.qtyNumber;
+      if (timeLabel) {
+        dish.timeQtyMap.set(timeLabel, (dish.timeQtyMap.get(timeLabel) || 0) + row.qtyNumber);
+      }
     }
   }
 
@@ -410,9 +417,16 @@ function summarizeDepartmentMapping(rows) {
   let reviewRowCount = 0;
 
   for (const row of rows) {
-    if (row && row.resolvedDepartment) {
-      resolvedDepartments.add(String(row.resolvedDepartment).trim());
-      resolvedRowCount += 1;
+    if (row) {
+      const entries = getResolvedDepartmentEntries(row);
+      if (entries.length && !row.needsDepartmentReview) {
+        entries.forEach((entry) => {
+          if (entry.name) {
+            resolvedDepartments.add(String(entry.name).trim());
+          }
+        });
+        resolvedRowCount += 1;
+      }
     }
     if (row && row.needsDepartmentReview) {
       reviewRowCount += 1;

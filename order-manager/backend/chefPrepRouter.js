@@ -2,7 +2,7 @@ const express = require("express");
 
 const { findLatestExtractionRunForDate, listAvailableReportDates } = require("./reportStore");
 const { getCurrentDateInTimeZone } = require("./dateUtils");
-const { enrichCombinedRow, parseTimeLabel } = require("./reportRowUtils");
+const { enrichCombinedRow, getResolvedDepartmentEntries, parseTimeLabel } = require("./reportRowUtils");
 
 function createChefPreorderRouter() {
   const router = express.Router();
@@ -36,7 +36,7 @@ function createChefPreorderRouter() {
       });
       res.json(payload);
     } catch (error) {
-      res.status(500).json({ error: error.message || "Could not load chef pre-order data." });
+      res.status(500).json({ error: error.message || "Could not load chef ordering data." });
     }
   });
 
@@ -74,33 +74,40 @@ function groupByChef(rows) {
   const chefMap = new Map();
 
   for (const row of rows) {
-    const departmentName = row.resolvedDepartment;
-    if (!chefMap.has(departmentName)) {
-      chefMap.set(departmentName, {
-        chef: departmentName,
-        department: departmentName,
-        totalQty: 0,
-        dishMap: new Map()
-      });
-    }
+    const departmentEntries = getResolvedDepartmentEntries(row);
+    for (const departmentEntry of departmentEntries) {
+      const departmentName = departmentEntry.name;
+      if (!departmentName) {
+        continue;
+      }
 
-    const chef = chefMap.get(departmentName);
-    chef.totalQty += row.qtyNumber;
+      if (!chefMap.has(departmentName)) {
+        chefMap.set(departmentName, {
+          chef: departmentName,
+          department: departmentName,
+          totalQty: 0,
+          dishMap: new Map()
+        });
+      }
 
-    if (!chef.dishMap.has(row.dish)) {
-      chef.dishMap.set(row.dish, {
-        dish: row.dish,
-        dishChinese: row.dishChinese || row.dish,
-        dishEnglish: row.dishEnglish || "",
-        totalQty: 0,
-        prepSlots: new Set()
-      });
-    }
+      const chef = chefMap.get(departmentName);
+      chef.totalQty += row.qtyNumber;
 
-    const dish = chef.dishMap.get(row.dish);
-    dish.totalQty += row.qtyNumber;
-    if (row.prepTimeLabel || row.prepTime) {
-      dish.prepSlots.add(row.prepTimeLabel || row.prepTime);
+      if (!chef.dishMap.has(row.dish)) {
+        chef.dishMap.set(row.dish, {
+          dish: row.dish,
+          dishChinese: row.dishChinese || row.dish,
+          dishEnglish: row.dishEnglish || "",
+          totalQty: 0,
+          prepSlots: new Set()
+        });
+      }
+
+      const dish = chef.dishMap.get(row.dish);
+      dish.totalQty += row.qtyNumber;
+      if (row.prepTimeLabel || row.prepTime) {
+        dish.prepSlots.add(row.prepTimeLabel || row.prepTime);
+      }
     }
   }
 

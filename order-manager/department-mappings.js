@@ -140,12 +140,7 @@ function renderDishCatalog(dishes, departments) {
     return;
   }
 
-  const departmentOptions = [
-    `<option value="">Use source department (default)</option>`,
-    ...departments
-      .filter((department) => department.active)
-      .map((department) => `<option value="${escapeHtml(department.code)}">${escapeHtml(department.name)}</option>`)
-  ].join("");
+  const activeDepartments = departments.filter((department) => department.active);
 
   dishCatalogEl.innerHTML = `
     <table class="mapping-table">
@@ -153,10 +148,9 @@ function renderDishCatalog(dishes, departments) {
         <tr>
           <th>Dish</th>
           <th>Source Department</th>
-          <th>Assigned Department</th>
+          <th>Assigned Departments</th>
           <th>Status</th>
           <th>Last Seen</th>
-          <th>Action</th>
         </tr>
       </thead>
       <tbody>
@@ -171,14 +165,19 @@ function renderDishCatalog(dishes, departments) {
               ${dish.sourceDepartmentsSeen.length > 1 ? `<small>${escapeHtml(dish.sourceDepartmentsSeen.join(", "))}</small>` : ""}
             </td>
             <td>
-              <div class="mapping-dish-subtitle">${escapeHtml(dish.hasManualOverride ? "Manual override" : `Default: ${dish.effectiveDepartment || dish.sourceDepartment || "Needs review"}`)}</div>
-              <select class="mapping-department-select">
-                ${departmentOptions}
-              </select>
+              <div class="mapping-dish-subtitle">${escapeHtml(dish.hasManualOverride ? `Manual override: ${dish.effectiveDepartments.join(", ") || "Needs review"}` : `Default: ${dish.effectiveDepartments.join(", ") || dish.sourceDepartmentsSeen.join(", ") || dish.sourceDepartment || "Needs review"}`)}</div>
+              <div class="mapping-department-checklist">
+                ${activeDepartments.map((department) => `
+                  <label class="mapping-department-option">
+                    <input class="mapping-department-checkbox" type="checkbox" value="${escapeHtml(department.code)}">
+                    <span>${escapeHtml(department.name)}</span>
+                  </label>
+                `).join("")}
+              </div>
+              <div class="mapping-dish-subtitle">Leave all options unselected to use the source department default.</div>
             </td>
             <td><span class="mapping-status-pill ${dish.needsReview ? "review" : "mapped"}">${dish.needsReview ? "Needs review" : dish.hasManualOverride ? "Overridden" : "Using source"}</span></td>
             <td>${escapeHtml(formatDateTime(dish.lastSeenAt) || "-")}</td>
-            <td><button class="btn-outline mapping-save-button" type="button">Save</button></td>
           </tr>
         `).join("")}
       </tbody>
@@ -187,15 +186,18 @@ function renderDishCatalog(dishes, departments) {
 
   dishCatalogEl.querySelectorAll("tbody tr").forEach((row, index) => {
     const dish = dishes[index];
-    row.querySelector(".mapping-department-select").value = dish.hasManualOverride ? dish.resolvedDepartmentCode || "" : "";
+    const selectedCodes = dish.hasManualOverride ? dish.resolvedDepartmentCodes || [] : [];
+    row.querySelectorAll(".mapping-department-checkbox").forEach((checkbox) => {
+      checkbox.checked = selectedCodes.includes(checkbox.value);
+    });
   });
 
-  dishCatalogEl.querySelectorAll(".mapping-save-button").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const row = button.closest("tr");
+  dishCatalogEl.querySelectorAll(".mapping-department-checkbox").forEach((checkbox) => {
+    checkbox.addEventListener("change", async () => {
+      const row = checkbox.closest("tr");
       const dishKey = row.dataset.dishKey;
-      const resolvedDepartmentCode = row.querySelector(".mapping-department-select").value;
-      await saveDishAssignment(dishKey, { resolvedDepartmentCode });
+      const resolvedDepartmentCodes = Array.from(row.querySelectorAll(".mapping-department-checkbox:checked")).map((input) => input.value);
+      await saveDishAssignment(dishKey, { resolvedDepartmentCodes });
     });
   });
 }
