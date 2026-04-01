@@ -4,6 +4,7 @@ const statusEl = document.getElementById("mapping-status");
 const summaryEl = document.getElementById("mapping-summary");
 const latestAuditEl = document.getElementById("latest-audit");
 const reloadButtonEl = document.getElementById("reload-dashboard");
+const saveAllDishesEl = document.getElementById("save-all-dishes");
 const dishFilterEl = document.getElementById("dish-filter");
 const statusFilterEl = document.getElementById("status-filter");
 const departmentFilterEl = document.getElementById("department-filter");
@@ -18,8 +19,10 @@ let dashboardState = {
   latestAudit: null,
   stats: null
 };
+let pendingDishAssignments = new Map();
 
 reloadButtonEl.addEventListener("click", () => loadDashboard());
+saveAllDishesEl.addEventListener("click", saveAllPendingDishAssignments);
 dishFilterEl.addEventListener("input", debounce(loadDashboard, 250));
 statusFilterEl.addEventListener("change", loadDashboard);
 departmentFilterEl.addEventListener("change", loadDashboard);
@@ -42,10 +45,12 @@ async function loadDashboard() {
     }
 
     dashboardState = payload;
+    pendingDishAssignments = new Map();
     renderSummary(payload.stats || {}, payload.latestAudit);
     renderDepartmentFilter(payload.departments || []);
     renderDepartmentList(payload.departments || []);
     renderDishCatalog(payload.dishes || [], payload.departments || []);
+    updateSaveAllButton();
     setStatus(`Loaded ${payload.dishes.length} dishes across ${payload.departments.length} departments.`);
   } catch (error) {
     summaryEl.innerHTML = "";
@@ -53,6 +58,7 @@ async function loadDashboard() {
     latestAuditEl.classList.add("hidden");
     departmentListEl.innerHTML = "";
     dishCatalogEl.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+    updateSaveAllButton();
     setStatus(error.message, true);
   }
 }
@@ -189,37 +195,29 @@ function renderDishCatalog(dishes, departments) {
     });
     syncDepartmentSelectOptions(row, selectedCodes);
     row.dataset.assignmentSignature = JSON.stringify(selectedCodes);
+    row.classList.remove("mapping-row-dirty");
   });
 
   dishCatalogEl.querySelectorAll(".mapping-department-select").forEach((select) => {
-    const queueSave = () => {
+    const markPending = () => {
       const row = select.closest("tr");
       if (!row) return;
-      window.clearTimeout(Number(row.dataset.assignmentTimer || 0));
-      const timerId = window.setTimeout(async () => {
-        row.dataset.assignmentTimer = "0";
-        const dishKey = row.dataset.dishKey;
-        const resolvedDepartmentCodes = collectSelectedDepartmentCodes(row);
-        const nextSignature = JSON.stringify(resolvedDepartmentCodes);
-        syncDepartmentSelectOptions(row, resolvedDepartmentCodes);
-        if (row.dataset.assignmentSignature === nextSignature || row.dataset.assignmentSaving === "true") {
-          return;
-        }
-        row.dataset.assignmentSaving = "true";
-        row.dataset.assignmentSignature = nextSignature;
-        try {
-          await saveDishAssignment(dishKey, { resolvedDepartmentCodes });
-        } finally {
-          row.dataset.assignmentSaving = "false";
-        }
-      }, 0);
-      row.dataset.assignmentTimer = String(timerId);
+      const dishKey = row.dataset.dishKey;
+      const resolvedDepartmentCodes = collectSelectedDepartmentCodes(row);
+      const nextSignature = JSON.stringify(resolvedDepartmentCodes);
+      syncDepartmentSelectOptions(row, resolvedDepartmentCodes);
+      if (row.dataset.assignmentSignature === nextSignature) {
+        pendingDishAssignments.delete(dishKey);
+        row.classList.remove("mapping-row-dirty");
+      } else {
+        pendingDishAssignments.set(dishKey, { resolvedDepartmentCodes });
+        row.classList.add("mapping-row-dirty");
+      }
+      updateSaveAllButton();
     };
 
-    select.addEventListener("input", queueSave);
-    select.addEventListener("change", queueSave);
-    select.addEventListener("blur", queueSave);
-    select.addEventListener("click", queueSave);
+    select.addEventListener("input", markPending);
+    select.addEventListener("change", markPending);
   });
 }
 
@@ -332,6 +330,39 @@ async function saveDishAssignment(dishKey, body) {
   } catch (error) {
     setStatus(error.message, true);
   }
+}
+
+async function saveAllPendingDishAssignments() {
+  const entries = Array.from(pendingDishAssignments.entries());
+  if (!entries.length) {
+    setStatus("There are no pending dish assignment changes to save.");
+    return;
+  }
+
+  saveAllDishesEl.disabled = true;
+  reloadButtonEl.disabled = true;
+  setStatus(`Saving ${entries.length} pending dish assignment${entries.length === 1 ? "" : "s"}…`);
+
+  try {
+    for (const [dishKey, body] of entries) {
+      await saveDishAssignment(dishKey, body);
+    }
+    pendingDishAssignments = new Map();
+    setStatus(`Saved ${entries.length} dish assignment${entries.length === 1 ? "" : "s"}.`);
+    await loadDashboard();
+  } catch (error) {
+    setStatus(error.message || "Could not save all dish assignments.", true);
+  } finally {
+    saveAllDishesEl.disabled = false;
+    reloadButtonEl.disabled = false;
+    updateSaveAllButton();
+  }
+}
+
+function updateSaveAllButton() {
+  const count = pendingDishAssignments.size;
+  saveAllDishesEl.disabled = count === 0;
+  saveAllDishesEl.textContent = count ? `Save All Changes (${count})` : "Save All Changes";
 }
 
 function summaryCard(label, value) {

@@ -8,10 +8,10 @@ const ORDER_MANAGER_KITCHEN_STATIONS = {
   },
   stirfry: {
     key: "stirfry",
-    title: "Stir-Fry Temp Log",
-    boardTitle: "炒锅订单 Stir-Fry Orders",
-    pageTitle: "炒锅温度记录 Stir-Fry Temp Log",
-    sourceLabel: "stir-fry"
+    title: "Stir-Fried Temp Log",
+    boardTitle: "炒部门订单 Stir-Fried Orders",
+    pageTitle: "炒部门温度记录 Stir-Fried Temp Log",
+    sourceLabel: "stir-fried department"
   }
 };
 

@@ -607,7 +607,7 @@ function getKitchenStationConfig(station) {
   if (station === "stirfry") {
     return {
       key: "stirfry",
-      departmentPattern: /炒|stir[\s-]?fry|wok/i
+      departmentPattern: /^炒(?:\s*[\(（]|$)|^stir[\s-]?fried\b/i
     };
   }
 
@@ -628,8 +628,17 @@ async function getStationDepartmentCodes(station) {
     .toArray();
 
   return departments
-    .filter((department) => /炒|stir[\s-]?fry|wok/i.test(String(department.name || "")))
+    .filter((department) => isStirFryDepartment(department))
     .map((department) => normalizeDepartmentCode(department.code || department.name || ""));
+}
+
+function isStirFryDepartment(department) {
+  const code = normalizeDepartmentCode(department && (department.code || ""));
+  const name = String(department && (department.name || "")).trim();
+  if (code === "炒-stir-fried") {
+    return true;
+  }
+  return /^炒(?:\s*[\(（]|$)|^stir[\s-]?fried\b/i.test(name);
 }
 
 const ENGLISH_TO_CHINESE_DISH_NAMES = {
