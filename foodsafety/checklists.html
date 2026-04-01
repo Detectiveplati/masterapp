@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monthly Food Safety Checklists</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+      align-items: start;
+      margin-bottom: 18px;
+    }
+    .hero-card, .summary-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 8px 24px var(--shadow);
+      padding: 22px;
+    }
+    .hero-card {
+      background:
+        radial-gradient(420px 220px at 0% 0%, rgba(22,160,133,0.15), transparent 65%),
+        linear-gradient(180deg, #ffffff, #f9fffd);
+    }
+    .hero-card h1 {
+      font-size: 1.8rem;
+      margin: 0 0 10px;
+      color: var(--ink);
+    }
+    .hero-card p {
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 0;
+    }
+    .pill-row {
+      display: none;
+    }
+    .hero-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(22,160,133,0.08);
+      border: 1px solid rgba(22,160,133,0.18);
+      color: var(--accent);
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .summary-tile {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .summary-tile .lbl {
+      display: block;
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 800;
+    }
+    .summary-tile .val {
+      display: block;
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--ink);
+    }
+    .summary-note {
+      display: none;
+    }
+    .control-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 6px 20px var(--shadow);
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    .control-grid {
+      display: grid;
+      grid-template-columns: 220px 220px minmax(220px, 1fr) auto;
+      gap: 12px;
+      align-items: end;
+    }
+    .control-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .section-strip {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-bottom: 18px;
+    }
+    .section-chip {
+      min-width: 180px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: 14px;
+      padding: 12px 14px;
+      text-align: left;
+      color: var(--ink);
+      box-shadow: none;
+    }
+    .section-chip.active {
+      border-color: rgba(22,160,133,0.45);
+      background: rgba(22,160,133,0.08);
+      color: var(--accent);
+    }
+    .section-chip small {
+      display: none;
+    }
+    .section-card {
+      padding: 20px;
+    }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+      align-items: start;
+    }
+    .section-head h2 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 1.22rem;
+    }
+    .section-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .section-tools {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+    .date-nav {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .date-nav-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--muted);
+      padding: 0 4px;
+      white-space: nowrap;
+    }
+    .nav-btn {
+      width: auto;
+      min-width: 44px;
+      justify-content: center;
+      box-shadow: none;
+    }
+    .nav-btn[disabled] {
+      opacity: 0.45;
+      cursor: default;
+      pointer-events: none;
+    }
+    .compact-meta {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+    .compact-meta strong {
+      color: var(--ink);
+    }
+    .mini-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .scroll-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .grid-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #fff;
+    }
+    .check-grid {
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 780px;
+      width: 100%;
+    }
+    .check-grid th,
+    .check-grid td {
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      padding: 0;
+      vertical-align: middle;
+      background: #fff;
+    }
+    .check-grid tr:last-child td {
+      border-bottom: none;
+    }
+    .check-grid th:last-child,
+    .check-grid td:last-child {
+      border-right: none;
+    }
+    .check-grid thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #f9fbfb;
+      color: var(--muted);
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 800;
+      text-align: center;
+      padding: 10px 6px;
+    }
+    .check-grid .item-col {
+      width: 290px;
+      min-width: 290px;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: #fff;
+      padding: 11px 12px;
+      font-weight: 700;
+      color: var(--ink);
+      font-size: 0.82rem;
+      line-height: 1.35;
+    }
+    .check-grid thead .item-col {
+      z-index: 3;
+      background: #f9fbfb;
+      text-align: left;
+    }
+    .cell-btn {
+      width: 100%;
+      min-width: 36px;
+      height: 36px;
+      border-radius: 0;
+      box-shadow: none;
+      background: transparent;
+      color: #a8b2b7;
+      font-size: 0.78rem;
+      font-weight: 800;
+      padding: 0;
+    }
+    .cell-btn:hover {
+      transform: none;
+      box-shadow: none;
+      background: rgba(22,160,133,0.05);
+    }
+    .cell-btn.checked {
+      background: linear-gradient(135deg, rgba(22,160,133,0.16), rgba(26,188,156,0.24));
+      color: var(--accent);
+    }
+    .bulk-row td {
+      background: #f9fbfb;
+    }
+    .bulk-label {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: #f9fbfb !important;
+      color: var(--muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 800;
+      padding: 10px 12px;
+    }
+    .bulk-btn {
+      width: 100%;
+      min-width: 36px;
+      height: 32px;
+      border-radius: 0;
+      box-shadow: none;
+      background: transparent;
+      color: var(--accent);
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 0;
+    }
+    .bulk-btn:hover {
+      transform: none;
+      box-shadow: none;
+      background: rgba(22,160,133,0.08);
+    }
+    .remarks-wrap {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: 1fr 240px;
+      gap: 16px;
+      align-items: start;
+    }
+    .meta-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.6;
+    }
+    .sticky-actions {
+      position: sticky;
+      bottom: 16px;
+      z-index: 20;
+      display: flex;
+      justify-content: center;
+      margin-top: 18px;
+    }
+    .hidden { display: none !important; }
+    .report-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      justify-content: center;
+    }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(18,19,22,0.46);
+      backdrop-filter: blur(3px);
+      z-index: 900;
+      padding: 18px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-card {
+      width: 100%;
+      max-width: 520px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 16px 48px rgba(18,19,22,0.22);
+      padding: 22px;
+    }
+    .modal-card h3 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+      color: var(--ink);
+    }
+    .modal-card p {
+      margin: 0 0 16px;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.9rem;
+    }
+    .signature-note {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 0.84rem;
+      color: var(--muted);
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+    .checkbox-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-top: 6px;
+    }
+    .checkbox-row input {
+      margin-top: 3px;
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+    .checkbox-row label {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--ink);
+      line-height: 1.45;
+      font-weight: 600;
+    }
+    .signature-pad-wrap {
+      margin-top: 14px;
+    }
+    .signature-pad-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .signature-pad-head label {
+      margin: 0;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .signature-canvas {
+      width: 100%;
+      height: 170px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      touch-action: none;
+      display: block;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      margin-top: 18px;
+    }
+    .sticky-actions-inner {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 10px 12px;
+      box-shadow: 0 12px 28px rgba(18,19,22,0.15);
+      backdrop-filter: blur(10px);
+    }
+    .save-state {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--muted);
+      padding: 0 6px;
+    }
+    @media (max-width: 980px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+      .control-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .remarks-wrap {
+        grid-template-columns: 1fr;
+      }
+      .section-head {
+        flex-direction: column;
+      }
+      .section-tools {
+        min-width: 0;
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+    @media (max-width: 640px) {
+      .hero-card h1 {
+        font-size: 1.42rem;
+      }
+      .summary-grid,
+      .control-grid {
+        grid-template-columns: 1fr;
+      }
+      .compact-meta {
+        align-items: flex-start;
+      }
+      .date-nav {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .sticky-actions-inner {
+        width: calc(100vw - 24px);
+        border-radius: 18px;
+      }
+      .modal-actions .btn {
+        width: 100%;
+      }
+      .check-grid .item-col {
+        width: 200px;
+        min-width: 200px;
+        font-size: 0.7rem;
+        line-height: 1.28;
+      }
+      .check-grid thead th {
+        font-size: 0.54rem;
+        padding: 8px 4px;
+      }
+      .cell-btn {
+        min-width: 30px;
+        height: 30px;
+        font-size: 0.68rem;
+      }
+      .bulk-btn {
+        min-width: 30px;
+        height: 28px;
+        font-size: 0.64rem;
+      }
+      .bulk-label {
+        font-size: 0.62rem;
+        padding: 8px 10px;
+      }
+      .mini-actions {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body data-module="foodsafetyforms">
+  <main>
+    <div class="hero">
+      <div class="hero-card">
+        <h1>Monthly Food Safety Checklist</h1>
+        <div class="pill-row" id="instructionPills"></div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-grid">
+          <div class="summary-tile">
+            <span class="lbl">Status</span>
+            <span class="val" id="monthStatus">Draft</span>
+          </div>
+        </div>
+        <div class="summary-note" id="summaryMeta">Loading checklist metadata…</div>
+      </div>
+    </div>
+
+    <div id="msg" class="msg" style="display:none;"></div>
+
+    <div class="control-card">
+      <div class="control-grid">
+        <div class="form-group">
+          <label for="monthInput">Month</label>
+          <input id="monthInput" type="month">
+        </div>
+        <div class="form-group">
+          <label for="unitValue">Unit</label>
+          <div class="compact-meta" id="unitValue"></div>
+        </div>
+        <div class="form-group">
+          <label>Checklist</label>
+          <div class="compact-meta" id="templateMeta">Loading template…</div>
+        </div>
+        <div class="control-actions">
+          <button class="btn btn-outline" id="reloadBtn" type="button">Reload Month</button>
+          <button class="btn btn-outline" id="reopenBtn" type="button" style="display:none;">Reopen</button>
+          <a class="btn btn-outline hidden" id="viewPdfBtn" href="#" target="_blank" rel="noopener">View PDF</a>
+          <a class="btn btn-outline hidden" id="downloadPdfBtn" href="#" target="_blank" rel="noopener">Download PDF</a>
+          <button class="btn btn-secondary" id="saveBtn" type="button">Save Draft</button>
+          <button class="btn btn-primary" id="finalizeBtn" type="button">Finalize Month</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-strip" id="sectionStrip"></div>
+
+    <section class="section-card" id="sectionCard">
+      <div class="section-head">
+        <div>
+          <h2 id="sectionTitle">Loading…</h2>
+          <p id="sectionSub">Preparing monthly grid…</p>
+        </div>
+        <div class="section-tools">
+          <div class="date-nav">
+            <button class="btn btn-outline btn-sm nav-btn" id="scrollPrevBtn" type="button">←</button>
+            <span class="date-nav-label" id="dateNavLabel">Days 1-7</span>
+            <button class="btn btn-outline btn-sm nav-btn" id="scrollNextBtn" type="button">→</button>
+          </div>
+          <div class="mini-actions">
+            <span class="scroll-hint">Use arrows to move across the dates</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-wrap" id="gridWrap">
+        <table class="check-grid" id="checkGrid"></table>
+      </div>
+
+      <div class="remarks-wrap">
+        <div class="form-group" style="margin-bottom:0;">
+          <label for="sectionRemarks">Remarks / Maintenance Notes</label>
+          <textarea id="sectionRemarks" rows="5" placeholder="Record any issue, missing part, maintenance request, or note for this section."></textarea>
+        </div>
+        <div class="meta-box" id="sectionMeta">
+          Section audit trail will appear here.
+        </div>
+      </div>
+    </section>
+
+    <div class="sticky-actions">
+      <div class="sticky-actions-inner">
+        <span class="save-state" id="saveState">No unsaved changes</span>
+        <a class="btn btn-outline btn-sm hidden" id="viewPdfBtnSticky" href="#" target="_blank" rel="noopener">View PDF</a>
+        <button class="btn btn-secondary btn-sm" id="saveBtnSticky" type="button">Save Draft</button>
+        <button class="btn btn-primary btn-sm" id="finalizeBtnSticky" type="button">Finalize Month</button>
+      </div>
+    </div>
+  </main>
+
+  <div class="modal-overlay" id="finalizeModal">
+    <div class="modal-card">
+      <h3>Finalize Monthly Checklist</h3>
+      <p>Confirm the filler e-signature before the month is locked and converted into the printable A4 landscape report.</p>
+      <div class="signature-note">
+        This records a login-based signature for the filler. The final PDF will include a filler signature lane and a verifier lane for the food safety officer.
+      </div>
+      <div class="form-group">
+        <label for="signerNameInput">Filler Name</label>
+        <input id="signerNameInput" type="text" placeholder="Name of the person completing this month">
+      </div>
+      <div class="signature-pad-wrap">
+        <div class="signature-pad-head">
+          <label for="signatureCanvas">Filler Signature</label>
+          <button class="btn btn-outline btn-sm" id="clearSignatureBtn" type="button">Clear Signature</button>
+        </div>
+        <canvas id="signatureCanvas" class="signature-canvas"></canvas>
+      </div>
+      <div class="checkbox-row">
+        <input id="finalizeConfirm" type="checkbox">
+        <label for="finalizeConfirm">I confirm this monthly checklist is complete and ready for print / verification.</label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="cancelFinalizeBtn" type="button">Cancel</button>
+        <button class="btn btn-primary" id="confirmFinalizeBtn" type="button">Sign and Finalize</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/foodsafety/js/foodsafety-i18n.js"></script>
+  <script src="/js/shell.js"></script>
+  <script src="/foodsafety/js/foodsafety-checklists.js"></script>
+</body>
+</html>

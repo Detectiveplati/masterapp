@@ -146,6 +146,8 @@
 <script>
   const editId = window.location.pathname.split('/').pop();
   const isEdit = editId && editId !== 'new' && editId.length === 24;
+  const ft = (key, fallback) => window.FoodSafetyI18n && window.FoodSafetyI18n.t ? window.FoodSafetyI18n.t(key, fallback) : (fallback || key);
+  const flang = () => window.FoodSafetyI18n && window.FoodSafetyI18n.getLang ? window.FoodSafetyI18n.getLang() : 'en';
 
   /* ── Validity preview as user picks dates ── */
   function updateValidityPreview() {
@@ -161,13 +163,13 @@
     preview.style.display = 'block';
     if (cancelled || exp < now) {
       preview.className = 'validity-preview invalid';
-      preview.textContent = '❌ Not Valid';
+      preview.textContent = ft('fhc_not_valid', '❌ Not Valid');
     } else if (exp < soon) {
       preview.className = 'validity-preview expiring';
-      preview.textContent = '⚠️ Expiring Soon';
+      preview.textContent = ft('fhc_expiring_soon', '⚠️ Expiring Soon');
     } else {
       preview.className = 'validity-preview valid';
-      preview.textContent = '✅ Valid';
+      preview.textContent = ft('fhc_valid_badge', '✅ Valid');
     }
   }
 
@@ -205,6 +207,7 @@
         if (!res.ok) throw new Error('Record not found');
         return res.json();
       });
+      document.body.dataset.editingTitleLocked = 'true';
       document.getElementById('page-title').textContent = `✏️ Edit: ${r.employeeName}`;
       document.title = `Edit — ${r.employeeName}`;
       document.getElementById('businessEntity').value  = r.businessEntity || '';
@@ -221,7 +224,7 @@
       document.getElementById('delete-btn').style.display = 'inline-flex';
       document.getElementById('submit-btn').textContent = '💾 Update Record';
     } catch (err) {
-      showMsg('error', 'Could not load record: ' + err.message);
+      showMsg('error', (flang() === 'zh' ? '无法加载记录：' : 'Could not load record: ') + err.message);
     }
   }
 
@@ -230,7 +233,7 @@
     e.preventDefault();
     const btn = document.getElementById('submit-btn');
     const orig = btn.textContent;
-    btn.disabled = true; btn.textContent = 'Saving…';
+    btn.disabled = true; btn.textContent = ft('checklist_saving', 'Saving…');
 
     const payload = {
       businessEntity:     document.getElementById('businessEntity').value.trim(),
@@ -245,7 +248,7 @@
     };
 
     if (!payload.businessEntity || !payload.employeeName || !payload.startDate || !payload.expiryDate) {
-      showMsg('error', 'Please fill in all required fields.');
+      showMsg('error', flang() === 'zh' ? '请填写所有必填栏位。' : 'Please fill in all required fields.');
       btn.disabled = false; btn.textContent = orig;
       return;
     }
@@ -256,7 +259,7 @@
       const res    = await apiFetch(url, { method, body: JSON.stringify(payload) });
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
       const saved = await res.json();
-      showMsg('success', isEdit ? 'Record updated.' : 'Record created.');
+      showMsg('success', isEdit ? ft('fhc_record_updated', 'Record updated.') : ft('fhc_record_created', 'Record created.'));
       if (!isEdit) {
         setTimeout(() => { window.location.href = `/foodsafety/fhc/${saved._id}`; }, 800);
       }
@@ -270,12 +273,12 @@
   /* ── Delete ── */
   async function deleteRecord() {
     const name = document.getElementById('employeeName').value;
-    if (!confirm(`Delete record for ${name}? This cannot be undone.`)) return;
+    if (!confirm(ft('fhc_delete_confirm_prefix', 'Delete record for ') + name + ft('fhc_delete_confirm_suffix', '? This cannot be undone.'))) return;
     try {
       await apiFetch(`/api/fhc/${editId}`, { method: 'DELETE' });
       window.location.href = '/foodsafety/fhc';
     } catch (err) {
-      showMsg('error', 'Delete failed: ' + err.message);
+      showMsg('error', ft('fhc_delete_failed', 'Delete failed: ') + err.message);
     }
   }
 
@@ -289,6 +292,7 @@
 
   if (isEdit) loadRecord();
 </script>
+<script src="/foodsafety/js/foodsafety-i18n.js"></script>
 <script src="/js/shell.js"></script>
 </body>
 </html>

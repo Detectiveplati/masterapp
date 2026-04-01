@@ -21,6 +21,7 @@ router.use('/admin',            require('./admin'));
 
 // Food Safety
 router.use('/foodsafety',       require('./foodsafety'));
+router.use('/foodsafety-checklists', require('./foodSafetyChecklists'));
 router.use('/fhc',              require('./fhc'));
 
 // Maintenance

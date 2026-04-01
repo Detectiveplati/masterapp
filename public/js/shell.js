@@ -4,7 +4,7 @@
  * Injects the top navbar and side navigation into every page.
  * Include at the END of <body>:  <script src="/js/shell.js"></script>
  *
- * Each page must declare its module via:  <body data-module="maintenance|foodsafety|templog|order-manager|procurement|admin|hub">
+ * Each page must declare its module via:  <body data-module="maintenance|foodsafety|foodsafetyforms|templog|order-manager|procurement|admin|hub">
  *
  * Coordinates with auth-guard.js — reads window._authUser to avoid
  * a second round-trip to /api/auth/me.
@@ -55,7 +55,7 @@
     if (!document.querySelector('meta[name="theme-color"]')) {
       var mod = document.body ? document.body.getAttribute('data-module') : '';
       var THEME = {
-        maintenance: '#ff7a18', foodsafety: '#16a085', pest: '#2e7d32',
+        maintenance: '#ff7a18', foodsafety: '#16a085', foodsafetyforms: '#0f9d82', pest: '#2e7d32',
         templog: '#3aa6ff', 'order-manager': '#ff7a18', procurement: '#27ae60', admin: '#7f5af0',
         hub: '#ff7a18', settings: '#ff7a18'
       };
@@ -77,6 +77,7 @@
   var MODULE_INFO = {
     maintenance: { label: '🔧 Maintenance'       },
     foodsafety:  { label: '🥗 Food Safety'        },
+    foodsafetyforms: { label: '🧾 Food Safety Forms' },
     pest:        { label: '🐭 Rat Trap Surveillance' },
     templog:     { label: '🌡️ Kitchen Logs'      },
     'order-manager': { label: '📋 Order Manager' },
@@ -102,6 +103,15 @@
         { href: '/maintenance/areas.html',          label: '📍 Areas & QR Codes'   },
         { href: '/maintenance/all-issues.html',     label: '⚠️ All Issues'          },
         { href: '/maintenance/log-maintenance.html',label: '📝 Log Maintenance'    },
+      ],
+    },
+    {
+      icon: '🧾', label: 'Food Safety Forms', module: 'foodsafetyforms',
+      href: '/foodsafety-forms/', perm: 'foodsafetyforms',
+      children: [
+        { href: '/foodsafety-forms/',          label: '🏠 Overview'            },
+        { href: '/foodsafety-forms/forms',     label: '🗂️ Forms Workspace'    },
+        { href: '/foodsafety-forms/reports',   label: '🧾 Reports Dashboard'  },
       ],
     },
     {
@@ -317,7 +327,13 @@
       var permLinks = document.querySelectorAll('#sidenav [data-perm]');
       permLinks.forEach(function (link) {
         var perm = link.dataset.perm;
-        if (perm === '__admin__' || (perm && !(user.permissions && user.permissions[perm]))) {
+        var allowed = false;
+        if (perm === 'foodsafetyforms') {
+          allowed = Boolean(user.permissions && (user.permissions.foodsafetyforms || user.permissions.foodsafety));
+        } else if (perm) {
+          allowed = Boolean(user.permissions && user.permissions[perm]);
+        }
+        if (perm === '__admin__' || (perm && !allowed)) {
           link.style.display = 'none';
         }
       });

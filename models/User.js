@@ -6,15 +6,18 @@ const UserSchema = new mongoose.Schema({
   username:     { type: String, required: true, unique: true, lowercase: true, trim: true },
   passwordHash: { type: String, required: true },
   displayName:  { type: String, required: true },
+  position:     { type: String, default: '', trim: true },
   role:         { type: String, enum: ['admin', 'user'], default: 'user' },
   active:       { type: Boolean, default: true },
   permissions: {
     maintenance:  { type: Boolean, default: false },
     foodsafety:   { type: Boolean, default: false },
+    foodsafetyforms: { type: Boolean, default: false },
     templog:      { type: Boolean, default: false },
     procurement:  { type: Boolean, default: false },
     pest:         { type: Boolean, default: false },
-    tempmon:      { type: Boolean, default: false }
+    tempmon:      { type: Boolean, default: false },
+    iso:          { type: Boolean, default: false }
   },
   notificationPreferences: {
     pushEnabled: { type: Boolean, default: false },

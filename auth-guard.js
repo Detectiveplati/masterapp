@@ -7,6 +7,7 @@
  * Module detection is automatic from the URL pathname:
  *   /maintenance/*  → requires 'maintenance' permission
  *   /foodsafety/*   → requires 'foodsafety' permission
+ *   /foodsafety-forms/* → requires 'foodsafetyforms' or 'foodsafety' permission
  *   /templog/*      → requires 'templog' permission
  *   /procurement/*  → requires 'procurement' permission
  *   /admin/*        → requires admin role
@@ -19,6 +20,7 @@
   // Map URL prefix → module permission key
   var module = null;
   if      (path.indexOf('/maintenance') === 0) module = 'maintenance';
+  else if (path.indexOf('/foodsafety-forms') === 0) module = 'foodsafetyforms';
   else if (path.indexOf('/foodsafety')  === 0) module = 'foodsafety';
   else if (path.indexOf('/templog')     === 0) module = 'templog';
   else if (path.indexOf('/order-manager') === 0) module = 'templog';
@@ -66,7 +68,12 @@
       }
 
       // Module permission check
-      if (module && !(user.permissions && user.permissions[module])) {
+      if (module === 'foodsafetyforms') {
+        if (!(user.permissions && (user.permissions.foodsafetyforms || user.permissions.foodsafety))) {
+          redirect('/?access=denied');
+          return;
+        }
+      } else if (module && !(user.permissions && user.permissions[module])) {
         redirect('/?access=denied');
         return;
       }

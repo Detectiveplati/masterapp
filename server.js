@@ -29,7 +29,20 @@ const {
     getTemplogMongoUri
 } = require('./config/databaseLayout');
 const { getDb: getOrderManagerDb } = require('./order-manager/backend/db');
-const { requirePageAccess, requireAuth, requireAdmin } = require('./services/auth-middleware');
+const {
+    requirePageAccess,
+    requirePageAccessAny,
+    requireAuth,
+    requireAdmin,
+    requirePermission,
+    requireAnyPermission,
+    requireFoodSafetyFormsAssignedPageAccess,
+    requireFoodSafetyFormsAssignedAccess
+} = require('./services/auth-middleware');
+const { logFoodSafetyDebug } = require('./services/foodsafety-debug-log');
+const FoodSafetyChecklistMonth = require('./models/FoodSafetyChecklistMonth');
+const FoodSafetyFormAssignment = require('./models/FoodSafetyFormAssignment');
+const { getTemplateByCode, getUnit } = require('./config/foodSafetyChecklistTemplate');
 
 // Try to load puppeteer (optional - for PDF generation)
 let puppeteer = null;
@@ -41,6 +54,21 @@ try {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+function isFormsOnlyUser(user) {
+    if (!user || user.role === 'admin') return false;
+    const perms = user.permissions || {};
+    if (!perms.foodsafetyforms) return false;
+    return !(
+        perms.maintenance ||
+        perms.foodsafety ||
+        perms.templog ||
+        perms.procurement ||
+        perms.pest ||
+        perms.tempmon ||
+        perms.iso
+    );
+}
 
 // Trust Railway/Heroku reverse proxy so req.protocol is 'https' in production
 app.set('trust proxy', 1);
@@ -57,8 +85,9 @@ async function seedAdmin() {
                 username:     'admin',
                 passwordHash: 'admin123',
                 displayName:  'Administrator',
+                position:     'Administrator',
                 role:         'admin',
-                permissions:  { maintenance: true, foodsafety: true, templog: true, procurement: true, pest: true, tempmon: true }
+                permissions:  { maintenance: true, foodsafety: true, foodsafetyforms: true, templog: true, procurement: true, pest: true, tempmon: true, iso: true }
             });
             await admin.save();
             console.log('✓ [Auth] Default admin created — username: admin / password: admin123');
@@ -324,10 +353,72 @@ app.get('/sw.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'sw.js'));
 });
 
+// Food Safety Forms — dedicated module for digital forms
+app.get('/foodsafety-forms', requirePageAccessAny(['foodsafetyforms', 'foodsafety']), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety-forms', 'index.html')));
+app.get('/foodsafety-forms/', requirePageAccessAny(['foodsafetyforms', 'foodsafety']), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety-forms', 'index.html')));
+app.get('/foodsafety-forms/index.html', requirePageAccessAny(['foodsafetyforms', 'foodsafety']), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety-forms', 'index.html')));
+app.get('/foodsafety-forms/checklists', requireFoodSafetyFormsAssignedPageAccess((req) => ({
+    templateCode: req.query.template,
+    unitCode: req.query.unit,
+    monthKey: req.query.month
+})), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'checklists.html')));
+app.get('/foodsafety-forms/log', requireFoodSafetyFormsAssignedPageAccess((req) => ({
+    templateCode: req.query.template,
+    unitCode: req.query.unit,
+    monthKey: req.query.month
+})), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'log-form.html')));
+app.get('/foodsafety-forms/checklists-report.html', requireFoodSafetyFormsAssignedPageAccess((req) => ({
+    templateCode: req.query.template,
+    unitCode: req.query.unit,
+    monthKey: req.query.month
+})), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'checklists-report.html')));
+app.get('/foodsafety-forms/forms', requirePageAccessAny(['foodsafetyforms', 'foodsafety']), (req, res) => {
+    logFoodSafetyDebug('forms-page-open', {
+        path: req.originalUrl || req.url,
+        username: req.user && req.user.username,
+        role: req.user && req.user.role,
+        access: 'foodsafetyforms_or_foodsafety'
+    });
+    res.sendFile(path.join(__dirname, 'foodsafety', 'forms.html'));
+});
+app.get('/foodsafety-forms/reports', requirePageAccess('foodsafety'), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'reports.html')));
+
+// Legacy routes under Food Safety redirect to the new Food Safety Forms module
+app.get('/foodsafety/checklists', requireFoodSafetyFormsAssignedPageAccess((req) => ({
+    templateCode: req.query.template,
+    unitCode: req.query.unit,
+    monthKey: req.query.month
+})), (req, res) => {
+    const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    res.redirect('/foodsafety-forms/checklists' + query);
+});
+app.get('/foodsafety/log', requireFoodSafetyFormsAssignedPageAccess((req) => ({
+    templateCode: req.query.template,
+    unitCode: req.query.unit,
+    monthKey: req.query.month
+})), (req, res) => {
+    const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    res.redirect('/foodsafety-forms/log' + query);
+});
+app.get('/foodsafety/checklists-report.html', requireFoodSafetyFormsAssignedPageAccess((req) => ({
+    templateCode: req.query.template,
+    unitCode: req.query.unit,
+    monthKey: req.query.month
+})), (req, res) => {
+    const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    res.redirect('/foodsafety-forms/checklists-report.html' + query);
+});
+app.get('/foodsafety/forms', requirePageAccessAny(['foodsafetyforms', 'foodsafety']), (req, res) => {
+    res.redirect('/foodsafety-forms/forms');
+});
+app.get('/foodsafety/reports', requirePageAccess('foodsafety'), (req, res) => {
+    res.redirect('/foodsafety-forms/reports');
+});
+
 // Food Safety — requires 'foodsafety' permission
-app.use('/foodsafety', requirePageAccess('foodsafety'), express.static(path.join(__dirname, 'foodsafety'), noCacheHtml));
 app.get('/foodsafety', requirePageAccess('foodsafety'), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'index.html')));
 app.get('/foodsafety/index.html', requirePageAccess('foodsafety'), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'index.html')));
+app.use('/foodsafety', requirePageAccess('foodsafety'), express.static(path.join(__dirname, 'foodsafety'), noCacheHtml));
 // NC mini-hub — must be before the catch-all below
 app.get('/foodsafety/nc',         requirePageAccess('foodsafety'), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'nc.html')));
 // Employee Cert & Licence Tracker pages — must be before the catch-all below
@@ -350,7 +441,12 @@ app.get('/push-test', requirePageAccess('__admin__'), (req, res) => res.sendFile
 app.get('/push-test/', requirePageAccess('__admin__'), (req, res) => res.sendFile(path.join(__dirname, 'push-test', 'index.html')));
 
 // Hub page — any authenticated user
-app.get('/', requirePageAccess(null), (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/', requirePageAccess(null), (req, res) => {
+    if (isFormsOnlyUser(req.user)) {
+        return res.redirect('/foodsafety-forms/forms');
+    }
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // Notification Settings — any authenticated user
 app.get('/notification-settings', requirePageAccess(null), (req, res) => res.sendFile(path.join(__dirname, 'notification-settings.html')));
@@ -395,6 +491,76 @@ const apiRouter            = require('./routes');
 const sendPushToPermission = apiRouter.sendPushToPermission;
 const { startScheduler: startOrderManagerScheduler } = require('./order-manager/backend/scheduler');
 app.use('/api', apiRouter);
+
+app.get('/api/foodsafety-checklists/month/report.pdf', requireFoodSafetyFormsAssignedAccess((req) => ({
+    templateCode: req.query.template,
+    unitCode: req.query.unit,
+    monthKey: req.query.month
+})), async (req, res) => {
+    try {
+        if (!puppeteer) return res.status(500).json({ error: 'PDF export requires puppeteer. Run: npm install puppeteer' });
+        const templateCode = String(req.query.template || '').trim();
+        const month = String(req.query.month || '').trim();
+        const unit = String(req.query.unit || '').trim();
+        const lang = String(req.query.lang || '').trim();
+        if (!month || !unit) return res.status(400).json({ error: 'month and unit are required' });
+        const query = { monthKey: month, unitCode: unit };
+        if (templateCode) query.templateCode = templateCode;
+        const existing = await FoodSafetyChecklistMonth.findOne(query).select('templateCode reportArchive status');
+        if (existing && existing.reportArchive && existing.reportArchive.data && !req.query.refresh) {
+            res.setHeader('Content-Type', existing.reportArchive.contentType || 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${existing.reportArchive.fileName || `foodsafety-checklist-${month}.pdf`}"`);
+            return res.send(existing.reportArchive.data);
+        }
+        const resolvedTemplateCode = templateCode || (existing && existing.templateCode) || '';
+        const resolvedTemplate = getTemplateByCode(resolvedTemplateCode);
+        const url = `http://localhost:${PORT}/foodsafety-forms/checklists-report.html?template=${encodeURIComponent(resolvedTemplateCode)}&month=${encodeURIComponent(month)}&unit=${encodeURIComponent(unit)}&lang=${encodeURIComponent(lang || 'en')}&print=1`;
+        const browser = await puppeteer.launch();
+        const page = await browser.newPage();
+        const cookieHeader = req.headers.cookie;
+        if (cookieHeader) {
+            const pairs = cookieHeader.split(';').map(s => s.trim()).filter(Boolean);
+            const cookies = pairs.map(pair => {
+                const i = pair.indexOf('=');
+                return { name: pair.slice(0, i), value: pair.slice(i + 1), domain: 'localhost', path: '/' };
+            });
+            if (cookies.length) await page.setCookie(...cookies);
+        }
+        await page.goto(url, { waitUntil: 'networkidle0' });
+        await page.waitForFunction('window.__reportReady === true');
+        const safeTemplateCode = (resolvedTemplateCode || 'foodsafety-form').replace(/[^A-Za-z0-9_-]+/g, '-');
+        const fileName = `${safeTemplateCode}-${month}.pdf`;
+        const pdfBuffer = await page.pdf({
+            format: (resolvedTemplate.paper && resolvedTemplate.paper.paperSize) || 'A4',
+            landscape: Boolean(resolvedTemplate.paper && resolvedTemplate.paper.orientation === 'landscape'),
+            printBackground: true,
+            margin: { top:'8mm', right:'8mm', bottom:'8mm', left:'8mm' },
+            scale: 0.9
+        });
+        await browser.close();
+        const storedBuffer = Buffer.from(pdfBuffer);
+        await FoodSafetyChecklistMonth.updateOne(
+            query,
+            {
+                $set: {
+                    reportArchive: {
+                        fileName,
+                        contentType: 'application/pdf',
+                        size: storedBuffer.length,
+                        generatedAt: new Date(),
+                        data: storedBuffer
+                    }
+                }
+            }
+        );
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.send(storedBuffer);
+    } catch (err) {
+        console.error('✗ [FoodSafety Checklists] PDF export failed:', err.message);
+        res.status(500).json({ error: 'PDF export failed' });
+    }
+});
 
 // POST /api/tempmon/admin/seed — force re-seed all 31 equipment units + LoRa links (admin only)
 // Registered after apiRouter so it only fires if the router passes (no conflict with tempmon routes)

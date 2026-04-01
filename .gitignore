@@ -29,6 +29,11 @@ uploads/
 !foodsafety/uploads/.gitkeep
 *.tmp
 
+# Office documents (should not be in repo)
+*.docx
+*.xlsx
+*.pptx
+
 # Build outputs
 dist/
 build/

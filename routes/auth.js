@@ -6,8 +6,9 @@ const { signToken, setAuthCookie, clearAuthCookie, requireAuth } = require('../s
 const BYPASS_AUTH = process.env.BYPASS_AUTH === 'true';
 const BYPASS_USER = {
   id: 'bypass', username: 'bypass', displayName: 'Test Admin',
+  position: 'Administrator',
   role: 'admin',
-  permissions: { maintenance: true, foodsafety: true, templog: true, procurement: true }
+  permissions: { maintenance: true, foodsafety: true, foodsafetyforms: true, templog: true, procurement: true, pest: true, tempmon: true, iso: true }
 };
 
 // POST /api/auth/login
@@ -33,6 +34,7 @@ router.post('/login', async (req, res) => {
         id:          user._id,
         username:    user.username,
         displayName: user.displayName,
+        position:    user.position || '',
         role:        user.role,
         permissions: user.permissions
       }
@@ -63,6 +65,7 @@ router.get('/me', (req, res, next) => {
         id:          dbUser._id,
         username:    dbUser.username,
         displayName: dbUser.displayName,
+        position:    dbUser.position || '',
         role:        dbUser.role,
         permissions: dbUser.permissions
       }

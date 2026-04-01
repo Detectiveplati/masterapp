@@ -62,6 +62,7 @@
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="users">👤 Users</button>
     <button class="tab-btn"        data-tab="permissions">🔒 Permissions</button>
+    <button class="tab-btn"        data-tab="forms">🗂 Form Assignments</button>
   </div>
 
   <!-- ─── USERS PANEL ───────────────────── -->
@@ -74,6 +75,7 @@
           <div class="form-inline">
             <div class="fg"><label>Username</label><input type="text" id="newUsername" required placeholder="e.g. jsmith"></div>
             <div class="fg"><label>Display Name</label><input type="text" id="newDisplayName" required placeholder="e.g. John Smith"></div>
+            <div class="fg"><label>Position</label><input type="text" id="newPosition" placeholder="e.g. Food Safety Officer"></div>
             <div class="fg"><label>Password</label><input type="password" id="newPassword" required placeholder="Min 6 chars"></div>
             <div class="fg">
               <label>Role</label>
@@ -94,12 +96,12 @@
         <table class="data-table" id="usersTable">
           <thead>
             <tr>
-              <th>Username</th><th>Display Name</th><th>Role</th><th>Status</th>
+              <th>Username</th><th>Display Name</th><th>Position</th><th>Role</th><th>Status</th>
               <th>Created</th><th>Actions</th>
             </tr>
           </thead>
           <tbody id="usersBody">
-            <tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">Loading…</td></tr>
+            <tr><td colspan="7" style="color:var(--muted);text-align:center;padding:24px">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -121,6 +123,7 @@
                 <th>User</th>
                 <th>🔧 Maintenance</th>
                 <th>🍽️ Food Safety</th>
+                <th>🧾 Food Safety Forms</th>
                 <th>🌡️ Temp Log</th>
                 <th>🛒 Procurement</th>
                 <th>🐭 Pest Control</th>
@@ -129,7 +132,7 @@
               </tr>
             </thead>
             <tbody id="permBody">
-              <tr><td colspan="8" style="color:var(--muted);text-align:center;padding:24px">Loading…</td></tr>
+              <tr><td colspan="9" style="color:var(--muted);text-align:center;padding:24px">Loading…</td></tr>
             </tbody>
           </table>
         </div>
@@ -138,12 +141,34 @@
         </div>
       </div>
     </div>
+    <div id="panel-forms" class="panel">
+      <div id="formsNotice" class="notice"></div>
+      <div class="section-card">
+        <h2>🗂 Assign Food Safety Forms</h2>
+        <form id="assignForm">
+          <div class="form-inline">
+            <div class="fg"><label>User</label><select id="assignUser"></select></div>
+            <div class="fg"><label>Form Template</label><select id="assignTemplate"></select></div>
+            <div class="fg"><label>Unit / Asset</label><select id="assignUnit"></select></div>
+            <div class="fg" style="justify-content:flex-end"><button type="submit" class="btn-sm btn-primary" style="padding:9px 20px">Assign Form</button></div>
+          </div>
+        </form>
+      </div>
+      <div class="section-card">
+        <h2>📋 Active Form Assignments</h2>
+        <table class="data-table">
+          <thead><tr><th>User</th><th>Position</th><th>Form</th><th>Unit</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody id="assignmentBody"><tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
 </main>
   <div class="modal-overlay" id="editModal">
     <div class="modal-box">
       <h3>Edit User</h3>
       <input type="hidden" id="editUserId">
       <div class="fg"><label>Display Name</label><input type="text" id="editDisplayName"></div>
+      <div class="fg"><label>Position</label><input type="text" id="editPosition"></div>
       <div class="fg">
         <label>Role</label>
         <select id="editRole">
@@ -167,8 +192,10 @@
   </div>
 
   <script>
-    const MODULES = ['maintenance','foodsafety','templog','procurement','pest','tempmon','iso'];
+    const MODULES = ['maintenance','foodsafety','foodsafetyforms','templog','procurement','pest','tempmon','iso'];
     let allUsers = [];
+    let allTemplates = [];
+    let allAssignments = [];
 
     // ── Auth check ──────────────────────────────────────────
     async function checkAuth() {
@@ -216,13 +243,14 @@
     function renderUsersTable() {
       const tbody = document.getElementById('usersBody');
       if (!allUsers.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">No users yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:24px">No users yet.</td></tr>';
         return;
       }
       tbody.innerHTML = allUsers.map(u => `
         <tr>
           <td><code style="background:#f4f5f7;padding:2px 7px;border-radius:5px">${u.username}</code></td>
           <td>${u.displayName}</td>
+          <td>${u.position || ''}</td>
           <td><span class="badge badge-${u.role}">${u.role}</span></td>
           <td><span class="badge ${u.active ? 'badge-user' : 'badge-inactive'}">${u.active ? 'Active' : 'Inactive'}</span></td>
           <td style="color:var(--muted);font-size:0.82rem">${new Date(u.createdAt).toLocaleDateString()}</td>
@@ -239,6 +267,7 @@
       const body = {
         username:    document.getElementById('newUsername').value.trim(),
         displayName: document.getElementById('newDisplayName').value.trim(),
+        position:    document.getElementById('newPosition').value.trim(),
         password:    document.getElementById('newPassword').value,
         role:        document.getElementById('newRole').value
       };
@@ -262,6 +291,7 @@
       if (!u) return;
       document.getElementById('editUserId').value      = id;
       document.getElementById('editDisplayName').value = u.displayName;
+      document.getElementById('editPosition').value    = u.position || '';
       document.getElementById('editRole').value        = u.role;
       document.getElementById('editActive').value      = String(u.active);
       document.getElementById('editPassword').value    = '';
@@ -275,6 +305,7 @@
       const pwd = document.getElementById('editPassword').value;
       const body = {
         displayName: document.getElementById('editDisplayName').value.trim(),
+        position:    document.getElementById('editPosition').value.trim(),
         role:        document.getElementById('editRole').value,
         active:      document.getElementById('editActive').value === 'true'
       };
@@ -299,12 +330,90 @@
       }
     });
 
+    async function loadTemplates() {
+      const r = await fetch('/api/admin/foodsafety-form-templates');
+      if (!r.ok) throw new Error('Failed to load form templates');
+      allTemplates = await r.json();
+      const templateSelect = document.getElementById('assignTemplate');
+      templateSelect.innerHTML = allTemplates.map(t => `<option value="${t.code}">${t.code} · ${t.title}</option>`).join('');
+      syncAssignUnits();
+      templateSelect.addEventListener('change', syncAssignUnits);
+    }
+
+    function syncAssignUnits() {
+      const templateCode = document.getElementById('assignTemplate').value;
+      const unitSelect = document.getElementById('assignUnit');
+      const template = allTemplates.find(t => t.code === templateCode);
+      const unitOptions = (template && template.unitOptions) || [];
+      unitSelect.innerHTML = unitOptions.map(u => `<option value="${u.code}">${u.label}</option>`).join('');
+    }
+
+    async function loadAssignments() {
+      const r = await fetch('/api/admin/foodsafety-form-assignments');
+      if (!r.ok) throw new Error('Failed to load assignments');
+      allAssignments = await r.json();
+      document.getElementById('assignUser').innerHTML = allUsers.filter(u => u.active).map(u => `<option value="${u._id}">${u.displayName} (${u.username})</option>`).join('');
+      renderAssignmentTable();
+    }
+
+    function renderAssignmentTable() {
+      const tbody = document.getElementById('assignmentBody');
+      if (!allAssignments.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">No assignments yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = allAssignments.map(a => `
+        <tr>
+          <td>${a.displayName || a.username}</td>
+          <td>${a.position || ''}</td>
+          <td>${a.templateCode}</td>
+          <td>${a.unitCode}</td>
+          <td style="color:var(--muted);font-size:0.82rem">${new Date(a.createdAt).toLocaleDateString()}</td>
+          <td><button class="btn-sm btn-grey" onclick="deleteAssignment('${a._id}')" style="font-size:0.78rem;padding:5px 12px">Remove</button></td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('assignForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      try {
+        const r = await fetch('/api/admin/foodsafety-form-assignments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: document.getElementById('assignUser').value,
+            templateCode: document.getElementById('assignTemplate').value,
+            unitCode: document.getElementById('assignUnit').value
+          })
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error);
+        showNotice('formsNotice', 'success', '✅ Form assignment saved.');
+        await loadAssignments();
+      } catch (err) {
+        showNotice('formsNotice', 'error', '❌ ' + err.message);
+      }
+    });
+
+    async function deleteAssignment(id) {
+      try {
+        const r = await fetch('/api/admin/foodsafety-form-assignments/' + id, { method: 'DELETE' });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || 'Failed to remove assignment');
+        showNotice('formsNotice', 'success', '✅ Assignment removed.');
+        await loadAssignments();
+      } catch (err) {
+        showNotice('formsNotice', 'error', '❌ ' + err.message);
+      }
+    }
+    window.deleteAssignment = deleteAssignment;
+
     // ── Permissions panel ──────────────────────────────────
     function renderPermTable() {
       const tbody = document.getElementById('permBody');
       const users = allUsers.filter(u => u.active);
       if (!users.length) {
-        tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:24px">No active users.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="color:var(--muted);text-align:center;padding:24px">No active users.</td></tr>';
         return;
       }
       tbody.innerHTML = users.map(u => {
@@ -341,7 +450,11 @@
     });
 
     // ── Init ────────────────────────────────────────────────
-    checkAuth().then(loadUsers);
+    checkAuth().then(async () => {
+      await loadUsers();
+      await loadTemplates();
+      await loadAssignments();
+    });
   </script>
   <script src="/js/shell.js"></script>
 </body>

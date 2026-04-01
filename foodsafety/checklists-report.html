@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Safety Form Report</title>
+  <style>
+    :root {
+      --ink: #111827;
+      --muted: #4b5563;
+      --line: #cbd5e1;
+      --head: #eff6ff;
+      --tick: #0f766e;
+      --bg: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #fff; color: var(--ink); font-family: Arial, "Microsoft YaHei UI", sans-serif; }
+    body { padding: 10mm; }
+    .report { width: 100%; }
+    .report-head { margin-bottom: 8mm; }
+    .company { font-size: 14px; font-weight: 700; text-transform: uppercase; }
+    .meta-line { display: flex; justify-content: space-between; gap: 18px; font-size: 12px; margin-top: 3px; }
+    .title { font-size: 16px; font-weight: 700; margin-top: 8px; }
+    .subtitle { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .instructions { border: 1px solid var(--line); padding: 8px 10px; font-size: 10px; line-height: 1.45; margin-top: 8px; }
+    .instructions ol { margin: 0; padding-left: 16px; }
+    .section-block { margin-top: 7mm; break-inside: avoid; }
+    .section-meta { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; margin-bottom: 4px; }
+    .section-title { font-weight: 700; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid var(--line); padding: 4px 3px; font-size: 9px; text-align: center; vertical-align: middle; }
+    th.item, td.item { width: 28%; text-align: left; padding-left: 6px; font-weight: 600; }
+    thead th { background: var(--head); font-weight: 700; }
+    .tick { color: var(--tick); font-weight: 700; font-size: 11px; }
+    .remarks-row td { height: 20px; }
+    .remarks-label { font-weight: 700; text-align: left; padding-left: 6px; }
+    .signature-wrap { margin-top: 10mm; border: 1px solid var(--line); }
+    .signature-grid { display: grid; grid-template-columns: 1fr 1fr; }
+    .sig-box { min-height: 82px; border-right: 1px solid var(--line); padding: 10px 12px; }
+    .sig-box:last-child { border-right: none; }
+    .sig-title { font-size: 11px; font-weight: 700; margin-bottom: 8px; }
+    .sig-row { display: grid; grid-template-columns: 82px 1fr; gap: 8px; font-size: 10px; margin-bottom: 6px; }
+    .sig-value { border-bottom: 1px solid var(--line); min-height: 16px; }
+    .log-table th, .log-table td { font-size: 10px; }
+    .log-table th { background: var(--head); }
+    .log-remarks { margin-top: 8mm; border: 1px solid var(--line); padding: 8px 10px; font-size: 10px; line-height: 1.5; }
+    @page { size: A4 landscape; margin: 10mm; }
+  </style>
+</head>
+<body data-module="foodsafetyforms">
+  <div class="report" id="reportRoot">Loading report…</div>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const templateCode = params.get('template') || '';
+    const month = params.get('month');
+    const unit = params.get('unit');
+    function esc(text) {
+      return String(text == null ? '' : text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function monthLabel(monthKey) {
+      const [year, monthNo] = monthKey.split('-').map(Number);
+      return new Date(year, monthNo - 1, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
+    }
+
+    function renderSection(section, state, count, label) {
+      let html = '<div class="section-block">';
+      html += '<div class="section-meta"><div class="section-title">' + esc(section.title || '') + '</div><div>' + esc(label) + '</div></div>';
+      html += '<table><thead><tr><th class="item">Checklist Item</th>';
+      for (let i = 0; i < count; i++) html += '<th>' + (i + 1) + '</th>';
+      html += '</tr></thead><tbody>';
+      section.items.forEach((item) => {
+        html += '<tr><td class="item">' + esc(item.label || '') + '</td>';
+        const values = (state.checks && state.checks[item.id]) || [];
+        for (let i = 0; i < count; i++) html += '<td>' + (values[i] ? '<span class="tick">✓</span>' : '') + '</td>';
+        html += '</tr>';
+      });
+      html += '<tr class="remarks-row"><td class="remarks-label">Remarks</td><td colspan="' + count + '">' + esc(state.remarks || '') + '</td></tr>';
+      html += '</tbody></table></div>';
+      return html;
+    }
+
+    function renderLogTable(template, record) {
+      const fields = template.fields || [];
+      const entries = (record.data && record.data.entries) || [];
+      let html = '<div class="section-block"><table class="log-table"><thead><tr>';
+      fields.forEach((field) => { html += '<th>' + esc(field.label || '') + '</th>'; });
+      html += '</tr></thead><tbody>';
+      if (!entries.length) {
+        html += '<tr><td colspan="' + fields.length + '" style="text-align:center;">No entries recorded</td></tr>';
+      } else {
+        entries.forEach((entry) => {
+          html += '<tr>';
+          fields.forEach((field) => {
+            let value = entry[field.id];
+            if (field.type === 'yes_no') value = value === 'Y' ? 'Y' : (value === 'N' ? 'N' : '');
+            if (field.type === 'pass_fail') value = value === 'P' ? 'P' : (value === 'F' ? 'F' : '');
+            html += '<td>' + esc(value == null ? '' : value) + '</td>';
+          });
+          html += '</tr>';
+        });
+      }
+      html += '</tbody></table></div>';
+      html += '<div class="log-remarks"><strong>Remarks:</strong> ' + esc((record.data && record.data.remarks) || '') + '<br><strong>Verified By:</strong> ' + esc((record.data && record.data.verifiedByText) || '') + '</div>';
+      return html;
+    }
+
+    function renderSignatureValue(signature) {
+      if (signature && signature.signatureDataUrl) {
+        return '<img src="' + esc(signature.signatureDataUrl) + '" alt="Signature" style="max-height:34px;max-width:100%;display:block;">';
+      }
+      return esc((signature && (signature.typedSignature || signature.name)) || '');
+    }
+
+    async function load() {
+      const res = await fetch('/api/foodsafety-checklists/month/report?template=' + encodeURIComponent(templateCode) + '&month=' + encodeURIComponent(month) + '&unit=' + encodeURIComponent(unit), { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load report');
+      const t = data.template;
+      const r = data.record;
+      let html = '<div class="report-head">';
+      html += '<div class="company">CHILLI API CATERING PTE LTD</div>';
+      html += '<div class="meta-line"><div>' + esc(t.category || 'Food Safety Form') + '</div><div>' + esc(t.code) + '</div></div>';
+      html += '<div class="meta-line"><div class="title">' + esc(t.title || '') + '</div><div>Revision No.: ' + esc(t.revision) + '</div></div>';
+      html += '<div class="subtitle">Month / Year: ' + esc(monthLabel(r.monthKey)) + ' &nbsp; | &nbsp; Unit: ' + esc(r.unitLabel) + '</div>';
+      const instructions = t.instructions || [];
+      html += '<div class="instructions"><ol>' + instructions.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ol></div>';
+      html += '</div>';
+      if (t.formType === 'log_entries') {
+        html += renderLogTable(t, r);
+      } else {
+        t.sections.forEach((section) => {
+          const count = section.frequency === 'weekly' ? t.weekCount : t.dayCount;
+          const label = section.frequency === 'weekly' ? 'WEEK' : 'DAY';
+          html += renderSection(section, r.data[section.id] || { checks: {}, remarks: '' }, count, label);
+        });
+      }
+      const finalization = r.finalization || {};
+      const verification = r.verification || {};
+      html += '<div class="signature-wrap"><div class="signature-grid">';
+      html += '<div class="sig-box"><div class="sig-title">Filled By Signature</div>';
+      html += '<div class="sig-row"><div>Name</div><div class="sig-value">' + esc(finalization.name || '') + '</div></div>';
+      html += '<div class="sig-row"><div>Position</div><div class="sig-value">' + esc(finalization.position || '') + '</div></div>';
+      html += '<div class="sig-row"><div>Signature</div><div class="sig-value">' + renderSignatureValue(finalization) + '</div></div>';
+      html += '<div class="sig-row"><div>Date</div><div class="sig-value">' + esc(finalization.at ? new Date(finalization.at).toLocaleString() : '') + '</div></div></div>';
+      html += '<div class="sig-box"><div class="sig-title">Verified By Signature</div>';
+      html += '<div class="sig-row"><div>Name</div><div class="sig-value">' + esc(verification.name || '') + '</div></div>';
+      html += '<div class="sig-row"><div>Position</div><div class="sig-value">' + esc(verification.position || '') + '</div></div>';
+      html += '<div class="sig-row"><div>Signature</div><div class="sig-value">' + renderSignatureValue(verification) + '</div></div>';
+      html += '<div class="sig-row"><div>Date</div><div class="sig-value">' + esc(verification.at ? new Date(verification.at).toLocaleString() : '') + '</div></div></div>';
+      html += '</div></div>';
+      document.getElementById('reportRoot').innerHTML = html;
+      window.__reportReady = true;
+    }
+
+    load().catch((err) => {
+      document.getElementById('reportRoot').innerHTML = '<div style="color:#b91c1c;font-family:Arial,sans-serif;">' + esc(err.message) + '</div>';
+      window.__reportReady = true;
+    });
+  </script>
+</body>
+</html>

@@ -89,10 +89,30 @@
   </div>
 
   <script>
+    function isFormsOnlyUser(user) {
+      if (!user || user.role === 'admin') return false;
+      var perms = user.permissions || {};
+      if (!perms.foodsafetyforms) return false;
+      return !(
+        perms.maintenance ||
+        perms.foodsafety ||
+        perms.templog ||
+        perms.procurement ||
+        perms.pest ||
+        perms.tempmon ||
+        perms.iso
+      );
+    }
+
+    function defaultDestination(user) {
+      return isFormsOnlyUser(user) ? '/foodsafety-forms/forms' : '/';
+    }
+
     // If already logged in, redirect to the intended destination (or hub)
-    fetch('/api/auth/me').then(r => {
+    fetch('/api/auth/me', { credentials: 'include' }).then(async r => {
       if (r.ok) {
-        const dest = new URLSearchParams(window.location.search).get('next') || '/';
+        const data = await r.json();
+        const dest = new URLSearchParams(window.location.search).get('next') || defaultDestination(data.user);
         window.location.replace(dest);
       }
     }).catch(() => {});
@@ -118,7 +138,7 @@
         notice.className = 'notice success';
         notice.textContent = '✅ Welcome, ' + data.user.displayName + '! Redirecting…';
         notice.style.display = 'block';
-        const dest = new URLSearchParams(window.location.search).get('next') || '/';
+        const dest = new URLSearchParams(window.location.search).get('next') || defaultDestination(data.user);
         setTimeout(() => window.location.replace(dest), 800);
       } catch (err) {
         notice.className = 'notice error';

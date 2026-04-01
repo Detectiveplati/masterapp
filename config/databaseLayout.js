@@ -33,6 +33,8 @@ const COLLECTIONS = {
     EQUIPMENT: "core_equipment",
     EQUIPMENT_ISSUES: "core_equipment_issues",
     FOOD_HANDLER_CERTS: "core_food_handler_certs",
+    FOOD_SAFETY_FORM_ASSIGNMENTS: "core_food_safety_form_assignments",
+    FOOD_SAFETY_CHECKLIST_MONTHS: "core_food_safety_checklist_months",
     FOOD_SAFETY_NCS: "core_food_safety_ncs",
     ISO_EMPLOYEES: "core_iso_employees",
     ISO_RECORDS: "core_iso_records",

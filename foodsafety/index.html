@@ -42,6 +42,10 @@
     .module-card.pest .card-go   { color: #2e7d32; }
     .module-card.cert::before    { background: linear-gradient(90deg, #1565c0, #42a5f5); }
     .module-card.cert .card-go   { color: #1565c0; }
+    .module-card.checklist::before { background: linear-gradient(90deg, #16a085, #48c9b0); }
+    .module-card.checklist .card-go { color: #16a085; }
+    .module-card.reports::before { background: linear-gradient(90deg, #f39c12, #f7c948); }
+    .module-card.reports .card-go { color: #b9770e; }
     .module-card:hover { transform: translateY(-5px); box-shadow: 0 14px 36px rgba(0,0,0,0.12); }
     .module-card .card-icon { font-size: 2.4rem; line-height: 1; }
     .module-card h2 { font-size: 1.25rem; font-weight: 700; color: var(--ink); margin: 0; }
@@ -75,6 +79,12 @@
         <p>Log new food safety non-conformances and browse all open or resolved reports across kitchen units.</p>
         <div class="card-go">Open NC Reports →</div>
       </a>
+      <a class="module-card checklist" href="/foodsafety-forms/">
+        <div class="card-icon">🧾</div>
+        <h2>Food Safety Forms</h2>
+        <p>Open the dedicated forms module for monthly checklists, assigned forms, and report review workflows.</p>
+        <div class="card-go">Open Food Safety Forms →</div>
+      </a>
       <a class="module-card pest" href="/pest/">
         <div class="card-icon">🐭</div>
         <h2>Rat Trap Surveillance</h2>
@@ -93,6 +103,7 @@
   <footer>
     <p>&copy; 2026 Central Kitchen | <a href="/">Hub</a> | <a href="/maintenance/maintenance.html">Maintenance</a></p>
   </footer>
+  <script src="/foodsafety/js/foodsafety-i18n.js"></script>
   <script src="/js/shell.js"></script>
 </body>
 </html>

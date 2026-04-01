@@ -60,6 +60,13 @@
         <div class="lock-note">🔒 No access — contact administrator</div>
         <div class="go-btn">Open Food Safety</div>
       </a>
+      <a href="/foodsafety-forms/" class="hub-card foodsafety" data-perm="foodsafetyforms">
+        <div class="icon">🧾</div>
+        <h2>Food Safety Forms</h2>
+        <p>Open assigned food safety forms, complete monthly checklists, and access the dedicated forms workspace and reporting flow.</p>
+        <div class="lock-note">🔒 No access — contact administrator</div>
+        <div class="go-btn">Open Food Safety Forms</div>
+      </a>
       <a href="/pest/" class="hub-card pest" data-perm="pest">
         <div class="icon">🐭</div>
         <h2>Pest Control</h2>
@@ -107,6 +114,9 @@
           var perm = card.dataset.perm;
           if (perm === '__admin__') {
             card.style.display = isAdmin ? '' : 'none';
+          } else if (perm === 'foodsafetyforms') {
+            var allowedForms = Boolean(user.permissions && (user.permissions.foodsafetyforms || user.permissions.foodsafety));
+            if (!isAdmin && !allowedForms) card.style.display = 'none';
           } else if (!isAdmin && !(user.permissions && user.permissions[perm])) {
             card.style.display = 'none';
           }

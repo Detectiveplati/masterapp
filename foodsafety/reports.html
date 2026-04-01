@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Safety Reports Dashboard</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .page-head { margin-bottom: 20px; }
+    .page-head h1 { margin: 0 0 8px; color: var(--ink); }
+    .page-head p { margin: 0; color: var(--muted); line-height: 1.6; max-width: 760px; }
+    .filters {
+      display: grid;
+      grid-template-columns: 220px 220px;
+      gap: 12px;
+      margin-bottom: 18px;
+      align-items: end;
+    }
+    .summary-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .summary-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 8px 24px var(--shadow);
+    }
+    .summary-card .lbl {
+      display: block;
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .summary-card .val {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--ink);
+    }
+    .list-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 8px 24px var(--shadow);
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 14px 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+      font-size: 0.92rem;
+    }
+    th {
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      background: #f9fbfb;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border: 1px solid transparent;
+    }
+    .status-draft { background: rgba(127,140,141,0.12); color: #566573; border-color: rgba(127,140,141,0.18); }
+    .status-finalized { background: rgba(243,156,18,0.12); color: #b9770e; border-color: rgba(243,156,18,0.18); }
+    .status-verified { background: rgba(39,174,96,0.12); color: #1e8449; border-color: rgba(39,174,96,0.18); }
+    .status-due { background: rgba(192,57,43,0.11); color: #a93226; border-color: rgba(192,57,43,0.18); }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .empty { padding: 26px; color: var(--muted); text-align: center; }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(18,19,22,0.46);
+      z-index: 900;
+      padding: 18px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-card {
+      width: 100%;
+      max-width: 560px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 16px 48px rgba(18,19,22,0.22);
+      padding: 22px;
+    }
+    .modal-card h3 { margin: 0 0 8px; color: var(--ink); }
+    .modal-card p { margin: 0 0 16px; color: var(--muted); line-height: 1.55; }
+    .signature-pad-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .signature-canvas {
+      width: 100%;
+      height: 170px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      touch-action: none;
+      display: block;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+    @media (max-width: 820px) {
+      .filters { grid-template-columns: 1fr; }
+      .list-wrap { overflow-x: auto; }
+      table { min-width: 860px; }
+    }
+  </style>
+</head>
+<body data-module="foodsafetyforms">
+  <main>
+    <section class="page-head">
+      <h1>Reports Dashboard</h1>
+      <p>This is the food safety officer view. Submitted forms route here for review, PDF access, verification, and month-by-month audit tracking.</p>
+    </section>
+
+    <div id="msg" class="msg" style="display:none;"></div>
+
+    <section class="filters">
+      <div class="form-group">
+        <label for="monthInput">Month</label>
+        <input id="monthInput" type="month">
+      </div>
+      <div class="form-group">
+        <label for="statusInput">Status</label>
+        <select id="statusInput">
+          <option value="">All Statuses</option>
+          <option value="due">Due</option>
+          <option value="draft">Draft</option>
+          <option value="finalized">Submitted</option>
+          <option value="verified">Verified</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="summary-row">
+      <div class="summary-card"><span class="lbl">Total Forms</span><span class="val" id="totalCount">0</span></div>
+      <div class="summary-card"><span class="lbl">Submitted</span><span class="val" id="submittedCount">0</span></div>
+      <div class="summary-card"><span class="lbl">Verified</span><span class="val" id="verifiedCount">0</span></div>
+      <div class="summary-card"><span class="lbl">Due / Draft</span><span class="val" id="draftCount">0</span></div>
+    </section>
+
+    <section class="list-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Form</th>
+            <th>Location</th>
+            <th>Month</th>
+            <th>Status</th>
+            <th>Submitted</th>
+            <th>Verified</th>
+            <th>Archive</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="reportsBody">
+          <tr><td colspan="8" class="empty">Loading reports…</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <div class="modal-overlay" id="verifyModal">
+    <div class="modal-card">
+      <h3>Verify Form</h3>
+      <p>Food safety officer verification will be added to the report PDF and stored in the report archive.</p>
+      <div class="form-group">
+        <label for="verifierNameInput">Verifier Name</label>
+        <input id="verifierNameInput" type="text" placeholder="Name of food safety officer">
+      </div>
+      <div class="form-group">
+        <label for="verifierTitleInput">Verifier Position</label>
+        <input id="verifierTitleInput" type="text" placeholder="Food Safety Officer">
+      </div>
+      <div class="signature-pad-head">
+        <label for="verifySignatureCanvas">Verifier Signature</label>
+        <button class="btn btn-outline btn-sm" id="clearVerifySignatureBtn" type="button">Clear Signature</button>
+      </div>
+      <canvas id="verifySignatureCanvas" class="signature-canvas"></canvas>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="cancelVerifyBtn" type="button">Cancel</button>
+        <button class="btn btn-primary" id="confirmVerifyBtn" type="button">Verify</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const monthInput = document.getElementById('monthInput');
+      const statusInput = document.getElementById('statusInput');
+      const reportsBody = document.getElementById('reportsBody');
+      const totalCount = document.getElementById('totalCount');
+      const submittedCount = document.getElementById('submittedCount');
+      const verifiedCount = document.getElementById('verifiedCount');
+      const draftCount = document.getElementById('draftCount');
+      const msg = document.getElementById('msg');
+      const verifyModal = document.getElementById('verifyModal');
+      const verifierNameInput = document.getElementById('verifierNameInput');
+      const verifierTitleInput = document.getElementById('verifierTitleInput');
+      const verifySignatureCanvas = document.getElementById('verifySignatureCanvas');
+      const clearVerifySignatureBtn = document.getElementById('clearVerifySignatureBtn');
+      const cancelVerifyBtn = document.getElementById('cancelVerifyBtn');
+      const confirmVerifyBtn = document.getElementById('confirmVerifyBtn');
+      const verifyState = { templateCode: '', monthKey: '', unitCode: '', drawing: false, hasInk: false, ctx: null };
+
+      function showMessage(type, text) {
+        msg.className = 'msg ' + type;
+        msg.textContent = text;
+        msg.style.display = 'block';
+        window.clearTimeout(showMessage._timer);
+        showMessage._timer = window.setTimeout(() => { msg.style.display = 'none'; }, 3200);
+      }
+
+      function esc(text) {
+        return String(text == null ? '' : text)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function formatDateTime(value) {
+        return value ? new Date(value).toLocaleString() : 'Not signed';
+      }
+
+      function statusClass(status) {
+        return 'status-' + (status || 'draft');
+      }
+
+      async function fetchJson(url, options) {
+        const res = await fetch(url, {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          ...options
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        return data;
+      }
+
+      function resizeSignatureCanvas() {
+        const ratio = window.devicePixelRatio || 1;
+        const rect = verifySignatureCanvas.getBoundingClientRect();
+        verifySignatureCanvas.width = Math.max(1, Math.round(rect.width * ratio));
+        verifySignatureCanvas.height = Math.max(1, Math.round(rect.height * ratio));
+        verifyState.ctx = verifySignatureCanvas.getContext('2d');
+        verifyState.ctx.scale(ratio, ratio);
+        verifyState.ctx.lineCap = 'round';
+        verifyState.ctx.lineJoin = 'round';
+        verifyState.ctx.lineWidth = 2.2;
+        verifyState.ctx.strokeStyle = '#111827';
+        verifyState.ctx.fillStyle = '#ffffff';
+        verifyState.ctx.fillRect(0, 0, rect.width, rect.height);
+        verifyState.hasInk = false;
+      }
+
+      function clearVerifySignature() {
+        if (!verifyState.ctx) return;
+        const rect = verifySignatureCanvas.getBoundingClientRect();
+        verifyState.ctx.fillStyle = '#ffffff';
+        verifyState.ctx.fillRect(0, 0, rect.width, rect.height);
+        verifyState.hasInk = false;
+      }
+
+      function signaturePoint(event) {
+        const rect = verifySignatureCanvas.getBoundingClientRect();
+        return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      }
+
+      function startSignature(event) {
+        if (!verifyState.ctx) return;
+        const point = signaturePoint(event);
+        verifyState.drawing = true;
+        verifyState.ctx.beginPath();
+        verifyState.ctx.moveTo(point.x, point.y);
+        verifyState.hasInk = true;
+        event.preventDefault();
+      }
+
+      function moveSignature(event) {
+        if (!verifyState.drawing || !verifyState.ctx) return;
+        const point = signaturePoint(event);
+        verifyState.ctx.lineTo(point.x, point.y);
+        verifyState.ctx.stroke();
+        event.preventDefault();
+      }
+
+      function endSignature() {
+        verifyState.drawing = false;
+      }
+
+      function openVerifyModal(templateCode, monthKey, unitCode) {
+        const authUser = window._authUser || {};
+        verifyState.templateCode = templateCode;
+        verifyState.monthKey = monthKey;
+        verifyState.unitCode = unitCode;
+        verifierNameInput.value = authUser.displayName || authUser.username || '';
+        verifierTitleInput.value = 'Food Safety Officer';
+        verifyModal.classList.add('open');
+        resizeSignatureCanvas();
+        window.setTimeout(() => verifierNameInput.focus(), 0);
+      }
+
+      function closeVerifyModal() {
+        verifyModal.classList.remove('open');
+      }
+
+      async function verifyRecord() {
+        const verifierName = String(verifierNameInput.value || '').trim();
+        const verifierPosition = String(verifierTitleInput.value || 'Food Safety Officer').trim();
+        const typedSignature = verifierName;
+        const signatureDataUrl = verifyState.hasInk ? verifySignatureCanvas.toDataURL('image/png') : '';
+        try {
+          await fetchJson('/api/foodsafety-checklists/month/verify', {
+            method: 'POST',
+            body: JSON.stringify({
+              monthKey: verifyState.monthKey,
+              templateCode: verifyState.templateCode,
+              unitCode: verifyState.unitCode,
+              verifierName,
+              verifierPosition,
+              typedSignature,
+              signatureDataUrl,
+              confirmed: true
+            })
+          });
+          const refreshUrl = '/api/foodsafety-checklists/month/report.pdf?template=' + encodeURIComponent(verifyState.templateCode) + '&month=' + encodeURIComponent(verifyState.monthKey) + '&unit=' + encodeURIComponent(verifyState.unitCode) + '&refresh=1';
+          const refreshRes = await fetch(refreshUrl, { credentials: 'include' });
+          if (refreshRes.ok) await refreshRes.blob();
+          closeVerifyModal();
+          showMessage('success', 'Form verified');
+          load();
+        } catch (err) {
+          showMessage('error', err.message);
+        }
+      }
+
+      function render(items) {
+        totalCount.textContent = items.length;
+        submittedCount.textContent = items.filter((item) => item.status === 'finalized').length;
+        verifiedCount.textContent = items.filter((item) => item.status === 'verified').length;
+        draftCount.textContent = items.filter((item) => item.status === 'draft' || item.status === 'due').length;
+
+        if (!items.length) {
+          reportsBody.innerHTML = '<tr><td colspan="8" class="empty">No reports found for the selected filter.</td></tr>';
+          return;
+        }
+
+        reportsBody.innerHTML = items.map((item) => `
+          <tr>
+            <td><strong>${esc(item.templateTitle)}</strong><br><span style="color:var(--muted);">${esc(item.templateCode)}</span></td>
+            <td>${esc(item.unitLabel)}</td>
+            <td>${esc(item.monthKey)}</td>
+            <td><span class="status-pill ${statusClass(item.status)}">${esc(item.status)}</span></td>
+            <td>${esc(formatDateTime(item.submittedAt))}<br><span style="color:var(--muted);">${esc(item.submittedBy || '')}</span></td>
+            <td>${esc(formatDateTime(item.verifiedAt))}<br><span style="color:var(--muted);">${esc(item.verifiedBy || '')}</span></td>
+            <td>${item.archivedAt ? esc(formatDateTime(item.archivedAt)) : 'Not archived'}</td>
+            <td>
+              <div class="actions">
+                ${item.status === 'finalized' ? `<button class="btn btn-primary btn-sm" data-verify-template="${esc(item.templateCode)}" data-verify-month="${esc(item.monthKey)}" data-verify-unit="${esc(item.unitCode)}" type="button">Verify</button>` : ''}
+                <a class="btn btn-outline btn-sm" href="${esc(item.entryUrl)}">Open</a>
+                ${item.pdfUrl ? `<a class="btn btn-outline btn-sm" href="${esc(item.pdfUrl)}" target="_blank" rel="noopener">PDF</a>` : ''}
+              </div>
+            </td>
+          </tr>
+        `).join('');
+
+        reportsBody.querySelectorAll('[data-verify-month]').forEach((button) => {
+          button.addEventListener('click', () => openVerifyModal(button.getAttribute('data-verify-template'), button.getAttribute('data-verify-month'), button.getAttribute('data-verify-unit')));
+        });
+      }
+
+      async function load() {
+        try {
+          const month = monthInput.value;
+          const status = statusInput.value;
+          const url = '/api/foodsafety-checklists/reports-summary?month=' + encodeURIComponent(month) + '&status=' + encodeURIComponent(status);
+          const data = await fetchJson(url);
+          render(data.items || []);
+        } catch (err) {
+          showMessage('error', err.message);
+        }
+      }
+
+      const now = new Date();
+      monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      monthInput.addEventListener('change', load);
+      statusInput.addEventListener('change', load);
+      clearVerifySignatureBtn.addEventListener('click', clearVerifySignature);
+      cancelVerifyBtn.addEventListener('click', closeVerifyModal);
+      confirmVerifyBtn.addEventListener('click', verifyRecord);
+      verifyModal.addEventListener('click', (event) => {
+        if (event.target === verifyModal) closeVerifyModal();
+      });
+      verifySignatureCanvas.addEventListener('pointerdown', startSignature);
+      verifySignatureCanvas.addEventListener('pointermove', moveSignature);
+      verifySignatureCanvas.addEventListener('pointerup', endSignature);
+      verifySignatureCanvas.addEventListener('pointerleave', endSignature);
+      window.addEventListener('resize', () => {
+        if (verifyModal.classList.contains('open')) resizeSignatureCanvas();
+      });
+      load();
+    }());
+  </script>
+  <script src="/foodsafety/js/foodsafety-i18n.js"></script>
+  <script src="/js/shell.js"></script>
+</body>
+</html>

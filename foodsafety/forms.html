@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Safety Forms Workspace</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .page-head { margin-bottom: 20px; }
+    .page-head h1 { margin: 0 0 8px; color: var(--ink); }
+    .page-head p { margin: 0; color: var(--muted); line-height: 1.6; max-width: 720px; }
+    .toolbar {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 12px;
+      margin-bottom: 18px;
+      align-items: end;
+    }
+    .info-banner {
+      background: linear-gradient(180deg, #ffffff, #f7fffc);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 18px;
+      box-shadow: 0 8px 24px var(--shadow);
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 18px;
+    }
+    .forms-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .form-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 8px 24px var(--shadow);
+      display: grid;
+      gap: 12px;
+    }
+    .eyebrow {
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .card-context {
+      display: grid;
+      gap: 4px;
+    }
+    .unit-name {
+      margin: 0;
+      font-size: 1.7rem;
+      line-height: 1.05;
+      font-weight: 900;
+      color: var(--ink);
+      letter-spacing: -0.02em;
+    }
+    .period-line {
+      margin: 0;
+      font-size: 1.1rem;
+      line-height: 1.2;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .card-details {
+      display: grid;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(22,160,133,0.07), rgba(22,160,133,0.02));
+      border: 1px solid rgba(22,160,133,0.12);
+    }
+    .template-title {
+      margin: 0;
+      font-size: 0.96rem;
+      line-height: 1.45;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .meta-line {
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(22,160,133,0.09);
+      color: var(--accent);
+      border: 1px solid rgba(22,160,133,0.18);
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      opacity: 0.88;
+    }
+    .form-card .btn {
+      width: 100%;
+      justify-content: center;
+    }
+    .empty {
+      background: var(--card);
+      border: 1px dashed var(--border);
+      border-radius: 18px;
+      padding: 26px;
+      color: var(--muted);
+      text-align: center;
+    }
+    @media (max-width: 700px) {
+      .toolbar { grid-template-columns: 1fr; }
+      .unit-name { font-size: 1.45rem; }
+      .period-line { font-size: 1rem; }
+    }
+  </style>
+</head>
+<body data-module="foodsafetyforms">
+  <main>
+    <section class="page-head">
+      <h1>Forms Workspace</h1>
+      <p>This is the filler-facing area. Staff only work from assigned forms here, grouped by month, location, and form type.</p>
+    </section>
+
+    <section class="info-banner">
+      Assigned forms are routed from here by user, location, and period. This page is the entry point for future assignment rules across multiple form types and locations.
+    </section>
+
+    <div id="msg" class="msg" style="display:none;"></div>
+
+    <section class="toolbar">
+      <div class="form-group">
+        <label for="monthInput">Month</label>
+        <input id="monthInput" type="month">
+      </div>
+      <div class="meta-line">
+        Assigned forms are shown for the selected month. This screen is intentionally simple so fillers can get into the correct form with minimal navigation.
+      </div>
+    </section>
+
+    <section class="forms-grid" id="formsGrid"></section>
+  </main>
+
+  <script>
+    (function () {
+      const monthInput = document.getElementById('monthInput');
+      const formsGrid = document.getElementById('formsGrid');
+      const msg = document.getElementById('msg');
+
+      function showMessage(type, text) {
+        msg.className = 'msg ' + type;
+        msg.textContent = text;
+        msg.style.display = 'block';
+        window.clearTimeout(showMessage._timer);
+        showMessage._timer = window.setTimeout(() => { msg.style.display = 'none'; }, 3200);
+      }
+
+      function esc(text) {
+        return String(text == null ? '' : text)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function formatMonthLabel(monthKey) {
+        const value = String(monthKey || '').trim();
+        if (!/^\\d{4}-\\d{2}$/.test(value)) return value;
+        const [year, month] = value.split('-').map(Number);
+        return new Date(year, month - 1, 1).toLocaleString(undefined, {
+          month: 'long',
+          year: 'numeric'
+        });
+      }
+
+      async function fetchJson(url) {
+        const res = await fetch(url, { credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        return data;
+      }
+
+      function render(assignments) {
+        if (!assignments.length) {
+          formsGrid.innerHTML = '<div class="empty">No assigned forms found for this month.</div>';
+          return;
+        }
+        formsGrid.innerHTML = assignments.map((item) => `
+          <article class="form-card">
+            <div class="eyebrow">${esc(item.category)}</div>
+            <div class="card-context">
+              <h2 class="unit-name">${esc(item.unitLabel)}</h2>
+              <p class="period-line">${esc(formatMonthLabel(item.monthKey))}</p>
+            </div>
+            <div class="status-pill">${esc(item.frequency)}</div>
+            <div class="card-details">
+              <p class="template-title">${esc(item.templateTitle)}</p>
+              <div class="meta-line">${esc(item.assignedTo ? `Assigned to ${item.assignedTo}` : '')}</div>
+            </div>
+            <a class="btn btn-primary" href="${esc(item.entryUrl)}">Open Form</a>
+          </article>
+        `).join('');
+      }
+
+      async function load() {
+        try {
+          const month = monthInput.value;
+          const data = await fetchJson('/api/foodsafety-checklists/forms-summary?month=' + encodeURIComponent(month));
+          const assignments = data.assignments || [];
+          if (assignments.length === 1 && assignments[0].entryUrl) {
+            window.location.replace(assignments[0].entryUrl);
+            return;
+          }
+          render(assignments);
+        } catch (err) {
+          showMessage('error', err.message);
+        }
+      }
+
+      const now = new Date();
+      monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      monthInput.addEventListener('change', load);
+      load();
+    }());
+  </script>
+  <script src="/foodsafety/js/foodsafety-i18n.js"></script>
+  <script src="/js/shell.js"></script>
+</body>
+</html>

@@ -211,6 +211,7 @@
 
 <script>
   let allRecords = [];
+  const ft = (key, fallback) => window.FoodSafetyI18n && window.FoodSafetyI18n.t ? window.FoodSafetyI18n.t(key, fallback) : (fallback || key);
 
   /* ── Helpers ── */
   function fmtDate(d) {
@@ -219,10 +220,10 @@
   }
 
   function validityBadge(v, cancelReason) {
-    if (v === 'valid')    return `<span class="badge-valid">✅ Valid</span>`;
-    if (v === 'expiring') return `<span class="badge-expiring">⚠️ Expiring Soon</span>`;
+    if (v === 'valid')    return `<span class="badge-valid">${ft('fhc_valid_badge', '✅ Valid')}</span>`;
+    if (v === 'expiring') return `<span class="badge-expiring">${ft('fhc_expiring_soon', '⚠️ Expiring Soon')}</span>`;
     const reason = cancelReason ? `<br><small style="font-size:0.68rem;opacity:.8;">${escHtml(cancelReason)}</small>` : '';
-    return `<span class="badge-invalid">❌ Not Valid</span>${reason}`;
+    return `<span class="badge-invalid">${ft('fhc_not_valid', '❌ Not Valid')}</span>${reason}`;
   }
 
   /* ── Stats ── */
@@ -257,7 +258,7 @@
     if (validity) qs.push(`validity=${encodeURIComponent(validity)}`);
 
     const body = document.getElementById('tbl-body');
-    body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--muted);">Loading…</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--muted);">${ft('fhc_loading', 'Loading…')}</td></tr>`;
 
     try {
       const data = await apiFetch(`/api/fhc${qs.length ? '?' + qs.join('&') : ''}`).then(r => r.json());
@@ -282,7 +283,7 @@
         <td>${fmtDate(r.previousCertDate)}</td>
         <td>${fmtDate(r.startDate)}</td>
         <td>${fmtDate(r.expiryDate)}</td>
-        <td>${r.isRefresher ? 'Yes' : 'No'}</td>
+        <td>${r.isRefresher ? ft('fhc_yes', 'Yes') : ft('fhc_no', 'No')}</td>
         <td>${validityBadge(r.validityStatus, r.isCancelled ? r.cancellationReason : '')}</td>
         <td>${escHtml(r.remarks || '')}</td>
         <td class="no-print">
@@ -296,13 +297,13 @@
   }
 
   async function deleteRecord(id, name) {
-    if (!confirm(`Delete record for ${name}?`)) return;
+    if (!confirm(ft('fhc_delete_confirm_prefix', 'Delete record for ') + name + '?')) return;
     try {
       await apiFetch(`/api/fhc/${id}`, { method: 'DELETE' });
       document.getElementById(`row-${id}`)?.remove();
       allRecords = allRecords.filter(r => r._id !== id);
       updateStats(allRecords);
-    } catch (err) { alert('Delete failed: ' + err.message); }
+    } catch (err) { alert(ft('fhc_delete_failed', 'Delete failed: ') + err.message); }
   }
 
   /* ── Print / PDF ── */
@@ -469,6 +470,7 @@
   loadEntities();
   loadRecords();
 </script>
+<script src="/foodsafety/js/foodsafety-i18n.js"></script>
 <script src="/js/shell.js"></script>
 </body>
 </html>

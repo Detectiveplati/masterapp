@@ -4,25 +4,9 @@
   <meta charset="UTF-8">
   <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NC Reports — Food Safety</title>
+  <title>Food Safety Forms</title>
   <link rel="stylesheet" href="/css/app.css">
   <style>
-    .page-header {
-      max-width: 860px;
-      margin: 0 auto 28px;
-      padding: 0 4px;
-    }
-    .page-header h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: var(--ink);
-      margin: 0 0 6px;
-    }
-    .page-header p {
-      font-size: 0.95rem;
-      color: var(--muted);
-      margin: 0;
-    }
     .module-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -52,8 +36,10 @@
       height: 4px;
       border-radius: 16px 16px 0 0;
     }
-    .module-card.report::before { background: linear-gradient(90deg, var(--accent), #e74c3c); }
-    .module-card.view::before   { background: linear-gradient(90deg, var(--accent-2), #e67e22); }
+    .module-card.workspace::before { background: linear-gradient(90deg, #16a085, #48c9b0); }
+    .module-card.workspace .card-go { color: #16a085; }
+    .module-card.reports::before { background: linear-gradient(90deg, #f39c12, #f7c948); }
+    .module-card.reports .card-go { color: #b9770e; }
     .module-card:hover { transform: translateY(-5px); box-shadow: 0 14px 36px rgba(0,0,0,0.12); }
     .module-card .card-icon { font-size: 2.4rem; line-height: 1; }
     .module-card h2 { font-size: 1.25rem; font-weight: 700; color: var(--ink); margin: 0; }
@@ -64,30 +50,23 @@
       font-size: 0.88rem;
       font-weight: 700;
     }
-    .module-card.report .card-go { color: var(--accent); }
-    .module-card.view   .card-go { color: var(--accent-2); }
     @media (max-width: 600px) { .module-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
-<body data-module="foodsafety">
-
+<body data-module="foodsafetyforms">
   <main>
-    <div class="page-header">
-      <h1>📋 Non-Conformance Reports</h1>
-      <p>Log new food safety incidents or browse existing NC records.</p>
-    </div>
     <div class="module-grid">
-      <a class="module-card report" href="/foodsafety/report-nc.html">
-        <div class="card-icon">➕</div>
-        <h2>Log NC</h2>
-        <p>Submit a new food safety non-conformance report for any kitchen unit.</p>
-        <div class="card-go">New Report →</div>
+      <a class="module-card workspace" href="/foodsafety-forms/forms">
+        <div class="card-icon">🗂️</div>
+        <h2>Forms Workspace</h2>
+        <p>Open assigned or available food safety forms by month, location, and form type.</p>
+        <div class="card-go">Open Forms Workspace →</div>
       </a>
-      <a class="module-card view" href="/foodsafety/nc-list.html">
-        <div class="card-icon">📋</div>
-        <h2>View NCs</h2>
-        <p>Browse all open and resolved non-conformance reports. Filter by unit or status.</p>
-        <div class="card-go">View All →</div>
+      <a class="module-card reports" href="/foodsafety-forms/reports">
+        <div class="card-icon">🧾</div>
+        <h2>Reports Dashboard</h2>
+        <p>Review submitted forms, open archived PDFs, monitor due items, and verify completed reports.</p>
+        <div class="card-go">Open Reports Dashboard →</div>
       </a>
     </div>
   </main>
