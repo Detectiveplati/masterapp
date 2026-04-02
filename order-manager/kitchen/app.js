@@ -10,6 +10,7 @@ const kitchenStation = window.ORDER_MANAGER_KITCHEN_STATION || {
   key: 'combioven',
   title: 'Kitchen Temp Log',
   pageTitle: '厨房温度记录 Kitchen Temp Log',
+  selectorTitle: 'Combi Oven Kitchen Log',
   boardTitle: '烤炉订单 Combi Oven Orders',
   sourceLabel: 'combi oven'
 };
@@ -286,7 +287,7 @@ function initializeKitchenBoardSelector() {
   stations.forEach((station) => {
     const option = document.createElement('option');
     option.value = station.key;
-    option.textContent = station.pageTitle || station.title || station.key;
+    option.textContent = station.selectorTitle || station.pageTitle || station.title || station.key;
     option.selected = station.key === kitchenStation.key;
     selector.appendChild(option);
   });

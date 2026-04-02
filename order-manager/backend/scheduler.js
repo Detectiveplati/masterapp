@@ -13,6 +13,16 @@ const {
   markScheduledJobSucceeded
 } = require("./jobStore");
 
+const SCHEDULE_SPECS = [
+  { runType: "current_day_morning", hour: 4, minute: 0 },
+  { runType: "daily_initial", hour: 14, minute: 0 },
+  { runType: "daily_refresh", hour: 20, minute: 0 }
+];
+const RECONCILE_INTERVAL_MS = 60 * 1000;
+const CATCH_UP_WINDOW_MINUTES = 8 * 60;
+let reconcileTimer = null;
+let reconcileInFlight = false;
+
 function startScheduler() {
   const enabled = parseBoolean(
     process.env.ORDER_MANAGER_SCHEDULE_ENABLED,
@@ -32,9 +42,23 @@ function startScheduler() {
     return;
   }
 
-  cron.schedule("0 4 * * *", () => runScheduledJob("current_day_morning", timeZone), { timezone: timeZone });
-  cron.schedule("0 14 * * *", () => runScheduledJob("daily_initial", timeZone), { timezone: timeZone });
-  cron.schedule("0 20 * * *", () => runScheduledJob("daily_refresh", timeZone), { timezone: timeZone });
+  SCHEDULE_SPECS.forEach((spec) => {
+    cron.schedule(
+      `${spec.minute} ${spec.hour} * * *`,
+      () => runScheduledJob(spec.runType, timeZone),
+      { timezone: timeZone }
+    );
+  });
+  runScheduledCatchUp(timeZone).catch((error) => {
+    console.error("Order manager scheduler catch-up failed:", error.message || error);
+  });
+  if (!reconcileTimer) {
+    reconcileTimer = setInterval(() => {
+      runScheduledCatchUp(timeZone).catch((error) => {
+        console.error("Order manager scheduler reconciliation failed:", error.message || error);
+      });
+    }, RECONCILE_INTERVAL_MS);
+  }
   console.log(`Order manager scheduler active (timezone: ${timeZone})`);
 }
 
@@ -63,6 +87,65 @@ async function runScheduledJob(runType, timeZone) {
     await markScheduledJobFailed(jobKey, reportDate, error.message || error);
     console.error(`Scheduled ${runType} extraction failed for ${reportDate}:`, error.message || error);
   }
+}
+
+async function runScheduledCatchUp(timeZone) {
+  if (reconcileInFlight || isExtractionRunning()) {
+    return;
+  }
+
+  reconcileInFlight = true;
+  try {
+    const dueRuns = getDueScheduledRuns(timeZone);
+    for (const dueRun of dueRuns) {
+      if (isExtractionRunning()) {
+        break;
+      }
+      await runScheduledJob(dueRun.runType, timeZone);
+    }
+  } finally {
+    reconcileInFlight = false;
+  }
+}
+
+function getDueScheduledRuns(timeZone) {
+  const parts = getTimePartsInTimeZone(new Date(), timeZone);
+  if (!parts) {
+    return [];
+  }
+
+  const nowMinutes = parts.hour * 60 + parts.minute;
+  return SCHEDULE_SPECS.filter((spec) => {
+    const scheduledMinutes = spec.hour * 60 + spec.minute;
+    const diff = nowMinutes - scheduledMinutes;
+    return diff >= 0 && diff <= CATCH_UP_WINDOW_MINUTES;
+  });
+}
+
+function getTimePartsInTimeZone(date, timeZone) {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+  const parts = formatter.formatToParts(date);
+  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const hour = Number(byType.hour);
+  const minute = Number(byType.minute);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+    return null;
+  }
+  return {
+    year: Number(byType.year),
+    month: Number(byType.month),
+    day: Number(byType.day),
+    hour,
+    minute
+  };
 }
 
 function resolveScheduledReportDate(runType, timeZone) {

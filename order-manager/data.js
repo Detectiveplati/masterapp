@@ -4,6 +4,7 @@ const ORDER_MANAGER_KITCHEN_STATIONS = {
     title: "Kitchen Temp Log",
     boardTitle: "烤炉订单 Combi Oven Orders",
     pageTitle: "厨房温度记录 Kitchen Temp Log",
+    selectorTitle: "Combi Oven Kitchen Log",
     sourceLabel: "combi oven"
   },
   stirfry: {
@@ -11,6 +12,7 @@ const ORDER_MANAGER_KITCHEN_STATIONS = {
     title: "Stir-Fried Temp Log",
     boardTitle: "炒部门订单 Stir-Fried Orders",
     pageTitle: "炒部门温度记录 Stir-Fried Temp Log",
+    selectorTitle: "Stir-Fried Kitchen Log",
     sourceLabel: "stir-fried department"
   }
 };
