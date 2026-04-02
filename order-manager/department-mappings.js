@@ -5,6 +5,10 @@ const summaryEl = document.getElementById("mapping-summary");
 const latestAuditEl = document.getElementById("latest-audit");
 const reloadButtonEl = document.getElementById("reload-dashboard");
 const saveAllDishesEl = document.getElementById("save-all-dishes");
+const dishSavePromptEl = document.getElementById("dish-save-prompt");
+const dishSavePromptCopyEl = document.getElementById("dish-save-prompt-copy");
+const dishSavePromptSaveEl = document.getElementById("dish-save-prompt-save");
+const dishSavePromptDiscardEl = document.getElementById("dish-save-prompt-discard");
 const dishFilterEl = document.getElementById("dish-filter");
 const statusFilterEl = document.getElementById("status-filter");
 const departmentFilterEl = document.getElementById("department-filter");
@@ -23,10 +27,13 @@ let pendingDishAssignments = new Map();
 
 reloadButtonEl.addEventListener("click", () => loadDashboard());
 saveAllDishesEl.addEventListener("click", saveAllPendingDishAssignments);
+dishSavePromptSaveEl.addEventListener("click", saveAllPendingDishAssignments);
+dishSavePromptDiscardEl.addEventListener("click", discardPendingDishAssignments);
 dishFilterEl.addEventListener("input", debounce(loadDashboard, 250));
 statusFilterEl.addEventListener("change", loadDashboard);
 departmentFilterEl.addEventListener("change", loadDashboard);
 departmentFormEl.addEventListener("submit", handleCreateDepartment);
+window.addEventListener("beforeunload", handleBeforeUnload);
 
 loadDashboard();
 
@@ -340,6 +347,8 @@ async function saveAllPendingDishAssignments() {
   }
 
   saveAllDishesEl.disabled = true;
+  dishSavePromptSaveEl.disabled = true;
+  dishSavePromptDiscardEl.disabled = true;
   reloadButtonEl.disabled = true;
   setStatus(`Saving ${entries.length} pending dish assignment${entries.length === 1 ? "" : "s"}…`);
 
@@ -354,6 +363,8 @@ async function saveAllPendingDishAssignments() {
     setStatus(error.message || "Could not save all dish assignments.", true);
   } finally {
     saveAllDishesEl.disabled = false;
+    dishSavePromptSaveEl.disabled = false;
+    dishSavePromptDiscardEl.disabled = false;
     reloadButtonEl.disabled = false;
     updateSaveAllButton();
   }
@@ -363,6 +374,29 @@ function updateSaveAllButton() {
   const count = pendingDishAssignments.size;
   saveAllDishesEl.disabled = count === 0;
   saveAllDishesEl.textContent = count ? `Save All Changes (${count})` : "Save All Changes";
+  dishSavePromptSaveEl.disabled = count === 0;
+  dishSavePromptDiscardEl.disabled = count === 0;
+  dishSavePromptCopyEl.textContent = count === 1 ? "1 unsaved change" : `${count} unsaved changes`;
+  dishSavePromptEl.classList.toggle("hidden", count === 0);
+}
+
+function discardPendingDishAssignments() {
+  if (!pendingDishAssignments.size) {
+    return;
+  }
+
+  pendingDishAssignments = new Map();
+  renderDishCatalog(dashboardState.dishes || [], dashboardState.departments || []);
+  updateSaveAllButton();
+  setStatus("Discarded pending dish assignment changes.");
+}
+
+function handleBeforeUnload(event) {
+  if (!pendingDishAssignments.size) {
+    return;
+  }
+  event.preventDefault();
+  event.returnValue = "";
 }
 
 function summaryCard(label, value) {

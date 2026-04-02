@@ -109,6 +109,16 @@
             <p>Every extracted dish lands here. Leave all override selectors blank to use the source department by default, or assign up to three departments when a dish requires action from more than one team.</p>
           </div>
         </div>
+        <div id="dish-save-prompt" class="dish-save-prompt hidden" aria-live="polite">
+          <div class="dish-save-prompt-copy">
+            <strong>Unsaved dish assignments</strong>
+            <span id="dish-save-prompt-copy">1 unsaved change</span>
+          </div>
+          <div class="dish-save-prompt-actions">
+            <button id="dish-save-prompt-save" class="btn-primary" type="button">Save All Changes</button>
+            <button id="dish-save-prompt-discard" class="btn-outline" type="button">Discard Changes</button>
+          </div>
+        </div>
         <div id="dish-catalog" class="mapping-table-wrap"></div>
       </section>
     </section>

@@ -831,6 +831,44 @@ select:focus {
   background: rgba(244, 232, 216, 0.34);
 }
 
+.dish-save-prompt {
+  position: sticky;
+  top: 16px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(164, 74, 29, 0.18);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 249, 242, 0.98), rgba(255, 255, 255, 0.98));
+  box-shadow: 0 16px 28px rgba(71, 47, 22, 0.08);
+}
+
+.dish-save-prompt-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.dish-save-prompt-copy strong {
+  color: var(--om-accent-strong);
+  font-size: 0.92rem;
+}
+
+.dish-save-prompt-copy span {
+  color: var(--om-muted);
+  font-size: 0.84rem;
+}
+
+.dish-save-prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .summary-board {
   display: grid;
   gap: 14px;
@@ -1227,6 +1265,24 @@ th:last-child {
 
   .page-actions-side > *,
   .form-actions > * {
+    flex: 1 1 100%;
+  }
+
+  .dish-save-prompt,
+  .dish-save-prompt-actions {
+    align-items: stretch;
+  }
+
+  .dish-save-prompt {
+    position: static;
+    flex-direction: column;
+  }
+
+  .dish-save-prompt-actions {
+    width: 100%;
+  }
+
+  .dish-save-prompt-actions > * {
     flex: 1 1 100%;
   }
 
