@@ -6,612 +6,100 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Food Safety Log Form</title>
   <link rel="stylesheet" href="/css/app.css">
+  <script src="/foodsafety/js/foodsafety-i18n.js"></script>
+  <script src="/foodsafety/js/foodsafety-ui-utils.js"></script>
   <style>
-    .hero, .panel, .entry-card, .modal-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      box-shadow: 0 8px 24px var(--shadow);
-    }
-    .hero, .panel { padding: 20px; margin-bottom: 18px; }
-    .hero h1 { margin: 0 0 8px; color: var(--ink); }
-    .hero p { margin: 0; color: var(--muted); line-height: 1.55; }
-    .control-grid {
-      display: grid;
-      grid-template-columns: 220px 220px minmax(240px, 1fr) auto;
-      gap: 12px;
-      align-items: end;
-    }
-    .control-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
-    .compact-meta {
-      display:inline-flex; align-items:center; min-height:44px; padding:10px 12px;
-      border-radius:12px; border:1px solid var(--border); background:var(--bg); color:var(--muted);
-      font-size:0.84rem; line-height:1.45;
-    }
-    .status-row { display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; }
-    .status-pill {
-      display:inline-flex; align-items:center; padding:7px 12px; border-radius:999px;
-      background:rgba(22,160,133,0.1); color:var(--accent); border:1px solid rgba(22,160,133,0.18);
-      font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em;
-    }
-    .toolbar { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }
-    .entries-grid { display:grid; gap:12px; }
-    .entry-card { padding:16px; }
-    .entry-head { display:flex; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
-    .entry-title { margin:0; font-size:1rem; color:var(--ink); }
-    .entry-meta { color:var(--muted); font-size:0.85rem; }
-    .entry-fields { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:10px 14px; }
-    .field-pill {
-      border:1px solid var(--border); border-radius:12px; padding:10px 12px; background:var(--bg);
-    }
-    .field-pill strong { display:block; font-size:0.74rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px; }
-    .field-pill span { color:var(--ink); font-weight:700; }
-    .footer-grid { display:grid; grid-template-columns: 1fr 260px; gap:16px; margin-top:16px; }
-    .empty { padding:24px; border:1px dashed var(--border); border-radius:16px; color:var(--muted); text-align:center; }
-    .sticky-actions { position:sticky; bottom:16px; z-index:20; display:flex; justify-content:center; margin-top:18px; }
-    .sticky-actions-inner {
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center;
-      background:rgba(255,255,255,0.92); border:1px solid var(--border); border-radius:999px;
-      padding:10px 12px; box-shadow:0 12px 28px rgba(18,19,22,0.15); backdrop-filter:blur(10px);
-    }
-    .save-state { font-size:0.84rem; font-weight:700; color:var(--muted); padding:0 6px; }
-    .hidden { display:none !important; }
-    .modal-overlay {
-      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-      background:rgba(18,19,22,0.46); backdrop-filter:blur(3px); z-index:900; padding:18px;
-    }
-    .modal-overlay.open { display:flex; }
-    .modal-card { width:100%; max-width:720px; padding:22px; }
-    .modal-card h3 { margin:0 0 8px; color:var(--ink); }
-    .modal-card p { margin:0 0 16px; color:var(--muted); line-height:1.55; }
-    .entry-form-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; }
-    .segment-row { display:flex; gap:8px; flex-wrap:wrap; }
-    .segment-btn {
-      min-width:72px; justify-content:center; box-shadow:none;
-    }
-    .segment-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
-    .modal-actions { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top:18px; }
-    .signature-canvas {
-      width:100%; height:170px; border:1px solid var(--border); border-radius:12px; background:#fff;
-      touch-action:none; display:block;
-    }
-    .signature-pad-head { display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom:8px; }
-    @media (max-width: 900px) {
-      .control-grid, .footer-grid, .entry-form-grid, .entry-fields { grid-template-columns:1fr; }
-    }
+    .hero,.panel,.row-card,.modal-card{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 8px 24px var(--shadow)} .hero,.panel{padding:20px;margin-bottom:18px}.hero h1{margin:0 0 8px;color:var(--ink)}.hero p{margin:0;color:var(--muted);line-height:1.55}
+    .control-grid{display:grid;grid-template-columns:220px 220px minmax(240px,1fr) auto;gap:12px;align-items:end}.control-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .compact-meta{display:inline-flex;align-items:center;min-height:44px;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-size:.84rem;line-height:1.45}
+    .status-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}.status-pill{display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;background:rgba(22,160,133,.1);color:var(--accent);border:1px solid rgba(22,160,133,.18);font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+    .signing-banner{display:none;background:linear-gradient(180deg,rgba(22,160,133,.12),rgba(22,160,133,.04));border:1px solid rgba(22,160,133,.24);border-radius:18px;box-shadow:0 8px 24px var(--shadow);padding:18px 20px;margin-bottom:18px}.signing-banner.open{display:block}.signing-banner-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px}.signing-banner h3{margin:0 0 6px;color:var(--ink);font-size:1.08rem}.signing-banner p{margin:0;color:var(--muted);line-height:1.55}.signing-banner-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 16px;margin-top:14px}.signing-banner-meta strong{display:block;color:var(--muted);font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}.signing-banner-meta span{color:var(--ink);font-weight:700;line-height:1.45}.signing-banner-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+    .toolbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;align-items:center}.rows-grid{display:grid;gap:12px}.rows-actions{display:flex;justify-content:flex-start;margin-top:14px}.row-card{padding:14px}.row-card.blank{border-style:dashed;background:linear-gradient(180deg,rgba(22,160,133,.04),rgba(22,160,133,.01))}.row-card.blank .row-title{color:var(--accent)}
+    .row-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px}.row-title{margin:0;font-size:.96rem;color:var(--ink)}.row-meta{color:var(--muted);font-size:.82rem}.row-actions{display:flex;gap:8px;flex-wrap:wrap}.row-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}
+    .segment-row{display:flex;gap:8px;flex-wrap:wrap}.segment-btn{min-width:72px;justify-content:center;box-shadow:none}.segment-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .stepper-control{display:grid;grid-template-columns:44px minmax(0,1fr) 52px 44px;gap:8px;align-items:center}.stepper-btn{min-width:44px;height:40px;padding:0;justify-content:center;box-shadow:none}.stepper-control input{min-height:40px;text-align:center}.stepper-unit{display:flex;align-items:center;justify-content:center;min-height:40px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--muted);font-weight:800;font-size:.84rem}
+    .quick-picks{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}.quick-pick-btn{min-width:44px;justify-content:center;box-shadow:none}.quick-pick-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}.quick-pick-custom{min-width:72px}
+    .time-helper{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:8px}.time-helper select{min-height:40px;padding:9px 10px;font-size:.92rem;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--ink)}.time-helper .btn{box-shadow:none}
+    .footer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}.empty{padding:24px;border:1px dashed var(--border);border-radius:16px;color:var(--muted);text-align:center}
+    .sticky-actions{position:sticky;bottom:16px;z-index:20;display:flex;justify-content:center;margin-top:18px}.sticky-actions-inner{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:999px;padding:10px 12px;box-shadow:0 12px 28px rgba(18,19,22,.15);backdrop-filter:blur(10px)}.save-state{font-size:.84rem;font-weight:700;color:var(--muted);padding:0 6px}.hidden{display:none!important}
+    .modal-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(18,19,22,.46);backdrop-filter:blur(3px);z-index:900;padding:18px}.modal-overlay.open{display:flex}.modal-card{width:100%;max-width:720px;padding:22px}.modal-card h3{margin:0 0 8px;color:var(--ink)}.modal-card p{margin:0 0 16px;color:var(--muted);line-height:1.55}.signature-canvas{width:100%;height:170px;border:1px solid var(--border);border-radius:12px;background:#fff;touch-action:none;display:block}.signature-pad-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}.modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px}
+    .row-card .form-group{margin-bottom:0}.row-card .form-group label{font-size:.72rem;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:5px}.row-card input,.row-card textarea{min-height:40px;padding:9px 10px;font-size:.95rem}.row-card textarea{min-height:88px}.row-card .btn.btn-sm{padding:7px 10px}
+    @media (max-width:900px){.control-grid,.footer-grid{grid-template-columns:1fr}}
+    @media (max-width:640px){.row-card{padding:12px}.row-fields{grid-template-columns:1fr;gap:9px}.row-head{margin-bottom:8px}.row-title{font-size:.92rem}.row-meta{font-size:.78rem}.row-card input,.row-card textarea{min-height:38px;padding:8px 9px;font-size:.92rem}.segment-row{gap:6px}.segment-btn{min-width:58px;padding:8px 10px;font-size:.82rem}.stepper-control{grid-template-columns:40px minmax(0,1fr) 48px 40px;gap:6px}.stepper-btn{min-width:40px;height:38px}.quick-picks{gap:6px}.quick-pick-btn{min-width:40px;padding:8px 10px;font-size:.82rem}.time-helper{grid-template-columns:1fr}.time-helper select{min-height:38px;padding:8px 9px;font-size:.92rem}}
   </style>
 </head>
 <body data-module="foodsafetyforms">
   <main>
-    <section class="hero">
-      <h1 id="formTitle">Food Safety Log Form</h1>
-      <p id="formIntro">Add entries quickly, review the current month, and finalize when the record is ready for verification and PDF export.</p>
-      <div class="status-row">
-        <span class="status-pill" id="statusPill">Draft</span>
-      </div>
-    </section>
-
+    <section class="hero"><h1 id="formTitle">Food Safety Log Form</h1><p id="formIntro">Add row entries directly on this page, review the current month, and finalize when the record is ready for verification and PDF export.</p><div class="status-row"><span class="status-pill" id="statusPill">Draft</span></div></section>
     <div id="msg" class="msg" style="display:none;"></div>
-
-    <section class="panel">
-      <div class="control-grid">
-        <div class="form-group">
-          <label for="monthInput">Month</label>
-          <input id="monthInput" type="month">
-        </div>
-        <div class="form-group">
-          <label for="unitValue">Unit</label>
-          <div id="unitValue" class="compact-meta"></div>
-        </div>
-        <div class="form-group">
-          <label>Form</label>
-          <div id="templateMeta" class="compact-meta">Loading template…</div>
-        </div>
-        <div class="control-actions">
-          <button class="btn btn-outline" id="reloadBtn" type="button">Reload Month</button>
-          <button class="btn btn-outline" id="reopenBtn" type="button" style="display:none;">Reopen</button>
-          <a class="btn btn-outline hidden" id="viewPdfBtn" href="#" target="_blank" rel="noopener">View PDF</a>
-          <a class="btn btn-outline hidden" id="downloadPdfBtn" href="#" target="_blank" rel="noopener">Download PDF</a>
-          <button class="btn btn-secondary" id="saveBtn" type="button">Save Draft</button>
-          <button class="btn btn-primary" id="finalizeBtn" type="button">Finalize Month</button>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="toolbar">
-        <div>
-          <strong id="entriesTitle">Entries</strong>
-          <div class="entry-meta" id="entriesMeta">Current month log</div>
-        </div>
-        <button class="btn btn-primary" id="addEntryBtn" type="button">Add Entry</button>
-      </div>
-      <div id="entriesGrid" class="entries-grid"></div>
-
-      <div class="footer-grid">
-        <div class="form-group" style="margin-bottom:0;">
-          <label for="remarksInput">Remarks</label>
-          <textarea id="remarksInput" rows="5" placeholder="Record any note or corrective action for this month."></textarea>
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label for="verifiedByTextInput">Verified By</label>
-          <input id="verifiedByTextInput" type="text" placeholder="Verification name / lane text">
-        </div>
-      </div>
-    </section>
-
-    <div class="sticky-actions">
-      <div class="sticky-actions-inner">
-        <span class="save-state" id="saveState">No unsaved changes</span>
-        <a class="btn btn-outline btn-sm hidden" id="viewPdfBtnSticky" href="#" target="_blank" rel="noopener">View PDF</a>
-        <button class="btn btn-secondary btn-sm" id="saveBtnSticky" type="button">Save Draft</button>
-        <button class="btn btn-primary btn-sm" id="finalizeBtnSticky" type="button">Finalize Month</button>
-      </div>
-    </div>
+    <section class="signing-banner" id="signingBanner"></section>
+    <section class="panel"><div class="control-grid"><div class="form-group"><label for="monthInput">Month</label><input id="monthInput" type="month"></div><div class="form-group"><label for="unitValue">Unit</label><div id="unitValue" class="compact-meta"></div></div><div class="form-group"><label>Form</label><div id="templateMeta" class="compact-meta">Loading template…</div></div><div class="control-actions"><button class="btn btn-outline" id="reloadBtn" type="button">Reload Month</button><button class="btn btn-outline" id="reopenBtn" type="button" style="display:none;">Reopen</button><a class="btn btn-outline hidden" id="viewPdfBtn" href="#" target="_blank" rel="noopener">View PDF</a><a class="btn btn-outline hidden" id="downloadPdfBtn" href="#" target="_blank" rel="noopener">Download PDF</a><button class="btn btn-secondary" id="saveBtn" type="button">Save Draft</button><button class="btn btn-primary" id="finalizeBtn" type="button">Finalize Month</button></div></div></section>
+    <section class="panel"><div class="toolbar"><div><strong>Entries</strong><div class="row-meta" id="entriesMeta">Current month log</div></div></div><div id="rowsGrid" class="rows-grid"></div><div class="rows-actions"><button class="btn btn-outline" id="addLineBtn" type="button">Add Another Line</button></div><div id="footerFields" class="footer-grid"></div></section>
+    <div class="sticky-actions"><div class="sticky-actions-inner"><span class="save-state" id="saveState">No unsaved changes</span><a class="btn btn-outline btn-sm hidden" id="viewPdfBtnSticky" href="#" target="_blank" rel="noopener">View PDF</a><button class="btn btn-secondary btn-sm" id="saveBtnSticky" type="button">Save Draft</button><button class="btn btn-primary btn-sm" id="finalizeBtnSticky" type="button">Finalize Month</button></div></div>
   </main>
-
-  <div class="modal-overlay" id="entryModal">
-    <div class="modal-card">
-      <h3 id="entryModalTitle">Add Entry</h3>
-      <div class="entry-form-grid">
-        <div class="form-group">
-          <label for="entryDate">Date</label>
-          <input id="entryDate" type="date">
-        </div>
-        <div class="form-group">
-          <label for="entryQuantity">Number of metal oil tins reused</label>
-          <input id="entryQuantity" type="number" min="0" step="1">
-        </div>
-        <div class="form-group">
-          <label>Metal oil tin is covered without any opening</label>
-          <div class="segment-row" id="entryCovered"></div>
-        </div>
-        <div class="form-group">
-          <label>No metal fragments found inside the interior of the metal oil tin</label>
-          <div class="segment-row" id="entryFragments"></div>
-        </div>
-        <div class="form-group">
-          <label>Metal oil tin is clean and dry</label>
-          <div class="segment-row" id="entryCleanDry"></div>
-        </div>
-        <div class="form-group">
-          <label>Status (P / F)</label>
-          <div class="segment-row" id="entryStatus"></div>
-        </div>
-        <div class="form-group" style="grid-column:1 / -1;">
-          <label for="entryCheckedBy">Checked By</label>
-          <input id="entryCheckedBy" type="text" maxlength="120">
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-outline" id="deleteEntryBtn" type="button">Delete</button>
-        <button class="btn btn-outline" id="cancelEntryBtn" type="button">Cancel</button>
-        <button class="btn btn-primary" id="saveEntryBtn" type="button">Save Entry</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="finalizeModal">
-    <div class="modal-card">
-      <h3>Finalize Monthly Record</h3>
-      <p>Confirm the filler e-signature before the monthly record is locked and converted into the printable PDF.</p>
-      <div class="form-group">
-        <label for="signerNameInput">Filler Name</label>
-        <input id="signerNameInput" type="text" placeholder="Name of the person completing this record">
-      </div>
-      <div class="signature-pad-head">
-        <label for="signatureCanvas">Filler Signature</label>
-        <button class="btn btn-outline btn-sm" id="clearSignatureBtn" type="button">Clear Signature</button>
-      </div>
-      <canvas id="signatureCanvas" class="signature-canvas"></canvas>
-      <div class="form-group" style="margin-top:14px;">
-        <label><input id="finalizeConfirm" type="checkbox"> I confirm this monthly record is complete and ready for verification.</label>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-outline" id="cancelFinalizeBtn" type="button">Cancel</button>
-        <button class="btn btn-primary" id="confirmFinalizeBtn" type="button">Sign and Finalize</button>
-      </div>
-    </div>
-  </div>
-
+  <div class="modal-overlay" id="finalizeModal"><div class="modal-card"><h3>Finalize Monthly Record</h3><p>Confirm the filler e-signature before the monthly record is locked and converted into the printable PDF.</p><div class="form-group"><label for="signerNameInput">Filler Name</label><input id="signerNameInput" type="text" placeholder="Name of the person completing this record"></div><div class="signature-pad-head"><label for="signatureCanvas">Filler Signature</label><button class="btn btn-outline btn-sm" id="clearSignatureBtn" type="button">Clear Signature</button></div><canvas id="signatureCanvas" class="signature-canvas"></canvas><div class="form-group" style="margin-top:14px;"><label><input id="finalizeConfirm" type="checkbox"> I confirm this monthly record is complete and ready for verification.</label></div><div class="modal-actions"><button class="btn btn-outline" id="cancelFinalizeBtn" type="button">Cancel</button><button class="btn btn-primary" id="confirmFinalizeBtn" type="button">Sign and Finalize</button></div></div></div>
   <script>
-    (function () {
-      const i18n = window.FoodSafetyI18n || null;
-      const qs = new URLSearchParams(window.location.search);
-      const state = { template: null, record: null, dirty: false, saving: false, autosaveTimer: null, editingId: '' };
-      const els = {
-        msg: document.getElementById('msg'),
-        formTitle: document.getElementById('formTitle'),
-        formIntro: document.getElementById('formIntro'),
-        statusPill: document.getElementById('statusPill'),
-        monthInput: document.getElementById('monthInput'),
-        unitValue: document.getElementById('unitValue'),
-        templateMeta: document.getElementById('templateMeta'),
-        reloadBtn: document.getElementById('reloadBtn'),
-        reopenBtn: document.getElementById('reopenBtn'),
-        viewPdfBtn: document.getElementById('viewPdfBtn'),
-        downloadPdfBtn: document.getElementById('downloadPdfBtn'),
-        saveBtn: document.getElementById('saveBtn'),
-        finalizeBtn: document.getElementById('finalizeBtn'),
-        addEntryBtn: document.getElementById('addEntryBtn'),
-        entriesGrid: document.getElementById('entriesGrid'),
-        entriesMeta: document.getElementById('entriesMeta'),
-        remarksInput: document.getElementById('remarksInput'),
-        verifiedByTextInput: document.getElementById('verifiedByTextInput'),
-        saveBtnSticky: document.getElementById('saveBtnSticky'),
-        finalizeBtnSticky: document.getElementById('finalizeBtnSticky'),
-        viewPdfBtnSticky: document.getElementById('viewPdfBtnSticky'),
-        saveState: document.getElementById('saveState'),
-        entryModal: document.getElementById('entryModal'),
-        entryModalTitle: document.getElementById('entryModalTitle'),
-        entryDate: document.getElementById('entryDate'),
-        entryQuantity: document.getElementById('entryQuantity'),
-        entryCovered: document.getElementById('entryCovered'),
-        entryFragments: document.getElementById('entryFragments'),
-        entryCleanDry: document.getElementById('entryCleanDry'),
-        entryStatus: document.getElementById('entryStatus'),
-        entryCheckedBy: document.getElementById('entryCheckedBy'),
-        deleteEntryBtn: document.getElementById('deleteEntryBtn'),
-        cancelEntryBtn: document.getElementById('cancelEntryBtn'),
-        saveEntryBtn: document.getElementById('saveEntryBtn'),
-        finalizeModal: document.getElementById('finalizeModal'),
-        signerNameInput: document.getElementById('signerNameInput'),
-        signatureCanvas: document.getElementById('signatureCanvas'),
-        clearSignatureBtn: document.getElementById('clearSignatureBtn'),
-        finalizeConfirm: document.getElementById('finalizeConfirm'),
-        cancelFinalizeBtn: document.getElementById('cancelFinalizeBtn'),
-        confirmFinalizeBtn: document.getElementById('confirmFinalizeBtn')
-      };
-      const signaturePad = { ctx: null, drawing: false, hasInk: false };
-      const segments = {};
-
-      function showMessage(type, text) {
-        els.msg.className = 'msg ' + type;
-        els.msg.textContent = text;
-        els.msg.style.display = 'block';
-        window.clearTimeout(showMessage._timer);
-        showMessage._timer = window.setTimeout(() => { els.msg.style.display = 'none'; }, 3200);
-      }
-      function esc(text) {
-        return String(text == null ? '' : text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-      }
-      function lang() { return i18n && typeof i18n.getLang === 'function' ? i18n.getLang() : 'en'; }
-      function pickLabel(entity, base) { return entity ? ((lang() === 'zh' && entity[base + 'Zh']) ? entity[base + 'Zh'] : entity[base]) : ''; }
-      function monthLabel(monthKey) {
-        const [year, month] = String(monthKey).split('-').map(Number);
-        return new Date(year, month - 1, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
-      }
-      function formatDateTime(value) { return value ? new Date(value).toLocaleString() : 'Not signed'; }
-      function currentMonthReportUrl(pdf) {
-        if (!state.record) return '#';
-        const url = `template=${encodeURIComponent(state.record.templateCode)}&month=${encodeURIComponent(state.record.monthKey)}&unit=${encodeURIComponent(state.record.unitCode)}&lang=en`;
-        return pdf ? `/api/foodsafety-checklists/month/report.pdf?${url}` : `/foodsafety-forms/checklists-report.html?${url}`;
-      }
-      async function fetchJson(url, options) {
-        const res = await fetch(url, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...options });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Request failed');
-        return data;
-      }
-      function isLockedRecord() { return Boolean(state.record && (state.record.status === 'finalized' || state.record.status === 'verified')); }
-      function updateDirty(nextDirty) {
-        state.dirty = nextDirty;
-        els.saveState.textContent = state.saving ? 'Saving…' : (nextDirty ? 'Unsaved changes' : 'All changes saved');
-      }
-      function scheduleAutosave() {
-        window.clearTimeout(state.autosaveTimer);
-        state.autosaveTimer = window.setTimeout(() => {
-          if (state.dirty && !isLockedRecord()) saveMonth(false);
-        }, 2500);
-      }
-      function syncReportActions() {
-        const visible = isLockedRecord();
-        const pdfUrl = currentMonthReportUrl(true);
-        [els.viewPdfBtn, els.downloadPdfBtn, els.viewPdfBtnSticky].forEach((el) => {
-          if (!el) return;
-          el.classList.toggle('hidden', !visible);
-          el.href = pdfUrl;
-        });
-      }
-      function renderSegments(el, options, current) {
-        el.innerHTML = options.map((option) => `<button type="button" class="btn btn-outline btn-sm segment-btn${current === option.value ? ' active' : ''}" data-segment-value="${esc(option.value)}">${esc(option.label)}</button>`).join('');
-        el.querySelectorAll('[data-segment-value]').forEach((button) => {
-          button.addEventListener('click', () => {
-            el.querySelectorAll('[data-segment-value]').forEach((node) => node.classList.remove('active'));
-            button.classList.add('active');
-            segments[el.id] = button.getAttribute('data-segment-value');
-          });
-        });
-      }
-      function ensureSegmentControls(entry) {
-        renderSegments(els.entryCovered, [{ value:'Y', label:'Yes' }, { value:'N', label:'No' }], entry.covered || '');
-        renderSegments(els.entryFragments, [{ value:'Y', label:'Yes' }, { value:'N', label:'No' }], entry.fragments || '');
-        renderSegments(els.entryCleanDry, [{ value:'Y', label:'Yes' }, { value:'N', label:'No' }], entry.cleanDry || '');
-        renderSegments(els.entryStatus, [{ value:'P', label:'Pass' }, { value:'F', label:'Fail' }], entry.status || '');
-      }
-      function renderHeader() {
-        if (!state.template || !state.record) return;
-        els.formTitle.textContent = pickLabel(state.template, 'title') || 'Food Safety Form';
-        els.formIntro.textContent = state.template.formType === 'log_entries'
-          ? 'Add row entries for the selected month. This mobile view is optimized for quick keyed records instead of a paper-style table.'
-          : 'Open the monthly matrix and tick each required slot for the selected period.';
-        els.statusPill.textContent = state.record.status;
-        els.unitValue.textContent = state.record.unitLabel || state.record.unitCode;
-        els.templateMeta.textContent = `${state.template.code} Rev ${state.template.revision} · ${pickLabel(state.template, 'category')}`;
-        els.entriesMeta.textContent = `${monthLabel(state.record.monthKey)} · ${state.record.data.entries.length} entries`;
-        els.remarksInput.value = state.record.data.remarks || '';
-        els.verifiedByTextInput.value = state.record.data.verifiedByText || '';
-        els.reopenBtn.style.display = isLockedRecord() ? '' : 'none';
-        els.finalizeBtn.style.display = isLockedRecord() ? 'none' : '';
-        els.finalizeBtnSticky.style.display = isLockedRecord() ? 'none' : '';
-        els.saveBtn.disabled = isLockedRecord();
-        els.saveBtnSticky.disabled = isLockedRecord();
-        els.addEntryBtn.disabled = isLockedRecord();
-        els.remarksInput.disabled = isLockedRecord();
-        els.verifiedByTextInput.disabled = isLockedRecord();
-        syncReportActions();
-      }
-      function renderEntries() {
-        const entries = (state.record && state.record.data && state.record.data.entries) || [];
-        if (!entries.length) {
-          els.entriesGrid.innerHTML = '<div class="empty">No entries added for this month yet.</div>';
-          return;
-        }
-        els.entriesGrid.innerHTML = entries.map((entry, index) => `
-          <article class="entry-card">
-            <div class="entry-head">
-              <div>
-                <h3 class="entry-title">Entry ${index + 1}</h3>
-                <div class="entry-meta">${esc(entry.date || 'No date')}</div>
-              </div>
-              ${isLockedRecord() ? '' : `<button class="btn btn-outline btn-sm" data-edit-id="${esc(entry.id)}" type="button">Edit</button>`}
-            </div>
-            <div class="entry-fields">
-              <div class="field-pill"><strong>Quantity</strong><span>${esc(entry.quantity === '' ? '' : entry.quantity)}</span></div>
-              <div class="field-pill"><strong>Checked By</strong><span>${esc(entry.checkedBy || '')}</span></div>
-              <div class="field-pill"><strong>Covered</strong><span>${esc(entry.covered || '')}</span></div>
-              <div class="field-pill"><strong>No Fragments</strong><span>${esc(entry.fragments || '')}</span></div>
-              <div class="field-pill"><strong>Clean & Dry</strong><span>${esc(entry.cleanDry || '')}</span></div>
-              <div class="field-pill"><strong>Status</strong><span>${esc(entry.status || '')}</span></div>
-            </div>
-          </article>
-        `).join('');
-        els.entriesGrid.querySelectorAll('[data-edit-id]').forEach((button) => {
-          button.addEventListener('click', () => openEntryModal(button.getAttribute('data-edit-id')));
-        });
-      }
-      function openEntryModal(entryId) {
-        const entry = ((state.record && state.record.data && state.record.data.entries) || []).find((item) => item.id === entryId) || {
-          id: '',
-          date: '',
-          quantity: '',
-          covered: '',
-          fragments: '',
-          cleanDry: '',
-          status: '',
-          checkedBy: ''
-        };
-        state.editingId = entry.id || '';
-        els.entryModalTitle.textContent = state.editingId ? 'Edit Entry' : 'Add Entry';
-        els.entryDate.value = entry.date || '';
-        els.entryQuantity.value = entry.quantity === '' ? '' : entry.quantity;
-        els.entryCheckedBy.value = entry.checkedBy || '';
-        ensureSegmentControls(entry);
-        els.deleteEntryBtn.style.display = state.editingId ? '' : 'none';
-        els.entryModal.classList.add('open');
-      }
-      function closeEntryModal() {
-        els.entryModal.classList.remove('open');
-      }
-      function upsertEntry() {
-        const id = state.editingId || `entry-${Date.now()}`;
-        const entry = {
-          id,
-          date: els.entryDate.value,
-          quantity: els.entryQuantity.value === '' ? '' : Number(els.entryQuantity.value),
-          covered: segments.entryCovered || '',
-          fragments: segments.entryFragments || '',
-          cleanDry: segments.entryCleanDry || '',
-          status: segments.entryStatus || '',
-          checkedBy: String(els.entryCheckedBy.value || '').trim()
-        };
-        const entries = state.record.data.entries.slice();
-        const index = entries.findIndex((item) => item.id === id);
-        if (index >= 0) entries[index] = entry; else entries.unshift(entry);
-        state.record.data.entries = entries;
-        closeEntryModal();
-        renderEntries();
-        renderHeader();
-        updateDirty(true);
-        scheduleAutosave();
-      }
-      function deleteEntry() {
-        if (!state.editingId) return;
-        state.record.data.entries = state.record.data.entries.filter((item) => item.id !== state.editingId);
-        closeEntryModal();
-        renderEntries();
-        renderHeader();
-        updateDirty(true);
-        scheduleAutosave();
-      }
-      function syncFooterFields() {
-        if (!state.record) return;
-        state.record.data.remarks = els.remarksInput.value;
-        state.record.data.verifiedByText = els.verifiedByTextInput.value;
-        updateDirty(true);
-        scheduleAutosave();
-      }
-      async function loadMonth() {
-        const monthKey = els.monthInput.value;
-        const templateCode = qs.get('template') || '';
-        const unitCode = qs.get('unit') || '';
-        const data = await fetchJson(`/api/foodsafety-checklists/month?template=${encodeURIComponent(templateCode)}&month=${encodeURIComponent(monthKey)}&unit=${encodeURIComponent(unitCode)}`);
-        state.template = data.template;
-        state.record = data.record;
-        qs.set('template', data.record.templateCode);
-        qs.set('unit', data.record.unitCode);
-        qs.set('month', data.record.monthKey);
-        window.history.replaceState({}, '', `${window.location.pathname}?${qs.toString()}`);
-        renderHeader();
-        renderEntries();
-        updateDirty(false);
-      }
-      async function saveMonth(showToast) {
-        if (!state.record || state.saving || isLockedRecord()) return;
-        state.saving = true;
-        updateDirty(state.dirty);
-        try {
-          const data = await fetchJson('/api/foodsafety-checklists/month', {
-            method: 'PUT',
-            body: JSON.stringify({
-              monthKey: state.record.monthKey,
-              templateCode: state.record.templateCode,
-              unitCode: state.record.unitCode,
-              data: state.record.data,
-              keepStatus: state.record.status !== 'draft'
-            })
-          });
-          state.record = data.record;
-          renderHeader();
-          renderEntries();
-          updateDirty(false);
-          if (showToast) showMessage('success', 'Draft saved');
-        } catch (err) {
-          showMessage('error', err.message);
-        } finally {
-          state.saving = false;
-          updateDirty(state.dirty);
-        }
-      }
-      function resizeSignatureCanvas() {
-        const ratio = window.devicePixelRatio || 1;
-        const rect = els.signatureCanvas.getBoundingClientRect();
-        els.signatureCanvas.width = Math.max(1, Math.round(rect.width * ratio));
-        els.signatureCanvas.height = Math.max(1, Math.round(rect.height * ratio));
-        signaturePad.ctx = els.signatureCanvas.getContext('2d');
-        signaturePad.ctx.scale(ratio, ratio);
-        signaturePad.ctx.lineCap = 'round';
-        signaturePad.ctx.lineJoin = 'round';
-        signaturePad.ctx.lineWidth = 2.2;
-        signaturePad.ctx.strokeStyle = '#111827';
-        signaturePad.ctx.fillStyle = '#ffffff';
-        signaturePad.ctx.fillRect(0, 0, rect.width, rect.height);
-        signaturePad.hasInk = false;
-      }
-      function clearSignaturePad() {
-        if (!signaturePad.ctx) return;
-        const rect = els.signatureCanvas.getBoundingClientRect();
-        signaturePad.ctx.fillStyle = '#ffffff';
-        signaturePad.ctx.fillRect(0, 0, rect.width, rect.height);
-        signaturePad.hasInk = false;
-      }
-      function signaturePoint(event) {
-        const rect = els.signatureCanvas.getBoundingClientRect();
-        return { x: event.clientX - rect.left, y: event.clientY - rect.top };
-      }
-      function startSignature(event) {
-        if (!signaturePad.ctx) return;
-        const point = signaturePoint(event);
-        signaturePad.drawing = true;
-        signaturePad.ctx.beginPath();
-        signaturePad.ctx.moveTo(point.x, point.y);
-        signaturePad.hasInk = true;
-        event.preventDefault();
-      }
-      function moveSignature(event) {
-        if (!signaturePad.drawing || !signaturePad.ctx) return;
-        const point = signaturePoint(event);
-        signaturePad.ctx.lineTo(point.x, point.y);
-        signaturePad.ctx.stroke();
-        event.preventDefault();
-      }
-      function endSignature() { signaturePad.drawing = false; }
-      function openFinalizeModal() {
-        const authUser = window._authUser || {};
-        els.signerNameInput.value = (state.record.finalization && state.record.finalization.name) || authUser.displayName || authUser.username || '';
-        els.finalizeConfirm.checked = false;
-        els.finalizeModal.classList.add('open');
-        resizeSignatureCanvas();
-      }
-      function closeFinalizeModal() { els.finalizeModal.classList.remove('open'); }
-      async function finalizeMonth() {
-        const signerName = String(els.signerNameInput.value || '').trim();
-        const signatureDataUrl = signaturePad.hasInk ? els.signatureCanvas.toDataURL('image/png') : '';
-        try {
-          const data = await fetchJson('/api/foodsafety-checklists/month/finalize', {
-            method: 'POST',
-            body: JSON.stringify({
-              monthKey: state.record.monthKey,
-              templateCode: state.record.templateCode,
-              unitCode: state.record.unitCode,
-              signerName,
-              signerPosition: (window._authUser && window._authUser.position) || '',
-              typedSignature: signerName,
-              signatureDataUrl,
-              confirmed: els.finalizeConfirm.checked
-            })
-          });
-          state.record = data.record;
-          closeFinalizeModal();
-          renderHeader();
-          renderEntries();
-          updateDirty(false);
-          showMessage('success', 'Month finalized');
-        } catch (err) {
-          showMessage('error', err.message);
-        }
-      }
-      async function reopenMonth() {
-        try {
-          const data = await fetchJson('/api/foodsafety-checklists/month/reopen', {
-            method: 'POST',
-            body: JSON.stringify({
-              monthKey: state.record.monthKey,
-              templateCode: state.record.templateCode,
-              unitCode: state.record.unitCode
-            })
-          });
-          state.record = data.record;
-          renderHeader();
-          renderEntries();
-          updateDirty(false);
-          showMessage('success', 'Month reopened');
-        } catch (err) {
-          showMessage('error', err.message);
-        }
-      }
-
-      els.reloadBtn.addEventListener('click', loadMonth);
-      els.saveBtn.addEventListener('click', () => saveMonth(true));
-      els.saveBtnSticky.addEventListener('click', () => saveMonth(true));
-      els.finalizeBtn.addEventListener('click', openFinalizeModal);
-      els.finalizeBtnSticky.addEventListener('click', openFinalizeModal);
-      els.reopenBtn.addEventListener('click', reopenMonth);
-      els.addEntryBtn.addEventListener('click', () => openEntryModal(''));
-      els.cancelEntryBtn.addEventListener('click', closeEntryModal);
-      els.saveEntryBtn.addEventListener('click', upsertEntry);
-      els.deleteEntryBtn.addEventListener('click', deleteEntry);
-      els.remarksInput.addEventListener('input', syncFooterFields);
-      els.verifiedByTextInput.addEventListener('input', syncFooterFields);
-      els.monthInput.addEventListener('change', loadMonth);
-      els.entryModal.addEventListener('click', (event) => { if (event.target === els.entryModal) closeEntryModal(); });
-      els.finalizeModal.addEventListener('click', (event) => { if (event.target === els.finalizeModal) closeFinalizeModal(); });
-      els.clearSignatureBtn.addEventListener('click', clearSignaturePad);
-      els.cancelFinalizeBtn.addEventListener('click', closeFinalizeModal);
-      els.confirmFinalizeBtn.addEventListener('click', finalizeMonth);
-      els.signatureCanvas.addEventListener('pointerdown', startSignature);
-      els.signatureCanvas.addEventListener('pointermove', moveSignature);
-      els.signatureCanvas.addEventListener('pointerup', endSignature);
-      els.signatureCanvas.addEventListener('pointerleave', endSignature);
-      window.addEventListener('resize', () => { if (els.finalizeModal.classList.contains('open')) resizeSignatureCanvas(); });
-      window.addEventListener('beforeunload', (event) => { if (!state.dirty) return; event.preventDefault(); event.returnValue = ''; });
-
-      const now = new Date();
-      els.monthInput.value = qs.get('month') || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      loadMonth().catch((err) => showMessage('error', err.message));
-    }());
+  (function(){
+    const i18n=window.FoodSafetyI18n||null,ui=window.FoodSafetyUiUtils||null,qs=new URLSearchParams(window.location.search);
+    const state={template:null,record:null,dirty:false,saving:false,autosaveTimer:null};
+    const els={msg:document.getElementById('msg'),signingBanner:document.getElementById('signingBanner'),formTitle:document.getElementById('formTitle'),formIntro:document.getElementById('formIntro'),statusPill:document.getElementById('statusPill'),monthInput:document.getElementById('monthInput'),unitValue:document.getElementById('unitValue'),templateMeta:document.getElementById('templateMeta'),reloadBtn:document.getElementById('reloadBtn'),reopenBtn:document.getElementById('reopenBtn'),viewPdfBtn:document.getElementById('viewPdfBtn'),downloadPdfBtn:document.getElementById('downloadPdfBtn'),saveBtn:document.getElementById('saveBtn'),finalizeBtn:document.getElementById('finalizeBtn'),addLineBtn:document.getElementById('addLineBtn'),rowsGrid:document.getElementById('rowsGrid'),entriesMeta:document.getElementById('entriesMeta'),footerFields:document.getElementById('footerFields'),saveBtnSticky:document.getElementById('saveBtnSticky'),finalizeBtnSticky:document.getElementById('finalizeBtnSticky'),viewPdfBtnSticky:document.getElementById('viewPdfBtnSticky'),saveState:document.getElementById('saveState'),finalizeModal:document.getElementById('finalizeModal'),signerNameInput:document.getElementById('signerNameInput'),signatureCanvas:document.getElementById('signatureCanvas'),clearSignatureBtn:document.getElementById('clearSignatureBtn'),finalizeConfirm:document.getElementById('finalizeConfirm'),cancelFinalizeBtn:document.getElementById('cancelFinalizeBtn'),confirmFinalizeBtn:document.getElementById('confirmFinalizeBtn')};
+    const signaturePad={ctx:null,drawing:false,hasInk:false},rowSegments={},rowInputs={},footerInputs={};
+    const BLAST_FREEZER_QUICK_COUNTS=[1,2,4,6,8,10,12,16,20];
+    const LOG_TIME_OPTIONS=Array.from({length:48},(_,index)=>`${String(Math.floor(index/2)).padStart(2,'0')}:${index%2===0?'00':'30'}`);
+    const BLAST_FREEZER_FIELD_CONFIG={finishedCoreTemp:{mode:'temperature',step:1,defaultValue:90},blastFreezingTemp:{mode:'temperature',step:1,defaultValue:-20},surfaceTempBefore:{mode:'temperature',step:1,defaultValue:60},surfaceTempAfter:{mode:'temperature',step:1,defaultValue:3},trayCount:{mode:'quantity'}};
+    function tt(key,fallback){return i18n&&typeof i18n.t==='function'?i18n.t(key,fallback):(fallback||key)}
+    function showMessage(type,text){els.msg.className='msg '+type;els.msg.textContent=text;els.msg.style.display='block';clearTimeout(showMessage._timer);showMessage._timer=setTimeout(()=>els.msg.style.display='none',3200)}
+    function esc(text){return String(text==null?'':text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+    function lang(){return i18n&&typeof i18n.getLang==='function'?i18n.getLang():'en'} function localizedKey(base){return lang()==='zh'?base+'Zh':(lang()==='ta'?base+'Ta':base)} function pickLabel(entity,base){if(!entity)return'';const key=localizedKey(base);return entity[key]||entity[base]||''}
+    function templateSupportsTamil(template,unitCode){if(!template||!unitCode||!Array.isArray(template.taUnitCodes)||!template.taUnitCodes.includes(unitCode))return false;const unit=(template.unitOptions||[]).find(item=>item.code===unitCode);return Boolean(template.titleTa||template.categoryTa||(template.instructionsTa&&template.instructionsTa.length)||(unit&&unit.labelTa)||(template.fields||[]).some(field=>field.labelTa)||(template.footerFields||[]).some(field=>field.labelTa))}
+    function syncAvailableLanguages(){if(!i18n||typeof i18n.setAvailableLanguages!=='function')return;const langs=templateSupportsTamil(state.template,state.record&&state.record.unitCode)?['en','zh','ta']:['en','zh'];i18n.setAvailableLanguages(langs)}
+    function isBlastFreezerTemplate(){if(!state.template)return false;const title=String(state.template.title||'');const category=String(state.template.category||'');const fieldIds=(state.template.fields||[]).map(field=>field.id);return /blast\s*freez/i.test(title)||(/cooling\s*&\s*freezing/i.test(category)&&['blastFreezingTemp','surfaceTempBefore','surfaceTempAfter','trayCount'].every(id=>fieldIds.includes(id)))}
+    function getBlastFreezerFieldConfig(field){return isBlastFreezerTemplate()&&field?BLAST_FREEZER_FIELD_CONFIG[field.id]||null:null}
+    function usesTimeDropdown(field){return Boolean(field&&field.type==='time')}
+    function monthLabel(monthKey){const [y,m]=String(monthKey).split('-').map(Number);return new Date(y,m-1,1).toLocaleString(lang()==='zh'?'zh-CN':undefined,{month:'long',year:'numeric'})}
+    function formatDateTime(value){return ui&&typeof ui.formatDateTime==='function'?ui.formatDateTime(value,'—'):(!value?'—':new Date(value).toLocaleString())}
+    function getFields(){return Array.isArray(state.template&&state.template.fields)?state.template.fields:[]} function getFooterFields(){return Array.isArray(state.template&&state.template.footerFields)?state.template.footerFields:[]}
+    function labelFor(field){return pickLabel(field,'label')||field.label||field.id} function placeholderFor(field){return field&&field.placeholder?field.placeholder:labelFor(field)}
+    function formatFieldValue(field,value){if(value==null||value==='')return'';if(field.type==='yes_no')return value==='Y'?'Yes':(value==='N'?'No':'');if(field.type==='pass_fail')return value==='P'?'Pass':(value==='F'?'Fail':'');return String(value)}
+    function isLockedRecord(){return Boolean(state.record&&((ui&&typeof ui.isLockedStatus==='function')?ui.isLockedStatus(state.record.status):(state.record.status==='finalized'||state.record.status==='verified')))}
+    function createBlankEntry(){const user=window._authUser||{},today=new Date().toISOString().slice(0,10),entry={id:''};getFields().forEach(field=>{const blastConfig=getBlastFreezerFieldConfig(field);if(field.id==='date')entry[field.id]=today;else if(field.id==='checkedBy'||field.id==='recordedBy')entry[field.id]=user.displayName||user.username||'';else if(blastConfig&&blastConfig.mode==='temperature'&&blastConfig.defaultValue!=null)entry[field.id]=String(blastConfig.defaultValue);else entry[field.id]=''});return entry}
+    function isMeaningfulEntry(entry){return getFields().some(field=>field.id!=='date'&&field.id!=='checkedBy'&&field.id!=='recordedBy'&&entry&&entry[field.id]!==''&&entry[field.id]!=null)}
+    function getEditableEntries(){return ((((state.record||{}).data||{}).entries)||[]).map(e=>({...e}))}
+    function getRowKey(entry,index){return entry.id||('entry-'+index)}
+    function normalizeRecordDataForSave(){state.record.data.entries=((((state.record||{}).data||{}).entries)||[]).map(e=>({...e}))}
+    function getMonthReportUrl(pdf){if(!state.record)return'#';if(ui&&typeof ui.buildMonthReportUrl==='function')return ui.buildMonthReportUrl({templateCode:state.record.templateCode,monthKey:state.record.monthKey,unitCode:state.record.unitCode,lang:lang(),pdf});const url=`template=${encodeURIComponent(state.record.templateCode)}&month=${encodeURIComponent(state.record.monthKey)}&unit=${encodeURIComponent(state.record.unitCode)}&lang=${encodeURIComponent(lang())}`;return pdf?`/api/foodsafety-checklists/month/report.pdf?${url}`:`/foodsafety-forms/checklists-report.html?${url}`}
+    function getCurrentTimeValue(){const now=new Date();return`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`}
+    async function fetchJson(url,options){const res=await fetch(url,{credentials:'include',headers:{'Content-Type':'application/json'},...options});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||'Request failed');return data}
+    function updateDirty(nextDirty){state.dirty=nextDirty;els.saveState.textContent=state.saving?'Saving…':(nextDirty?'Unsaved changes':'All changes saved')}
+    function scheduleAutosave(){clearTimeout(state.autosaveTimer);state.autosaveTimer=setTimeout(()=>{if(state.dirty&&!isLockedRecord())saveMonth(false)},2500)}
+    function syncReportActions(){const visible=isLockedRecord(),pdfUrl=getMonthReportUrl(true);[els.viewPdfBtn,els.downloadPdfBtn,els.viewPdfBtnSticky].forEach(el=>{if(!el)return;el.classList.toggle('hidden',!visible);el.href=pdfUrl})}
+    function renderSigningBanner(){if(!els.signingBanner||!state.template||!state.record)return;if(!isLockedRecord()){els.signingBanner.classList.remove('open');els.signingBanner.innerHTML='';return}const unit=(state.template.unitOptions||[]).find(item=>item.code===state.record.unitCode),finalization=state.record.finalization||{},signerName=finalization.name||finalization.typedSignature||(window._authUser&&(window._authUser.displayName||window._authUser.username))||'—',signedAt=finalization.at?formatDateTime(finalization.at):'—',pdfUrl=getMonthReportUrl(true);els.signingBanner.innerHTML=`<div class="signing-banner-head"><div><h3>${esc(tt('checklist_signed_banner_title','Form signed successfully'))}</h3><p>${esc(tt('checklist_signed_banner_body','This monthly form has been signed and locked for review. No further edits can be made unless it is reopened.'))}</p></div><span class="status-pill">${esc(tt(state.record.status==='verified'?'checklist_verified_status':'checklist_finalized_status',state.record.status==='verified'?'Verified':'Finalized'))}</span></div><div class="signing-banner-meta"><div><strong>${esc(tt('checklist_signed_by_label','Signed by'))}</strong><span>${esc(signerName)}</span></div><div><strong>${esc(tt('checklist_signed_at_label','Signed at'))}</strong><span>${esc(signedAt)}</span></div><div><strong>${esc(tt('checklist_template','Checklist'))}</strong><span>${esc(pickLabel(state.template,'title'))}</span></div><div><strong>${esc(tt('checklist_unit','Unit'))}</strong><span>${esc(pickLabel(unit,'label')||state.record.unitLabel||state.record.unitCode)}</span></div></div><p style="margin-top:14px;">${esc(tt('checklist_locked_notice','This signed form is ready for review and PDF export.'))}</p><div class="signing-banner-actions"><a class="btn btn-outline" href="${esc(pdfUrl)}" target="_blank" rel="noopener">${esc(tt('checklist_view_pdf','View PDF'))}</a><a class="btn btn-outline" href="${esc(pdfUrl)}" target="_blank" rel="noopener" download>${esc(tt('checklist_download_pdf','Download PDF'))}</a><button class="btn btn-outline" type="button" data-banner-action="reopen">${esc(tt('checklist_reopen','Reopen'))}</button></div>`;els.signingBanner.classList.add('open');const reopenBtn=els.signingBanner.querySelector('[data-banner-action="reopen"]');if(reopenBtn)reopenBtn.addEventListener('click',reopenMonth)}
+    function adjustBlastFreezerValue(rowKey,field,delta,currentValue){const config=getBlastFreezerFieldConfig(field);if(!config)return;let next=Number(currentValue);if(!Number.isFinite(next))next=config.defaultValue!=null?config.defaultValue:0;next+=delta*(config.step||1);handleRowFieldChange(rowKey,field.id,String(next))}
+    function renderSegments(el,options,current){el.innerHTML=options.map(option=>`<button type="button" class="btn btn-outline btn-sm segment-btn${current===option.value?' active':''}" data-segment-value="${esc(option.value)}">${esc(option.label)}</button>`).join('');el.querySelectorAll('[data-segment-value]').forEach(button=>button.addEventListener('click',()=>{if(isLockedRecord())return;el.querySelectorAll('[data-segment-value]').forEach(node=>node.classList.remove('active'));button.classList.add('active');rowSegments[el.dataset.segmentKey]=button.getAttribute('data-segment-value');handleRowFieldChange(el.dataset.rowKey,el.dataset.fieldId,button.getAttribute('data-segment-value'))}))}
+    function renderHeader(){if(!state.template||!state.record)return;const unit=(state.template.unitOptions||[]).find(item=>item.code===state.record.unitCode),statusKey=state.record.status==='verified'?'checklist_verified_status':(state.record.status==='finalized'?'checklist_finalized_status':'checklist_draft_status');els.formTitle.textContent=pickLabel(state.template,'title')||tt('log_form_title','Food Safety Log Form');els.formIntro.textContent=tt('log_form_intro','Add row entries directly on this page. Use Add Another Line when you need a new entry.');els.statusPill.textContent=tt(statusKey,state.record.status);els.unitValue.textContent=pickLabel(unit,'label')||state.record.unitLabel||state.record.unitCode;els.templateMeta.textContent=`${state.template.code} Rev ${state.template.revision} · ${pickLabel(state.template,'category')}`;els.entriesMeta.textContent=`${monthLabel(state.record.monthKey)} · ${tt('log_saved_entries','{count} saved entries').replace('{count}',String(state.record.data.entries.length))}`;els.reopenBtn.style.display=isLockedRecord()?'':'none';els.finalizeBtn.style.display=isLockedRecord()?'none':'';els.finalizeBtnSticky.style.display=isLockedRecord()?'none':'';els.saveBtn.disabled=isLockedRecord();els.saveBtnSticky.disabled=isLockedRecord();els.addLineBtn.disabled=isLockedRecord();Object.values(footerInputs).forEach(input=>{if(input)input.disabled=isLockedRecord()});syncReportActions();renderSigningBanner()}
+    function createFieldControl(field,entry,rowKey,isBlank){const group=document.createElement('div');group.className='form-group';if(field.fullWidth||field.type==='textarea')group.style.gridColumn='1 / -1';const label=document.createElement('label');label.textContent=labelFor(field);group.appendChild(label);const current=entry[field.id]==null?'':entry[field.id],blastConfig=getBlastFreezerFieldConfig(field),timeDropdownField=usesTimeDropdown(field),selectField=field.type==='select'&&Array.isArray(field.options);if(field.type==='yes_no'||field.type==='pass_fail'){const row=document.createElement('div');row.className='segment-row';row.dataset.segmentKey=`${rowKey}:${field.id}`;row.dataset.rowKey=rowKey;row.dataset.fieldId=field.id;const options=field.type==='yes_no'?[{value:'Y',label:'Yes'},{value:'N',label:'No'}]:[{value:'P',label:'Pass'},{value:'F',label:'Fail'}];rowSegments[`${rowKey}:${field.id}`]=current||'';renderSegments(row,options,current||'');if(isLockedRecord())row.querySelectorAll('button').forEach(button=>button.disabled=true);group.appendChild(row);return group}let input;if(blastConfig&&blastConfig.mode==='temperature'){const wrap=document.createElement('div');wrap.className='stepper-control';const minusBtn=document.createElement('button');minusBtn.type='button';minusBtn.className='btn btn-outline btn-sm stepper-btn';minusBtn.textContent='-';minusBtn.disabled=isLockedRecord();minusBtn.addEventListener('click',()=>adjustBlastFreezerValue(rowKey,field,-1,current));input=document.createElement('input');input.type='number';input.step=String(blastConfig.step||1);input.inputMode='decimal';const unit=document.createElement('span');unit.className='stepper-unit';unit.textContent='°C';const plusBtn=document.createElement('button');plusBtn.type='button';plusBtn.className='btn btn-outline btn-sm stepper-btn';plusBtn.textContent='+';plusBtn.disabled=isLockedRecord();plusBtn.addEventListener('click',()=>adjustBlastFreezerValue(rowKey,field,1,current));wrap.appendChild(minusBtn);wrap.appendChild(input);wrap.appendChild(unit);wrap.appendChild(plusBtn);group.appendChild(wrap)}else if(blastConfig&&blastConfig.mode==='quantity'){const picks=document.createElement('div');picks.className='quick-picks';BLAST_FREEZER_QUICK_COUNTS.forEach(count=>{const btn=document.createElement('button');btn.type='button';btn.className=`btn btn-outline btn-sm quick-pick-btn${String(current)===String(count)?' active':''}`;btn.textContent=String(count);btn.disabled=isLockedRecord();btn.addEventListener('click',()=>handleRowFieldChange(rowKey,field.id,String(count)));picks.appendChild(btn)});const customBtn=document.createElement('button');customBtn.type='button';customBtn.className=`btn btn-outline btn-sm quick-pick-btn quick-pick-custom${current!==''&&!BLAST_FREEZER_QUICK_COUNTS.includes(Number(current))?' active':''}`;customBtn.textContent=tt('generic_custom','Custom');customBtn.disabled=isLockedRecord();picks.appendChild(customBtn);group.appendChild(picks);input=document.createElement('input');input.type='number';input.step='1';input.inputMode='numeric';customBtn.addEventListener('click',()=>{if(isLockedRecord())return;window.setTimeout(()=>input.focus(),0)})}else if(timeDropdownField){input=document.createElement('select');const placeholderOption=document.createElement('option');placeholderOption.value='';placeholderOption.textContent=tt('generic_select_time','Select time');input.appendChild(placeholderOption);LOG_TIME_OPTIONS.forEach(timeValue=>{const option=document.createElement('option');option.value=timeValue;option.textContent=timeValue;if(current===timeValue)option.selected=true;input.appendChild(option)});input.addEventListener('change',()=>{if(!input.value)return;handleRowFieldChange(rowKey,field.id,input.value)})}else if(selectField){input=document.createElement('select');const placeholderOption=document.createElement('option');placeholderOption.value='';placeholderOption.textContent=placeholderFor(field);input.appendChild(placeholderOption);field.options.forEach(optionItem=>{const option=document.createElement('option');option.value=optionItem.value;option.textContent=optionItem.label;if(String(current)===String(optionItem.value))option.selected=true;input.appendChild(option)});input.addEventListener('change',()=>handleRowFieldChange(rowKey,field.id,input.value))}else if(field.type==='textarea'){input=document.createElement('textarea');input.rows=4}else{input=document.createElement('input');input.type=field.type==='number'?'number':(field.type==='date'?'date':'text');if(field.type==='number')input.step='1'}if(field.maxLength&&input.type==='text')input.maxLength=field.maxLength;if(field.min!=null&&input.tagName!=='SELECT')input.min=field.min;if(field.max!=null&&input.tagName!=='SELECT')input.max=field.max;if(input.tagName!=='SELECT')input.placeholder=isBlank?`Tap to add ${labelFor(field).toLowerCase()}`:placeholderFor(field);if(input.tagName!=='SELECT')input.value=current;input.disabled=isLockedRecord();if(input.tagName!=='SELECT')input.addEventListener('input',()=>handleRowFieldChange(rowKey,field.id,input.value));if(timeDropdownField){const helper=document.createElement('div');helper.className='time-helper';const nowBtn=document.createElement('button');nowBtn.type='button';nowBtn.className='btn btn-outline btn-sm';nowBtn.textContent=tt('generic_now','Now');nowBtn.disabled=isLockedRecord();nowBtn.addEventListener('click',()=>handleRowFieldChange(rowKey,field.id,getCurrentTimeValue()));helper.appendChild(input);helper.appendChild(nowBtn);group.appendChild(helper)}else if(!blastConfig||blastConfig.mode!=='temperature'){group.appendChild(input)}rowInputs[`${rowKey}:${field.id}`]=input;return group}
+    function renderRows(){Object.keys(rowInputs).forEach(key=>delete rowInputs[key]);Object.keys(rowSegments).forEach(key=>delete rowSegments[key]);const entries=getEditableEntries();els.rowsGrid.innerHTML='';entries.forEach((entry,index)=>{const rowKey=getRowKey(entry,index),card=document.createElement('article');card.className='row-card';card.innerHTML=`<div class="row-head"><div><h3 class="row-title">${esc(tt('log_entry_label','Entry {number}').replace('{number}',String(index+1)))}</h3><div class="row-meta">${esc(entry.date||tt('log_ready_for_entry','Ready for entry'))}</div></div><div class="row-actions">${!isLockedRecord()?`<button class="btn btn-outline btn-sm" type="button" data-delete-row="${esc(rowKey)}">${esc(tt('log_delete_row','Delete Row'))}</button>`:''}</div></div><div class="row-fields" data-row-fields="${esc(rowKey)}"></div>`;els.rowsGrid.appendChild(card);const fieldsWrap=card.querySelector('[data-row-fields]');getFields().forEach(field=>fieldsWrap.appendChild(createFieldControl(field,entry,rowKey,false)))});if(!entries.length)els.rowsGrid.innerHTML=`<div class="empty">${esc(tt('log_empty','No rows available yet. Use Add Another Line to create the first entry.'))}</div>`;els.rowsGrid.querySelectorAll('[data-delete-row]').forEach(button=>button.addEventListener('click',()=>deleteRow(button.getAttribute('data-delete-row'))))}
+    function resolveRowIndex(rowKey){return ((((state.record||{}).data||{}).entries)||[]).findIndex(entry=>entry.id===rowKey)}
+    function addRow(){if(!state.record||isLockedRecord())return;const blank=createBlankEntry();blank.id=`entry-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;state.record.data.entries.push(blank);renderRows();renderHeader();updateDirty(true);scheduleAutosave()}
+    function handleRowFieldChange(rowKey,fieldId,value){if(!state.record||isLockedRecord())return;const field=getFields().find(item=>item.id===fieldId);if(!field)return;const index=resolveRowIndex(rowKey);if(index<0)return;state.record.data.entries[index][fieldId]=field.type==='number'?(value===''?'':Number(value)):value;normalizeRecordDataForSave();renderRows();renderHeader();updateDirty(true);scheduleAutosave()}
+    function deleteRow(rowKey){if(!state.record||isLockedRecord())return;state.record.data.entries=state.record.data.entries.filter(entry=>entry.id!==rowKey);renderRows();renderHeader();updateDirty(true);scheduleAutosave()}
+    function renderFooterFields(){Object.keys(footerInputs).forEach(key=>delete footerInputs[key]);const footer=(state.record&&state.record.data&&state.record.data.footer)||{},fields=getFooterFields();els.footerFields.innerHTML='';fields.forEach(field=>{const group=document.createElement('div');group.className='form-group';group.style.marginBottom='0';if(field.fullWidth||field.type==='textarea')group.style.gridColumn='1 / -1';const label=document.createElement('label');label.textContent=labelFor(field);group.appendChild(label);let input;if(field.type==='textarea'){input=document.createElement('textarea');input.rows=5}else{input=document.createElement('input');input.type=field.type==='number'?'number':(field.type==='date'?'date':(field.type==='time'?'time':'text'))}if(field.maxLength&&input.type==='text')input.maxLength=field.maxLength;input.placeholder=placeholderFor(field);input.value=footer[field.id]||'';input.disabled=isLockedRecord();input.addEventListener('input',()=>{state.record.data.footer=state.record.data.footer||{};state.record.data.footer[field.id]=input.value;updateDirty(true);scheduleAutosave()});footerInputs[field.id]=input;group.appendChild(input);els.footerFields.appendChild(group)})}
+    async function loadMonth(){const monthKey=els.monthInput.value,templateCode=qs.get('template')||'',unitCode=qs.get('unit')||'',data=await fetchJson(`/api/foodsafety-checklists/month?template=${encodeURIComponent(templateCode)}&month=${encodeURIComponent(monthKey)}&unit=${encodeURIComponent(unitCode)}`);state.template=data.template;state.record=data.record;state.record.data=state.record.data||{};state.record.data.entries=Array.isArray(state.record.data.entries)?state.record.data.entries:[];state.record.data.footer=state.record.data.footer||{};qs.set('template',data.record.templateCode);qs.set('unit',data.record.unitCode);qs.set('month',data.record.monthKey);window.history.replaceState({},'',`${window.location.pathname}?${qs.toString()}`);syncAvailableLanguages();renderFooterFields();renderHeader();renderRows();updateDirty(false)}
+    async function saveMonth(showToast){if(!state.record||state.saving||isLockedRecord())return;state.saving=true;normalizeRecordDataForSave();updateDirty(state.dirty);try{const data=await fetchJson('/api/foodsafety-checklists/month',{method:'PUT',body:JSON.stringify({monthKey:state.record.monthKey,templateCode:state.record.templateCode,unitCode:state.record.unitCode,data:state.record.data,keepStatus:state.record.status!=='draft'})});state.record=data.record;renderFooterFields();renderHeader();renderRows();updateDirty(false);if(showToast)showMessage('success',tt('checklist_draft_saved','Draft saved'))}catch(err){showMessage('error',err.message)}finally{state.saving=false;updateDirty(state.dirty)}}
+    function resizeSignatureCanvas(){const ratio=window.devicePixelRatio||1,rect=els.signatureCanvas.getBoundingClientRect();els.signatureCanvas.width=Math.max(1,Math.round(rect.width*ratio));els.signatureCanvas.height=Math.max(1,Math.round(rect.height*ratio));signaturePad.ctx=els.signatureCanvas.getContext('2d');signaturePad.ctx.scale(ratio,ratio);signaturePad.ctx.lineCap='round';signaturePad.ctx.lineJoin='round';signaturePad.ctx.lineWidth=2.2;signaturePad.ctx.strokeStyle='#111827';signaturePad.ctx.fillStyle='#ffffff';signaturePad.ctx.fillRect(0,0,rect.width,rect.height);signaturePad.hasInk=false}
+    function clearSignaturePad(){if(!signaturePad.ctx)return;const rect=els.signatureCanvas.getBoundingClientRect();signaturePad.ctx.fillStyle='#ffffff';signaturePad.ctx.fillRect(0,0,rect.width,rect.height);signaturePad.hasInk=false}
+    function signaturePoint(event){const rect=els.signatureCanvas.getBoundingClientRect();return{x:event.clientX-rect.left,y:event.clientY-rect.top}}
+    function startSignature(event){if(!signaturePad.ctx)return;const point=signaturePoint(event);signaturePad.drawing=true;signaturePad.ctx.beginPath();signaturePad.ctx.moveTo(point.x,point.y);signaturePad.hasInk=true;event.preventDefault()}
+    function moveSignature(event){if(!signaturePad.drawing||!signaturePad.ctx)return;const point=signaturePoint(event);signaturePad.ctx.lineTo(point.x,point.y);signaturePad.ctx.stroke();event.preventDefault()}
+    function endSignature(){signaturePad.drawing=false}
+    function openFinalizeModal(){const user=window._authUser||{};els.signerNameInput.value=(state.record.finalization&&state.record.finalization.name)||user.displayName||user.username||'';els.finalizeConfirm.checked=false;els.finalizeModal.classList.add('open');resizeSignatureCanvas()}
+    function closeFinalizeModal(){els.finalizeModal.classList.remove('open')}
+    async function finalizeMonth(){const signerName=String(els.signerNameInput.value||'').trim(),signatureDataUrl=signaturePad.hasInk?els.signatureCanvas.toDataURL('image/png'):'';normalizeRecordDataForSave();try{const data=await fetchJson('/api/foodsafety-checklists/month/finalize',{method:'POST',body:JSON.stringify({monthKey:state.record.monthKey,templateCode:state.record.templateCode,unitCode:state.record.unitCode,signerName,signerPosition:(window._authUser&&window._authUser.position)||'',typedSignature:signerName,signatureDataUrl,confirmed:els.finalizeConfirm.checked})});state.record=data.record;closeFinalizeModal();renderFooterFields();renderHeader();renderRows();updateDirty(false);showMessage('success',tt('checklist_month_finalized','Month finalized'))}catch(err){showMessage('error',err.message)}}
+    async function reopenMonth(){try{const data=await fetchJson('/api/foodsafety-checklists/month/reopen',{method:'POST',body:JSON.stringify({monthKey:state.record.monthKey,templateCode:state.record.templateCode,unitCode:state.record.unitCode})});state.record=data.record;renderFooterFields();renderHeader();renderRows();updateDirty(false);showMessage('success',tt('checklist_month_reopened','Month reopened'))}catch(err){showMessage('error',err.message)}}
+    els.reloadBtn.addEventListener('click',loadMonth);els.saveBtn.addEventListener('click',()=>saveMonth(true));els.saveBtnSticky.addEventListener('click',()=>saveMonth(true));els.finalizeBtn.addEventListener('click',openFinalizeModal);els.finalizeBtnSticky.addEventListener('click',openFinalizeModal);els.addLineBtn.addEventListener('click',addRow);els.reopenBtn.addEventListener('click',reopenMonth);els.monthInput.addEventListener('change',loadMonth);els.finalizeModal.addEventListener('click',event=>{if(event.target===els.finalizeModal)closeFinalizeModal()});els.clearSignatureBtn.addEventListener('click',clearSignaturePad);els.cancelFinalizeBtn.addEventListener('click',closeFinalizeModal);els.confirmFinalizeBtn.addEventListener('click',finalizeMonth);els.signatureCanvas.addEventListener('pointerdown',startSignature);els.signatureCanvas.addEventListener('pointermove',moveSignature);els.signatureCanvas.addEventListener('pointerup',endSignature);els.signatureCanvas.addEventListener('pointerleave',endSignature);window.addEventListener('resize',()=>{if(els.finalizeModal.classList.contains('open'))resizeSignatureCanvas()});window.addEventListener('beforeunload',event=>{if(!state.dirty)return;event.preventDefault();event.returnValue=''});
+    const now=new Date();els.monthInput.value=qs.get('month')||`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;if(i18n&&typeof i18n.onChange==='function')i18n.onChange(()=>{if(state.template&&state.record){renderFooterFields();renderHeader();renderRows()}});loadMonth().catch(err=>showMessage('error',err.message));
+  }());
   </script>
-  <script src="/foodsafety/js/foodsafety-i18n.js"></script>
   <script src="/js/shell.js"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@
 
 (function () {
   const i18n = window.FoodSafetyI18n || null;
+  const ui = window.FoodSafetyUiUtils || null;
   const state = {
     meta: null,
     template: null,
@@ -16,6 +17,7 @@
 
   const els = {
     msg: document.getElementById('msg'),
+    signingBanner: document.getElementById('signingBanner'),
     monthInput: document.getElementById('monthInput'),
     unitValue: document.getElementById('unitValue'),
     reloadBtn: document.getElementById('reloadBtn'),
@@ -38,6 +40,7 @@
     scrollPrevBtn: document.getElementById('scrollPrevBtn'),
     scrollNextBtn: document.getElementById('scrollNextBtn'),
     dateNavLabel: document.getElementById('dateNavLabel'),
+    monthBulkBtn: document.getElementById('monthBulkBtn'),
     checkGrid: document.getElementById('checkGrid'),
     sectionRemarks: document.getElementById('sectionRemarks'),
     sectionMeta: document.getElementById('sectionMeta'),
@@ -64,9 +67,38 @@
     return i18n && typeof i18n.getLang === 'function' ? i18n.getLang() : 'en';
   }
 
+  function localizedKey(base) {
+    if (lang() === 'zh') return base + 'Zh';
+    if (lang() === 'ta') return base + 'Ta';
+    return base;
+  }
+
   function pickLabel(entity, base) {
     if (!entity) return '';
-    return lang() === 'zh' && entity[base + 'Zh'] ? entity[base + 'Zh'] : entity[base];
+    const key = localizedKey(base);
+    return entity[key] || entity[base] || '';
+  }
+
+  function templateSupportsTamil(template, unitCode) {
+    if (!template || !unitCode || !Array.isArray(template.taUnitCodes) || !template.taUnitCodes.includes(unitCode)) return false;
+    const unit = (template.unitOptions || []).find((item) => item.code === unitCode);
+    return Boolean(
+      template.titleTa ||
+      template.categoryTa ||
+      (template.instructionsTa && template.instructionsTa.length) ||
+      (unit && unit.labelTa) ||
+      (template.sections || []).some((section) =>
+        section.titleTa || (section.items || []).some((item) => item.labelTa)
+      )
+    );
+  }
+
+  function syncAvailableLanguages() {
+    if (!i18n || typeof i18n.setAvailableLanguages !== 'function') return;
+    const langs = templateSupportsTamil(state.template, state.record && state.record.unitCode)
+      ? ['en', 'zh', 'ta']
+      : ['en', 'zh'];
+    i18n.setAvailableLanguages(langs);
   }
 
   function showMessage(type, text) {
@@ -89,20 +121,75 @@
 
   function formatMonthLabel(monthKey) {
     const [year, month] = String(monthKey).split('-').map(Number);
-    return new Date(year, month - 1, 1).toLocaleString(undefined, {
+    return new Date(year, month - 1, 1).toLocaleString(lang() === 'zh' ? 'zh-CN' : undefined, {
       month: 'long',
       year: 'numeric'
     });
   }
 
   function formatDateTime(value) {
-    if (!value) return 'Not saved yet';
-    const dt = new Date(value);
-    return dt.toLocaleString();
+    return ui && typeof ui.formatDateTime === 'function'
+      ? ui.formatDateTime(value, 'Not saved yet')
+      : (!value ? 'Not saved yet' : new Date(value).toLocaleString());
+  }
+
+  function renderSigningBanner() {
+    if (!els.signingBanner || !state.template || !state.record) return;
+    if (!isLockedRecord()) {
+      els.signingBanner.classList.remove('open');
+      els.signingBanner.innerHTML = '';
+      return;
+    }
+
+    const unit = (state.template.unitOptions || []).find((item) => item.code === state.record.unitCode);
+    const finalization = state.record.finalization || {};
+    const signerName = finalization.name || finalization.typedSignature || (window._authUser && (window._authUser.displayName || window._authUser.username)) || '—';
+    const signedAt = finalization.at ? formatDateTime(finalization.at) : '—';
+    const pdfUrl = getMonthReportUrl(true);
+    const bannerStatusKey = state.record.status === 'verified' ? 'checklist_verified_status' : 'checklist_finalized_status';
+
+    els.signingBanner.innerHTML = `
+      <div class="signing-banner-head">
+        <div>
+          <h3>${esc(tt('checklist_signed_banner_title', 'Form signed successfully'))}</h3>
+          <p>${esc(tt('checklist_signed_banner_body', 'This monthly form has been signed and locked for review. No further edits can be made unless it is reopened.'))}</p>
+        </div>
+        <span class="hero-pill">${esc(tt(bannerStatusKey, state.record.status === 'verified' ? 'Verified' : 'Finalized'))}</span>
+      </div>
+      <div class="signing-banner-meta">
+        <div>
+          <strong>${esc(tt('checklist_signed_by_label', 'Signed by'))}</strong>
+          <span>${esc(signerName)}</span>
+        </div>
+        <div>
+          <strong>${esc(tt('checklist_signed_at_label', 'Signed at'))}</strong>
+          <span>${esc(signedAt)}</span>
+        </div>
+        <div>
+          <strong>${esc(tt('checklist_template', 'Checklist'))}</strong>
+          <span>${esc(pickLabel(state.template, 'title'))}</span>
+        </div>
+        <div>
+          <strong>${esc(tt('checklist_unit', 'Unit'))}</strong>
+          <span>${esc(pickLabel(unit, 'label') || state.record.unitLabel || state.record.unitCode)}</span>
+        </div>
+      </div>
+      <p style="margin-top:14px;">${esc(tt('checklist_locked_notice', 'This signed form is ready for review and PDF export.'))}</p>
+      <div class="signing-banner-actions">
+        <a class="btn btn-outline" href="${esc(pdfUrl)}" target="_blank" rel="noopener">${esc(tt('checklist_view_pdf', 'View PDF'))}</a>
+        <a class="btn btn-outline" href="${esc(pdfUrl)}" target="_blank" rel="noopener" download>${esc(tt('checklist_download_pdf', 'Download PDF'))}</a>
+        <button class="btn btn-outline" type="button" data-banner-action="reopen">${esc(tt('checklist_reopen', 'Reopen'))}</button>
+      </div>
+    `;
+    els.signingBanner.classList.add('open');
+    const reopenBtn = els.signingBanner.querySelector('[data-banner-action="reopen"]');
+    if (reopenBtn) reopenBtn.addEventListener('click', reopenMonth);
   }
 
   function isLockedStatus(status) {
-    return status === 'finalized' || status === 'verified';
+    return ui && typeof ui.isLockedStatus === 'function'
+      ? ui.isLockedStatus(status)
+      : (status === 'finalized' || status === 'verified');
   }
 
   function isLockedRecord() {
@@ -111,10 +198,17 @@
 
   function getMonthReportUrl(pdf) {
     if (!state.record) return '#';
-    const qs = `template=${encodeURIComponent(state.record.templateCode)}&month=${encodeURIComponent(state.record.monthKey)}&unit=${encodeURIComponent(state.record.unitCode)}&lang=en`;
-    return pdf
-      ? `/api/foodsafety-checklists/month/report.pdf?${qs}`
-      : `/foodsafety-forms/checklists-report.html?${qs}`;
+    if (ui && typeof ui.buildMonthReportUrl === 'function') {
+      return ui.buildMonthReportUrl({
+        templateCode: state.record.templateCode,
+        monthKey: state.record.monthKey,
+        unitCode: state.record.unitCode,
+        lang: lang(),
+        pdf
+      });
+    }
+    const qs = `template=${encodeURIComponent(state.record.templateCode)}&month=${encodeURIComponent(state.record.monthKey)}&unit=${encodeURIComponent(state.record.unitCode)}&lang=${encodeURIComponent(lang())}`;
+    return pdf ? `/api/foodsafety-checklists/month/report.pdf?${qs}` : `/foodsafety-forms/checklists-report.html?${qs}`;
   }
 
   async function ensureArchivedPdf(refresh) {
@@ -236,16 +330,16 @@
 
   function renderUnitValue() {
     let label = '';
-    if (state.record) {
-      label = state.record.unitLabel || state.record.unitCode || '';
-    }
-    if (!label && state.template) {
-      const unitCode = (state.record && state.record.unitCode) || qs.get('unit') || '';
+    const unitCode = (state.record && state.record.unitCode) || qs.get('unit') || '';
+    if (state.template) {
       const unit = (state.template.unitOptions || []).find((item) => item.code === unitCode);
       label = pickLabel(unit, 'label') || (unit && unit.label) || '';
     }
+    if (!label && state.record) {
+      label = state.record.unitLabel || state.record.unitCode || '';
+    }
     if (!label) {
-      label = qs.get('unit') || (state.meta && state.meta.defaults && state.meta.defaults.unitCode) || '';
+      label = unitCode || (state.meta && state.meta.defaults && state.meta.defaults.unitCode) || '';
     }
     if (els.unitValue) els.unitValue.textContent = label;
   }
@@ -257,6 +351,14 @@
       return;
     }
     els.saveState.textContent = nextDirty ? tt('checklist_unsaved', 'Unsaved changes') : tt('checklist_saved', 'All changes saved');
+  }
+
+  function isSectionComplete(section) {
+    const sectionState = getSectionState(section.id);
+    return section.items.every((item) => {
+      const values = sectionState.checks[item.id] || [];
+      return values.length > 0 && values.every(Boolean);
+    });
   }
 
   function scheduleAutosave() {
@@ -276,6 +378,7 @@
     els.reopenBtn.style.display = locked ? '' : 'none';
     els.saveBtn.disabled = locked;
     els.saveBtnSticky.disabled = locked;
+    if (els.monthBulkBtn) els.monthBulkBtn.disabled = locked;
     if (state.record && state.record.status === 'verified') {
       els.monthStatus.textContent = tt('checklist_verified_status', 'Verified');
     } else {
@@ -292,6 +395,7 @@
     if (els.instructionPills) els.instructionPills.innerHTML = '';
 
     applyEditableState();
+    renderSigningBanner();
     els.summaryMeta.textContent = '';
     updateDirty(state.dirty);
   }
@@ -300,14 +404,7 @@
     els.sectionStrip.innerHTML = state.template.sections.map((section) => {
       const active = section.id === state.activeSectionId ? ' active' : '';
       const sectionState = getSectionState(section.id);
-      let checked = 0;
-      let total = 0;
-      Object.keys(sectionState.checks || {}).forEach((itemId) => {
-        const values = sectionState.checks[itemId] || [];
-        total += values.length;
-        values.forEach((value) => { if (value) checked++; });
-      });
-      const done = total > 0 && checked === total;
+      const done = isSectionComplete(section);
       return `
         <button type="button" class="section-chip${active}" data-section-id="${esc(section.id)}">
           ${done ? '✓ ' : ''}${esc(pickLabel(section, 'title'))}
@@ -382,7 +479,8 @@
     els.checkGrid.querySelectorAll('.bulk-btn').forEach((button) => {
       button.addEventListener('click', () => {
         if (isLockedRecord()) return;
-        toggleColumn(section.id, Number(button.getAttribute('data-bulk-col-index')));
+        const colIndex = Number(button.getAttribute('data-bulk-col-index'));
+        toggleColumn(section.id, colIndex);
       });
     });
   }
@@ -462,6 +560,15 @@
       ${focusCountForSection(section)} ${section.frequency === 'weekly' ? tt('checklist_weekly_slots', 'weekly slots') : tt('checklist_day_columns', 'day columns')}<br>
       ${tt('checklist_last_edit', 'Last section edit')}: ${sectionState.lastEditedByName ? esc(sectionState.lastEditedByName) + ' ' + tt('checklist_on', 'on') + ' ' + esc(formatDateTime(sectionState.lastEditedAt)) : tt('checklist_not_saved_yet', 'Not saved yet')}
     `;
+    if (els.monthBulkBtn) {
+      const sectionDone = isSectionComplete(section);
+      const bulkLabel = sectionDone
+        ? tt('checklist_clear_section', 'Clear Section')
+        : tt('checklist_tick_section', 'Tick Section');
+      els.monthBulkBtn.setAttribute('aria-label', bulkLabel);
+      els.monthBulkBtn.setAttribute('title', bulkLabel);
+      els.monthBulkBtn.disabled = isLockedRecord();
+    }
 
     renderGrid(section);
     applyEditableState();
@@ -495,6 +602,38 @@
     renderHeader();
     renderActiveSection();
     scheduleAutosave();
+  }
+
+  function setSectionValues(section, value) {
+    if (!section) return;
+    const sectionState = getSectionState(section.id);
+    for (const item of section.items) {
+      if (!Array.isArray(sectionState.checks[item.id])) continue;
+      for (let i = 0; i < sectionState.checks[item.id].length; i++) {
+        sectionState.checks[item.id][i] = value;
+      }
+    }
+    updateDirty(true);
+    renderSectionStrip();
+    renderHeader();
+    renderActiveSection();
+    scheduleAutosave();
+  }
+
+  function handleWholeMonthBulk() {
+    if (isLockedRecord()) return;
+    const section = currentSection();
+    if (!section) return;
+    const sectionDone = isSectionComplete(section);
+    if (sectionDone) {
+      setSectionValues(section, false);
+      return;
+    }
+    const confirmed = window.confirm(
+      tt('checklist_bulk_section_confirm', 'Confirm tick this section?\n\nUse this only if all checks for the current section were actually completed.')
+    );
+    if (!confirmed) return;
+    setSectionValues(section, true);
   }
 
   async function fetchJson(url, options) {
@@ -534,6 +673,7 @@
     }
     renderUnitValue();
     state.activeFocusIndex = 0;
+    syncAvailableLanguages();
     updateDirty(false);
     renderHeader();
     renderSectionStrip();
@@ -642,6 +782,7 @@
   els.reopenBtn.addEventListener('click', reopenMonth);
   els.scrollPrevBtn.addEventListener('click', () => scrollColumns(-1));
   els.scrollNextBtn.addEventListener('click', () => scrollColumns(1));
+  if (els.monthBulkBtn) els.monthBulkBtn.addEventListener('click', handleWholeMonthBulk);
   els.clearSignatureBtn.addEventListener('click', clearSignaturePad);
   els.cancelFinalizeBtn.addEventListener('click', closeFinalizeModal);
   els.confirmFinalizeBtn.addEventListener('click', finalizeMonth);

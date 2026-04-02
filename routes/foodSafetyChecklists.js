@@ -37,6 +37,16 @@ function parseMonthParts(monthKey) {
   return { year, month };
 }
 
+function currentMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getMissingFormStatus(template, monthKey) {
+  if (!template || template.periodType !== 'monthly') return 'due';
+  return monthKey < currentMonthKey() ? 'due' : 'not_due';
+}
+
 function makeActor(req) {
   return {
     userId: String(req.user && (req.user.id || req.user._id) || ''),
@@ -257,7 +267,7 @@ router.get('/reports-summary', requireAuth, requirePermission('foodsafety'), asy
     const monthKey = req.query.month ? parseMonthKey(req.query.month) : parseMonthKey(new Date());
     const status = String(req.query.status || '').trim();
     const filter = { monthKey };
-    if (status && status !== 'due') filter.status = status;
+    if (status && status !== 'due' && status !== 'not_due') filter.status = status;
 
     const records = await FoodSafetyChecklistMonth.find(filter).sort({ monthKey: -1, unitCode: 1 }).lean();
     const byUnit = new Map(records.map((record) => [`${record.templateCode}:${record.unitCode}`, record]));
@@ -266,16 +276,19 @@ router.get('/reports-summary', requireAuth, requirePermission('foodsafety'), asy
     const items = library.map((summary) => {
       const record = byUnit.get(`${summary.templateCode}:${summary.unitCode}`);
       if (!record) {
+        const missingStatus = getMissingFormStatus(getTemplateByCode(summary.templateCode), summary.monthKey);
         return {
           _id: '',
           templateCode: summary.templateCode,
           templateTitle: summary.templateTitle,
           templateTitleZh: summary.templateTitleZh,
           formType: summary.formType,
+          category: summary.category,
+          categoryZh: summary.categoryZh,
           unitCode: summary.unitCode,
           unitLabel: summary.unitLabel,
           monthKey: summary.monthKey,
-          status: 'due',
+          status: missingStatus,
           submittedAt: null,
           submittedBy: '',
           verifiedAt: null,
@@ -293,6 +306,8 @@ router.get('/reports-summary', requireAuth, requirePermission('foodsafety'), asy
         templateTitle: template.title,
         templateTitleZh: template.titleZh,
         formType: template.formType,
+        category: template.category,
+        categoryZh: template.categoryZh,
         unitCode: record.unitCode,
         unitLabel: record.unitLabel,
         monthKey: record.monthKey,
@@ -318,6 +333,8 @@ router.get('/reports-summary', requireAuth, requirePermission('foodsafety'), asy
         templateTitle: template.title,
         templateTitleZh: template.titleZh,
         formType: template.formType,
+        category: template.category,
+        categoryZh: template.categoryZh,
         unitCode: record.unitCode,
         unitLabel: record.unitLabel,
         monthKey: record.monthKey,

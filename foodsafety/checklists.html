@@ -88,6 +88,59 @@
       padding: 18px;
       margin-bottom: 18px;
     }
+    .signing-banner {
+      display: none;
+      background: linear-gradient(180deg, rgba(22,160,133,0.12), rgba(22,160,133,0.04));
+      border: 1px solid rgba(22,160,133,0.24);
+      border-radius: 18px;
+      box-shadow: 0 8px 24px var(--shadow);
+      padding: 18px 20px;
+      margin-bottom: 18px;
+    }
+    .signing-banner.open { display: block; }
+    .signing-banner-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .signing-banner h3 {
+      margin: 0 0 6px;
+      color: var(--ink);
+      font-size: 1.1rem;
+    }
+    .signing-banner p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .signing-banner-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px 16px;
+      margin-top: 14px;
+    }
+    .signing-banner-meta strong {
+      display: block;
+      color: var(--muted);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+    .signing-banner-meta span {
+      color: var(--ink);
+      font-weight: 700;
+      line-height: 1.45;
+    }
+    .signing-banner-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
     .control-grid {
       display: grid;
       grid-template-columns: 220px 220px minmax(220px, 1fr) auto;
@@ -203,6 +256,33 @@
       color: var(--muted);
       font-weight: 700;
       white-space: nowrap;
+    }
+    .month-bulk-btn {
+      width: 34px;
+      min-width: 34px;
+      height: 34px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      color: var(--muted);
+      border-color: rgba(18,19,22,0.12);
+      box-shadow: none;
+      opacity: 0.88;
+    }
+    .month-bulk-btn:hover {
+      transform: none;
+      box-shadow: none;
+      background: rgba(18,19,22,0.04);
+      color: var(--ink);
+    }
+    .month-bulk-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #25b36a;
+      display: block;
     }
     .grid-wrap {
       overflow-x: auto;
@@ -549,6 +629,7 @@
     </div>
 
     <div id="msg" class="msg" style="display:none;"></div>
+    <section class="signing-banner" id="signingBanner"></section>
 
     <div class="control-card">
       <div class="control-grid">
@@ -590,6 +671,9 @@
             <button class="btn btn-outline btn-sm nav-btn" id="scrollNextBtn" type="button">→</button>
           </div>
           <div class="mini-actions">
+            <button class="btn btn-outline btn-sm month-bulk-btn" id="monthBulkBtn" type="button" aria-label="Tick whole month" title="Tick whole month">
+              <span class="month-bulk-dot" aria-hidden="true"></span>
+            </button>
             <span class="scroll-hint">Use arrows to move across the dates</span>
           </div>
         </div>
@@ -650,6 +734,7 @@
   </div>
 
   <script src="/foodsafety/js/foodsafety-i18n.js"></script>
+  <script src="/foodsafety/js/foodsafety-ui-utils.js"></script>
   <script src="/js/shell.js"></script>
   <script src="/foodsafety/js/foodsafety-checklists.js"></script>
 </body>

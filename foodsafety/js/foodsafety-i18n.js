@@ -8,6 +8,7 @@
     en: {
       toggle_en: 'EN',
       toggle_zh: '中文',
+      toggle_ta: 'தமிழ்',
       lang_toggle_label: 'Food Safety Language',
       checklist_hero_title: 'Monthly Food Safety Checklist',
       checklist_hero_body: '',
@@ -21,6 +22,7 @@
       checklist_reload: 'Reload Month',
       checklist_reopen: 'Reopen',
       checklist_save: 'Save Draft',
+      checklist_add_line: 'Add Another Line',
       checklist_finalize: 'Finalize Month',
       checklist_saving: 'Saving…',
       checklist_unsaved: 'Unsaved changes',
@@ -44,6 +46,9 @@
       checklist_item_header: 'Checklist Item',
       checklist_bulk_row: 'Check All',
       checklist_bulk_toggle: 'Check all for this day',
+      checklist_tick_section: 'Tick Section',
+      checklist_clear_section: 'Clear Section',
+      checklist_bulk_section_confirm: 'Confirm tick this section?\n\nUse this only if all checks for the current section were actually completed.',
       checklist_sheet: 'checklist',
       checklist_section_hint: 'Use the arrow buttons to move across the dates without relying on swipe scrolling.',
       checklist_weekly_section: 'Weekly section',
@@ -55,9 +60,115 @@
       checklist_draft_saved: 'Draft saved',
       checklist_month_finalized: 'Month finalized',
       checklist_month_reopened: 'Month reopened',
+      checklist_verified_status: 'Verified',
+      checklist_signed_banner_title: 'Form signed successfully',
+      checklist_signed_banner_body: 'This monthly form has been signed and locked for review. No further edits can be made unless it is reopened.',
+      checklist_signed_by_label: 'Signed by',
+      checklist_signed_at_label: 'Signed at',
+      checklist_locked_notice: 'This signed form is ready for review and PDF export.',
+      checklist_view_pdf: 'View PDF',
+      checklist_download_pdf: 'Download PDF',
+      checklist_loading_meta: 'Loading checklist metadata…',
+      checklist_loading_template: 'Loading template…',
+      checklist_loading: 'Loading…',
+      checklist_preparing_grid: 'Preparing monthly grid…',
+      checklist_section_audit_placeholder: 'Section audit trail will appear here.',
+      checklist_finalize_modal_title: 'Finalize Monthly Checklist',
+      checklist_finalize_modal_body: 'Confirm the filler e-signature before the month is locked and converted into the printable A4 landscape report.',
+      checklist_finalize_signature_note: 'This records a login-based signature for the filler. The final PDF will include a filler signature lane and a verifier lane for the food safety officer.',
+      checklist_filler_name: 'Filler Name',
+      checklist_filler_name_placeholder: 'Name of the person completing this month',
+      checklist_filler_signature: 'Filler Signature',
+      checklist_clear_signature: 'Clear Signature',
+      checklist_finalize_confirm: 'I confirm this monthly checklist is complete and ready for print / verification.',
+      checklist_cancel: 'Cancel',
+      checklist_sign_finalize: 'Sign and Finalize',
+      checklist_tick_whole_month: 'Tick whole month',
       checklist_date_hint: 'Use arrows to move across the dates',
       checklist_remarks: 'Remarks / Maintenance Notes',
       checklist_remarks_placeholder: 'Record any issue, missing part, maintenance request, or note for this section.',
+      forms_workspace_title: 'Forms Workspace',
+      forms_workspace_body: 'This is the filler-facing area. Staff only work from assigned forms here, grouped by month, location, and category.',
+      forms_workspace_banner: 'Assigned forms are routed from here by user, location, and period. This page is the entry point for future assignment rules across multiple form types and locations.',
+      forms_workspace_helper: 'Assigned forms are shown for the selected month. Use unit and category to narrow the list before opening the correct form.',
+      forms_filter_category: 'Category',
+      forms_all_units: 'All Units',
+      forms_all_categories: 'All Categories',
+      forms_table_form: 'Form',
+      forms_table_category: 'Category',
+      forms_table_location: 'Location',
+      forms_table_month: 'Month',
+      forms_table_frequency: 'Frequency',
+      forms_table_assigned_to: 'Assigned To',
+      forms_loading: 'Loading forms…',
+      forms_empty: 'No forms match the current month and filter selection.',
+      forms_uncategorized: 'Uncategorized',
+      forms_not_specified: 'Not specified',
+      reports_title: 'Reports Dashboard',
+      reports_body: 'This is the food safety officer view. Submitted forms route here for review, PDF access, verification, and month-by-month audit tracking.',
+      reports_filter_status: 'Status',
+      reports_all_statuses: 'All Statuses',
+      reports_status_due: 'Due',
+      reports_status_not_due: 'Not Due Yet',
+      reports_status_submitted: 'Submitted',
+      reports_status_verified: 'Verified',
+      reports_summary_total: 'Total Forms',
+      reports_summary_submitted: 'Submitted',
+      reports_summary_verified: 'Verified',
+      reports_summary_due_draft: 'Due / Draft',
+      reports_summary_not_due: 'Not Due Yet',
+      reports_table_form: 'Form',
+      reports_table_location: 'Location',
+      reports_table_month: 'Month',
+      reports_table_status: 'Status',
+      reports_table_submitted: 'Submitted',
+      reports_table_verified: 'Verified',
+      reports_table_archive: 'Archive',
+      reports_loading: 'Loading reports…',
+      reports_empty: 'No reports found for the selected filter.',
+      reports_verify_title: 'Verify Form',
+      reports_verify_body: 'Food safety officer verification will be added to the report PDF and stored in the report archive.',
+      reports_verifier_name: 'Verifier Name',
+      reports_verifier_name_placeholder: 'Name of food safety officer',
+      reports_verifier_position: 'Verifier Position',
+      reports_verifier_position_placeholder: 'Food Safety Officer',
+      reports_verifier_signature: 'Verifier Signature',
+      reports_verify: 'Verify',
+      reports_verified_success: 'Form verified',
+      reports_not_archived: 'Not archived',
+      reports_pdf: 'PDF',
+      log_form_title: 'Food Safety Log Form',
+      log_form_intro: 'Add row entries directly on this page. Use Add Another Line when you need a new entry.',
+      log_form_form: 'Form',
+      log_entries: 'Entries',
+      log_current_month: 'Current month log',
+      log_saved_entries: '{count} saved entries',
+      log_entry_label: 'Entry {number}',
+      log_ready_for_entry: 'Ready for entry',
+      log_delete_row: 'Delete Row',
+      log_empty: 'No rows available yet. Use Add Another Line to create the first entry.',
+      log_finalize_modal_title: 'Finalize Monthly Record',
+      log_finalize_modal_body: 'Confirm the filler e-signature before the monthly record is locked and converted into the printable PDF.',
+      log_finalize_confirm: 'I confirm this monthly record is complete and ready for verification.',
+      log_filler_name_placeholder: 'Name of the person completing this record',
+      report_title: 'Food Safety Form Report',
+      report_loading: 'Loading report…',
+      report_failed: 'Failed to load report',
+      report_not_signed: 'Not signed',
+      report_item_header: 'Checklist Item',
+      report_remarks: 'Remarks',
+      report_no_entries: 'No entries recorded',
+      report_revision: 'Revision No.:',
+      report_month_year: 'Month / Year:',
+      report_unit: 'Unit:',
+      report_week: 'WEEK',
+      report_day: 'DAY',
+      report_filled_signature: 'Filled By Signature',
+      report_verified_signature: 'Verified By Signature',
+      report_name: 'Name',
+      report_position: 'Position',
+      report_signature: 'Signature',
+      report_date: 'Date',
       foodsafety_home_title: 'Food Safety',
       foodsafety_home_nc_title: 'Non-Conformance Reports',
       foodsafety_home_nc_body: 'Log new food safety non-conformances and browse all open or resolved reports across kitchen units.',
@@ -93,6 +204,9 @@
       nc_submitting: 'Submitting…',
       nc_submit_failed: 'Failed to submit',
       nc_submitted_ok: '✅ NC submitted successfully! Redirecting…',
+      generic_custom: 'Custom',
+      generic_now: 'Now',
+      generic_select_time: 'Select time',
       generic_error: '❌ Error: ',
       nc_none_found: 'No NCs found.',
       nc_urgent: 'Urgent',
@@ -177,6 +291,7 @@
     zh: {
       toggle_en: 'EN',
       toggle_zh: '中文',
+      toggle_ta: 'தமிழ்',
       lang_toggle_label: '食品安全语言',
       checklist_hero_title: '每月食品安全检查表',
       checklist_hero_body: '',
@@ -190,6 +305,7 @@
       checklist_reload: '重新载入',
       checklist_reopen: '重新开启',
       checklist_save: '保存草稿',
+      checklist_add_line: '新增一行',
       checklist_finalize: '完成本月',
       checklist_saving: '保存中…',
       checklist_unsaved: '有未保存更改',
@@ -213,6 +329,9 @@
       checklist_item_header: '检查项目',
       checklist_bulk_row: '整日全选',
       checklist_bulk_toggle: '勾选该日全部项目',
+      checklist_tick_section: '勾选当前区域',
+      checklist_clear_section: '清除当前区域',
+      checklist_bulk_section_confirm: '确认勾选当前区域吗？\n\n仅在您已实际完成当前区域所有检查时使用此功能。',
       checklist_sheet: '检查表',
       checklist_section_hint: '使用箭头切换日期，无需依赖横向滑动。',
       checklist_weekly_section: '每周区域',
@@ -224,9 +343,115 @@
       checklist_draft_saved: '草稿已保存',
       checklist_month_finalized: '本月已完成',
       checklist_month_reopened: '本月已重新开启',
+      checklist_verified_status: '已验证',
+      checklist_signed_banner_title: '表单已成功签署',
+      checklist_signed_banner_body: '此月度表单已签署并锁定待审核。除非重新开启，否则不能再编辑。',
+      checklist_signed_by_label: '签署人',
+      checklist_signed_at_label: '签署时间',
+      checklist_locked_notice: '此已签署表单已准备好供审核与导出 PDF。',
+      checklist_view_pdf: '查看 PDF',
+      checklist_download_pdf: '下载 PDF',
+      checklist_loading_meta: '正在加载检查表资料…',
+      checklist_loading_template: '正在加载表单…',
+      checklist_loading: '加载中…',
+      checklist_preparing_grid: '正在准备月度表格…',
+      checklist_section_audit_placeholder: '区域审计记录将显示在这里。',
+      checklist_finalize_modal_title: '完成月度检查表',
+      checklist_finalize_modal_body: '请在本月表单锁定并转换为可打印的 A4 横向报告前确认填写人电子签名。',
+      checklist_finalize_signature_note: '这会记录填写人的登录签名。最终 PDF 将包含填写人签名栏和食品安全负责人验证栏。',
+      checklist_filler_name: '填写人姓名',
+      checklist_filler_name_placeholder: '填写本月检查表的人员姓名',
+      checklist_filler_signature: '填写人签名',
+      checklist_clear_signature: '清除签名',
+      checklist_finalize_confirm: '我确认本月检查表已完成，可供打印 / 验证。',
+      checklist_cancel: '取消',
+      checklist_sign_finalize: '签名并完成',
+      checklist_tick_whole_month: '勾选整月',
       checklist_date_hint: '使用箭头切换日期',
       checklist_remarks: '备注 / 维修说明',
       checklist_remarks_placeholder: '记录任何问题、缺件、维修要求或该区域备注。',
+      forms_workspace_title: '表单工作区',
+      forms_workspace_body: '这是填写人员使用的区域。员工只会在这里处理已分配的表单，并按月份、地点和类别分组。',
+      forms_workspace_banner: '已分配表单会按用户、地点和周期从这里进入。这一页也是未来跨多种表单类型与地点的分配入口。',
+      forms_workspace_helper: '此处显示所选月份的已分配表单。请使用单位和类别先缩小范围，再打开正确表单。',
+      forms_filter_category: '类别',
+      forms_all_units: '所有单位',
+      forms_all_categories: '所有类别',
+      forms_table_form: '表单',
+      forms_table_category: '类别',
+      forms_table_location: '地点',
+      forms_table_month: '月份',
+      forms_table_frequency: '频率',
+      forms_table_assigned_to: '分配给',
+      forms_loading: '正在加载表单…',
+      forms_empty: '当前月份和筛选条件下没有符合的表单。',
+      forms_uncategorized: '未分类',
+      forms_not_specified: '未指定',
+      reports_title: '报告仪表板',
+      reports_body: '这是食品安全负责人视图。已提交表单会流转到这里进行审核、查看 PDF、验证以及按月审计追踪。',
+      reports_filter_status: '状态',
+      reports_all_statuses: '所有状态',
+      reports_status_due: '到期',
+      reports_status_not_due: '尚未到期',
+      reports_status_submitted: '已提交',
+      reports_status_verified: '已验证',
+      reports_summary_total: '表单总数',
+      reports_summary_submitted: '已提交',
+      reports_summary_verified: '已验证',
+      reports_summary_due_draft: '到期 / 草稿',
+      reports_summary_not_due: '尚未到期',
+      reports_table_form: '表单',
+      reports_table_location: '地点',
+      reports_table_month: '月份',
+      reports_table_status: '状态',
+      reports_table_submitted: '提交情况',
+      reports_table_verified: '验证情况',
+      reports_table_archive: '归档',
+      reports_loading: '正在加载报告…',
+      reports_empty: '所选筛选条件下没有报告。',
+      reports_verify_title: '验证表单',
+      reports_verify_body: '食品安全负责人的验证将写入报告 PDF，并存储在报告归档中。',
+      reports_verifier_name: '验证人姓名',
+      reports_verifier_name_placeholder: '食品安全负责人姓名',
+      reports_verifier_position: '验证人职位',
+      reports_verifier_position_placeholder: '食品安全负责人',
+      reports_verifier_signature: '验证人签名',
+      reports_verify: '验证',
+      reports_verified_success: '表单已验证',
+      reports_not_archived: '未归档',
+      reports_pdf: 'PDF',
+      log_form_title: '食品安全日志表单',
+      log_form_intro: '直接在此页面添加行记录。需要新记录时，请使用“新增一行”。',
+      log_form_form: '表单',
+      log_entries: '记录',
+      log_current_month: '本月记录',
+      log_saved_entries: '已保存 {count} 条记录',
+      log_entry_label: '记录 {number}',
+      log_ready_for_entry: '待填写',
+      log_delete_row: '删除此行',
+      log_empty: '目前还没有任何记录。请使用“新增一行”创建第一条记录。',
+      log_finalize_modal_title: '完成月度记录',
+      log_finalize_modal_body: '请在月度记录锁定并转换为可打印 PDF 之前确认填写人电子签名。',
+      log_finalize_confirm: '我确认本月记录已完成，可供验证。',
+      log_filler_name_placeholder: '填写本记录的人员姓名',
+      report_title: '食品安全表单报告',
+      report_loading: '正在加载报告…',
+      report_failed: '加载报告失败',
+      report_not_signed: '未签署',
+      report_item_header: '检查项目',
+      report_remarks: '备注',
+      report_no_entries: '暂无记录',
+      report_revision: '版本号：',
+      report_month_year: '月份 / 年份：',
+      report_unit: '单位：',
+      report_week: '周',
+      report_day: '日',
+      report_filled_signature: '填写人签名',
+      report_verified_signature: '验证人签名',
+      report_name: '姓名',
+      report_position: '职位',
+      report_signature: '签名',
+      report_date: '日期',
       foodsafety_home_title: '食品安全',
       foodsafety_home_nc_title: '不符合项报告',
       foodsafety_home_nc_body: '记录新的食品安全不符合项，并查看所有厨房单位的开启或已解决记录。',
@@ -262,6 +487,9 @@
       nc_submitting: '提交中…',
       nc_submit_failed: '提交失败',
       nc_submitted_ok: '✅ 不符合项已提交，正在跳转…',
+      generic_custom: '自定义',
+      generic_now: '现在',
+      generic_select_time: '选择时间',
       generic_error: '❌ 错误：',
       nc_none_found: '未找到不符合项记录。',
       nc_urgent: '紧急',
@@ -345,6 +573,27 @@
     }
   };
 
+  DICT.ta = {
+    ...DICT.en,
+    toggle_ta: 'தமிழ்',
+    lang_toggle_label: 'Food Safety Language',
+    generic_custom: 'தனிப்பயன்',
+    generic_now: 'இப்போது',
+    generic_select_time: 'நேரத்தை தேர்வு செய்க',
+    checklist_add_line: 'மற்றொரு வரியை சேர்க்கவும்',
+    checklist_draft_saved: 'வரைவு சேமிக்கப்பட்டது',
+    checklist_month_finalized: 'மாதப் பதிவு இறுதிப்படுத்தப்பட்டது',
+    checklist_month_reopened: 'மாதப் பதிவு மீண்டும் திறக்கப்பட்டது',
+    checklist_verified_status: 'சரிபார்க்கப்பட்டது',
+    checklist_signed_banner_title: 'படிவம் வெற்றிகரமாக கையெழுத்திடப்பட்டது',
+    checklist_signed_banner_body: 'இந்த மாதாந்திர படிவம் கையெழுத்திட்டு மதிப்பாய்விற்காக பூட்டப்பட்டுள்ளது. மீண்டும் திறக்கப்படாவிட்டால் மேலும் திருத்த முடியாது.',
+    checklist_signed_by_label: 'கையெழுத்திட்டவர்',
+    checklist_signed_at_label: 'கையெழுத்திட்ட நேரம்',
+    checklist_locked_notice: 'இந்த கையெழுத்திட்ட படிவம் மதிப்பாய்வுக்கும் PDF ஏற்றுமதிக்கும் தயார்.',
+    checklist_view_pdf: 'PDF பார்க்க',
+    checklist_download_pdf: 'PDF பதிவிறக்க'
+  };
+
   const UNIT_OPTIONS = [
     ['— Select unit / 选择单位 —', '— 选择单位 —'],
     ['#06-27/15/16/17 (Main CK Area) / 主厨房区', '#06-27/15/16/17（主厨房区）'],
@@ -383,10 +632,11 @@
 
   function detectLang() {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'en' || stored === 'zh') return stored;
+    if (stored === 'en' || stored === 'zh' || stored === 'ta') return stored;
     return /^zh/i.test(navigator.language || '') ? 'zh' : 'en';
   }
 
+  let availableLanguages = ['en', 'zh'];
   let currentLang = detectLang();
 
   function t(key, fallback) {
@@ -433,7 +683,68 @@
       setNodeText('.module-card.cert .card-go', t('foodsafety_home_fhc_go'));
     }
 
-    if (path === '/foodsafety/checklists') {
+    if (path === '/foodsafety-forms/forms') {
+      document.title = currentLang === 'zh' ? '表单工作区' : 'Forms Workspace';
+      setNodeText('.page-head h1', t('forms_workspace_title'));
+      setNodeText('.page-head p', t('forms_workspace_body'));
+      setNodeText('.info-banner', t('forms_workspace_banner'));
+      setNodeText('label[for="monthInput"]', t('checklist_month'));
+      setNodeText('label[for="unitInput"]', t('checklist_unit'));
+      setNodeText('label[for="categoryInput"]', t('forms_filter_category'));
+      document.querySelector('#unitInput option[value=""]') && (document.querySelector('#unitInput option[value=""]').textContent = t('forms_all_units'));
+      document.querySelector('#categoryInput option[value=""]') && (document.querySelector('#categoryInput option[value=""]').textContent = t('forms_all_categories'));
+      const headers = document.querySelectorAll('#formsBody').length ? document.querySelectorAll('thead th') : [];
+      headers[0] && (headers[0].textContent = t('forms_table_form'));
+      headers[1] && (headers[1].textContent = t('forms_table_category'));
+      headers[2] && (headers[2].textContent = t('forms_table_location'));
+      headers[3] && (headers[3].textContent = t('forms_table_month'));
+      headers[4] && (headers[4].textContent = t('forms_table_frequency'));
+      headers[5] && (headers[5].textContent = t('forms_table_assigned_to'));
+      document.querySelector('.toolbar .meta-line') && (document.querySelector('.toolbar .meta-line').textContent = t('forms_workspace_helper'));
+    }
+
+    if (path === '/foodsafety-forms/reports') {
+      document.title = currentLang === 'zh' ? '报告仪表板' : 'Reports Dashboard';
+      setNodeText('.page-head h1', t('reports_title'));
+      setNodeText('.page-head p', t('reports_body'));
+      setNodeText('label[for="monthInput"]', t('checklist_month'));
+      setNodeText('label[for="statusInput"]', t('reports_filter_status'));
+      setNodeText('label[for="unitInput"]', t('checklist_unit'));
+      const statusOptions = document.querySelectorAll('#statusInput option');
+      statusOptions[0] && (statusOptions[0].textContent = t('reports_all_statuses'));
+      statusOptions[1] && (statusOptions[1].textContent = t('reports_status_due'));
+      statusOptions[2] && (statusOptions[2].textContent = t('reports_status_not_due'));
+      statusOptions[3] && (statusOptions[3].textContent = t('checklist_draft_status'));
+      statusOptions[4] && (statusOptions[4].textContent = t('reports_status_submitted'));
+      statusOptions[5] && (statusOptions[5].textContent = t('reports_status_verified'));
+      document.querySelector('#unitInput option[value=""]') && (document.querySelector('#unitInput option[value=""]').textContent = t('forms_all_units'));
+      const summaryLabels = document.querySelectorAll('.summary-card .lbl');
+      summaryLabels[0] && (summaryLabels[0].textContent = t('reports_summary_total'));
+      summaryLabels[1] && (summaryLabels[1].textContent = t('reports_summary_submitted'));
+      summaryLabels[2] && (summaryLabels[2].textContent = t('reports_summary_verified'));
+      summaryLabels[3] && (summaryLabels[3].textContent = t('reports_summary_due_draft'));
+      summaryLabels[4] && (summaryLabels[4].textContent = t('reports_summary_not_due'));
+      const headers = document.querySelectorAll('thead th');
+      headers[0] && (headers[0].textContent = t('reports_table_form'));
+      headers[1] && (headers[1].textContent = t('reports_table_location'));
+      headers[2] && (headers[2].textContent = t('reports_table_month'));
+      headers[3] && (headers[3].textContent = t('reports_table_status'));
+      headers[4] && (headers[4].textContent = t('reports_table_submitted'));
+      headers[5] && (headers[5].textContent = t('reports_table_verified'));
+      headers[6] && (headers[6].textContent = t('reports_table_archive'));
+      setNodeText('#verifyModal h3', t('reports_verify_title'));
+      setNodeText('#verifyModal p', t('reports_verify_body'));
+      setNodeText('label[for="verifierNameInput"]', t('reports_verifier_name'));
+      setPlaceholder('#verifierNameInput', t('reports_verifier_name_placeholder'));
+      setNodeText('label[for="verifierTitleInput"]', t('reports_verifier_position'));
+      setPlaceholder('#verifierTitleInput', t('reports_verifier_position_placeholder'));
+      setNodeText('label[for="verifySignatureCanvas"]', t('reports_verifier_signature'));
+      setNodeText('#clearVerifySignatureBtn', t('checklist_clear_signature'));
+      setNodeText('#cancelVerifyBtn', t('checklist_cancel'));
+      setNodeText('#confirmVerifyBtn', t('reports_verify'));
+    }
+
+    if (path === '/foodsafety/checklists' || path === '/foodsafety-forms/checklists' || path === '/foodsafety/log' || path === '/foodsafety-forms/log') {
       document.title = currentLang === 'zh' ? '每月食品安全检查表' : 'Monthly Food Safety Checklists';
       setNodeText('.hero-card h1', t('checklist_hero_title'));
       setNodeText('.hero-card p', t('checklist_hero_body'));
@@ -448,11 +759,54 @@
       setNodeText('#reopenBtn', t('checklist_reopen'));
       setNodeText('#saveBtn', t('checklist_save'));
       setNodeText('#saveBtnSticky', t('checklist_save'));
+      setNodeText('#addLineBtn', t('checklist_add_line'));
       setNodeText('#finalizeBtn', t('checklist_finalize'));
       setNodeText('#finalizeBtnSticky', t('checklist_finalize'));
+      setNodeText('#viewPdfBtn', t('checklist_view_pdf'));
+      setNodeText('#viewPdfBtnSticky', t('checklist_view_pdf'));
+      setNodeText('#downloadPdfBtn', t('checklist_download_pdf'));
       setNodeText('.scroll-hint', t('checklist_date_hint'));
       document.querySelector('label[for="sectionRemarks"]') && (document.querySelector('label[for="sectionRemarks"]').textContent = t('checklist_remarks'));
       setPlaceholder('#sectionRemarks', t('checklist_remarks_placeholder'));
+      setNodeText('#summaryMeta', t('checklist_loading_meta'));
+      setNodeText('#templateMeta', t('checklist_loading_template'));
+      setNodeText('#sectionTitle', t('checklist_loading'));
+      setNodeText('#sectionSub', t('checklist_preparing_grid'));
+      setNodeText('#sectionMeta', t('checklist_section_audit_placeholder'));
+      setNodeText('#finalizeModal h3', t('checklist_finalize_modal_title'));
+      setNodeText('#finalizeModal p', t('checklist_finalize_modal_body'));
+      setNodeText('.signature-note', t('checklist_finalize_signature_note'));
+      setNodeText('label[for="signerNameInput"]', t('checklist_filler_name'));
+      setPlaceholder('#signerNameInput', t('checklist_filler_name_placeholder'));
+      setNodeText('label[for="signatureCanvas"]', t('checklist_filler_signature'));
+      setNodeText('#clearSignatureBtn', t('checklist_clear_signature'));
+      setNodeText('label[for="finalizeConfirm"]', t('checklist_finalize_confirm'));
+      setNodeText('#cancelFinalizeBtn', t('checklist_cancel'));
+      setNodeText('#confirmFinalizeBtn', t('checklist_sign_finalize'));
+      const monthBulkBtn = document.getElementById('monthBulkBtn');
+      if (monthBulkBtn) {
+        monthBulkBtn.setAttribute('aria-label', t('checklist_tick_whole_month'));
+        monthBulkBtn.setAttribute('title', t('checklist_tick_whole_month'));
+      }
+    }
+
+    if (path === '/foodsafety-forms/log' || path === '/foodsafety/log') {
+      document.title = currentLang === 'zh' ? t('log_form_title') : t('log_form_title');
+      setNodeText('#formTitle', t('log_form_title'));
+      setNodeText('#formIntro', t('log_form_intro'));
+      setNodeText('.toolbar strong', t('log_entries'));
+      setNodeText('#entriesMeta', t('log_current_month'));
+      setNodeText('label[for="monthInput"]', t('checklist_month'));
+      setNodeText('label[for="unitValue"]', t('checklist_unit'));
+      document.querySelector('.control-grid .form-group label:not([for])') && (document.querySelector('.control-grid .form-group label:not([for])').textContent = t('log_form_form'));
+      setNodeText('#templateMeta', t('checklist_loading_template'));
+      setNodeText('#finalizeModal h3', t('log_finalize_modal_title'));
+      setNodeText('#finalizeModal p', t('log_finalize_modal_body'));
+      setPlaceholder('#signerNameInput', t('log_filler_name_placeholder'));
+      const finalizeConfirmWrap = document.querySelector('#finalizeModal .form-group label');
+      if (finalizeConfirmWrap && finalizeConfirmWrap.querySelector('#finalizeConfirm') && finalizeConfirmWrap.childNodes.length > 1) {
+        finalizeConfirmWrap.childNodes[1].textContent = ' ' + t('log_finalize_confirm');
+      }
     }
 
     if (path === '/foodsafety/nc') {
@@ -551,6 +905,7 @@
   }
 
   function renderToggle() {
+    if (!availableLanguages.includes(currentLang)) currentLang = 'en';
     let holder = document.getElementById('foodsafety-lang-toggle');
     if (!holder) {
       holder = document.createElement('div');
@@ -566,25 +921,23 @@
       holder.style.borderRadius = '999px';
       holder.style.padding = '4px';
       holder.style.boxShadow = '0 6px 18px rgba(18,19,22,0.12)';
-      holder.innerHTML = '<button type="button" data-lang="en"></button><button type="button" data-lang="zh"></button>';
+      holder.innerHTML = '';
       document.body.appendChild(holder);
-      holder.querySelectorAll('button').forEach((btn) => {
-        btn.style.border = 'none';
-        btn.style.borderRadius = '999px';
-        btn.style.padding = '7px 10px';
-        btn.style.fontFamily = 'inherit';
-        btn.style.fontWeight = '700';
-        btn.style.fontSize = '0.8rem';
-        btn.style.cursor = 'pointer';
-        btn.style.background = 'transparent';
-        btn.addEventListener('click', () => setLang(btn.dataset.lang));
-      });
     }
 
     holder.setAttribute('aria-label', t('lang_toggle_label'));
-    holder.querySelector('[data-lang="en"]').textContent = t('toggle_en');
-    holder.querySelector('[data-lang="zh"]').textContent = t('toggle_zh');
+    holder.innerHTML = availableLanguages.map((langCode) => `<button type="button" data-lang="${langCode}"></button>`).join('');
     holder.querySelectorAll('button').forEach((btn) => {
+      btn.style.border = 'none';
+      btn.style.borderRadius = '999px';
+      btn.style.padding = '7px 10px';
+      btn.style.fontFamily = 'inherit';
+      btn.style.fontWeight = '700';
+      btn.style.fontSize = '0.8rem';
+      btn.style.cursor = 'pointer';
+      btn.style.background = 'transparent';
+      btn.textContent = t('toggle_' + btn.dataset.lang, btn.dataset.lang.toUpperCase());
+      btn.addEventListener('click', () => setLang(btn.dataset.lang));
       const active = btn.dataset.lang === currentLang;
       btn.style.background = active ? '#16a085' : 'transparent';
       btn.style.color = active ? '#fff' : '#5a616c';
@@ -599,8 +952,19 @@
   }
 
   function setLang(lang) {
-    currentLang = lang === 'zh' ? 'zh' : 'en';
+    currentLang = availableLanguages.includes(lang) ? lang : 'en';
     localStorage.setItem(STORAGE_KEY, currentLang);
+    renderToggle();
+    applyStaticTranslations();
+    notify();
+  }
+
+  function setAvailableLanguages(langs) {
+    const next = Array.isArray(langs) ? langs.filter((lang, index, arr) => ['en', 'zh', 'ta'].includes(lang) && arr.indexOf(lang) === index) : [];
+    availableLanguages = next.length ? next : ['en', 'zh'];
+    if (!availableLanguages.includes('en')) availableLanguages.unshift('en');
+    if (!availableLanguages.includes('zh')) availableLanguages.splice(availableLanguages.includes('en') ? 1 : 0, 0, 'zh');
+    if (!availableLanguages.includes(currentLang)) currentLang = 'en';
     renderToggle();
     applyStaticTranslations();
     notify();
@@ -612,6 +976,8 @@
 
   window.FoodSafetyI18n = {
     getLang: () => currentLang,
+    getAvailableLanguages: () => availableLanguages.slice(),
+    setAvailableLanguages,
     setLang,
     t,
     onChange,

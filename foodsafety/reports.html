@@ -12,7 +12,7 @@
     .page-head p { margin: 0; color: var(--muted); line-height: 1.6; max-width: 760px; }
     .filters {
       display: grid;
-      grid-template-columns: 220px 220px;
+      grid-template-columns: 220px 220px 220px;
       gap: 12px;
       margin-bottom: 18px;
       align-items: end;
@@ -66,6 +66,8 @@
       color: var(--muted);
       background: #f9fbfb;
     }
+    .clickable-row { cursor: pointer; }
+    .clickable-row:hover td { background: #f9fbfb; }
     .status-pill {
       display: inline-flex;
       align-items: center;
@@ -81,6 +83,7 @@
     .status-finalized { background: rgba(243,156,18,0.12); color: #b9770e; border-color: rgba(243,156,18,0.18); }
     .status-verified { background: rgba(39,174,96,0.12); color: #1e8449; border-color: rgba(39,174,96,0.18); }
     .status-due { background: rgba(192,57,43,0.11); color: #a93226; border-color: rgba(192,57,43,0.18); }
+    .status-not_due { background: rgba(52,152,219,0.10); color: #2874a6; border-color: rgba(52,152,219,0.18); }
     .actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .empty { padding: 26px; color: var(--muted); text-align: center; }
     .modal-overlay {
@@ -154,9 +157,16 @@
         <select id="statusInput">
           <option value="">All Statuses</option>
           <option value="due">Due</option>
+          <option value="not_due">Not Due Yet</option>
           <option value="draft">Draft</option>
           <option value="finalized">Submitted</option>
           <option value="verified">Verified</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="unitInput">Unit</label>
+        <select id="unitInput">
+          <option value="">All Units</option>
         </select>
       </div>
     </section>
@@ -166,6 +176,7 @@
       <div class="summary-card"><span class="lbl">Submitted</span><span class="val" id="submittedCount">0</span></div>
       <div class="summary-card"><span class="lbl">Verified</span><span class="val" id="verifiedCount">0</span></div>
       <div class="summary-card"><span class="lbl">Due / Draft</span><span class="val" id="draftCount">0</span></div>
+      <div class="summary-card"><span class="lbl">Not Due Yet</span><span class="val" id="notDueCount">0</span></div>
     </section>
 
     <section class="list-wrap">
@@ -179,11 +190,10 @@
             <th>Submitted</th>
             <th>Verified</th>
             <th>Archive</th>
-            <th>Actions</th>
           </tr>
         </thead>
         <tbody id="reportsBody">
-          <tr><td colspan="8" class="empty">Loading reports…</td></tr>
+          <tr><td colspan="7" class="empty">Loading reports…</td></tr>
         </tbody>
       </table>
     </section>
@@ -213,15 +223,37 @@
     </div>
   </div>
 
+  <script src="/foodsafety/js/foodsafety-ui-utils.js"></script>
   <script>
     (function () {
+      const ui = window.FoodSafetyUiUtils || null;
+      function ft(key, fallback) {
+        const i18n = window.FoodSafetyI18n;
+        return i18n && typeof i18n.t === 'function' ? i18n.t(key, fallback) : (fallback || key);
+      }
+
+      function flang() {
+        const i18n = window.FoodSafetyI18n;
+        return i18n && typeof i18n.getLang === 'function' ? i18n.getLang() : 'en';
+      }
+
+      function localizeUnitLabel(item) {
+        if (flang() !== 'zh') return item.unitLabel;
+        if (item.unitLabelZh) return item.unitLabelZh;
+        if (/^Unit /.test(item.unitLabel || '')) return String(item.unitLabel).replace(/^Unit /, '厨房 ');
+        if (/^Department /.test(item.unitLabel || '')) return String(item.unitLabel).replace(/^Department /, '部门 ');
+        return item.unitLabel;
+      }
+
       const monthInput = document.getElementById('monthInput');
       const statusInput = document.getElementById('statusInput');
+      const unitInput = document.getElementById('unitInput');
       const reportsBody = document.getElementById('reportsBody');
       const totalCount = document.getElementById('totalCount');
       const submittedCount = document.getElementById('submittedCount');
       const verifiedCount = document.getElementById('verifiedCount');
       const draftCount = document.getElementById('draftCount');
+      const notDueCount = document.getElementById('notDueCount');
       const msg = document.getElementById('msg');
       const verifyModal = document.getElementById('verifyModal');
       const verifierNameInput = document.getElementById('verifierNameInput');
@@ -231,6 +263,7 @@
       const cancelVerifyBtn = document.getElementById('cancelVerifyBtn');
       const confirmVerifyBtn = document.getElementById('confirmVerifyBtn');
       const verifyState = { templateCode: '', monthKey: '', unitCode: '', drawing: false, hasInk: false, ctx: null };
+      let allItems = [];
 
       function showMessage(type, text) {
         msg.className = 'msg ' + type;
@@ -249,11 +282,22 @@
       }
 
       function formatDateTime(value) {
-        return value ? new Date(value).toLocaleString() : 'Not signed';
+        return ui && typeof ui.formatDateTime === 'function'
+          ? ui.formatDateTime(value, ft('report_not_signed', 'Not signed'))
+          : (value ? new Date(value).toLocaleString() : ft('report_not_signed', 'Not signed'));
       }
 
       function statusClass(status) {
         return 'status-' + (status || 'draft');
+      }
+
+      function statusLabel(status) {
+        if (status === 'not_due') return ft('reports_status_not_due', 'Not Due Yet');
+        if (status === 'finalized') return ft('reports_status_submitted', 'Submitted');
+        if (status === 'verified') return ft('reports_status_verified', 'Verified');
+        if (status === 'due') return ft('reports_status_due', 'Due');
+        if (status === 'draft') return ft('checklist_draft_status', 'Draft');
+        return String(status || ft('checklist_draft_status', 'Draft'));
       }
 
       async function fetchJson(url, options) {
@@ -324,7 +368,7 @@
         verifyState.monthKey = monthKey;
         verifyState.unitCode = unitCode;
         verifierNameInput.value = authUser.displayName || authUser.username || '';
-        verifierTitleInput.value = 'Food Safety Officer';
+        verifierTitleInput.value = ft('reports_verifier_position_placeholder', 'Food Safety Officer');
         verifyModal.classList.add('open');
         resizeSignatureCanvas();
         window.setTimeout(() => verifierNameInput.focus(), 0);
@@ -336,7 +380,7 @@
 
       async function verifyRecord() {
         const verifierName = String(verifierNameInput.value || '').trim();
-        const verifierPosition = String(verifierTitleInput.value || 'Food Safety Officer').trim();
+        const verifierPosition = String(verifierTitleInput.value || ft('reports_verifier_position_placeholder', 'Food Safety Officer')).trim();
         const typedSignature = verifierName;
         const signatureDataUrl = verifyState.hasInk ? verifySignatureCanvas.toDataURL('image/png') : '';
         try {
@@ -353,11 +397,19 @@
               confirmed: true
             })
           });
-          const refreshUrl = '/api/foodsafety-checklists/month/report.pdf?template=' + encodeURIComponent(verifyState.templateCode) + '&month=' + encodeURIComponent(verifyState.monthKey) + '&unit=' + encodeURIComponent(verifyState.unitCode) + '&refresh=1';
+          const refreshUrl = (ui && typeof ui.buildMonthReportUrl === 'function'
+            ? ui.buildMonthReportUrl({
+                templateCode: verifyState.templateCode,
+                monthKey: verifyState.monthKey,
+                unitCode: verifyState.unitCode,
+                lang: 'en',
+                pdf: true
+              })
+            : '/api/foodsafety-checklists/month/report.pdf?template=' + encodeURIComponent(verifyState.templateCode) + '&month=' + encodeURIComponent(verifyState.monthKey) + '&unit=' + encodeURIComponent(verifyState.unitCode) + '&lang=en') + '&refresh=1';
           const refreshRes = await fetch(refreshUrl, { credentials: 'include' });
           if (refreshRes.ok) await refreshRes.blob();
           closeVerifyModal();
-          showMessage('success', 'Form verified');
+          showMessage('success', ft('reports_verified_success', 'Form verified'));
           load();
         } catch (err) {
           showMessage('error', err.message);
@@ -369,28 +421,27 @@
         submittedCount.textContent = items.filter((item) => item.status === 'finalized').length;
         verifiedCount.textContent = items.filter((item) => item.status === 'verified').length;
         draftCount.textContent = items.filter((item) => item.status === 'draft' || item.status === 'due').length;
+        notDueCount.textContent = items.filter((item) => item.status === 'not_due').length;
 
         if (!items.length) {
-          reportsBody.innerHTML = '<tr><td colspan="8" class="empty">No reports found for the selected filter.</td></tr>';
+          reportsBody.innerHTML = `<tr><td colspan="7" class="empty">${esc(ft('reports_empty', 'No reports found for the selected filter.'))}</td></tr>`;
           return;
         }
 
         reportsBody.innerHTML = items.map((item) => `
-          <tr>
-            <td><strong>${esc(item.templateTitle)}</strong><br><span style="color:var(--muted);">${esc(item.templateCode)}</span></td>
-            <td>${esc(item.unitLabel)}</td>
+          <tr class="clickable-row" data-entry-url="${esc(item.entryUrl)}">
+            <td><strong>${esc(flang() === 'zh' ? (item.templateTitleZh || item.templateTitle) : item.templateTitle)}</strong><br><span style="color:var(--muted);">${esc(item.templateCode)}</span></td>
+            <td>${esc(localizeUnitLabel(item))}</td>
             <td>${esc(item.monthKey)}</td>
-            <td><span class="status-pill ${statusClass(item.status)}">${esc(item.status)}</span></td>
-            <td>${esc(formatDateTime(item.submittedAt))}<br><span style="color:var(--muted);">${esc(item.submittedBy || '')}</span></td>
-            <td>${esc(formatDateTime(item.verifiedAt))}<br><span style="color:var(--muted);">${esc(item.verifiedBy || '')}</span></td>
-            <td>${item.archivedAt ? esc(formatDateTime(item.archivedAt)) : 'Not archived'}</td>
+            <td><span class="status-pill ${statusClass(item.status)}">${esc(statusLabel(item.status))}</span></td>
             <td>
+              ${esc(formatDateTime(item.submittedAt))}<br><span style="color:var(--muted);">${esc(item.submittedBy || '')}</span>
               <div class="actions">
-                ${item.status === 'finalized' ? `<button class="btn btn-primary btn-sm" data-verify-template="${esc(item.templateCode)}" data-verify-month="${esc(item.monthKey)}" data-verify-unit="${esc(item.unitCode)}" type="button">Verify</button>` : ''}
-                <a class="btn btn-outline btn-sm" href="${esc(item.entryUrl)}">Open</a>
-                ${item.pdfUrl ? `<a class="btn btn-outline btn-sm" href="${esc(item.pdfUrl)}" target="_blank" rel="noopener">PDF</a>` : ''}
+                ${item.status === 'finalized' ? `<button class="btn btn-primary btn-sm" data-verify-template="${esc(item.templateCode)}" data-verify-month="${esc(item.monthKey)}" data-verify-unit="${esc(item.unitCode)}" type="button">${esc(ft('reports_verify', 'Verify'))}</button>` : ''}
               </div>
             </td>
+            <td>${esc(formatDateTime(item.verifiedAt))}<br><span style="color:var(--muted);">${esc(item.verifiedBy || '')}</span></td>
+            <td>${item.archivedAt ? `${esc(formatDateTime(item.archivedAt))}${item.pdfUrl ? `<br><div class="actions"><a class="btn btn-outline btn-sm" href="${esc(item.pdfUrl)}" target="_blank" rel="noopener">${esc(ft('reports_pdf', 'PDF'))}</a></div>` : ''}` : esc(ft('reports_not_archived', 'Not archived'))}</td>
           </tr>
         `).join('');
 
@@ -399,13 +450,44 @@
         });
       }
 
+      function syncUnitOptions(items) {
+        const previousValue = unitInput.value;
+        const units = Array.from(new Map(
+          items
+            .filter((item) => item.unitCode)
+            .map((item) => [item.unitCode, String(localizeUnitLabel(item) || item.unitCode || '').trim()])
+        ).entries()).sort((a, b) => a[1].localeCompare(b[1]));
+
+        unitInput.innerHTML = [
+          `<option value="">${esc(ft('forms_all_units', 'All Units'))}</option>`,
+          ...units.map(([unitCode, unitLabel]) => `<option value="${esc(unitCode)}">${esc(unitLabel || unitCode)}</option>`)
+        ].join('');
+
+        if (units.some(([unitCode]) => unitCode === previousValue)) {
+          unitInput.value = previousValue;
+          return;
+        }
+        unitInput.value = '';
+      }
+
+      function getFilteredItems() {
+        const unitCode = unitInput.value;
+        return allItems.filter((item) => !unitCode || item.unitCode === unitCode);
+      }
+
+      function applyFilters() {
+        render(getFilteredItems());
+      }
+
       async function load() {
         try {
           const month = monthInput.value;
           const status = statusInput.value;
           const url = '/api/foodsafety-checklists/reports-summary?month=' + encodeURIComponent(month) + '&status=' + encodeURIComponent(status);
           const data = await fetchJson(url);
-          render(data.items || []);
+          allItems = data.items || [];
+          syncUnitOptions(allItems);
+          applyFilters();
         } catch (err) {
           showMessage('error', err.message);
         }
@@ -415,6 +497,18 @@
       monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       monthInput.addEventListener('change', load);
       statusInput.addEventListener('change', load);
+      unitInput.addEventListener('change', applyFilters);
+      window.addEventListener('foodsafety-languagechange', () => {
+        syncUnitOptions(allItems);
+        applyFilters();
+      });
+      reportsBody.addEventListener('click', (event) => {
+        if (event.target.closest('a, button')) return;
+        const row = event.target.closest('tr[data-entry-url]');
+        if (!row) return;
+        const href = row.getAttribute('data-entry-url');
+        if (href) window.location.assign(href);
+      });
       clearVerifySignatureBtn.addEventListener('click', clearVerifySignature);
       cancelVerifyBtn.addEventListener('click', closeVerifyModal);
       confirmVerifyBtn.addEventListener('click', verifyRecord);

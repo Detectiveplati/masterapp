@@ -55,6 +55,52 @@
     const templateCode = params.get('template') || '';
     const month = params.get('month');
     const unit = params.get('unit');
+    const reportLang = params.get('lang') || 'en';
+    const REPORT_TEXT = {
+      en: {
+        loading: 'Loading report…',
+        failed: 'Failed to load report',
+        item_header: 'Checklist Item',
+        remarks: 'Remarks',
+        no_entries: 'No entries recorded',
+        revision: 'Revision No.:',
+        month_year: 'Month / Year:',
+        unit: 'Unit:',
+        week: 'WEEK',
+        day: 'DAY',
+        filled_signature: 'Filled By Signature',
+        verified_signature: 'Verified By Signature',
+        name: 'Name',
+        position: 'Position',
+        signature: 'Signature',
+        date: 'Date',
+        fallback_category: 'Food Safety Form'
+      },
+      zh: {
+        loading: '正在加载报告…',
+        failed: '加载报告失败',
+        item_header: '检查项目',
+        remarks: '备注',
+        no_entries: '暂无记录',
+        revision: '版本号：',
+        month_year: '月份 / 年份：',
+        unit: '单位：',
+        week: '周',
+        day: '日',
+        filled_signature: '填写人签名',
+        verified_signature: '验证人签名',
+        name: '姓名',
+        position: '职位',
+        signature: '签名',
+        date: '日期',
+        fallback_category: '食品安全表单'
+      }
+    };
+    function rt(key) {
+      return (REPORT_TEXT[reportLang] && REPORT_TEXT[reportLang][key]) || REPORT_TEXT.en[key] || key;
+    }
+    document.title = reportLang === 'zh' ? '食品安全表单报告' : 'Food Safety Form Report';
+    document.getElementById('reportRoot').textContent = rt('loading');
     function esc(text) {
       return String(text == null ? '' : text)
         .replace(/&/g, '&amp;')
@@ -65,22 +111,32 @@
 
     function monthLabel(monthKey) {
       const [year, monthNo] = monthKey.split('-').map(Number);
-      return new Date(year, monthNo - 1, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
+      return new Date(year, monthNo - 1, 1).toLocaleString(reportLang === 'zh' ? 'zh-CN' : undefined, { month: 'long', year: 'numeric' });
+    }
+
+    function localizedKey(base) {
+      return reportLang === 'zh' ? base + 'Zh' : (reportLang === 'ta' ? base + 'Ta' : base);
+    }
+
+    function pickLabel(entity, base) {
+      if (!entity) return '';
+      const key = localizedKey(base);
+      return entity[key] || entity[base] || '';
     }
 
     function renderSection(section, state, count, label) {
       let html = '<div class="section-block">';
-      html += '<div class="section-meta"><div class="section-title">' + esc(section.title || '') + '</div><div>' + esc(label) + '</div></div>';
-      html += '<table><thead><tr><th class="item">Checklist Item</th>';
+      html += '<div class="section-meta"><div class="section-title">' + esc(pickLabel(section, 'title') || section.title || '') + '</div><div>' + esc(label) + '</div></div>';
+      html += '<table><thead><tr><th class="item">' + esc(rt('item_header')) + '</th>';
       for (let i = 0; i < count; i++) html += '<th>' + (i + 1) + '</th>';
       html += '</tr></thead><tbody>';
       section.items.forEach((item) => {
-        html += '<tr><td class="item">' + esc(item.label || '') + '</td>';
+        html += '<tr><td class="item">' + esc(pickLabel(item, 'label') || item.label || '') + '</td>';
         const values = (state.checks && state.checks[item.id]) || [];
         for (let i = 0; i < count; i++) html += '<td>' + (values[i] ? '<span class="tick">✓</span>' : '') + '</td>';
         html += '</tr>';
       });
-      html += '<tr class="remarks-row"><td class="remarks-label">Remarks</td><td colspan="' + count + '">' + esc(state.remarks || '') + '</td></tr>';
+      html += '<tr class="remarks-row"><td class="remarks-label">' + esc(rt('remarks')) + '</td><td colspan="' + count + '">' + esc(state.remarks || '') + '</td></tr>';
       html += '</tbody></table></div>';
       return html;
     }
@@ -88,11 +144,13 @@
     function renderLogTable(template, record) {
       const fields = template.fields || [];
       const entries = (record.data && record.data.entries) || [];
+      const footerFields = template.footerFields || [];
+      const footer = (record.data && record.data.footer) || {};
       let html = '<div class="section-block"><table class="log-table"><thead><tr>';
-      fields.forEach((field) => { html += '<th>' + esc(field.label || '') + '</th>'; });
+      fields.forEach((field) => { html += '<th>' + esc(pickLabel(field, 'label') || field.label || '') + '</th>'; });
       html += '</tr></thead><tbody>';
       if (!entries.length) {
-        html += '<tr><td colspan="' + fields.length + '" style="text-align:center;">No entries recorded</td></tr>';
+        html += '<tr><td colspan="' + fields.length + '" style="text-align:center;">' + esc(rt('no_entries')) + '</td></tr>';
       } else {
         entries.forEach((entry) => {
           html += '<tr>';
@@ -106,7 +164,11 @@
         });
       }
       html += '</tbody></table></div>';
-      html += '<div class="log-remarks"><strong>Remarks:</strong> ' + esc((record.data && record.data.remarks) || '') + '<br><strong>Verified By:</strong> ' + esc((record.data && record.data.verifiedByText) || '') + '</div>';
+      if (footerFields.length) {
+        html += '<div class="log-remarks">';
+        html += footerFields.map((field) => '<strong>' + esc(pickLabel(field, 'label') || field.label || '') + ':</strong> ' + esc(footer[field.id] || '')).join('<br>');
+        html += '</div>';
+      }
       return html;
     }
 
@@ -120,15 +182,18 @@
     async function load() {
       const res = await fetch('/api/foodsafety-checklists/month/report?template=' + encodeURIComponent(templateCode) + '&month=' + encodeURIComponent(month) + '&unit=' + encodeURIComponent(unit), { credentials: 'include' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to load report');
+      if (!res.ok) throw new Error(data.error || rt('failed'));
       const t = data.template;
       const r = data.record;
+      const reportUnit = (t.unitOptions || []).find((item) => item.code === r.unitCode);
       let html = '<div class="report-head">';
       html += '<div class="company">CHILLI API CATERING PTE LTD</div>';
-      html += '<div class="meta-line"><div>' + esc(t.category || 'Food Safety Form') + '</div><div>' + esc(t.code) + '</div></div>';
-      html += '<div class="meta-line"><div class="title">' + esc(t.title || '') + '</div><div>Revision No.: ' + esc(t.revision) + '</div></div>';
-      html += '<div class="subtitle">Month / Year: ' + esc(monthLabel(r.monthKey)) + ' &nbsp; | &nbsp; Unit: ' + esc(r.unitLabel) + '</div>';
-      const instructions = t.instructions || [];
+      html += '<div class="meta-line"><div>' + esc(pickLabel(t, 'category') || t.category || rt('fallback_category')) + '</div><div>' + esc(t.code) + '</div></div>';
+      html += '<div class="meta-line"><div class="title">' + esc(pickLabel(t, 'title') || t.title || '') + '</div><div>' + esc(rt('revision')) + ' ' + esc(t.revision) + '</div></div>';
+      html += '<div class="subtitle">' + esc(rt('month_year')) + ' ' + esc(monthLabel(r.monthKey)) + ' &nbsp; | &nbsp; ' + esc(rt('unit')) + ' ' + esc(pickLabel(reportUnit, 'label') || r.unitLabel) + '</div>';
+      const instructions = reportLang === 'zh' && t.instructionsZh && t.instructionsZh.length
+        ? t.instructionsZh
+        : (reportLang === 'ta' && t.instructionsTa && t.instructionsTa.length ? t.instructionsTa : (t.instructions || []));
       html += '<div class="instructions"><ol>' + instructions.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ol></div>';
       html += '</div>';
       if (t.formType === 'log_entries') {
@@ -136,30 +201,30 @@
       } else {
         t.sections.forEach((section) => {
           const count = section.frequency === 'weekly' ? t.weekCount : t.dayCount;
-          const label = section.frequency === 'weekly' ? 'WEEK' : 'DAY';
+          const label = section.frequency === 'weekly' ? rt('week') : rt('day');
           html += renderSection(section, r.data[section.id] || { checks: {}, remarks: '' }, count, label);
         });
       }
       const finalization = r.finalization || {};
       const verification = r.verification || {};
       html += '<div class="signature-wrap"><div class="signature-grid">';
-      html += '<div class="sig-box"><div class="sig-title">Filled By Signature</div>';
-      html += '<div class="sig-row"><div>Name</div><div class="sig-value">' + esc(finalization.name || '') + '</div></div>';
-      html += '<div class="sig-row"><div>Position</div><div class="sig-value">' + esc(finalization.position || '') + '</div></div>';
-      html += '<div class="sig-row"><div>Signature</div><div class="sig-value">' + renderSignatureValue(finalization) + '</div></div>';
-      html += '<div class="sig-row"><div>Date</div><div class="sig-value">' + esc(finalization.at ? new Date(finalization.at).toLocaleString() : '') + '</div></div></div>';
-      html += '<div class="sig-box"><div class="sig-title">Verified By Signature</div>';
-      html += '<div class="sig-row"><div>Name</div><div class="sig-value">' + esc(verification.name || '') + '</div></div>';
-      html += '<div class="sig-row"><div>Position</div><div class="sig-value">' + esc(verification.position || '') + '</div></div>';
-      html += '<div class="sig-row"><div>Signature</div><div class="sig-value">' + renderSignatureValue(verification) + '</div></div>';
-      html += '<div class="sig-row"><div>Date</div><div class="sig-value">' + esc(verification.at ? new Date(verification.at).toLocaleString() : '') + '</div></div></div>';
+      html += '<div class="sig-box"><div class="sig-title">' + esc(rt('filled_signature')) + '</div>';
+      html += '<div class="sig-row"><div>' + esc(rt('name')) + '</div><div class="sig-value">' + esc(finalization.name || '') + '</div></div>';
+      html += '<div class="sig-row"><div>' + esc(rt('position')) + '</div><div class="sig-value">' + esc(finalization.position || '') + '</div></div>';
+      html += '<div class="sig-row"><div>' + esc(rt('signature')) + '</div><div class="sig-value">' + renderSignatureValue(finalization) + '</div></div>';
+      html += '<div class="sig-row"><div>' + esc(rt('date')) + '</div><div class="sig-value">' + esc(finalization.at ? new Date(finalization.at).toLocaleString() : '') + '</div></div></div>';
+      html += '<div class="sig-box"><div class="sig-title">' + esc(rt('verified_signature')) + '</div>';
+      html += '<div class="sig-row"><div>' + esc(rt('name')) + '</div><div class="sig-value">' + esc(verification.name || '') + '</div></div>';
+      html += '<div class="sig-row"><div>' + esc(rt('position')) + '</div><div class="sig-value">' + esc(verification.position || '') + '</div></div>';
+      html += '<div class="sig-row"><div>' + esc(rt('signature')) + '</div><div class="sig-value">' + renderSignatureValue(verification) + '</div></div>';
+      html += '<div class="sig-row"><div>' + esc(rt('date')) + '</div><div class="sig-value">' + esc(verification.at ? new Date(verification.at).toLocaleString() : '') + '</div></div></div>';
       html += '</div></div>';
       document.getElementById('reportRoot').innerHTML = html;
       window.__reportReady = true;
     }
 
     load().catch((err) => {
-      document.getElementById('reportRoot').innerHTML = '<div style="color:#b91c1c;font-family:Arial,sans-serif;">' + esc(err.message) + '</div>';
+      document.getElementById('reportRoot').innerHTML = '<div style="color:#b91c1c;font-family:Arial,sans-serif;">' + esc(err.message || rt('failed')) + '</div>';
       window.__reportReady = true;
     });
   </script>

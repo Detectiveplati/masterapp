@@ -1004,11 +1004,9 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
 function tmEvaluateAlertType(value, unit) {
     // Warmers are monitored exclusively by the fault-state machine — no temperature range alerts
     if (unit.type === 'warmer') return null;
-    const { criticalMin, criticalMax, warningBuffer = 2 } = unit;
-    if (value < criticalMin)                 return 'critical_low';
-    if (value > criticalMax)                 return 'critical_high';
-    if (value < criticalMin + warningBuffer) return 'warning_low';
-    if (value > criticalMax - warningBuffer) return 'warning_high';
+    const { criticalMin, criticalMax } = unit;
+    if (value < criticalMin) return 'critical_low';
+    if (value > criticalMax) return 'critical_high';
     return null;
 }
 

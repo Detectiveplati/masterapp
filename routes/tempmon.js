@@ -1094,22 +1094,19 @@ if (!global._tempmonPushCronStarted) {
 }
 
 // ── One-time startup cleanup ─────────────────────────────────────────────────
-// Auto-resolve any open warning_high / warning_low alerts belonging to warmer
-// units — these are stale records from before the new alert logic was deployed.
-if (!global._tempmonWarmerWarnCleaned) {
-  global._tempmonWarmerWarnCleaned = true;
+// Auto-resolve any open warning_high / warning_low alerts across all units —
+// these are stale records from before the alert logic was simplified to
+// critical-only. warning_high / warning_low alerts are no longer created.
+if (!global._tempmonLegacyWarnCleaned) {
+  global._tempmonLegacyWarnCleaned = true;
   (async () => {
     try {
-      const warmerUnits = await TempMonUnit.find({ type: 'warmer', active: true }).select('_id').lean();
-      if (warmerUnits.length) {
-        const ids = warmerUnits.map(u => u._id);
-        const result = await TempMonAlert.updateMany(
-          { unit: { $in: ids }, type: { $in: ['warning_high', 'warning_low', 'critical_high', 'critical_low'] }, status: { $in: ['open', 'acknowledged'] } },
-          { $set: { status: 'resolved', resolvedAt: new Date(), resolveNote: 'Auto-closed: warmer temperature range alerts are no longer used (fault detection only)' } }
-        );
-        if (result.modifiedCount > 0)
-          console.log(`✓ [TempMon] Startup cleanup: resolved ${result.modifiedCount} stale warmer range alert(s)`);
-      }
+      const result = await TempMonAlert.updateMany(
+        { type: { $in: ['warning_high', 'warning_low'] }, status: { $in: ['open', 'acknowledged'] } },
+        { $set: { status: 'resolved', resolvedAt: new Date(), resolveNote: 'Auto-closed: warning-band alerts are no longer used (critical-only logic)' } }
+      );
+      if (result.modifiedCount > 0)
+        console.log(`✓ [TempMon] Startup cleanup: resolved ${result.modifiedCount} legacy warning alert(s)`);
     } catch (e) { console.error('✗ [TempMon] Startup cleanup error:', e.message); }
   })();
 }
@@ -1155,7 +1152,7 @@ if (!global._tempmonExcursionStart) global._tempmonExcursionStart = {};
       if (elapsedMs >= thresholdMs) {
         // Threshold already exceeded — fire the alert immediately
         const alert = new TempMonAlert({
-          unit: unit._id, type: alertType, value: latest.value,
+          unit: unit._id, device: latest.device, type: alertType, value: latest.value,
           pushSentAt: new Date(), notificationSent: true
         });
         await alert.save();
