@@ -51,6 +51,8 @@
 <body data-module="foodsafetyforms">
   <div class="report" id="reportRoot">Loading report…</div>
   <script>
+    window.__reportReady = false;
+    window.__reportError = '';
     const params = new URLSearchParams(window.location.search);
     const templateCode = params.get('template') || '';
     const month = params.get('month');
@@ -220,11 +222,13 @@
       html += '<div class="sig-row"><div>' + esc(rt('date')) + '</div><div class="sig-value">' + esc(verification.at ? new Date(verification.at).toLocaleString() : '') + '</div></div></div>';
       html += '</div></div>';
       document.getElementById('reportRoot').innerHTML = html;
+      window.__reportError = '';
       window.__reportReady = true;
     }
 
     load().catch((err) => {
-      document.getElementById('reportRoot').innerHTML = '<div style="color:#b91c1c;font-family:Arial,sans-serif;">' + esc(err.message || rt('failed')) + '</div>';
+      window.__reportError = err && err.message ? String(err.message) : rt('failed');
+      document.getElementById('reportRoot').innerHTML = '<div style="color:#b91c1c;font-family:Arial,sans-serif;">' + esc(window.__reportError) + '</div>';
       window.__reportReady = true;
     });
   </script>

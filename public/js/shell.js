@@ -164,7 +164,7 @@
       children: [
         { href: '/tempmon/',                    label: '📡 Live Dashboard'    },
         { href: '/tempmon/alerts.html',         label: '🔴 Alerts'            },
-        { href: '/tempmon/report.html',         label: '📊 Compliance Report' },
+        { href: '/tempmon/report.html',         label: '🧾 Monthly Report'    },
         { href: '/tempmon/calibration.html',    label: '🔧 Calibration'       },
         { href: '/tempmon/setup.html',          label: '⚙️ Setup'              },
       ],

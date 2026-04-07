@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Monthly Report — Temp Monitor</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/lib/dom.js"></script>
+  <script src="/js/lib/http.js"></script>
+  <style>
+    :root {
+      --good: #2e7d32;
+      --bad: #c62828;
+      --line: #ccd6e0;
+      --head: #eef5fb;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f5f7fa; color: var(--ink, #17212b); font-family: "Segoe UI", Arial, sans-serif; }
+    main { max-width: 1180px; margin: 0 auto; padding: 24px 18px 40px; }
+    .nav-links { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
+    .nav-link { padding: 8px 14px; border-radius: 8px; background: #f0f0f0; color: var(--muted, #5a616c); font-size: 0.82rem; font-weight: 700; text-decoration: none; }
+    .nav-link.active { background: var(--accent, #2f6fed); color: #fff; }
+    .controls, .filters { background: #fff; border: 1px solid var(--border, #dde5ee); border-radius: 14px; box-shadow: 0 4px 18px rgba(0,0,0,0.05); }
+    .controls { padding: 18px 20px; margin-bottom: 18px; }
+    .filters { padding: 14px 16px; margin-bottom: 18px; display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+    .filters label { display: flex; flex-direction: column; gap: 5px; font-size: 0.82rem; font-weight: 700; color: var(--ink, #17212b); min-width: 200px; }
+    .filters input, .filters select { padding: 9px 11px; border: 1px solid var(--border, #dde5ee); border-radius: 8px; font-size: 0.9rem; font-family: inherit; }
+    .btn { padding: 9px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.86rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent, #2f6fed), #32a870); color: #fff; }
+    .btn-outline { background: #fff; border: 2px solid var(--accent, #2f6fed); color: var(--accent, #2f6fed); }
+    .report-shell { background: #fff; border: 1px solid var(--border, #dde5ee); border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.05); padding: 24px; }
+    .report-head { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; margin-bottom: 16px; }
+    .report-title { font-size: 1.3rem; font-weight: 900; margin: 0; }
+    .report-sub { margin: 4px 0 0; color: var(--muted, #5a616c); font-size: 0.92rem; }
+    .meta-grid { display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .meta-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #fbfdff; }
+    .meta-card strong { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted, #5a616c); margin-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid var(--line); padding: 7px 6px; font-size: 0.86rem; text-align: center; vertical-align: middle; }
+    thead th { background: var(--head); font-weight: 800; }
+    td.left, th.left { text-align: left; }
+    td.day { font-weight: 800; width: 60px; }
+    .sample-time { font-size: 0.76rem; color: var(--muted, #5a616c); }
+    .sample-val { font-size: 0.96rem; font-weight: 800; }
+    .sample-empty { color: #b0b7c0; font-style: italic; }
+    .sample-good .sample-val { color: var(--good); }
+    .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; font-size: 0.82rem; color: var(--muted, #5a616c); }
+    .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+    .legend .lg-good::before { background: var(--good); }
+    .notice { margin-top: 12px; font-size: 0.84rem; color: var(--muted, #5a616c); }
+    .error-box { color: var(--bad); font-weight: 700; padding: 14px; border-radius: 10px; background: rgba(198,40,40,0.07); border: 1px solid rgba(198,40,40,0.18); }
+    @media print {
+      body { background: #fff; }
+      main { max-width: none; padding: 0; }
+      .nav-links, .filters { display: none !important; }
+      .report-shell { border: none; box-shadow: none; border-radius: 0; padding: 0; }
+      @page { size: A4 landscape; margin: 8mm; }
+    }
+  </style>
+</head>
+<body data-module="tempmon">
+<main>
+  <div class="nav-links">
+    <a href="/tempmon/" class="nav-link">📡 Live Dashboard</a>
+    <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
+    <a href="/tempmon/report.html" class="nav-link active">🧾 Monthly Report</a>
+    <a href="/tempmon/setup.html" class="nav-link">⚙️ Setup</a>
+    <a href="/tempmon/setup.html?tab=gateway" class="nav-link">📶 LoRa Gateway</a>
+    <a href="/tempmon/gateway-log.html" class="nav-link">🪵 Raw Log</a>
+  </div>
+
+  <section class="controls">
+    <h1 class="report-title">🧾 Monthly Equipment Temperature Log</h1>
+    <p class="report-sub">Per-unit ISO export driven by TempMon history. Each day shows one AM sample and one PM sample.</p>
+  </section>
+
+  <section class="filters">
+    <label>Equipment Unit
+      <select id="unitSelect"></select>
+    </label>
+    <label>Month
+      <input id="monthInput" type="month">
+    </label>
+    <button class="btn btn-primary" type="button" onclick="loadReport()">Load Report</button>
+    <a class="btn btn-outline" id="pdfBtn" href="#" target="_blank" rel="noopener">Download PDF</a>
+  </section>
+
+  <section class="report-shell" id="reportRoot">Loading…</section>
+</main>
+
+<script>
+  const API = '/api/tempmon';
+  window.__reportReady = false;
+  window.__reportError = '';
+  let currentUser = null;
+  let units = [];
+  const params = new URLSearchParams(location.search);
+
+  function esc(text) {
+    return String(text == null ? '' : text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function currentMonthValue() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function monthLabel(value) {
+    if (!/^\d{4}-\d{2}$/.test(String(value || ''))) return value || '';
+    const [y, m] = value.split('-').map(Number);
+    return new Date(y, m - 1, 1).toLocaleString('en-SG', { month: 'long', year: 'numeric' });
+  }
+
+  function sampleCell(sample) {
+    if (!sample) return '<div class="sample-empty">—</div>';
+    return `
+      <div class="sample-good">
+        <div class="sample-val">${esc(sample.value.toFixed(1))}°C</div>
+        <div class="sample-time">${esc(sample.timeLabel)}${sample.deviceLabel ? ' · ' + esc(sample.deviceLabel) : ''}</div>
+      </div>`;
+  }
+
+  function updateUrl() {
+    const unitId = document.getElementById('unitSelect').value || '';
+    const month = document.getElementById('monthInput').value || '';
+    const next = new URL(window.location.href);
+    if (unitId) next.searchParams.set('unitId', unitId); else next.searchParams.delete('unitId');
+    if (month) next.searchParams.set('month', month); else next.searchParams.delete('month');
+    history.replaceState({}, '', next.toString());
+    document.getElementById('pdfBtn').href = unitId && month
+      ? `/api/tempmon/reports/monthly-unit.pdf?unitId=${encodeURIComponent(unitId)}&month=${encodeURIComponent(month)}`
+      : '#';
+  }
+
+  function renderReport(data) {
+    const rows = data.days.map((day) => `
+      <tr>
+        <td class="day">${day.day}</td>
+        <td>${sampleCell(day.am)}</td>
+        <td>${sampleCell(day.pm)}</td>
+      </tr>`).join('');
+
+    document.getElementById('reportRoot').innerHTML = `
+      <div class="report-head">
+        <div>
+          <h2 class="report-title" style="font-size:1.15rem;margin:0">CHILLI API CATERING PTE LTD</h2>
+          <p class="report-sub">Equipment Temperature Monitoring Log</p>
+        </div>
+        <div class="report-sub">Generated ${esc(new Date().toLocaleString('en-SG'))}</div>
+      </div>
+      <div class="meta-grid">
+        <div class="meta-card"><strong>Unit</strong>${esc(data.unit.name)}</div>
+        <div class="meta-card"><strong>Month</strong>${esc(monthLabel(data.month))}</div>
+        <div class="meta-card"><strong>Acceptable Range</strong>${esc(`${data.unit.criticalMin}°C to ${data.unit.criticalMax}°C`)}</div>
+        <div class="meta-card"><strong>Sampling Windows</strong>${esc(`${data.windows.am.label} ${data.windows.am.start}-${data.windows.am.end} · ${data.windows.pm.label} ${data.windows.pm.start}-${data.windows.pm.end}`)}</div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:70px">Date</th>
+            <th>${esc(data.windows.am.label)} Reading</th>
+            <th>${esc(data.windows.pm.label)} Reading</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="legend">
+        <span class="lg-good">In-range sampled reading</span>
+      </div>
+      <div class="notice">Selection rule: earliest in-range reading within each window. If no compliant reading exists in the window, the cell is left blank.</div>`;
+  }
+
+  async function loadUnits() {
+    const r = await apiFetch(`${API}/units`);
+    units = await r.json();
+    const sel = document.getElementById('unitSelect');
+    const opts = ['<option value="">Select a unit</option>']
+      .concat(units.map((u) => `<option value="${esc(u._id)}">${esc(u.name)}</option>`));
+    sel.innerHTML = opts.join('');
+    const requested = params.get('unitId');
+    if (requested && units.some((u) => u._id === requested)) sel.value = requested;
+    else if (units.length) sel.value = units[0]._id;
+  }
+
+  async function loadReport() {
+    window.__reportReady = false;
+    window.__reportError = '';
+    updateUrl();
+    const unitId = document.getElementById('unitSelect').value;
+    const month = document.getElementById('monthInput').value;
+    if (!unitId || !month) {
+      document.getElementById('reportRoot').innerHTML = '<div class="error-box">Select a unit and month first.</div>';
+      window.__reportReady = true;
+      return;
+    }
+    try {
+      const r = await apiFetch(`${API}/reports/monthly-unit?unitId=${encodeURIComponent(unitId)}&month=${encodeURIComponent(month)}`);
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed to load report');
+      renderReport(data);
+      window.__reportError = '';
+      window.__reportReady = true;
+    } catch (err) {
+      window.__reportError = err.message || 'Failed to load report';
+      document.getElementById('reportRoot').innerHTML = `<div class="error-box">${esc(window.__reportError)}</div>`;
+      window.__reportReady = true;
+    }
+  }
+
+  async function init() {
+    try {
+      const r = await apiFetch('/api/auth/me');
+      const payload = await r.json();
+      const user = payload.user;
+      if (!user.permissions?.tempmon && user.role !== 'admin') return window.location.replace('/?access=denied');
+      currentUser = user;
+      document.getElementById('monthInput').value = params.get('month') || currentMonthValue();
+      await loadUnits();
+      document.documentElement.style.visibility = '';
+      await loadReport();
+    } catch {
+      window.location.replace('/login');
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

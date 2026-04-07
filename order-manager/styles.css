@@ -827,13 +827,93 @@ select:focus {
   border-color: rgba(29, 107, 74, 0.22);
 }
 
+.mapping-status-pill.failed {
+  color: var(--om-error);
+  background: rgba(155, 29, 32, 0.1);
+  border-color: rgba(155, 29, 32, 0.18);
+}
+
+.mapping-status-pill.not-due {
+  color: var(--om-muted-strong);
+  background: rgba(109, 92, 77, 0.08);
+  border-color: rgba(109, 92, 77, 0.16);
+}
+
 .mapping-row-dirty {
   background: rgba(244, 232, 216, 0.34);
 }
 
+.extractor-status-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  color: var(--om-ink);
+  background: linear-gradient(180deg, rgba(255, 252, 248, 0.98), rgba(246, 239, 229, 0.94));
+}
+
+.extractor-status-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.extractor-status-head h3 {
+  font-size: 1rem;
+}
+
+.extractor-status-head p {
+  margin: 6px 0 0;
+  color: var(--om-muted);
+  font-size: 0.86rem;
+}
+
+.extractor-status-slots {
+  display: grid;
+  gap: 10px;
+}
+
+.extractor-status-slot {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 15px;
+  border-radius: 18px;
+  border: 1px solid var(--om-border-soft);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.extractor-status-slot-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.extractor-status-slot-copy strong {
+  font-size: 0.94rem;
+}
+
+.extractor-status-slot-copy span,
+.extractor-status-slot-side small {
+  color: var(--om-muted);
+  font-size: 0.8rem;
+}
+
+.extractor-status-slot-side {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  text-align: right;
+}
+
+.extractor-status-error {
+  color: var(--om-error) !important;
+  max-width: 280px;
+}
+
 .dish-save-prompt {
   position: sticky;
-  top: 16px;
+  top: calc(var(--topnav-h, 62px) + 12px);
   z-index: 3;
   display: flex;
   align-items: center;
@@ -1284,6 +1364,20 @@ th:last-child {
 
   .dish-save-prompt-actions > * {
     flex: 1 1 100%;
+  }
+
+  .extractor-status-slot,
+  .extractor-status-slot-side {
+    align-items: stretch;
+  }
+
+  .extractor-status-slot {
+    flex-direction: column;
+  }
+
+  .extractor-status-slot-side {
+    justify-items: start;
+    text-align: left;
   }
 
   .report-toolbar-actions {

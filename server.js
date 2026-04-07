@@ -55,6 +55,60 @@ try {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+function attachPdfPageDiagnostics(page, label) {
+    const events = [];
+    page.on('console', (msg) => events.push(`[console:${label}:${msg.type()}] ${msg.text()}`));
+    page.on('pageerror', (err) => events.push(`[pageerror:${label}] ${err.message}`));
+    page.on('requestfailed', (req) => {
+        const failure = req.failure();
+        events.push(`[requestfailed:${label}] ${req.method()} ${req.url()} :: ${(failure && failure.errorText) || 'failed'}`);
+    });
+    return events;
+}
+
+async function applyAuthToPdfPage(page, req) {
+    const cookieHeader = req.headers.cookie;
+    if (cookieHeader) {
+        await page.setExtraHTTPHeaders({ Cookie: cookieHeader });
+    }
+    const authCookie = req.cookies && req.cookies.ck_auth;
+    if (authCookie) {
+        await page.setCookie({
+            name: 'ck_auth',
+            value: authCookie,
+            domain: 'localhost',
+            path: '/',
+            httpOnly: true,
+            sameSite: 'Lax',
+            secure: false
+        });
+    }
+}
+
+async function renderPdfFromLocalPage({ req, url, waitForExpression, pdfOptions, logLabel }) {
+    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    let page;
+    const events = [];
+    try {
+        page = await browser.newPage();
+        events.push(...attachPdfPageDiagnostics(page, logLabel));
+        await applyAuthToPdfPage(page, req);
+        const response = await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
+        if (response && !response.ok()) {
+            throw new Error(`Report page returned HTTP ${response.status()}`);
+        }
+        await page.waitForFunction(waitForExpression, { timeout: 60000 });
+        const pageError = await page.evaluate(() => window.__reportError || '');
+        if (pageError) throw new Error(pageError);
+        return await page.pdf(pdfOptions);
+    } catch (err) {
+        if (events.length) console.error(events.slice(-12).join('\n'));
+        throw err;
+    } finally {
+        await browser.close().catch(() => {});
+    }
+}
+
 function isFormsOnlyUser(user) {
     if (!user || user.role === 'admin') return false;
     const perms = user.permissions || {};
@@ -515,29 +569,21 @@ app.get('/api/foodsafety-checklists/month/report.pdf', requireFoodSafetyFormsAss
         const resolvedTemplateCode = templateCode || (existing && existing.templateCode) || '';
         const resolvedTemplate = getTemplateByCode(resolvedTemplateCode);
         const url = `http://localhost:${PORT}/foodsafety-forms/checklists-report.html?template=${encodeURIComponent(resolvedTemplateCode)}&month=${encodeURIComponent(month)}&unit=${encodeURIComponent(unit)}&lang=${encodeURIComponent(lang || 'en')}&print=1`;
-        const browser = await puppeteer.launch();
-        const page = await browser.newPage();
-        const cookieHeader = req.headers.cookie;
-        if (cookieHeader) {
-            const pairs = cookieHeader.split(';').map(s => s.trim()).filter(Boolean);
-            const cookies = pairs.map(pair => {
-                const i = pair.indexOf('=');
-                return { name: pair.slice(0, i), value: pair.slice(i + 1), domain: 'localhost', path: '/' };
-            });
-            if (cookies.length) await page.setCookie(...cookies);
-        }
-        await page.goto(url, { waitUntil: 'networkidle0' });
-        await page.waitForFunction('window.__reportReady === true');
         const safeTemplateCode = (resolvedTemplateCode || 'foodsafety-form').replace(/[^A-Za-z0-9_-]+/g, '-');
         const fileName = `${safeTemplateCode}-${month}.pdf`;
-        const pdfBuffer = await page.pdf({
-            format: (resolvedTemplate.paper && resolvedTemplate.paper.paperSize) || 'A4',
-            landscape: Boolean(resolvedTemplate.paper && resolvedTemplate.paper.orientation === 'landscape'),
-            printBackground: true,
-            margin: { top:'8mm', right:'8mm', bottom:'8mm', left:'8mm' },
-            scale: 0.9
+        const pdfBuffer = await renderPdfFromLocalPage({
+            req,
+            url,
+            waitForExpression: 'window.__reportReady === true',
+            logLabel: 'foodsafety-report',
+            pdfOptions: {
+                format: (resolvedTemplate.paper && resolvedTemplate.paper.paperSize) || 'A4',
+                landscape: Boolean(resolvedTemplate.paper && resolvedTemplate.paper.orientation === 'landscape'),
+                printBackground: true,
+                margin: { top:'8mm', right:'8mm', bottom:'8mm', left:'8mm' },
+                scale: 0.9
+            }
         });
-        await browser.close();
         const storedBuffer = Buffer.from(pdfBuffer);
         await FoodSafetyChecklistMonth.updateOne(
             query,
@@ -558,7 +604,44 @@ app.get('/api/foodsafety-checklists/month/report.pdf', requireFoodSafetyFormsAss
         res.send(storedBuffer);
     } catch (err) {
         console.error('✗ [FoodSafety Checklists] PDF export failed:', err.message);
-        res.status(500).json({ error: 'PDF export failed' });
+        res.status(500).json({ error: `PDF export failed: ${err.message}` });
+    }
+});
+
+app.get('/api/tempmon/reports/monthly-unit.pdf', requireAuth, requirePermission('tempmon'), async (req, res) => {
+    try {
+        if (!puppeteer) return res.status(500).json({ error: 'PDF export requires puppeteer. Run: npm install puppeteer' });
+        const unitId = String(req.query.unitId || '').trim();
+        const month = String(req.query.month || '').trim();
+        if (!unitId || !month) return res.status(400).json({ error: 'unitId and month are required' });
+
+        const TempMonUnit = require('./models/TempMonUnit');
+        const unit = await TempMonUnit.findById(unitId).select('name').lean();
+        if (!unit) return res.status(404).json({ error: 'Unit not found' });
+
+        const url = `http://localhost:${PORT}/tempmon/report.html?unitId=${encodeURIComponent(unitId)}&month=${encodeURIComponent(month)}&print=1`;
+        const pdfBuffer = await renderPdfFromLocalPage({
+            req,
+            url,
+            waitForExpression: 'window.__reportReady === true',
+            logLabel: 'tempmon-monthly-report',
+            pdfOptions: {
+                format: 'A4',
+                landscape: true,
+                printBackground: true,
+                margin: { top:'8mm', right:'8mm', bottom:'8mm', left:'8mm' },
+                scale: 0.9
+            }
+        });
+
+        const safeUnit = String(unit.name || 'tempmon-unit').replace(/[^A-Za-z0-9_-]+/g, '-');
+        const fileName = `${safeUnit}-${month}.pdf`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.send(pdfBuffer);
+    } catch (err) {
+        console.error('✗ [TempMon] Monthly unit PDF export failed:', err.message);
+        res.status(500).json({ error: `PDF export failed: ${err.message}` });
     }
 });
 
@@ -699,7 +782,7 @@ function buildDateFilter(query) {
 }
 
 const EQUIPMENT_TEMPERATURES = ['chiller', 'freezer', 'food-warmer'];
-const EQUIPMENT_PAGE_URL = '/templog/departments/equipment-temperature.html';
+const EQUIPMENT_PAGE_URL = '/tempmon/';
 
 function normalizeEquipmentName(value) {
     const raw = String(value || '').trim().toLowerCase();

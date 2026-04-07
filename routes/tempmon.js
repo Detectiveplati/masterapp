@@ -932,6 +932,152 @@ router.get('/reports/compliance', requireAuth, async (req, res) => {
   }
 });
 
+const REPORT_TIMEZONE = process.env.TEMP_MON_REPORT_TZ || process.env.TZ || 'Asia/Singapore';
+const WINDOW_DEFS = {
+  am: { key: 'am', label: 'AM', startHour: 8, endHour: 11 },
+  pm: { key: 'pm', label: 'PM', startHour: 12, endHour: 17 }
+};
+
+function getTzParts(date, timeZone) {
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  const parts = Object.fromEntries(fmt.formatToParts(date).map((part) => [part.type, part.value]));
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month),
+    day: Number(parts.day),
+    hour: Number(parts.hour),
+    minute: Number(parts.minute),
+    dateKey: `${parts.year}-${parts.month}-${parts.day}`
+  };
+}
+
+function daysInMonth(monthKey) {
+  const match = /^(\d{4})-(\d{2})$/.exec(String(monthKey || ''));
+  if (!match) return 0;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function isReadingInRange(reading, unit) {
+  const value = Number(reading && reading.value);
+  return Number.isFinite(value) && value >= Number(unit.criticalMin) && value <= Number(unit.criticalMax);
+}
+
+function toSample(reading, unit, timeZone) {
+  if (!reading) return null;
+  const parts = getTzParts(new Date(reading.recordedAt), timeZone);
+  return {
+    readingId: String(reading._id),
+    value: Number(reading.value),
+    recordedAt: reading.recordedAt,
+    deviceId: reading.device && reading.device.deviceId ? reading.device.deviceId : '',
+    deviceLabel: reading.device && reading.device.label ? reading.device.label : '',
+    inRange: isReadingInRange(reading, unit),
+    hour: parts.hour,
+    minute: parts.minute,
+    timeLabel: `${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`
+  };
+}
+
+function selectWindowSample(readings, unit, timeZone) {
+  if (!Array.isArray(readings) || readings.length === 0) return null;
+  const firstInRange = readings.find((reading) => isReadingInRange(reading, unit));
+  return firstInRange ? toSample(firstInRange, unit, timeZone) : null;
+}
+
+async function buildMonthlyUnitReportData(unitId, monthKey, options = {}) {
+  const timeZone = options.timeZone || REPORT_TIMEZONE;
+  const unit = await TempMonUnit.findById(unitId).lean();
+  if (!unit || !unit.active) {
+    const err = new Error('Unit not found');
+    err.status = 404;
+    throw err;
+  }
+
+  if (!/^\d{4}-\d{2}$/.test(String(monthKey || ''))) {
+    const err = new Error('month must be in YYYY-MM format');
+    err.status = 400;
+    throw err;
+  }
+
+  const totalDays = daysInMonth(monthKey);
+  const [year, month] = monthKey.split('-').map(Number);
+  const rangeStart = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0) - 24 * 60 * 60 * 1000);
+  const rangeEnd = new Date(Date.UTC(year, month, 1, 0, 0, 0) + 24 * 60 * 60 * 1000);
+
+  const readings = await TempMonReading.find({
+    unit: unit._id,
+    recordedAt: { $gte: rangeStart, $lt: rangeEnd }
+  })
+    .populate('device', 'deviceId label')
+    .sort({ recordedAt: 1, _id: 1 })
+    .lean();
+
+  const dayMap = new Map();
+  readings.forEach((reading) => {
+    const parts = getTzParts(new Date(reading.recordedAt), timeZone);
+    const monthLabel = `${parts.year}-${String(parts.month).padStart(2, '0')}`;
+    if (monthLabel !== monthKey) return;
+    const bucket = dayMap.get(parts.dateKey) || { am: [], pm: [] };
+    if (parts.hour >= WINDOW_DEFS.am.startHour && parts.hour <= WINDOW_DEFS.am.endHour) bucket.am.push(reading);
+    if (parts.hour >= WINDOW_DEFS.pm.startHour && parts.hour <= WINDOW_DEFS.pm.endHour) bucket.pm.push(reading);
+    dayMap.set(parts.dateKey, bucket);
+  });
+
+  const days = [];
+  for (let day = 1; day <= totalDays; day++) {
+    const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const bucket = dayMap.get(dateKey) || { am: [], pm: [] };
+    days.push({
+      day,
+      dateKey,
+      am: selectWindowSample(bucket.am, unit, timeZone),
+      pm: selectWindowSample(bucket.pm, unit, timeZone)
+    });
+  }
+
+  return {
+    timeZone,
+    month: monthKey,
+    unit: {
+      _id: String(unit._id),
+      name: unit.name,
+      type: unit.type,
+      location: unit.location || '',
+      area: unit.area || '',
+      criticalMin: unit.criticalMin,
+      criticalMax: unit.criticalMax
+    },
+    windows: {
+      am: { label: WINDOW_DEFS.am.label, start: '08:00', end: '11:59' },
+      pm: { label: WINDOW_DEFS.pm.label, start: '12:00', end: '17:59' }
+    },
+    days
+  };
+}
+
+// GET /api/tempmon/reports/monthly-unit?unitId=&month=
+router.get('/reports/monthly-unit', requireAuth, async (req, res) => {
+  try {
+    const { unitId, month } = req.query;
+    if (!unitId) return res.status(400).json({ error: 'unitId is required' });
+    if (!month) return res.status(400).json({ error: 'month is required' });
+    const report = await buildMonthlyUnitReportData(unitId, month);
+    res.json(report);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message || 'Could not build monthly unit report' });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════════════
@@ -1499,3 +1645,4 @@ router.delete('/readings/:unitId', requireAuth, requireAdmin, async (req, res) =
 
 module.exports = router;
 module.exports.updateWarmerState = updateWarmerState;
+module.exports.buildMonthlyUnitReportData = buildMonthlyUnitReportData;

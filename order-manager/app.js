@@ -6,6 +6,9 @@ const runButton = document.getElementById("run-button");
 const statusEl = document.getElementById("status");
 const mappingNoticeEl = document.getElementById("mapping-notice");
 const summaryEl = document.getElementById("summary");
+const autoStatusMetaEl = document.getElementById("auto-status-meta");
+const autoStatusSummaryEl = document.getElementById("auto-status-summary");
+const autoStatusSlotsEl = document.getElementById("auto-status-slots");
 const workspaceEl = document.getElementById("workspace");
 const chefListEl = document.getElementById("chef-list");
 const chefSearchEl = document.getElementById("chef-search");
@@ -20,6 +23,7 @@ const timelineViewButtonEl = document.getElementById("timeline-view-button");
 const gridViewButtonEl = document.getElementById("grid-view-button");
 
 let latestResult = null;
+let autoStatus = null;
 let selectedChef = "";
 let currentViewMode = "timeline";
 const requestedDate = readRequestedDate();
@@ -30,6 +34,7 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   await runExtract(dateInput.value);
 });
+dateInput.addEventListener("change", () => loadAutoStatus(dateInput.value));
 
 chefSearchEl.addEventListener("input", renderChefList);
 dishSearchEl.addEventListener("input", renderSelectedChef);
@@ -37,18 +42,24 @@ timelineViewButtonEl.addEventListener("click", () => setViewMode("timeline"));
 gridViewButtonEl.addEventListener("click", () => setViewMode("grid"));
 
 loadLatest();
+loadAutoStatus(dateInput.value);
 
 async function loadLatest() {
-  const response = await fetch(`${API_BASE}/latest`);
-  const payload = await response.json();
-  if (payload.latestResult) {
-    latestResult = payload.latestResult;
-    if (latestResult.reportDate) {
-      dateInput.value = latestResult.reportDate;
+  try {
+    const response = await fetch(`${API_BASE}/latest`);
+    const payload = await response.json();
+    if (payload.latestResult) {
+      latestResult = payload.latestResult;
+      if (latestResult.reportDate) {
+        dateInput.value = latestResult.reportDate;
+      }
+      selectedChef = latestResult.chefs[0] || "";
+      renderAll();
+      setStatus(`Loaded ${formatLongDate(latestResult.reportDate)}. Extraction saved at ${formatDateTime(latestResult.extractedAt)}.`);
     }
-    selectedChef = latestResult.chefs[0] || "";
-    renderAll();
-    setStatus(`Loaded ${formatLongDate(latestResult.reportDate)}. Extraction saved at ${formatDateTime(latestResult.extractedAt)}.`);
+    await loadAutoStatus(dateInput.value);
+  } catch (error) {
+    setStatus(error.message || "Could not load latest extraction.", true);
   }
 }
 
@@ -73,11 +84,34 @@ async function runExtract(date) {
     }
     selectedChef = payload.chefs[0] || "";
     renderAll();
+    await loadAutoStatus(payload.reportDate || date);
     setStatus(`Extraction completed for ${formatLongDate(payload.reportDate || date)}.`);
   } catch (error) {
     setStatus(error.message, true);
   } finally {
     runButton.disabled = false;
+  }
+}
+
+async function loadAutoStatus(date) {
+  const reportDate = normalizeDateInput(date) || formatBrowserDate(new Date());
+  autoStatusMetaEl.textContent = "Loading auto-extraction status…";
+  autoStatusSummaryEl.innerHTML = "";
+  autoStatusSlotsEl.innerHTML = "";
+
+  try {
+    const response = await fetch(`${API_BASE}/status?date=${encodeURIComponent(reportDate)}`);
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error || "Could not load extraction status.");
+    }
+    autoStatus = payload;
+    renderAutoStatus();
+  } catch (error) {
+    autoStatus = null;
+    autoStatusMetaEl.textContent = error.message || "Could not load extraction status.";
+    autoStatusSummaryEl.innerHTML = "";
+    autoStatusSlotsEl.innerHTML = `<div class="empty-state">${escapeHtml(error.message || "Could not load extraction status.")}</div>`;
   }
 }
 
@@ -100,6 +134,40 @@ function renderAll() {
   renderMappingNotice();
   renderChefList();
   renderSelectedChef();
+}
+
+function renderAutoStatus() {
+  if (!autoStatus) {
+    autoStatusMetaEl.textContent = "Could not load extraction status.";
+    autoStatusSummaryEl.innerHTML = "";
+    autoStatusSlotsEl.innerHTML = "";
+    return;
+  }
+
+  const latestRunLabel = autoStatus.latestRun
+    ? `${formatRunType(autoStatus.latestRun.runType)} • ${formatDateTime(autoStatus.latestRun.extractedAt)}`
+    : "No extraction saved";
+  autoStatusMetaEl.textContent = `${formatLongDate(autoStatus.reportDate)} • ${autoStatus.timeZone}`;
+  autoStatusSummaryEl.innerHTML = [
+    summaryCard("Report Date", formatLongDate(autoStatus.reportDate)),
+    summaryCard("Latest Saved Run", latestRunLabel),
+    summaryCard("Auto Slots", autoStatus.expectedSlots.length || 0)
+  ].join("");
+  autoStatusSlotsEl.innerHTML = autoStatus.expectedSlots.length
+    ? autoStatus.expectedSlots.map((slot) => `
+        <article class="extractor-status-slot">
+          <div class="extractor-status-slot-copy">
+            <strong>${escapeHtml(slot.label)}</strong>
+            <span>${escapeHtml(buildSlotMeta(slot))}</span>
+          </div>
+          <div class="extractor-status-slot-side">
+            <span class="mapping-status-pill ${escapeHtml(statusClassName(slot.status))}">${escapeHtml(slot.statusLabel)}</span>
+            ${slot.finishedAt ? `<small>${escapeHtml(formatDateTime(slot.finishedAt))}</small>` : ""}
+            ${slot.error ? `<small class="extractor-status-error">${escapeHtml(slot.error)}</small>` : ""}
+          </div>
+        </article>
+      `).join("")
+    : `<div class="empty-state">No auto-extraction slots apply to this report date.</div>`;
 }
 
 function renderSummary() {
@@ -340,6 +408,23 @@ function formatRunType(value) {
   return "Manual";
 }
 
+function buildSlotMeta(slot) {
+  const parts = [`Scheduled ${slot.scheduledTime}`];
+  if (slot.runId) {
+    parts.push("Saved in MongoDB");
+  } else if (slot.status === "missing") {
+    parts.push("No auto record found");
+  }
+  return parts.join(" • ");
+}
+
+function statusClassName(status) {
+  if (status === "succeeded") return "mapped";
+  if (status === "failed") return "failed";
+  if (status === "not_due") return "not-due";
+  return "review";
+}
+
 function readRequestedDate() {
   const params = new URLSearchParams(window.location.search);
   const date = params.get("date") || "";
@@ -351,6 +436,11 @@ function formatBrowserDate(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function normalizeDateInput(value) {
+  const text = String(value || "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "";
 }
 
 function escapeHtml(value) {

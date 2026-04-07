@@ -92,8 +92,33 @@ async function markScheduledJobFailed(jobKey, scheduledFor, errorMessage) {
   );
 }
 
+async function listScheduledJobsForDate(scheduledFor) {
+  const collection = await getCollection();
+  if (!String(scheduledFor || "").trim()) {
+    return [];
+  }
+
+  return collection.find(
+    { scheduledFor: String(scheduledFor).trim() },
+    {
+      projection: {
+        jobKey: 1,
+        scheduledFor: 1,
+        status: 1,
+        startedAt: 1,
+        finishedAt: 1,
+        error: 1,
+        result: 1
+      }
+    }
+  )
+    .sort({ startedAt: -1 })
+    .toArray();
+}
+
 module.exports = {
   acquireScheduledJobLock,
+  listScheduledJobsForDate,
   markScheduledJobFailed,
   markScheduledJobSucceeded
 };
