@@ -49,14 +49,20 @@
     .sample-empty { color: #b0b7c0; font-style: italic; }
     .sample-good { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
     .sample-good .sample-val { color: var(--good); }
-    .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; font-size: 0.82rem; color: var(--muted, #5a616c); justify-content: center; }
-    .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
-    .legend .lg-good::before { background: var(--good); }
     .notice { margin-top: 12px; font-size: 0.84rem; color: var(--muted, #5a616c); }
+    .signoff { margin-top: 14px; font-size: 0.88rem; font-weight: 700; text-align: left; }
+    .signoff-line {
+      display: inline-block;
+      min-width: 220px;
+      height: 1.1em;
+      margin-left: 8px;
+      vertical-align: bottom;
+      border-bottom: 1px solid #000;
+    }
     .error-box { color: var(--bad); font-weight: 700; padding: 14px; border-radius: 10px; background: rgba(198,40,40,0.07); border: 1px solid rgba(198,40,40,0.18); }
     @media print {
       html, body {
-        width: 210mm !important;
+        width: auto !important;
         margin: 0 !important;
         padding: 0 !important;
         background: #fff !important;
@@ -80,8 +86,9 @@
         box-shadow: none;
         border-radius: 0;
         padding: 0;
-        width: 100%;
-        max-width: none;
+        width: calc(210mm - 6mm);
+        max-width: calc(210mm - 6mm);
+        margin: 0 auto;
         min-height: calc(297mm - 6mm);
         display: flex;
         flex-direction: column;
@@ -122,9 +129,9 @@
         justify-content: center;
         flex-direction: column;
       }
-      .legend { margin-top: 3px; font-size: 0.56rem; gap: 8px; }
-      .legend span::before { width: 9px; height: 9px; margin-right: 4px; }
       .notice { margin-top: 2px; font-size: 0.5rem; text-align: center; }
+      .signoff { margin-top: 3px; font-size: 0.6rem; text-align: left; }
+      .signoff-line { min-width: 42mm; margin-left: 4px; }
       @page { size: A4 portrait; margin: 3mm; }
     }
   </style>
@@ -239,10 +246,8 @@
         </thead>
         <tbody>${rows}</tbody>
       </table>
-      <div class="legend">
-        <span class="lg-good">In-range sampled reading</span>
-      </div>
-      <div class="notice">Selection rule: one stable random in-range reading is selected within each window. If no compliant reading exists in the window, the cell is left blank.</div>`;
+      <div class="notice">Selection rule: one stable random in-range reading is selected within each window. If no compliant reading exists in the window, the cell is left blank.</div>
+      <div class="signoff">Verified by<span class="signoff-line"></span></div>`;
   }
 
   async function loadUnits() {
