@@ -934,8 +934,8 @@ router.get('/reports/compliance', requireAuth, async (req, res) => {
 
 const REPORT_TIMEZONE = process.env.TEMP_MON_REPORT_TZ || process.env.TZ || 'Asia/Singapore';
 const WINDOW_DEFS = {
-  am: { key: 'am', label: 'AM', startHour: 8, endHour: 11 },
-  pm: { key: 'pm', label: 'PM', startHour: 12, endHour: 17 }
+  am: { key: 'am', label: 'AM', startHour: 6, endHour: 10 },
+  pm: { key: 'pm', label: 'PM', startHour: 16, endHour: 20 }
 };
 
 function getTzParts(date, timeZone) {
@@ -1058,8 +1058,8 @@ async function buildMonthlyUnitReportData(unitId, monthKey, options = {}) {
       criticalMax: unit.criticalMax
     },
     windows: {
-      am: { label: WINDOW_DEFS.am.label, start: '08:00', end: '11:59' },
-      pm: { label: WINDOW_DEFS.pm.label, start: '12:00', end: '17:59' }
+      am: { label: WINDOW_DEFS.am.label, start: '06:00', end: '10:59' },
+      pm: { label: WINDOW_DEFS.pm.label, start: '16:00', end: '20:59' }
     },
     days
   };

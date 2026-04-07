@@ -34,7 +34,7 @@
     .report-head { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; margin-bottom: 16px; }
     .report-title { font-size: 1.3rem; font-weight: 900; margin: 0; }
     .report-sub { margin: 4px 0 0; color: var(--muted, #5a616c); font-size: 0.92rem; }
-    .meta-grid { display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .meta-grid { display: grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
     .meta-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #fbfdff; }
     .meta-card strong { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted, #5a616c); margin-bottom: 4px; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -52,11 +52,25 @@
     .notice { margin-top: 12px; font-size: 0.84rem; color: var(--muted, #5a616c); }
     .error-box { color: var(--bad); font-weight: 700; padding: 14px; border-radius: 10px; background: rgba(198,40,40,0.07); border: 1px solid rgba(198,40,40,0.18); }
     @media print {
-      body { background: #fff; }
+      body { background: #fff; color: #000; }
       main { max-width: none; padding: 0; }
-      .nav-links, .filters { display: none !important; }
+      .nav-links, .filters, .controls { display: none !important; }
       .report-shell { border: none; box-shadow: none; border-radius: 0; padding: 0; }
-      @page { size: A4 landscape; margin: 8mm; }
+      .report-head { margin-bottom: 8px; gap: 10px; }
+      .report-title { font-size: 0.88rem; }
+      .report-sub { font-size: 0.64rem; margin-top: 2px; }
+      .meta-grid { gap: 4px; margin-bottom: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .meta-card { padding: 4px 6px; }
+      .meta-card strong { font-size: 0.54rem; margin-bottom: 1px; }
+      table { page-break-inside: avoid; }
+      th, td { padding: 2px 3px; font-size: 0.58rem; line-height: 1.05; }
+      td.day { width: 30px; }
+      .sample-val { font-size: 0.64rem; }
+      .sample-time { font-size: 0.48rem; }
+      .legend { margin-top: 4px; font-size: 0.56rem; gap: 8px; }
+      .legend span::before { width: 9px; height: 9px; margin-right: 4px; }
+      .notice { margin-top: 4px; font-size: 0.52rem; }
+      @page { size: A4 portrait; margin: 3mm; }
     }
   </style>
 </head>

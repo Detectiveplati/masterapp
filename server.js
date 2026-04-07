@@ -627,10 +627,11 @@ app.get('/api/tempmon/reports/monthly-unit.pdf', requireAuth, requirePermission(
             logLabel: 'tempmon-monthly-report',
             pdfOptions: {
                 format: 'A4',
-                landscape: true,
+                landscape: false,
                 printBackground: true,
-                margin: { top:'8mm', right:'8mm', bottom:'8mm', left:'8mm' },
-                scale: 0.9
+                margin: { top:'3mm', right:'3mm', bottom:'3mm', left:'3mm' },
+                scale: 0.74,
+                preferCSSPageSize: true
             }
         });
 

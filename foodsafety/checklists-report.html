@@ -32,7 +32,26 @@
     th, td { border: 1px solid var(--line); padding: 4px 3px; font-size: 9px; text-align: center; vertical-align: middle; }
     th.item, td.item { width: 28%; text-align: left; padding-left: 6px; font-weight: 600; }
     thead th { background: var(--head); font-weight: 700; }
-    .tick { color: var(--tick); font-weight: 700; font-size: 11px; }
+    .tick-box {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 11px;
+      height: 11px;
+      border: 1px solid #7aa7a1;
+      border-radius: 2px;
+      background: #fff;
+      vertical-align: middle;
+    }
+    .tick-box::after {
+      content: '';
+      width: 6px;
+      height: 3px;
+      border-left: 1.6px solid var(--tick);
+      border-bottom: 1.6px solid var(--tick);
+      transform: rotate(-45deg) translateY(-1px);
+      display: block;
+    }
     .remarks-row td { height: 20px; }
     .remarks-label { font-weight: 700; text-align: left; padding-left: 6px; }
     .signature-wrap { margin-top: 10mm; border: 1px solid var(--line); }
@@ -135,7 +154,7 @@
       section.items.forEach((item) => {
         html += '<tr><td class="item">' + esc(pickLabel(item, 'label') || item.label || '') + '</td>';
         const values = (state.checks && state.checks[item.id]) || [];
-        for (let i = 0; i < count; i++) html += '<td>' + (values[i] ? '<span class="tick">✓</span>' : '') + '</td>';
+        for (let i = 0; i < count; i++) html += '<td>' + (values[i] ? '<span class="tick-box" aria-label="Checked"></span>' : '') + '</td>';
         html += '</tr>';
       });
       html += '<tr class="remarks-row"><td class="remarks-label">' + esc(rt('remarks')) + '</td><td colspan="' + count + '">' + esc(state.remarks || '') + '</td></tr>';
