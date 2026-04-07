@@ -18,10 +18,7 @@
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: #f5f7fa; color: var(--ink, #17212b); font-family: "Segoe UI", Arial, sans-serif; }
-    main { max-width: 1180px; margin: 0 auto; padding: 24px 18px 40px; }
-    .nav-links { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
-    .nav-link { padding: 8px 14px; border-radius: 8px; background: #f0f0f0; color: var(--muted, #5a616c); font-size: 0.82rem; font-weight: 700; text-decoration: none; }
-    .nav-link.active { background: var(--accent, #2f6fed); color: #fff; }
+    main { max-width: 1240px; margin: 0 auto; padding: 24px 18px 40px; }
     .controls, .filters { background: #fff; border: 1px solid var(--border, #dde5ee); border-radius: 14px; box-shadow: 0 4px 18px rgba(0,0,0,0.05); }
     .controls { padding: 18px 20px; margin-bottom: 18px; }
     .filters { padding: 14px 16px; margin-bottom: 18px; display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
@@ -58,23 +55,33 @@
     .notice { margin-top: 12px; font-size: 0.84rem; color: var(--muted, #5a616c); }
     .error-box { color: var(--bad); font-weight: 700; padding: 14px; border-radius: 10px; background: rgba(198,40,40,0.07); border: 1px solid rgba(198,40,40,0.18); }
     @media print {
-      body { background: #fff; color: #000; }
+      html, body {
+        width: 210mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        color: #000;
+        overflow: visible !important;
+      }
+      #topnav, #sidenav, #sidenav-overlay, #notif-panel, footer { display: none !important; }
       main {
         max-width: none;
         width: 100%;
         min-height: calc(297mm - 6mm);
+        margin: 0 !important;
         padding: 0;
         display: flex;
         align-items: stretch;
         justify-content: center;
       }
-      .nav-links, .filters, .controls { display: none !important; }
+      .filters, .controls { display: none !important; }
       .report-shell {
         border: none;
         box-shadow: none;
         border-radius: 0;
         padding: 0;
         width: 100%;
+        max-width: none;
         min-height: calc(297mm - 6mm);
         display: flex;
         flex-direction: column;
@@ -124,15 +131,6 @@
 </head>
 <body data-module="tempmon">
 <main>
-  <div class="nav-links">
-    <a href="/tempmon/" class="nav-link">📡 Live Dashboard</a>
-    <a href="/tempmon/alerts.html" class="nav-link">🔴 Alerts</a>
-    <a href="/tempmon/report.html" class="nav-link active">🧾 Monthly Report</a>
-    <a href="/tempmon/setup.html" class="nav-link">⚙️ Setup</a>
-    <a href="/tempmon/setup.html?tab=gateway" class="nav-link">📶 LoRa Gateway</a>
-    <a href="/tempmon/gateway-log.html" class="nav-link">🪵 Raw Log</a>
-  </div>
-
   <section class="controls">
     <h1 class="report-title">🧾 Monthly Equipment Temperature Log</h1>
     <p class="report-sub">Per-unit ISO export driven by TempMon history. Each day shows one AM sample and one PM sample.</p>
@@ -222,7 +220,7 @@
         <div class="report-doc">
           <strong>${esc(ISO_FORM_NO)}</strong>
           <div>Revision ${esc(ISO_REVISION)}</div>
-          <div>Generated ${esc(new Date().toLocaleString('en-SG'))}</div>
+          <div>Generated ${esc(data.generatedAtLabel || '')}</div>
         </div>
       </div>
       <div class="meta-grid">
@@ -244,7 +242,7 @@
       <div class="legend">
         <span class="lg-good">In-range sampled reading</span>
       </div>
-      <div class="notice">Selection rule: earliest in-range reading within each window. If no compliant reading exists in the window, the cell is left blank.</div>`;
+      <div class="notice">Selection rule: one stable random in-range reading is selected within each window. If no compliant reading exists in the window, the cell is left blank.</div>`;
   }
 
   async function loadUnits() {
@@ -302,5 +300,6 @@
 
   init();
 </script>
+<script src="/js/shell.js"></script>
 </body>
 </html>

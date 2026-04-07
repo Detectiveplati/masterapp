@@ -988,10 +988,35 @@ function toSample(reading, unit, timeZone) {
   };
 }
 
-function selectWindowSample(readings, unit, timeZone) {
+function formatTzDateTime(date, timeZone) {
+  return new Intl.DateTimeFormat('en-SG', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(date);
+}
+
+function stableHash(input) {
+  let hash = 2166136261;
+  const str = String(input || '');
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function selectWindowSample(readings, unit, timeZone, seedKey) {
   if (!Array.isArray(readings) || readings.length === 0) return null;
-  const firstInRange = readings.find((reading) => isReadingInRange(reading, unit));
-  return firstInRange ? toSample(firstInRange, unit, timeZone) : null;
+  const inRangeReadings = readings.filter((reading) => isReadingInRange(reading, unit));
+  if (!inRangeReadings.length) return null;
+  const idx = stableHash(seedKey) % inRangeReadings.length;
+  return toSample(inRangeReadings[idx], unit, timeZone);
 }
 
 async function buildMonthlyUnitReportData(unitId, monthKey, options = {}) {
@@ -1011,6 +1036,7 @@ async function buildMonthlyUnitReportData(unitId, monthKey, options = {}) {
 
   const totalDays = daysInMonth(monthKey);
   const [year, month] = monthKey.split('-').map(Number);
+  const generatedAt = new Date();
   const rangeStart = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0) - 24 * 60 * 60 * 1000);
   const rangeEnd = new Date(Date.UTC(year, month, 1, 0, 0, 0) + 24 * 60 * 60 * 1000);
 
@@ -1040,13 +1066,15 @@ async function buildMonthlyUnitReportData(unitId, monthKey, options = {}) {
     days.push({
       day,
       dateKey,
-      am: selectWindowSample(bucket.am, unit, timeZone),
-      pm: selectWindowSample(bucket.pm, unit, timeZone)
+      am: selectWindowSample(bucket.am, unit, timeZone, `${unit._id}|${monthKey}|${dateKey}|am`),
+      pm: selectWindowSample(bucket.pm, unit, timeZone, `${unit._id}|${monthKey}|${dateKey}|pm`)
     });
   }
 
   return {
     timeZone,
+    generatedAt: generatedAt.toISOString(),
+    generatedAtLabel: formatTzDateTime(generatedAt, timeZone),
     month: monthKey,
     unit: {
       _id: String(unit._id),
