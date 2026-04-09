@@ -25,6 +25,7 @@
   --clr-templog:     #3aa6ff;
   --clr-procurement: #27ae60;
   --clr-foodsafety:  #16a085;
+  --clr-labelprint:  #8b5cf6;
   --clr-admin:       #7f5af0;
   --clr-pest:        #2e7d32;
   --clr-tempmon:     #e53935;
@@ -44,6 +45,7 @@ body[data-module="templog"]     { --accent: #3aa6ff; --accent-2: #0e7fd6; }
 body[data-module="order-manager"] { --accent: #ff7a18; --accent-2: #e74c3c; }
 body[data-module="procurement"] { --accent: #27ae60; --accent-2: #1e8449; }
 body[data-module="foodsafety"]  { --accent: #16a085; --accent-2: #1abc9c; }
+body[data-module="label-print"] { --accent: #8b5cf6; --accent-2: #6d28d9; }
 body[data-module="admin"]       { --accent: #7f5af0; --accent-2: #5e3fce; }
 body[data-module="hub"]         { --accent: #ff7a18; --accent-2: #e74c3c; }
 
@@ -227,6 +229,7 @@ body[data-module="templog"]     .sidenav-link.active { background: rgba(58,166,2
 body[data-module="order-manager"] .sidenav-link.active { background: rgba(255,122,24,0.08); border-left-color: #ff7a18; color: #ff7a18; }
 body[data-module="procurement"] .sidenav-link.active { background: rgba(39,174,96,0.07);   border-left-color: #27ae60; color: #27ae60; }
 body[data-module="foodsafety"]  .sidenav-link.active { background: rgba(22,160,133,0.07);  border-left-color: #16a085; color: #16a085; }
+body[data-module="label-print"] .sidenav-link.active { background: rgba(139,92,246,0.08); border-left-color: #8b5cf6; color: #8b5cf6; }
 body[data-module="admin"]       .sidenav-link.active { background: rgba(127,90,240,0.07);  border-left-color: #7f5af0; color: #7f5af0; }
 
 .nav-icon { font-size: 1.05rem; flex-shrink: 0; }
@@ -386,6 +389,7 @@ section h2 {
 .hub-card.order-manager::before { background: linear-gradient(90deg, #ff7a18, #e74c3c); }
 .hub-card.procurement::before { background: linear-gradient(90deg, var(--clr-procurement), #1e8449); }
 .hub-card.foodsafety::before  { background: linear-gradient(90deg, var(--clr-foodsafety), #1abc9c); }
+.hub-card.label-print::before { background: linear-gradient(90deg, var(--clr-labelprint), #6d28d9); }
 .hub-card.admin::before       { background: linear-gradient(90deg, var(--clr-admin), #5e3fce); }
 .hub-card.pest::before        { background: linear-gradient(90deg, var(--clr-pest), #66bb6a); }
 .hub-card.tempmon::before     { background: linear-gradient(90deg, var(--clr-tempmon), #ff7043); }
@@ -395,6 +399,7 @@ section h2 {
 .hub-card.order-manager .go-btn { color: #ff7a18; }
 .hub-card.procurement .go-btn { color: var(--clr-procurement); }
 .hub-card.foodsafety .go-btn  { color: var(--clr-foodsafety); }
+.hub-card.label-print .go-btn { color: var(--clr-labelprint); }
 .hub-card.admin .go-btn       { color: var(--clr-admin); }
 .hub-card.pest .go-btn        { color: var(--clr-pest); }
 .hub-card.tempmon .go-btn     { color: var(--clr-tempmon); }

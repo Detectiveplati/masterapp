@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Label Printing</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body data-module="label-print">
+  <main class="label-page">
+    <section class="hero-card">
+      <div class="hero-copy">
+        <p class="eyebrow">厨房使用 For Kitchen Staff</p>
+        <h1>标签打印 Label Printer</h1>
+        <p class="lede">Search the item, set quantity, and print. Printer setup stays hidden unless you need it.</p>
+      </div>
+    </section>
+
+    <section class="toolbar-card">
+      <div class="toolbar-main">
+        <label class="field search-field">
+          <span>Find Item Fast</span>
+          <div class="search-box">
+            <input id="search-input" type="search" placeholder="Type item name, SKU, or barcode">
+            <button id="clear-search-button" class="btn-ghost search-clear-button hidden" type="button">Clear</button>
+          </div>
+          <small class="search-helper">Search first. The list hides everything that does not match.</small>
+        </label>
+        <label class="field category-field">
+          <span>Category</span>
+          <select id="category-filter"></select>
+        </label>
+      </div>
+      <div class="toolbar-side">
+        <button id="printer-setup-button" class="btn-secondary" type="button">Printer Setup</button>
+        <button id="refresh-button" class="btn-ghost" type="button">Refresh</button>
+      </div>
+    </section>
+
+    <section class="panel-card launcher-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Label Launcher</h2>
+          <p>Find the item, adjust quantity, then print.</p>
+        </div>
+      </div>
+      <div id="search-summary" class="search-summary hidden"></div>
+      <div id="cards-empty" class="empty-state hidden">No label items match the current filters.</div>
+      <div id="card-groups" class="card-groups"></div>
+    </section>
+  </main>
+
+  <div id="options-modal" class="modal-shell hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="true"></div>
+    <section class="modal-card">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Print Options</p>
+          <h2 id="modal-title">Food item</h2>
+          <p id="modal-description" class="modal-description"></p>
+        </div>
+        <button id="modal-close-button" class="icon-button" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-grid">
+          <label class="field">
+            <span>Copies</span>
+            <input id="modal-quantity" type="number" min="1" max="999" step="1" inputmode="numeric">
+          </label>
+          <label class="field">
+            <span>Cut mode</span>
+            <select id="modal-cut-mode">
+              <option value="auto-cut">Auto cut</option>
+              <option value="no-cut">No cut</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Template</span>
+            <input id="modal-template" type="text" readonly>
+          </label>
+          <label class="field">
+            <span>Printer template #</span>
+            <input id="modal-template-number" type="text" readonly>
+          </label>
+        </div>
+        <div class="preview-card">
+          <div class="preview-meta">
+            <strong>Design target</strong>
+            <span id="modal-dimensions">58 x 62 mm</span>
+          </div>
+          <div class="preview-canvas">
+            <div class="preview-paper">
+              <span class="preview-name" id="preview-name">Food Item</span>
+              <span class="preview-subtitle" id="preview-subtitle">Description</span>
+              <span class="preview-quantity" id="preview-quantity">Qty 1</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="modal-print-button" class="btn-primary" type="button">Print Now</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="printer-modal" class="modal-shell hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-printer-modal="true"></div>
+    <section class="modal-card printer-modal-card">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Printer Setup</p>
+          <h2>Network printer widget</h2>
+          <p class="modal-description">Keep printer discovery and connection settings out of the main launcher. Configure the target printer here, then return to printing.</p>
+        </div>
+        <button id="printer-modal-close-button" class="icon-button" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="printer-widget">
+          <div class="status-grid printer-status-grid">
+            <article class="status-card">
+              <span class="status-label">Browser</span>
+              <strong id="bridge-status">Checking browser support…</strong>
+              <small id="bridge-meta">This tablet needs Chrome with Web Serial enabled.</small>
+            </article>
+            <article class="status-card">
+              <span class="status-label">Printer</span>
+              <strong id="printer-status">Not loaded</strong>
+              <small id="printer-meta">Pair the Brother printer on this tablet.</small>
+            </article>
+            <article class="status-card">
+              <span class="status-label">Templates</span>
+              <strong id="template-status">0 loaded</strong>
+              <small>58 x 29 mm, 58 x 62 mm, 58 x 100 mm</small>
+            </article>
+            <article class="status-card">
+              <span class="status-label">Last Action</span>
+              <strong id="action-status">Idle</strong>
+              <small id="action-meta">Waiting for print input.</small>
+            </article>
+          </div>
+          <div class="modal-grid">
+            <label class="field">
+              <span>Printer</span>
+              <select id="printer-select"></select>
+            </label>
+            <label class="field">
+              <span>Serial baud rate</span>
+              <input id="printer-baud-input" type="number" min="1" max="921600" step="1" value="9600">
+            </label>
+            <label class="field printer-modal-host-field">
+              <span>Bluetooth mode</span>
+              <input type="text" value="Android Chrome Web Serial" readonly>
+            </label>
+          </div>
+          <div class="printer-widget-actions">
+            <button id="save-printer-button" class="btn-secondary" type="button">Save Setup</button>
+            <button id="discover-button" class="btn-secondary" type="button">Pair Printer</button>
+            <button id="connect-button" class="btn-secondary" type="button">Reconnect</button>
+            <button id="test-print-button" class="btn-secondary" type="button">Test Print</button>
+          </div>
+          <div class="printer-widget-results">
+            <div id="discover-empty" class="empty-state">Pair a Brother printer from this tablet, then reconnect when you return to the page.</div>
+            <div id="discover-list" class="jobs-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="label-print-toast hidden"></div>
+
+  <script src="/js/shell.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

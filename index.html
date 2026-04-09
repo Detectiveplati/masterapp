@@ -39,6 +39,13 @@
         <div class="lock-note">🔒 No access — contact administrator</div>
         <div class="go-btn">Open Temp Log</div>
       </a>
+      <a href="/label-print/" class="hub-card label-print" data-perm="labelprint">
+        <div class="icon">🖨️</div>
+        <h2>Label Printing</h2>
+        <p>Tablet-first food label launcher for Brother QL-820NWB printing with preset templates, inline quantities, and direct print actions.</p>
+        <div class="lock-note">🔒 No access — contact administrator</div>
+        <div class="go-btn">Open Label Printing</div>
+      </a>
       <a href="/order-manager/" class="hub-card order-manager" data-perm="templog">
         <div class="icon">📋</div>
         <h2>Order Manager</h2>
@@ -114,10 +121,10 @@
           var perm = card.dataset.perm;
           if (perm === '__admin__') {
             card.style.display = isAdmin ? '' : 'none';
-          } else if (perm === 'foodsafetyforms') {
-            var allowedForms = Boolean(user.permissions && (user.permissions.foodsafetyforms || user.permissions.foodsafety));
-            if (!isAdmin && !allowedForms) card.style.display = 'none';
-          } else if (!isAdmin && !(user.permissions && user.permissions[perm])) {
+        } else if (perm === 'foodsafetyforms') {
+          var allowedForms = Boolean(user.permissions && (user.permissions.foodsafetyforms || user.permissions.foodsafety));
+          if (!isAdmin && !allowedForms) card.style.display = 'none';
+        } else if (!isAdmin && !(user.permissions && user.permissions[perm])) {
             card.style.display = 'none';
           }
         });

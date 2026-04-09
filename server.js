@@ -116,6 +116,7 @@ function isFormsOnlyUser(user) {
     return !(
         perms.maintenance ||
         perms.foodsafety ||
+        perms.labelprint ||
         perms.templog ||
         perms.procurement ||
         perms.pest ||
@@ -141,7 +142,7 @@ async function seedAdmin() {
                 displayName:  'Administrator',
                 position:     'Administrator',
                 role:         'admin',
-                permissions:  { maintenance: true, foodsafety: true, foodsafetyforms: true, templog: true, procurement: true, pest: true, tempmon: true, iso: true }
+                permissions:  { maintenance: true, foodsafety: true, foodsafetyforms: true, labelprint: true, templog: true, procurement: true, pest: true, tempmon: true, iso: true }
             });
             await admin.save();
             console.log('✓ [Auth] Default admin created — username: admin / password: admin123');
@@ -512,6 +513,10 @@ app.use('/maintenance', requirePageAccess('maintenance'), express.static(path.jo
 // TempLog — requires 'templog' permission
 app.use('/templog', requirePageAccess('templog'), express.static(path.join(__dirname, 'templog'), noCacheHtml));
 app.get('/templog', requirePageAccess('templog'), (req, res) => res.sendFile(path.join(__dirname, 'templog', 'index.html')));
+
+// Label Printing — requires 'labelprint' permission
+app.use('/label-print', requirePageAccess('labelprint'), express.static(path.join(__dirname, 'label-print'), noCacheHtml));
+app.get('/label-print', requirePageAccess('labelprint'), (req, res) => res.sendFile(path.join(__dirname, 'label-print', 'index.html')));
 
 // Order Manager — isolated order extraction and kitchen execution module
 app.use('/order-manager', requirePageAccess('templog'), express.static(path.join(__dirname, 'order-manager'), noCacheHtml));

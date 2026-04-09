@@ -4,7 +4,7 @@
  * Injects the top navbar and side navigation into every page.
  * Include at the END of <body>:  <script src="/js/shell.js"></script>
  *
- * Each page must declare its module via:  <body data-module="maintenance|foodsafety|foodsafetyforms|templog|order-manager|procurement|admin|hub">
+ * Each page must declare its module via:  <body data-module="maintenance|foodsafety|foodsafetyforms|label-print|templog|order-manager|procurement|admin|hub">
  *
  * Coordinates with auth-guard.js — reads window._authUser to avoid
  * a second round-trip to /api/auth/me.
@@ -56,7 +56,7 @@
       var mod = document.body ? document.body.getAttribute('data-module') : '';
       var THEME = {
         maintenance: '#ff7a18', foodsafety: '#16a085', foodsafetyforms: '#0f9d82', pest: '#2e7d32',
-        templog: '#3aa6ff', 'order-manager': '#ff7a18', procurement: '#27ae60', admin: '#7f5af0',
+        templog: '#3aa6ff', 'label-print': '#8b5cf6', 'order-manager': '#ff7a18', procurement: '#27ae60', admin: '#7f5af0',
         hub: '#ff7a18', settings: '#ff7a18'
       };
       var tc = document.createElement('meta');
@@ -78,6 +78,7 @@
     maintenance: { label: '🔧 Maintenance'       },
     foodsafety:  { label: '🥗 Food Safety'        },
     foodsafetyforms: { label: '🧾 Food Safety Forms' },
+    'label-print': { label: '🖨️ Label Printing' },
     pest:        { label: '🐭 Rat Trap Surveillance' },
     templog:     { label: '🌡️ Kitchen Logs'      },
     'order-manager': { label: '📋 Order Manager' },
@@ -128,6 +129,13 @@
         { href: '/pest/record.html',          label: '\u00a0\u00a0 ✏️ Record Findings' },
         { href: '/pest/report.html',          label: '\u00a0\u00a0 📋 Pest Report'     },
         { href: '/pest/stations.html',        label: '\u00a0\u00a0 📍 RTS Stations'    },
+      ],
+    },
+    {
+      icon: '🖨️', label: 'Label Printing', module: 'label-print',
+      href: '/label-print/', perm: 'labelprint',
+      children: [
+        { href: '/label-print/', label: '🏠 Print Launcher' },
       ],
     },
     {

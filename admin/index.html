@@ -124,6 +124,7 @@
                 <th>🔧 Maintenance</th>
                 <th>🍽️ Food Safety</th>
                 <th>🧾 Food Safety Forms</th>
+                <th>🖨️ Label Printing</th>
                 <th>🌡️ Temp Log</th>
                 <th>🛒 Procurement</th>
                 <th>🐭 Pest Control</th>
@@ -132,7 +133,7 @@
               </tr>
             </thead>
             <tbody id="permBody">
-              <tr><td colspan="9" style="color:var(--muted);text-align:center;padding:24px">Loading…</td></tr>
+              <tr><td colspan="10" style="color:var(--muted);text-align:center;padding:24px">Loading…</td></tr>
             </tbody>
           </table>
         </div>
@@ -192,7 +193,7 @@
   </div>
 
   <script>
-    const MODULES = ['maintenance','foodsafety','foodsafetyforms','templog','procurement','pest','tempmon','iso'];
+    const MODULES = ['maintenance','foodsafety','foodsafetyforms','labelprint','templog','procurement','pest','tempmon','iso'];
     let allUsers = [];
     let allTemplates = [];
     let allAssignments = [];
@@ -413,7 +414,7 @@
       const tbody = document.getElementById('permBody');
       const users = allUsers.filter(u => u.active);
       if (!users.length) {
-        tbody.innerHTML = '<tr><td colspan="9" style="color:var(--muted);text-align:center;padding:24px">No active users.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="color:var(--muted);text-align:center;padding:24px">No active users.</td></tr>';
         return;
       }
       tbody.innerHTML = users.map(u => {

@@ -43,6 +43,10 @@ const COLLECTIONS = {
     PEST_FINDINGS: "core_pest_findings",
     PEST_SESSIONS: "core_pest_sessions",
     PEST_STATIONS: "core_pest_stations",
+    LABEL_PRINT_ITEMS: "core_label_print_items",
+    LABEL_PRINT_JOBS: "core_label_print_jobs",
+    LABEL_PRINT_PRINTERS: "core_label_print_printers",
+    LABEL_PRINT_TEMPLATES: "core_label_print_templates",
     PROCUREMENT_REQUESTS: "core_procurement_requests",
     PUSH_SUBSCRIPTIONS: "core_push_subscriptions",
     TEMP_MON_ALERTS: "core_tempmon_alerts",
@@ -170,6 +174,26 @@ const COLLECTION_MIGRATION_PLAN = [
     owner: "core",
     targetCollection: COLLECTIONS.core.PEST_STATIONS,
     sources: [{ dbName: "central_kitchen_maintenance", collectionName: "peststations" }]
+  },
+  {
+    owner: "core",
+    targetCollection: COLLECTIONS.core.LABEL_PRINT_ITEMS,
+    sources: []
+  },
+  {
+    owner: "core",
+    targetCollection: COLLECTIONS.core.LABEL_PRINT_JOBS,
+    sources: []
+  },
+  {
+    owner: "core",
+    targetCollection: COLLECTIONS.core.LABEL_PRINT_PRINTERS,
+    sources: []
+  },
+  {
+    owner: "core",
+    targetCollection: COLLECTIONS.core.LABEL_PRINT_TEMPLATES,
+    sources: []
   },
   {
     owner: "core",

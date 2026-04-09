@@ -8,7 +8,7 @@ const BYPASS_USER = {
   id: 'bypass', username: 'bypass', displayName: 'Test Admin',
   position: 'Administrator',
   role: 'admin',
-  permissions: { maintenance: true, foodsafety: true, foodsafetyforms: true, templog: true, procurement: true, pest: true, tempmon: true, iso: true }
+  permissions: { maintenance: true, foodsafety: true, foodsafetyforms: true, labelprint: true, templog: true, procurement: true, pest: true, tempmon: true, iso: true }
 };
 
 // POST /api/auth/login
