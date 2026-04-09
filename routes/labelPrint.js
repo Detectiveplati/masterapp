@@ -579,7 +579,7 @@ function buildPtouchTemplateJob(printer, payload) {
   const chunks = [];
   chunks.push(Buffer.from([0x1B, 0x69, 0x61, 0x03])); // ESC i a 03h => P-touch Template mode
   chunks.push(Buffer.from('^II', 'ascii'));
-  chunks.push(Buffer.from(`^TS0${String(Math.floor(payload.printerTemplateNumber / 10) % 10)}${String(payload.printerTemplateNumber % 10)}`, 'ascii'));
+  chunks.push(Buffer.from(`^TS${formatTemplateNumber(payload.printerTemplateNumber)}`, 'ascii'));
   chunks.push(Buffer.from(`^CN${String(Math.floor(payload.copies / 100) % 10)}${String(Math.floor(payload.copies / 10) % 10)}${String(payload.copies % 10)}`, 'ascii'));
   chunks.push(Buffer.from(payload.cutMode === 'no-cut' ? '^CO0010' : '^CO1011', 'ascii'));
   chunks.push(Buffer.from('^FF', 'ascii'));
@@ -623,6 +623,12 @@ function clampPort(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 9100;
   return Math.max(1, Math.min(65535, Math.round(parsed)));
+}
+
+function formatTemplateNumber(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return '001';
+  return String(Math.max(1, Math.min(255, Math.round(parsed)))).padStart(3, '0');
 }
 
 function discoverPrivatePrefixes() {

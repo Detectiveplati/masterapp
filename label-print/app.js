@@ -24,6 +24,7 @@ const actionStatusEl = document.getElementById('action-status');
 const actionMetaEl = document.getElementById('action-meta');
 const testPrintButtonEl = document.getElementById('test-print-button');
 const refreshDiagnosticsButtonEl = document.getElementById('refresh-diagnostics-button');
+const openSiteSettingsButtonEl = document.getElementById('open-site-settings-button');
 const forgetPortsButtonEl = document.getElementById('forget-ports-button');
 const modalEl = document.getElementById('options-modal');
 const printerModalEl = document.getElementById('printer-modal');
@@ -87,6 +88,7 @@ connectButtonEl.addEventListener('click', reconnectBluetoothPrinter);
 refreshButtonEl.addEventListener('click', loadAll);
 testPrintButtonEl.addEventListener('click', requestTestPrint);
 refreshDiagnosticsButtonEl.addEventListener('click', refreshDiagnostics);
+openSiteSettingsButtonEl.addEventListener('click', openSiteSettings);
 forgetPortsButtonEl.addEventListener('click', forgetAuthorizedPorts);
 modalCloseButtonEl.addEventListener('click', closeOptionsModal);
 printerModalCloseButtonEl.addEventListener('click', closePrinterModal);
@@ -818,7 +820,7 @@ function buildPtouchTemplateJob(payload) {
   const chunks = [];
   chunks.push(Uint8Array.from([0x1B, 0x69, 0x61, 0x03]));
   chunks.push(asciiBytes('^II'));
-  chunks.push(asciiBytes(`^TS0${String(Math.floor(payload.printerTemplateNumber / 10) % 10)}${String(payload.printerTemplateNumber % 10)}`));
+  chunks.push(asciiBytes(`^TS${formatTemplateNumber(payload.printerTemplateNumber)}`));
   chunks.push(asciiBytes(`^CN${String(Math.floor(payload.copies / 100) % 10)}${String(Math.floor(payload.copies / 10) % 10)}${String(payload.copies % 10)}`));
   chunks.push(asciiBytes(payload.cutMode === 'no-cut' ? '^CO0010' : '^CO1011'));
   chunks.push(asciiBytes('^FF'));
@@ -971,6 +973,14 @@ function clearSerialError() {
   state.serial.lastErrorAt = null;
 }
 
+function openSiteSettings() {
+  const target = `chrome://settings/content/siteDetails?site=${encodeURIComponent(window.location.origin)}`;
+  const popup = window.open(target, '_blank', 'noopener');
+  if (!popup) {
+    showToast('Could not open Chrome site settings automatically. Open Chrome settings for this site manually.');
+  }
+}
+
 function decorateSerialOpenError(error) {
   const message = String(error && (error.message || error.name) || 'Could not open serial port.');
   if (/failed to open serial port/i.test(message)) {
@@ -989,4 +999,10 @@ function buildReconnectErrorMessage(error) {
     return 'Failed to reopen the Bluetooth printer after the connection changed. Tap Pair Printer again.';
   }
   return message;
+}
+
+function formatTemplateNumber(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return '001';
+  return String(Math.max(1, Math.min(255, Math.round(parsed)))).padStart(3, '0');
 }
