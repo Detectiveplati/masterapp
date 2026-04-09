@@ -560,9 +560,10 @@ async function reconnectBluetoothPrinter() {
     showToast('Bluetooth printer connected.');
   } catch (error) {
     console.error(error);
+    await resetSerialStateAfterFailure();
     setSerialError(error);
     updateDiagnostics();
-    showToast(error.message || 'Could not reconnect the Bluetooth printer.');
+    showToast(buildReconnectErrorMessage(error));
   }
 }
 
@@ -740,8 +741,13 @@ async function ensureBluetoothConnection() {
   if (!port) {
     throw new Error('No paired printer found. Tap Pair Printer first.');
   }
-  await connectToPort(port);
-  return port;
+  try {
+    await connectToPort(port);
+    return port;
+  } catch (error) {
+    await resetSerialStateAfterFailure();
+    throw new Error(buildReconnectErrorMessage(error));
+  }
 }
 
 async function connectToPort(port) {
@@ -752,13 +758,17 @@ async function connectToPort(port) {
 
   const needsOpen = !port.readable || !port.writable;
   if (needsOpen) {
-    await port.open({
-      baudRate: getSerialBaudRate(),
-      dataBits: 8,
-      stopBits: 1,
-      parity: 'none',
-      flowControl: 'none'
-    });
+    try {
+      await port.open({
+        baudRate: getSerialBaudRate(),
+        dataBits: 8,
+        stopBits: 1,
+        parity: 'none',
+        flowControl: 'none'
+      });
+    } catch (error) {
+      throw decorateSerialOpenError(error);
+    }
   }
 
   state.serial.port = port;
@@ -766,6 +776,14 @@ async function connectToPort(port) {
   state.serial.connected = true;
   await refreshBridgeStatus();
   updateDiagnostics();
+}
+
+async function resetSerialStateAfterFailure() {
+  await closeCurrentPort().catch(() => {});
+  state.authorizedPorts = [];
+  await refreshBridgeStatus().catch(() => {});
+  renderAuthorizedPorts();
+  updatePrinterStatus();
 }
 
 async function closeCurrentPort() {
@@ -911,4 +929,24 @@ function setSerialError(error) {
 function clearSerialError() {
   state.serial.lastError = '';
   state.serial.lastErrorAt = null;
+}
+
+function decorateSerialOpenError(error) {
+  const message = String(error && (error.message || error.name) || 'Could not open serial port.');
+  if (/failed to open serial port/i.test(message)) {
+    return new Error('Failed to open serial port. Bluetooth may have reset. Tap Pair Printer again.');
+  }
+  if (/networkerror/i.test(message)) {
+    return new Error('Bluetooth connection was interrupted. Turn Bluetooth back on, then tap Pair Printer again.');
+  }
+  return error instanceof Error ? error : new Error(message);
+}
+
+function buildReconnectErrorMessage(error) {
+  const message = String(error && (error.message || error.name) || 'Could not reconnect the Bluetooth printer.');
+  if (/pair printer again/i.test(message)) return message;
+  if (/failed to open serial port/i.test(message)) {
+    return 'Failed to reopen the Bluetooth printer after the connection changed. Tap Pair Printer again.';
+  }
+  return message;
 }
