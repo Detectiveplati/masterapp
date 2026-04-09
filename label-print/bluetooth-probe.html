@@ -90,6 +90,11 @@
           <small id="origin-value">Origin unknown</small>
         </article>
         <article class="probe-item">
+          <span>Display Mode</span>
+          <strong id="display-mode-value">Checking…</strong>
+          <small id="display-mode-meta">Runtime mode unknown</small>
+        </article>
+        <article class="probe-item">
           <span>Web Serial</span>
           <strong id="web-serial-value">Checking…</strong>
           <small id="web-serial-meta">Capability unknown</small>
@@ -103,6 +108,11 @@
           <span>Authorized Serial Ports</span>
           <strong id="authorized-ports-value">0</strong>
           <small id="authorized-ports-meta">No ports queried yet</small>
+        </article>
+        <article class="probe-item">
+          <span>Page State</span>
+          <strong id="page-state-value">Checking…</strong>
+          <small id="page-state-meta">Visibility unknown</small>
         </article>
       </div>
     </section>
@@ -132,12 +142,16 @@
   <script>
     const secureContextValueEl = document.getElementById('secure-context-value');
     const originValueEl = document.getElementById('origin-value');
+    const displayModeValueEl = document.getElementById('display-mode-value');
+    const displayModeMetaEl = document.getElementById('display-mode-meta');
     const webSerialValueEl = document.getElementById('web-serial-value');
     const webSerialMetaEl = document.getElementById('web-serial-meta');
     const webBluetoothValueEl = document.getElementById('web-bluetooth-value');
     const webBluetoothMetaEl = document.getElementById('web-bluetooth-meta');
     const authorizedPortsValueEl = document.getElementById('authorized-ports-value');
     const authorizedPortsMetaEl = document.getElementById('authorized-ports-meta');
+    const pageStateValueEl = document.getElementById('page-state-value');
+    const pageStateMetaEl = document.getElementById('page-state-meta');
     const portListEl = document.getElementById('port-list');
     const logBoxEl = document.getElementById('log-box');
 
@@ -145,12 +159,18 @@
     document.getElementById('serial-request-button').addEventListener('click', requestSerialPort);
     document.getElementById('serial-list-button').addEventListener('click', listAuthorizedPorts);
     document.getElementById('bluetooth-request-button').addEventListener('click', requestBluetoothDevice);
+    document.addEventListener('visibilitychange', refreshState);
+    window.addEventListener('focus', refreshState);
+    window.addEventListener('pageshow', refreshState);
 
     refreshState();
 
     async function refreshState() {
       secureContextValueEl.textContent = window.isSecureContext ? 'Yes' : 'No';
       originValueEl.textContent = window.location.origin;
+      const displayMode = getDisplayMode();
+      displayModeValueEl.textContent = displayMode.label;
+      displayModeMetaEl.textContent = displayMode.meta;
 
       webSerialValueEl.textContent = navigator.serial ? 'Available' : 'Unavailable';
       webSerialMetaEl.textContent = navigator.serial
@@ -161,6 +181,8 @@
       webBluetoothMetaEl.textContent = navigator.bluetooth
         ? 'navigator.bluetooth is present'
         : 'navigator.bluetooth is not present in this browser';
+      pageStateValueEl.textContent = document.visibilityState === 'visible' ? 'Visible' : document.visibilityState;
+      pageStateMetaEl.textContent = `Focused: ${document.hasFocus() ? 'Yes' : 'No'} · Referrer: ${document.referrer || 'Direct open'}`;
 
       await listAuthorizedPorts({ silent: true });
       log('State refreshed');
@@ -243,6 +265,23 @@
       if (info.bluetoothServiceClassId) return `Bluetooth service ${info.bluetoothServiceClassId}`;
       if (info.usbVendorId || info.usbProductId) return `USB ${info.usbVendorId || ''}:${info.usbProductId || ''}`;
       return 'Serial port';
+    }
+
+    function getDisplayMode() {
+      const standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+      const minimalUi = window.matchMedia && window.matchMedia('(display-mode: minimal-ui)').matches;
+      const fullscreen = window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches;
+      const browser = window.matchMedia && window.matchMedia('(display-mode: browser)').matches;
+      const navigatorStandalone = typeof navigator.standalone === 'boolean' ? navigator.standalone : null;
+      let label = 'Unknown';
+      if (standalone) label = 'Standalone app';
+      else if (minimalUi) label = 'Minimal UI';
+      else if (fullscreen) label = 'Fullscreen';
+      else if (browser) label = 'Browser tab';
+      return {
+        label,
+        meta: `matchMedia: ${label} · navigator.standalone: ${navigatorStandalone === null ? 'n/a' : navigatorStandalone ? 'true' : 'false'}`
+      };
     }
 
     function log(message) {

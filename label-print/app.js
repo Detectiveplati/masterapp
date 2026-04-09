@@ -44,10 +44,14 @@ const printerModalCloseButtonEl = document.getElementById('printer-modal-close-b
 const toastEl = document.getElementById('toast');
 const diagSecureContextEl = document.getElementById('diag-secure-context');
 const diagOriginEl = document.getElementById('diag-origin');
+const diagDisplayModeEl = document.getElementById('diag-display-mode');
+const diagDisplayModeMetaEl = document.getElementById('diag-display-mode-meta');
 const diagWebSerialEl = document.getElementById('diag-web-serial');
 const diagWebSerialMetaEl = document.getElementById('diag-web-serial-meta');
 const diagAuthorizedPortsEl = document.getElementById('diag-authorized-ports');
 const diagAuthorizedPortsMetaEl = document.getElementById('diag-authorized-ports-meta');
+const diagPageStateEl = document.getElementById('diag-page-state');
+const diagPageStateMetaEl = document.getElementById('diag-page-state-meta');
 const diagLastErrorEl = document.getElementById('diag-last-error');
 const diagLastErrorMetaEl = document.getElementById('diag-last-error-meta');
 
@@ -108,6 +112,9 @@ document.querySelectorAll('[data-close-modal="true"]').forEach((el) => el.addEve
 document.querySelectorAll('[data-close-printer-modal="true"]').forEach((el) => el.addEventListener('click', closePrinterModal));
 
 initSerialEvents();
+document.addEventListener('visibilitychange', updateDiagnostics);
+window.addEventListener('focus', updateDiagnostics);
+window.addEventListener('pageshow', updateDiagnostics);
 loadAll();
 
 async function loadAll() {
@@ -947,20 +954,48 @@ function updateDiagnostics() {
   diagSecureContextEl.textContent = window.isSecureContext ? 'Yes' : 'No';
   diagOriginEl.textContent = window.location.origin;
 
+  const displayMode = getDisplayMode();
+  diagDisplayModeEl.textContent = displayMode.label;
+  diagDisplayModeMetaEl.textContent = displayMode.meta;
+
   diagWebSerialEl.textContent = navigator.serial ? 'Available' : 'Unavailable';
   diagWebSerialMetaEl.textContent = navigator.serial
-    ? `User agent: ${navigator.userAgent.slice(0, 72)}${navigator.userAgent.length > 72 ? '…' : ''}`
-    : 'This browser does not expose navigator.serial';
+      ? `User agent: ${navigator.userAgent.slice(0, 72)}${navigator.userAgent.length > 72 ? '…' : ''}`
+      : 'This browser does not expose navigator.serial';
 
   diagAuthorizedPortsEl.textContent = String(state.authorizedPorts.length);
   diagAuthorizedPortsMetaEl.textContent = state.authorizedPorts.length
     ? state.authorizedPorts.map((entry) => entry.label).join(' | ')
     : 'No authorized serial ports returned by the browser';
 
+  diagPageStateEl.textContent = document.visibilityState === 'visible' ? 'Visible' : document.visibilityState;
+  diagPageStateMetaEl.textContent = `Focused: ${document.hasFocus() ? 'Yes' : 'No'} · Referrer: ${document.referrer || 'Direct open'}`;
+
   diagLastErrorEl.textContent = state.serial.lastError ? 'Captured' : 'None';
   diagLastErrorMetaEl.textContent = state.serial.lastError
     ? `${state.serial.lastErrorAt || ''} ${state.serial.lastError}`.trim()
     : 'No serial errors captured';
+}
+
+function getDisplayMode() {
+  const standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  const minimalUi = window.matchMedia && window.matchMedia('(display-mode: minimal-ui)').matches;
+  const fullscreen = window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches;
+  const browser = window.matchMedia && window.matchMedia('(display-mode: browser)').matches;
+  const navigatorStandalone = typeof navigator.standalone === 'boolean' ? navigator.standalone : null;
+  let label = 'Unknown';
+  if (standalone) label = 'Standalone app';
+  else if (minimalUi) label = 'Minimal UI';
+  else if (fullscreen) label = 'Fullscreen';
+  else if (browser) label = 'Browser tab';
+  const metaParts = [
+    `matchMedia: ${label}`,
+    `navigator.standalone: ${navigatorStandalone === null ? 'n/a' : navigatorStandalone ? 'true' : 'false'}`
+  ];
+  return {
+    label,
+    meta: metaParts.join(' · ')
+  };
 }
 
 function setSerialError(error) {
