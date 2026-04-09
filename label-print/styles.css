@@ -79,7 +79,12 @@ body[data-module="label-print"] {
 .item-card:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(18, 19, 22, 0.1); }
 .item-card[data-cut-mode="auto-cut"] { border-color: rgba(14, 116, 144, 0.2); }
 .item-card[data-cut-mode="no-cut"] { border-color: rgba(217, 119, 6, 0.24); }
+.item-card[data-printable="no"] {
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border-style: dashed;
+}
 .item-body { display: grid; gap: 8px; cursor: pointer; }
+.item-card[data-printable="no"] .item-body { cursor: default; }
 .item-body h3 { font-size: 1.26rem; line-height: 1.12; margin: 0; color: #111827; }
 .item-body p { color: #667085; line-height: 1.45; min-height: 46px; margin: 0; font-size: 0.98rem; }
 .item-meta { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -94,6 +99,12 @@ body[data-module="label-print"] {
 .item-actions { justify-content: space-between; gap: 12px; }
 .print-button { flex: 1 1 auto; }
 .print-button { min-height: 52px; font-size: 1.02rem; box-shadow: 0 12px 24px rgba(217, 119, 6, 0.22); }
+.print-button:disabled {
+  background: #e5e7eb;
+  color: #6b7280;
+  box-shadow: none;
+  cursor: not-allowed;
+}
 .option-button { min-height: 52px; padding-inline: 14px; background: #f4f4f5; color: #52525b; }
 .job-card { padding: 14px; border-radius: 16px; background: #fcfcff; border: 1px solid rgba(18, 19, 22, 0.08); display: grid; gap: 8px; }
 .job-card strong { font-size: 0.98rem; }

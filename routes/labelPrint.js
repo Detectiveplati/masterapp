@@ -2,6 +2,7 @@
 
 const express = require('express');
 const dns = require('dns');
+const fs = require('fs');
 const net = require('net');
 const os = require('os');
 const path = require('path');
@@ -19,6 +20,7 @@ router.use(requireAuth, requirePermission('labelprint'));
 let defaultsPromise = null;
 const PLACEHOLDER_COUNT = 10;
 const EXCEL_SOURCE_PATH = path.join(process.env.USERPROFILE || 'C:\\Users\\Zack', 'Desktop', '#05-27', 'Sauce Department.xlsx');
+const BUNDLED_CATALOG_PATH = path.join(__dirname, '..', 'label-print', 'data', 'catalog.json');
 
 async function ensureDefaults() {
   if (defaultsPromise) return defaultsPromise;
@@ -58,64 +60,111 @@ async function syncCatalog() {
     return;
   }
 
+  const bundledCatalog = readBundledCatalog();
+  if (bundledCatalog.items.length) {
+    await replaceCatalog(bundledCatalog);
+    return;
+  }
+
   await replaceCatalog(buildPlaceholderCatalog());
 }
 
 function readCatalogFromExcel() {
-  if (!EXCEL_SOURCE_PATH || !require('fs').existsSync(EXCEL_SOURCE_PATH)) {
+  if (!EXCEL_SOURCE_PATH || !fs.existsSync(EXCEL_SOURCE_PATH)) {
     return { templates: [], items: [] };
   }
 
   const workbook = xlsx.readFile(EXCEL_SOURCE_PATH);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+  return buildCatalogFromRows(rows);
+}
+
+function readBundledCatalog() {
+  if (!fs.existsSync(BUNDLED_CATALOG_PATH)) {
+    return { templates: [], items: [] };
+  }
+  try {
+    const payload = JSON.parse(fs.readFileSync(BUNDLED_CATALOG_PATH, 'utf8'));
+    return {
+      templates: Array.isArray(payload.templates) ? payload.templates : [],
+      items: Array.isArray(payload.items) ? payload.items : []
+    };
+  } catch (_err) {
+    return { templates: [], items: [] };
+  }
+}
+
+function buildCatalogFromRows(rows) {
   const templates = [];
   const items = [];
+  const seenTemplates = new Set();
 
   for (const row of rows) {
-    const templateNumber = Number(row['Template No.']);
-    const assignmentStatus = String(row['Assignment Status'] || '').trim().toUpperCase();
-    const englishName = String(row['English 英文'] || '').trim();
-    if (!Number.isFinite(templateNumber) || templateNumber <= 0) continue;
+    const englishName = String(readColumn(row, (normalized) => normalized.startsWith('english')) || '').trim();
     if (!englishName) continue;
-    if (assignmentStatus && assignmentStatus !== 'MATCHED') continue;
 
-    const chineseName = String(row['Chinese 华文 '] || '').trim();
-    const storage = String(row['Storage Condition 储存方式'] || '').trim();
-    const shelfLife = String(row['SHELF LIFE'] || '').trim();
-    const templateFile = String(row['Template File'] || '').trim();
-    const templateFolder = String(row['Template Folder'] || '').trim();
-    const templateKey = `template-${templateNumber}`;
+    const chineseName = String(readColumn(row, (normalized) => normalized.startsWith('chinese')) || '').trim();
+    const storage = String(readColumn(row, (normalized) => normalized.includes('storagecondition')) || '').trim();
+    const shelfLife = String(readColumn(row, (normalized) => normalized === 'shelflife') || '').trim();
+    const location = String(readColumn(row, (normalized) => normalized === 'location') || '').trim();
+    const templateFile = String(readColumn(row, (normalized) => normalized === 'templatefile') || '').trim();
+    const assignmentStatus = String(readColumn(row, (normalized) => normalized === 'assignmentstatus') || '').trim().toUpperCase();
+
+    let templateNumber = Number(readColumn(row, (normalized) => normalized === 'templateno'));
+    if ((!Number.isFinite(templateNumber) || templateNumber <= 0) && templateFile) {
+      const match = templateFile.match(/^(\d{1,3})\./);
+      if (match) templateNumber = Number(match[1]);
+    }
+
+    const hasTemplate = Number.isFinite(templateNumber) && templateNumber > 0;
+    const templateKey = hasTemplate ? `template-${templateNumber}` : `template-na-${items.length + 1}`;
     const displayDescription = [chineseName, storage, shelfLife].filter(Boolean).join(' · ');
 
-    templates.push({
-      key: templateKey,
-      name: `Template ${templateNumber}`,
-      description: templateFile || `Assigned from Sauce Department.xlsx as printer template ${templateNumber}.`,
-      printerTemplateNumber: templateNumber,
-      mediaWidthMm: 62,
-      printWidthMm: 58,
-      heightMm: 62,
-      fieldSchema: [],
-      preview: { widthMm: 58, heightMm: 62 },
-      active: true
-    });
+    if (hasTemplate && !seenTemplates.has(templateKey)) {
+      seenTemplates.add(templateKey);
+      templates.push({
+        key: templateKey,
+        name: `Template ${templateNumber}`,
+        description: templateFile || `Assigned from Sauce Department.xlsx as printer template ${templateNumber}.`,
+        printerTemplateNumber: templateNumber,
+        mediaWidthMm: 62,
+        printWidthMm: 58,
+        heightMm: 62,
+        fieldSchema: [],
+        preview: { widthMm: 58, heightMm: 62 },
+        active: true
+      });
+    }
 
     items.push({
       name: englishName,
-      description: displayDescription || `Assigned to printer template ${templateNumber}.`,
+      description: displayDescription || `Location ${location || 'N/A'}`,
       category: normalizeCategory(storage, shelfLife),
       templateKey,
-      sku: templateFile || `TEMPLATE-${templateNumber}`,
+      sku: templateFile || 'NA',
       barcode: '',
       defaultQuantity: 1,
       defaultCutMode: 'auto-cut',
-      defaultFieldValues: {},
+      defaultFieldValues: {
+        assignmentStatus,
+        location,
+        hasTemplate
+      },
       active: true
     });
   }
 
   return { templates, items };
+}
+
+function readColumn(row, matcher) {
+  const key = Object.keys(row).find((rawKey) => matcher(normalizeHeader(rawKey), rawKey));
+  return key ? row[key] : '';
+}
+
+function normalizeHeader(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
 function buildPlaceholderCatalog() {

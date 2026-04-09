@@ -261,14 +261,16 @@ function renderAuthorizedPorts() {
 }
 
 function renderItemCard(item) {
+  const template = findTemplate(item.templateKey);
   const quantity = getItemQuantity(item._id);
   const cutMode = item.defaultCutMode || 'auto-cut';
   const supportText = buildSupportText(item);
+  const printable = Boolean(template);
   return `
-    <article class="item-card" data-cut-mode="${escapeHtml(cutMode)}">
-      <div class="item-body" data-item-id="${escapeHtml(item._id)}" title="Quick print using saved defaults">
+    <article class="item-card" data-cut-mode="${escapeHtml(cutMode)}" data-printable="${printable ? 'yes' : 'no'}">
+      <div class="item-body" data-item-id="${escapeHtml(item._id)}" title="${printable ? 'Quick print using saved defaults' : 'No template is mapped for this item'}">
         <div class="item-meta">
-          <span class="pill">${cutMode === 'no-cut' ? 'No cut' : 'Auto cut'}</span>
+          <span class="pill">${printable ? (cutMode === 'no-cut' ? 'No cut' : 'Auto cut') : 'No template'}</span>
         </div>
         <h3>${escapeHtml(item.name)}</h3>
         <p>${escapeHtml(item.description || '')}</p>
@@ -284,7 +286,7 @@ function renderItemCard(item) {
       </div>
       <div class="item-actions">
         <button class="option-button" type="button" data-action="options" data-item-id="${escapeHtml(item._id)}">Options</button>
-        <button class="print-button" type="button" data-action="print" data-item-id="${escapeHtml(item._id)}">Print</button>
+        <button class="print-button" type="button" data-action="print" data-item-id="${escapeHtml(item._id)}" ${printable ? '' : 'disabled'}>${printable ? 'Print' : 'Unavailable'}</button>
       </div>
     </article>
   `;
@@ -333,7 +335,7 @@ function bindCardEvents() {
   cardGroupsEl.querySelectorAll('.item-body').forEach((body) => {
     body.addEventListener('click', () => {
       const item = findItem(body.dataset.itemId);
-      if (item) {
+      if (item && findTemplate(item.templateKey)) {
         runPrint(item, {
           quantity: getItemQuantity(item._id),
           cutMode: item.defaultCutMode || 'auto-cut',
