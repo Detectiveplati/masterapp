@@ -115,6 +115,8 @@ initSerialEvents();
 document.addEventListener('visibilitychange', updateDiagnostics);
 window.addEventListener('focus', updateDiagnostics);
 window.addEventListener('pageshow', updateDiagnostics);
+window.addEventListener('pagehide', handlePageShutdown);
+window.addEventListener('beforeunload', handlePageShutdown);
 loadAll();
 
 async function loadAll() {
@@ -799,17 +801,23 @@ async function resetSerialStateAfterFailure() {
 
 async function closeCurrentPort() {
   if (!state.serial.port) return;
+  const port = state.serial.port;
   try {
-    if (state.serial.port.writable && state.serial.port.writable.locked) {
+    if (port.writable && port.writable.locked) {
       return;
     }
-    await state.serial.port.close();
+    await port.close();
   } finally {
     state.serial.port = null;
     state.serial.info = null;
     state.serial.connected = false;
     updateDiagnostics();
   }
+}
+
+function handlePageShutdown() {
+  if (!state.serial.port) return;
+  closeCurrentPort().catch(() => {});
 }
 
 async function sendTemplateToBluetooth(payload) {
