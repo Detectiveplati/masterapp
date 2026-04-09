@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bluetooth Probe</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    body[data-module="label-print-probe"] {
+      background:
+        radial-gradient(900px 460px at 8% -10%, rgba(217, 119, 6, 0.15), transparent 58%),
+        radial-gradient(720px 420px at 88% 0%, rgba(14, 116, 144, 0.1), transparent 52%),
+        var(--bg);
+    }
+    .probe-page { display: grid; gap: 18px; padding: 24px; }
+    .probe-card {
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid rgba(18, 19, 22, 0.08);
+      box-shadow: 0 16px 40px rgba(18, 19, 22, 0.08);
+      border-radius: 22px;
+      padding: 20px 22px;
+    }
+    .probe-head h1 { margin: 0; font-size: clamp(1.55rem, 2.8vw, 2.3rem); line-height: 1.08; }
+    .probe-head p { margin: 10px 0 0; color: #475467; line-height: 1.55; }
+    .eyebrow { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #b45309; margin-bottom: 8px; }
+    .probe-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .probe-item {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: #fff;
+      border: 1px solid rgba(18, 19, 22, 0.08);
+    }
+    .probe-item span { display: block; color: #667085; font-size: 0.78rem; font-weight: 700; }
+    .probe-item strong { display: block; margin-top: 6px; font-size: 1rem; color: #111827; }
+    .probe-item small { display: block; margin-top: 4px; color: #667085; line-height: 1.45; }
+    .probe-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .btn-primary, .btn-secondary, .btn-ghost {
+      border: 0;
+      border-radius: 14px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      padding: 12px 16px;
+    }
+    .btn-primary { background: linear-gradient(135deg, #d97706, #f59e0b); color: #fff; }
+    .btn-secondary { background: rgba(217, 119, 6, 0.12); color: #b45309; }
+    .btn-ghost { background: #f8fafc; color: #475467; text-decoration: none; display: inline-flex; align-items: center; }
+    .log-box {
+      min-height: 220px;
+      max-height: 360px;
+      overflow: auto;
+      padding: 14px;
+      border-radius: 16px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font: 13px/1.5 Consolas, monospace;
+      white-space: pre-wrap;
+    }
+    .port-list { display: grid; gap: 10px; }
+    .port-card {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid rgba(18, 19, 22, 0.08);
+    }
+    .port-card strong { display: block; font-size: 0.94rem; }
+    .port-card small { display: block; margin-top: 4px; color: #667085; line-height: 1.45; }
+    @media (max-width: 820px) {
+      .probe-page { padding: 16px; }
+      .probe-grid { grid-template-columns: 1fr; }
+      .probe-actions { flex-direction: column; }
+      .btn-primary, .btn-secondary, .btn-ghost { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body data-module="label-print-probe">
+  <main class="probe-page">
+    <section class="probe-card probe-head">
+      <p class="eyebrow">Label Printer Diagnostics</p>
+      <h1>Bluetooth / Serial Probe</h1>
+      <p>Use this page to isolate what the browser can actually see. It tests secure context, Web Serial, authorized ports, the serial picker, and a raw Web Bluetooth visibility request separately.</p>
+    </section>
+
+    <section class="probe-card">
+      <div class="probe-grid">
+        <article class="probe-item">
+          <span>Secure Context</span>
+          <strong id="secure-context-value">Checking…</strong>
+          <small id="origin-value">Origin unknown</small>
+        </article>
+        <article class="probe-item">
+          <span>Web Serial</span>
+          <strong id="web-serial-value">Checking…</strong>
+          <small id="web-serial-meta">Capability unknown</small>
+        </article>
+        <article class="probe-item">
+          <span>Web Bluetooth</span>
+          <strong id="web-bluetooth-value">Checking…</strong>
+          <small id="web-bluetooth-meta">Capability unknown</small>
+        </article>
+        <article class="probe-item">
+          <span>Authorized Serial Ports</span>
+          <strong id="authorized-ports-value">0</strong>
+          <small id="authorized-ports-meta">No ports queried yet</small>
+        </article>
+      </div>
+    </section>
+
+    <section class="probe-card">
+      <div class="probe-actions">
+        <button id="refresh-button" class="btn-secondary" type="button">Refresh State</button>
+        <button id="serial-request-button" class="btn-primary" type="button">Request Serial Port</button>
+        <button id="serial-list-button" class="btn-secondary" type="button">List Authorized Ports</button>
+        <button id="bluetooth-request-button" class="btn-secondary" type="button">Request Bluetooth Device</button>
+        <a class="btn-ghost" href="./">Back To Label Printer</a>
+      </div>
+    </section>
+
+    <section class="probe-card">
+      <h2>Detected Ports</h2>
+      <div id="port-list" class="port-list"></div>
+    </section>
+
+    <section class="probe-card">
+      <h2>Runtime Log</h2>
+      <div id="log-box" class="log-box"></div>
+    </section>
+  </main>
+
+  <script src="/js/shell.js"></script>
+  <script>
+    const secureContextValueEl = document.getElementById('secure-context-value');
+    const originValueEl = document.getElementById('origin-value');
+    const webSerialValueEl = document.getElementById('web-serial-value');
+    const webSerialMetaEl = document.getElementById('web-serial-meta');
+    const webBluetoothValueEl = document.getElementById('web-bluetooth-value');
+    const webBluetoothMetaEl = document.getElementById('web-bluetooth-meta');
+    const authorizedPortsValueEl = document.getElementById('authorized-ports-value');
+    const authorizedPortsMetaEl = document.getElementById('authorized-ports-meta');
+    const portListEl = document.getElementById('port-list');
+    const logBoxEl = document.getElementById('log-box');
+
+    document.getElementById('refresh-button').addEventListener('click', refreshState);
+    document.getElementById('serial-request-button').addEventListener('click', requestSerialPort);
+    document.getElementById('serial-list-button').addEventListener('click', listAuthorizedPorts);
+    document.getElementById('bluetooth-request-button').addEventListener('click', requestBluetoothDevice);
+
+    refreshState();
+
+    async function refreshState() {
+      secureContextValueEl.textContent = window.isSecureContext ? 'Yes' : 'No';
+      originValueEl.textContent = window.location.origin;
+
+      webSerialValueEl.textContent = navigator.serial ? 'Available' : 'Unavailable';
+      webSerialMetaEl.textContent = navigator.serial
+        ? `navigator.serial is present`
+        : 'navigator.serial is not present in this browser';
+
+      webBluetoothValueEl.textContent = navigator.bluetooth ? 'Available' : 'Unavailable';
+      webBluetoothMetaEl.textContent = navigator.bluetooth
+        ? 'navigator.bluetooth is present'
+        : 'navigator.bluetooth is not present in this browser';
+
+      await listAuthorizedPorts({ silent: true });
+      log('State refreshed');
+    }
+
+    async function listAuthorizedPorts(options = {}) {
+      if (!navigator.serial) {
+        authorizedPortsValueEl.textContent = '0';
+        authorizedPortsMetaEl.textContent = 'Web Serial unavailable';
+        portListEl.innerHTML = '';
+        if (!options.silent) log('Web Serial unavailable');
+        return;
+      }
+
+      try {
+        const ports = await navigator.serial.getPorts();
+        authorizedPortsValueEl.textContent = String(ports.length);
+        authorizedPortsMetaEl.textContent = ports.length
+          ? ports.map((port) => formatPortLabel(port.getInfo ? port.getInfo() : {})).join(' | ')
+          : 'No authorized ports returned by the browser';
+        renderPorts(ports);
+        if (!options.silent) log(`Authorized ports: ${ports.length}`);
+      } catch (error) {
+        authorizedPortsValueEl.textContent = 'Error';
+        authorizedPortsMetaEl.textContent = String(error.message || error);
+        portListEl.innerHTML = '';
+        log(`getPorts() failed: ${error.message || error}`);
+      }
+    }
+
+    async function requestSerialPort() {
+      if (!navigator.serial) {
+        log('requestPort() skipped: Web Serial unavailable');
+        return;
+      }
+      try {
+        log('Opening serial port picker…');
+        const port = await navigator.serial.requestPort({});
+        const info = port.getInfo ? port.getInfo() : {};
+        log(`Serial port selected: ${JSON.stringify(info)}`);
+        await listAuthorizedPorts({ silent: true });
+      } catch (error) {
+        log(`requestPort() failed: ${error.name || 'Error'} - ${error.message || error}`);
+      }
+    }
+
+    async function requestBluetoothDevice() {
+      if (!navigator.bluetooth) {
+        log('requestDevice() skipped: Web Bluetooth unavailable');
+        return;
+      }
+      try {
+        log('Opening Bluetooth device picker…');
+        const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
+        log(`Bluetooth device selected: ${device.name || 'Unnamed device'} (${device.id || 'no-id'})`);
+      } catch (error) {
+        log(`requestDevice() failed: ${error.name || 'Error'} - ${error.message || error}`);
+      }
+    }
+
+    function renderPorts(ports) {
+      if (!ports.length) {
+        portListEl.innerHTML = '<div class="port-card"><strong>No ports</strong><small>The browser returned no authorized serial ports.</small></div>';
+        return;
+      }
+
+      portListEl.innerHTML = ports.map((port, index) => {
+        const info = port.getInfo ? port.getInfo() : {};
+        return `
+          <article class="port-card">
+            <strong>Port ${index + 1}: ${escapeHtml(formatPortLabel(info))}</strong>
+            <small>${escapeHtml(JSON.stringify(info))}</small>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function formatPortLabel(info) {
+      if (!info) return 'Unknown port';
+      if (info.bluetoothServiceClassId) return `Bluetooth service ${info.bluetoothServiceClassId}`;
+      if (info.usbVendorId || info.usbProductId) return `USB ${info.usbVendorId || ''}:${info.usbProductId || ''}`;
+      return 'Serial port';
+    }
+
+    function log(message) {
+      const timestamp = new Date().toLocaleTimeString();
+      logBoxEl.textContent += `[${timestamp}] ${message}\n`;
+      logBoxEl.scrollTop = logBoxEl.scrollHeight;
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+  </script>
+</body>
+</html>

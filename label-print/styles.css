@@ -130,6 +130,17 @@ body[data-module="label-print"] {
   gap: 12px;
   align-items: center;
 }
+.diagnostic-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.diagnostic-link-button {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 .diagnostic-head strong {
   font-size: 0.96rem;
   color: #111827;
@@ -187,6 +198,7 @@ body[data-module="label-print"] {
   .hero-card, .toolbar-card, .status-grid, .printer-status-grid { grid-template-columns: 1fr; }
   .toolbar-main, .toolbar-side, .modal-grid { grid-template-columns: 1fr; }
   .diagnostic-grid { grid-template-columns: 1fr; }
+  .diagnostic-actions { flex-wrap: wrap; }
   .search-box { flex-direction: column; align-items: stretch; }
 }
 @media (max-width: 720px) {
