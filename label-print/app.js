@@ -24,6 +24,7 @@ const actionStatusEl = document.getElementById('action-status');
 const actionMetaEl = document.getElementById('action-meta');
 const testPrintButtonEl = document.getElementById('test-print-button');
 const refreshDiagnosticsButtonEl = document.getElementById('refresh-diagnostics-button');
+const forgetPortsButtonEl = document.getElementById('forget-ports-button');
 const modalEl = document.getElementById('options-modal');
 const printerModalEl = document.getElementById('printer-modal');
 const modalTitleEl = document.getElementById('modal-title');
@@ -86,6 +87,7 @@ connectButtonEl.addEventListener('click', reconnectBluetoothPrinter);
 refreshButtonEl.addEventListener('click', loadAll);
 testPrintButtonEl.addEventListener('click', requestTestPrint);
 refreshDiagnosticsButtonEl.addEventListener('click', refreshDiagnostics);
+forgetPortsButtonEl.addEventListener('click', forgetAuthorizedPorts);
 modalCloseButtonEl.addEventListener('click', closeOptionsModal);
 printerModalCloseButtonEl.addEventListener('click', closePrinterModal);
 modalPrintButtonEl.addEventListener('click', () => {
@@ -898,6 +900,44 @@ async function refreshDiagnostics() {
     setSerialError(error);
     updateDiagnostics();
     showToast(error.message || 'Could not refresh diagnostics.');
+  }
+}
+
+async function forgetAuthorizedPorts() {
+  if (!navigator.serial) {
+    showToast('Web Serial is not available in this browser.');
+    return;
+  }
+
+  try {
+    const ports = await getAuthorizedPorts();
+    await closeCurrentPort().catch(() => {});
+
+    let forgotten = 0;
+    for (const port of ports) {
+      if (typeof port.forget === 'function') {
+        await port.forget();
+        forgotten += 1;
+      }
+    }
+
+    state.authorizedPorts = [];
+    clearSerialError();
+    await refreshBridgeStatus();
+    renderAuthorizedPorts();
+    updatePrinterStatus();
+    updateDiagnostics();
+
+    if (forgotten > 0) {
+      showToast(`Forgot ${forgotten} saved port${forgotten === 1 ? '' : 's'}. Pair Printer again.`);
+    } else {
+      showToast('No saved ports could be forgotten here. Remove the device from Chrome or Android Bluetooth settings, then pair again.');
+    }
+  } catch (error) {
+    console.error(error);
+    setSerialError(error);
+    updateDiagnostics();
+    showToast(error.message || 'Could not forget the saved ports.');
   }
 }
 
