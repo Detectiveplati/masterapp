@@ -1,18 +1,18 @@
 const ORDER_MANAGER_KITCHEN_STATIONS = {
   combioven: {
     key: "combioven",
-    title: "Kitchen Temp Log",
+    title: "Equipment Temp Monitor",
     boardTitle: "烤炉订单 Combi Oven Orders",
-    pageTitle: "厨房温度记录 Kitchen Temp Log",
-    selectorTitle: "Combi Oven Kitchen Log",
+    pageTitle: "设备温度监控 Equipment Temp Monitor",
+    selectorTitle: "Combi Oven Cooking Log",
     sourceLabel: "combi oven"
   },
   stirfry: {
     key: "stirfry",
-    title: "Stir-Fried Temp Log",
+    title: "Stir-Fried Equipment Temp Monitor",
     boardTitle: "炒部门订单 Stir-Fried Orders",
-    pageTitle: "炒部门温度记录 Stir-Fried Temp Log",
-    selectorTitle: "Stir-Fried Kitchen Log",
+    pageTitle: "炒部门设备温度监控 Stir-Fried Equipment Temp Monitor",
+    selectorTitle: "Stir-Fried Cooking Log",
     sourceLabel: "stir-fried department"
   }
 };

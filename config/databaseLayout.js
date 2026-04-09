@@ -68,7 +68,9 @@ const COLLECTIONS = {
     DEPARTMENTS: "order_manager_departments",
     DISH_CATALOG: "order_manager_dish_catalog",
     EXTRACTION_RUNS: "order_manager_extraction_runs",
-    JOB_RUNS: "order_manager_job_runs"
+    JOB_RUNS: "order_manager_job_runs",
+    RETENTION_SAMPLES: "order_manager_retention_samples",
+    RETENTION_SAMPLE_CONFIGS: "order_manager_retention_sample_configs"
   }
 };
 

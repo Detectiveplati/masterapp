@@ -22,6 +22,7 @@ const RECONCILE_INTERVAL_MS = 60 * 1000;
 const CATCH_UP_WINDOW_MINUTES = 8 * 60;
 let reconcileTimer = null;
 let reconcileInFlight = false;
+let completedRunCache = new Set();
 
 function startScheduler() {
   const enabled = parseBoolean(
@@ -69,10 +70,15 @@ async function runScheduledJob(runType, timeZone) {
   }
 
   const reportDate = resolveScheduledReportDate(runType, timeZone);
+  const cacheKey = buildRunCacheKey(runType, reportDate);
+  clearCompletedRunCache(reportDate);
+  if (completedRunCache.has(cacheKey)) {
+    return;
+  }
   const jobKey = `order-manager:${runType}`;
   const locked = await acquireScheduledJobLock(jobKey, reportDate);
   if (!locked) {
-    console.log(`Skipping scheduled ${runType} extraction because ${reportDate} is already recorded.`);
+    completedRunCache.add(cacheKey);
     return;
   }
 
@@ -82,6 +88,7 @@ async function runScheduledJob(runType, timeZone) {
       runId: String(savedRun._id || ""),
       extractedAt: savedRun.extractedAt
     });
+    completedRunCache.add(cacheKey);
     console.log(`Scheduled ${runType} extraction saved for ${reportDate} at ${savedRun.extractedAt} (${timeZone})`);
   } catch (error) {
     await markScheduledJobFailed(jobKey, reportDate, error.message || error);
@@ -160,6 +167,17 @@ function parseBoolean(value, fallback) {
     return fallback;
   }
   return String(value).toLowerCase() === "true";
+}
+
+function buildRunCacheKey(runType, reportDate) {
+  return `${String(runType || "").trim()}||${String(reportDate || "").trim()}`;
+}
+
+function clearCompletedRunCache(activeReportDate) {
+  const keepSuffix = `||${String(activeReportDate || "").trim()}`;
+  completedRunCache = new Set(
+    Array.from(completedRunCache).filter((entry) => entry.endsWith(keepSuffix))
+  );
 }
 
 module.exports = {

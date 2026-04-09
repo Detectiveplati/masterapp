@@ -6,6 +6,7 @@ const { getCombiOvenDepartmentCodes } = require("./departmentResolver");
 const { applyDemoRefreshOverlay } = require("./demoRefreshOverlay");
 const { getDb } = require("./db");
 const { getCurrentDateInTimeZone } = require("./dateUtils");
+const { syncRetentionSamplesForStation } = require("./retentionSampleStore");
 const { findLatestExtractionRunForDate, listAvailableReportDates } = require("./reportStore");
 const { enrichCombinedRow, normalizeDepartmentCode, parseInteger, parseTimeLabel } = require("./reportRowUtils");
 
@@ -155,6 +156,15 @@ async function handleStationLatest(req, res) {
       }
     }
     const prepSlots = groupPrepSlots(items);
+    const retentionSamples = await syncRetentionSamplesForStation({
+      station,
+      reportDate: selectedDate,
+      items: items.map((item) => ({ ...item, station })),
+      sourceRunId: String(run._id || ""),
+      sourceRunType: run.runType || "manual",
+      sourceExtractedAt: run.extractedAt
+    });
+    const prepSlotsWithSpecialTasks = attachRetentionSamplesToPrepSlots(prepSlots, retentionSamples);
 
     res.json({
       station,
@@ -167,7 +177,10 @@ async function handleStationLatest(req, res) {
       itemCount: items.length,
       totalQty,
       updatedItemCount,
-      prepSlots
+      sampleTaskCount: retentionSamples.length,
+      openSampleTaskCount: retentionSamples.filter((task) => /^(required|collected|stored)$/.test(task.status)).length,
+      retentionSampleTasks: retentionSamples,
+      prepSlots: prepSlotsWithSpecialTasks
     });
   } catch (error) {
     res.status(500).json({ error: error.message || "Could not load kitchen orders." });
@@ -202,6 +215,8 @@ function buildKitchenOrder(row) {
     functionTime: normalizedRow.functionTime || "",
     functionTimeLabel: normalizedRow.functionTimeLabel || normalizedRow.functionTime || "",
     functionSortKey: normalizedRow.functionSortKey,
+    comparisonKey: normalizedRow.comparisonKey || "",
+    resolvedDepartmentCode: normalizedRow.resolvedDepartmentCode || "",
     qty: normalizedRow.qty || "",
     qtyNumber: normalizedRow.qtyNumber,
     orderNumber: normalizedRow.orderNumber || "",
@@ -334,6 +349,48 @@ function groupPrepSlots(items) {
       items: slot.items.sort(compareTimeFirstOrderItems)
     }))
     .sort((left, right) => left.prepSortKey - right.prepSortKey);
+}
+
+function attachRetentionSamplesToPrepSlots(prepSlots, retentionSamples) {
+  const grouped = new Map();
+  for (const task of Array.isArray(retentionSamples) ? retentionSamples : []) {
+    const prepWindow = String(task.prepWindow || "other").trim() || "other";
+    if (!grouped.has(prepWindow)) {
+      grouped.set(prepWindow, []);
+    }
+    grouped.get(prepWindow).push(task);
+  }
+
+  const slotMap = new Map((Array.isArray(prepSlots) ? prepSlots : []).map((slot) => [slot.prepWindow, {
+    ...slot,
+    specialTasks: []
+  }]));
+
+  for (const [prepWindow, tasks] of grouped.entries()) {
+    const sortedTasks = tasks.slice().sort((left, right) => (
+      Number(right.riskScore || 0) - Number(left.riskScore || 0) ||
+      String(left.department || "").localeCompare(String(right.department || "")) ||
+      String(left.displayFood || left.dish || "").localeCompare(String(right.displayFood || right.dish || ""))
+    ));
+
+    if (slotMap.has(prepWindow)) {
+      slotMap.get(prepWindow).specialTasks = sortedTasks;
+      continue;
+    }
+
+    const firstTask = sortedTasks[0];
+    slotMap.set(prepWindow, {
+      prepSlot: firstTask.prepWindowLabel || firstTask.prepSlot || "Retention Sample Tasks",
+      prepWindow,
+      prepSortKey: Number(firstTask.prepSortKey) || Number.MAX_SAFE_INTEGER,
+      totalQty: 0,
+      itemCount: 0,
+      items: [],
+      specialTasks: sortedTasks
+    });
+  }
+
+  return Array.from(slotMap.values()).sort((left, right) => left.prepSortKey - right.prepSortKey);
 }
 
 function getPrepWindow(prepSortKey) {

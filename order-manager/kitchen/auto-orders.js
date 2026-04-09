@@ -6,6 +6,7 @@
   };
   const API_URL = `/api/order-manager/kitchen/stations/${encodeURIComponent(station.key)}/latest`;
   const COOKS_STATUS_API_URL = `/api/order-manager/kitchen/cooks/status?limit=500&station=${encodeURIComponent(station.key)}`;
+  const SAMPLE_API_URL = `/api/order-manager/retention-samples`;
   let currentSortMode = "dish";
   let latestOrdersPayload = null;
   let latestCookedEntries = [];
@@ -92,6 +93,14 @@
         if (group && Array.isArray(group.items) && typeof window.addNewCookBatchFromOrders === "function") {
           window.addNewCookBatchFromOrders(group.items);
         }
+        return;
+      }
+
+      const sampleActionButton = event.target.closest("[data-sample-action]");
+      if (sampleActionButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        await runSampleTaskAction(sampleActionButton);
         return;
       }
 
@@ -189,7 +198,9 @@
 
     const totalQty = Number(payload.totalQty) || 0;
     const updateCount = Number(payload.updatedItemCount) || 0;
-    summary.textContent = `${formatDate(payload.selectedDate)} • ${payload.itemCount} dishes • ${totalQty} total qty${cookedItemCount ? ` • ${cookedItemCount} cooked` : ""}${updateCount ? ` • ! ${updateCount} updates` : ""} • source ${payload.sourceFilename}`;
+    const sampleCount = Number(payload.sampleTaskCount) || 0;
+    const openSampleCount = Number(payload.openSampleTaskCount) || 0;
+    summary.textContent = `${formatDate(payload.selectedDate)} • ${payload.itemCount} dishes • ${totalQty} total qty${cookedItemCount ? ` • ${cookedItemCount} cooked` : ""}${sampleCount ? ` • ${openSampleCount}/${sampleCount} sample tasks open` : ""}${updateCount ? ` • ! ${updateCount} updates` : ""} • source ${payload.sourceFilename}`;
   }
 
   function renderBoard(prepSlots) {
@@ -215,12 +226,32 @@
   }
 
   function renderPrepSlotContent(slot) {
+    const specialTasks = Array.isArray(slot.specialTasks) ? slot.specialTasks : [];
     const activeItems = (slot.items || []).filter((item) => !item.isCooked);
     const doneItems = (slot.items || []).filter((item) => item.isCooked);
 
     return `
+      ${renderSpecialTaskSection(specialTasks)}
       ${renderPrepSlotItems(activeItems)}
       ${renderDoneSection(doneItems)}
+    `;
+  }
+
+  function renderSpecialTaskSection(tasks) {
+    if (!tasks.length) {
+      return "";
+    }
+
+    return `
+      <section class="retention-task-section">
+        <div class="retention-task-header">
+          <strong>Retention Samples (${tasks.length})</strong>
+          <span>Food-safety task cards linked to live orders.</span>
+        </div>
+        <div class="food-grid retention-task-grid">
+          ${tasks.map((task) => renderRetentionSampleCard(task)).join("")}
+        </div>
+      </section>
     `;
   }
 
@@ -310,6 +341,9 @@
   }
 
   function patchBoardState(prepSlots) {
+    if (latestOrdersPayload && Number(latestOrdersPayload.sampleTaskCount || 0) > 0) {
+      return false;
+    }
     const board = document.getElementById("auto-order-board");
     if (!board) {
       return false;
@@ -489,6 +523,133 @@
         </span>
       </div>
     `;
+  }
+
+  function renderRetentionSampleCard(task) {
+    const statusLabel = getSampleStatusLabel(task.status);
+    const actionButtons = buildSampleActionButtons(task);
+    const orders = Array.isArray(task.orderNumbers) && task.orderNumbers.length
+      ? task.orderNumbers.join(", ")
+      : "Linked source order";
+    const locationLine = task.storageLocation
+      ? `<div class="retention-task-line"><strong>Stored:</strong> ${escapeHtml(task.storageLocation)}</div>`
+      : task.storageLocationHint
+        ? `<div class="retention-task-line"><strong>Location:</strong> ${escapeHtml(task.storageLocationHint)}</div>`
+        : "";
+
+    return `
+      <article class="food-card retention-task-card retention-task-status-${escapeHtml(task.status)}" data-sample-id="${escapeHtml(task.id)}">
+        <div class="retention-task-badge">Retention Sample</div>
+        <div class="chinese auto-order-title-cn">${escapeHtml(task.dishChinese || task.dish || task.displayFood || "")}</div>
+        <div class="english auto-order-title-en">${escapeHtml(task.dishEnglish || "\u00A0")}</div>
+        <div class="retention-task-meta">
+          <div class="retention-task-line"><strong>Status:</strong> ${escapeHtml(statusLabel)}</div>
+          <div class="retention-task-line"><strong>Dept:</strong> ${escapeHtml(task.department || "-")}</div>
+          <div class="retention-task-line"><strong>Qty ref:</strong> ${escapeHtml(task.qtyReference || "-")}</div>
+          <div class="retention-task-line"><strong>Order:</strong> ${escapeHtml(orders)}</div>
+          <div class="retention-task-line"><strong>Rule:</strong> ${escapeHtml(task.storageRuleLabel || "")}</div>
+          ${locationLine}
+          ${task.selectionReason ? `<div class="retention-task-note">${escapeHtml(task.selectionReason)}</div>` : ""}
+        </div>
+        ${actionButtons ? `<div class="retention-task-actions">${actionButtons}</div>` : ""}
+      </article>
+    `;
+  }
+
+  function buildSampleActionButtons(task) {
+    if (task.status === "required") {
+      return [
+        renderSampleActionButton("collect", "Collect"),
+        renderSampleActionButton("store", "Store"),
+        renderSampleActionButton("miss", "Mark Missed")
+      ].join("");
+    }
+    if (task.status === "collected") {
+      return [
+        renderSampleActionButton("store", "Store"),
+        renderSampleActionButton("dispose", "Dispose"),
+        renderSampleActionButton("miss", "Mark Missed")
+      ].join("");
+    }
+    if (task.status === "stored") {
+      return renderSampleActionButton("dispose", "Dispose");
+    }
+    return "";
+  }
+
+  function renderSampleActionButton(action, label) {
+    return `<button class="retention-task-btn" type="button" data-sample-action="${escapeHtml(action)}">${escapeHtml(label)}</button>`;
+  }
+
+  async function runSampleTaskAction(button) {
+    const card = button.closest("[data-sample-id]");
+    if (!card) {
+      return;
+    }
+
+    const sampleId = card.dataset.sampleId;
+    const action = button.dataset.sampleAction;
+    const actor = typeof window.getOrderManagerCurrentStaff === "function"
+      ? String(window.getOrderManagerCurrentStaff() || "").trim()
+      : "";
+    const payload = { actor };
+
+    if (action === "store") {
+      const locationHint = findSampleTaskHint(sampleId) || "Retention sample chiller";
+      const location = window.prompt("Storage location for this retention sample:", locationHint);
+      if (location === null) {
+        return;
+      }
+      payload.storageLocation = String(location || "").trim();
+    } else if (action === "miss") {
+      const reason = window.prompt("Reason for missed retention sample:", "Sample not collected before dispatch");
+      if (reason === null) {
+        return;
+      }
+      payload.reason = String(reason || "").trim();
+    }
+
+    button.disabled = true;
+    try {
+      const response = await fetch(`${SAMPLE_API_URL}/${encodeURIComponent(sampleId)}/${encodeURIComponent(action)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || `Could not ${action} retention sample task.`);
+      }
+      if (typeof window.orderManagerKitchenToast === "function") {
+        window.orderManagerKitchenToast(`Retention sample ${getSampleStatusLabel(result.status)}.`, "success");
+      }
+      await loadOrders({ date: latestOrdersPayload && latestOrdersPayload.selectedDate ? latestOrdersPayload.selectedDate : "" });
+    } catch (error) {
+      if (typeof window.orderManagerKitchenToast === "function") {
+        window.orderManagerKitchenToast(error.message || "Retention sample update failed.", "error");
+      }
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function findSampleTaskHint(sampleId) {
+    const payload = latestOrdersPayload || {};
+    const tasks = Array.isArray(payload.retentionSampleTasks) ? payload.retentionSampleTasks : [];
+    const task = tasks.find((item) => String(item.id) === String(sampleId));
+    return task ? String(task.storageLocationHint || task.storageLocation || "").trim() : "";
+  }
+
+  function getSampleStatusLabel(status) {
+    if (status === "required") return "Required";
+    if (status === "collected") return "Collected";
+    if (status === "stored") return "Stored";
+    if (status === "disposed") return "Disposed";
+    if (status === "missed") return "Missed";
+    if (status === "cancelled") return "Cancelled";
+    return String(status || "Unknown");
   }
 
   function buildDishGroups(items) {

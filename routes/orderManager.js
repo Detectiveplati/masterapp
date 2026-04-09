@@ -8,6 +8,7 @@ const { createExtractionRouter } = require("../order-manager/backend/router");
 const { createOrderSummaryRouter } = require("../order-manager/backend/orderSummaryRouter");
 const { createChefPreorderRouter } = require("../order-manager/backend/chefPrepRouter");
 const { createDepartmentCatalogRouter } = require("../order-manager/backend/departmentCatalogRouter");
+const { createRetentionSampleRouter } = require("../order-manager/backend/retentionSampleRouter");
 const { createTemplogRouter } = require("../order-manager/backend/templogRouter");
 
 const router = express.Router();
@@ -61,6 +62,7 @@ router.use("/extractions", createExtractionRouter());
 router.use("/order-summary", createOrderSummaryRouter());
 router.use("/chef-preorder", createChefPreorderRouter());
 router.use("/departments", createDepartmentCatalogRouter());
+router.use("/retention-samples", createRetentionSampleRouter());
 router.use("/kitchen", createTemplogRouter());
 
 module.exports = router;

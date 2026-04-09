@@ -8,9 +8,9 @@ let wakeLock = null;
 let nextCookId = Date.now();
 const kitchenStation = window.ORDER_MANAGER_KITCHEN_STATION || {
   key: 'combioven',
-  title: 'Kitchen Temp Log',
-  pageTitle: '厨房温度记录 Kitchen Temp Log',
-  selectorTitle: 'Combi Oven Kitchen Log',
+  title: 'Equipment Temp Monitor',
+  pageTitle: '设备温度监控 Equipment Temp Monitor',
+  selectorTitle: 'Combi Oven Cooking Log',
   boardTitle: '烤炉订单 Combi Oven Orders',
   sourceLabel: 'combi oven'
 };
@@ -339,6 +339,11 @@ function showToast(message, type = 'success') {
     setTimeout(() => toast.remove(), 300);
   }, 3000);
 }
+
+window.orderManagerKitchenToast = showToast;
+window.getOrderManagerCurrentStaff = function getOrderManagerCurrentStaff() {
+  return currentStaff || '';
+};
 
 function addNewCook(food) {
   if (!currentStaff) {

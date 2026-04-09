@@ -418,6 +418,104 @@ button {
   box-sizing: border-box;
   justify-content: center;
 }
+
+.retention-task-section {
+  margin-bottom: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 248, 230, 0.82);
+  border: 1px solid rgba(191, 128, 32, 0.18);
+}
+
+.retention-task-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 0.86rem;
+  color: #7b5b17;
+}
+
+.retention-task-grid {
+  align-items: stretch;
+}
+
+.retention-task-card {
+  position: relative;
+  background: linear-gradient(180deg, #fffdf6, #fff6df);
+  border: 1px solid rgba(191, 128, 32, 0.22);
+  padding-top: 30px;
+}
+
+.retention-task-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f39c12;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.retention-task-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: #4c4c4c;
+}
+
+.retention-task-line strong {
+  color: #7b5b17;
+}
+
+.retention-task-note {
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(243, 156, 18, 0.1);
+  color: #6d5316;
+  line-height: 1.35;
+}
+
+.retention-task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.retention-task-btn {
+  flex: 1 1 110px;
+  min-width: 110px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(191, 128, 32, 0.22);
+  background: #fff;
+  color: #7b5b17;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.retention-task-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.retention-task-status-stored .retention-task-badge,
+.retention-task-status-disposed .retention-task-badge {
+  background: #27ae60;
+}
+
+.retention-task-status-missed .retention-task-badge,
+.retention-task-status-cancelled .retention-task-badge {
+  background: #c0392b;
+}
 /* Has temp but not yet locked — amber pulsing border */
 .temp-display.temp-unlocked {
   background: #fffbf0;
