@@ -23,6 +23,7 @@ const templateStatusEl = document.getElementById('template-status');
 const actionStatusEl = document.getElementById('action-status');
 const actionMetaEl = document.getElementById('action-meta');
 const testPrintButtonEl = document.getElementById('test-print-button');
+const refreshDiagnosticsButtonEl = document.getElementById('refresh-diagnostics-button');
 const modalEl = document.getElementById('options-modal');
 const printerModalEl = document.getElementById('printer-modal');
 const modalTitleEl = document.getElementById('modal-title');
@@ -39,6 +40,14 @@ const modalPrintButtonEl = document.getElementById('modal-print-button');
 const modalCloseButtonEl = document.getElementById('modal-close-button');
 const printerModalCloseButtonEl = document.getElementById('printer-modal-close-button');
 const toastEl = document.getElementById('toast');
+const diagSecureContextEl = document.getElementById('diag-secure-context');
+const diagOriginEl = document.getElementById('diag-origin');
+const diagWebSerialEl = document.getElementById('diag-web-serial');
+const diagWebSerialMetaEl = document.getElementById('diag-web-serial-meta');
+const diagAuthorizedPortsEl = document.getElementById('diag-authorized-ports');
+const diagAuthorizedPortsMetaEl = document.getElementById('diag-authorized-ports-meta');
+const diagLastErrorEl = document.getElementById('diag-last-error');
+const diagLastErrorMetaEl = document.getElementById('diag-last-error-meta');
 
 const state = {
   items: [],
@@ -52,7 +61,9 @@ const state = {
     supported: Boolean(navigator.serial),
     port: null,
     info: null,
-    connected: false
+    connected: false,
+    lastError: '',
+    lastErrorAt: null
   }
 };
 
@@ -74,6 +85,7 @@ discoverButtonEl.addEventListener('click', pairBluetoothPrinter);
 connectButtonEl.addEventListener('click', reconnectBluetoothPrinter);
 refreshButtonEl.addEventListener('click', loadAll);
 testPrintButtonEl.addEventListener('click', requestTestPrint);
+refreshDiagnosticsButtonEl.addEventListener('click', refreshDiagnostics);
 modalCloseButtonEl.addEventListener('click', closeOptionsModal);
 printerModalCloseButtonEl.addEventListener('click', closePrinterModal);
 modalPrintButtonEl.addEventListener('click', () => {
@@ -118,6 +130,7 @@ async function loadAll() {
     renderItems();
     templateStatusEl.textContent = `${state.templates.length} loaded`;
     await refreshBridgeStatus();
+    updateDiagnostics();
     renderAuthorizedPorts();
     updatePrinterStatus();
     setAction('Ready', 'Launcher is ready for Bluetooth printing from this tablet.');
@@ -132,6 +145,7 @@ function initSerialEvents() {
   if (!navigator.serial) return;
   navigator.serial.addEventListener('connect', async () => {
     await refreshBridgeStatus();
+    updateDiagnostics();
     renderAuthorizedPorts();
     updatePrinterStatus();
   });
@@ -142,6 +156,7 @@ function initSerialEvents() {
       state.serial.connected = false;
     }
     await refreshBridgeStatus();
+    updateDiagnostics();
     renderAuthorizedPorts();
     updatePrinterStatus();
   });
@@ -230,11 +245,15 @@ function renderAuthorizedPorts() {
       if (!entry || !entry.port) return;
       try {
         await connectToPort(entry.port);
+        clearSerialError();
         renderAuthorizedPorts();
         updatePrinterStatus();
+        updateDiagnostics();
         showToast('Bluetooth printer connected.');
       } catch (error) {
         console.error(error);
+        setSerialError(error);
+        updateDiagnostics();
         showToast(error.message || 'Could not connect to the Bluetooth printer.');
       }
     });
@@ -407,6 +426,7 @@ async function runPrint(item, options = {}) {
   try {
     await ensureBluetoothConnection();
     await sendTemplateToBluetooth(payload);
+    clearSerialError();
     const job = await createClientPrintJob({
       item,
       printer,
@@ -422,6 +442,8 @@ async function runPrint(item, options = {}) {
     await loadPrintersOnly();
   } catch (error) {
     console.error(error);
+    setSerialError(error);
+    updateDiagnostics();
     setAction('Print failed', error.message || 'Could not print label.');
     showToast(error.message || 'Could not print label.');
     await createClientPrintJob({
@@ -462,6 +484,7 @@ async function requestTestPrint() {
   try {
     await ensureBluetoothConnection();
     await sendTemplateToBluetooth(payload);
+    clearSerialError();
     await createClientPrintJob({
       printer,
       template,
@@ -477,6 +500,8 @@ async function requestTestPrint() {
     await loadPrintersOnly();
   } catch (error) {
     console.error(error);
+    setSerialError(error);
+    updateDiagnostics();
     setAction('Test print failed', error.message || 'Could not run test print.');
     showToast(error.message || 'Could not run test print.');
     await createClientPrintJob({
@@ -502,12 +527,16 @@ async function pairBluetoothPrinter() {
     const port = await navigator.serial.requestPort({});
     await connectToPort(port);
     setAction('Printer paired', 'Bluetooth printer access has been granted on this tablet.');
+    clearSerialError();
     renderAuthorizedPorts();
     updatePrinterStatus();
+    updateDiagnostics();
     showToast('Bluetooth printer paired.');
   } catch (error) {
     if (error && error.name === 'NotFoundError') return;
     console.error(error);
+    setSerialError(error);
+    updateDiagnostics();
     showToast(error.message || 'Could not pair the Bluetooth printer.');
   }
 }
@@ -522,11 +551,15 @@ async function reconnectBluetoothPrinter() {
     }
     await connectToPort(port);
     setAction('Printer connected', 'Bluetooth printer is ready on this tablet.');
+    clearSerialError();
     renderAuthorizedPorts();
     updatePrinterStatus();
+    updateDiagnostics();
     showToast('Bluetooth printer connected.');
   } catch (error) {
     console.error(error);
+    setSerialError(error);
+    updateDiagnostics();
     showToast(error.message || 'Could not reconnect the Bluetooth printer.');
   }
 }
@@ -537,6 +570,7 @@ async function refreshBridgeStatus() {
     bridgeStatusEl.textContent = 'Browser not supported';
     bridgeMetaEl.textContent = 'Use Android Chrome with Web Serial support.';
     state.authorizedPorts = [];
+    updateDiagnostics();
     return;
   }
 
@@ -556,6 +590,7 @@ async function refreshBridgeStatus() {
   if (state.serial.connected && state.serial.port) {
     bridgeStatusEl.textContent = 'Bluetooth ready';
     bridgeMetaEl.textContent = `${formatSerialLabel(state.serial.info)} · ${getSerialBaudRate()} baud`;
+    updateDiagnostics();
     return;
   }
 
@@ -563,6 +598,7 @@ async function refreshBridgeStatus() {
   bridgeMetaEl.textContent = ports.length
     ? 'Tap Reconnect to open the paired Brother printer.'
     : 'Tap Pair Printer on this tablet to grant Bluetooth serial access.';
+  updateDiagnostics();
 }
 
 function updatePrinterStatus() {
@@ -727,6 +763,7 @@ async function connectToPort(port) {
   state.serial.info = port.getInfo ? port.getInfo() : {};
   state.serial.connected = true;
   await refreshBridgeStatus();
+  updateDiagnostics();
 }
 
 async function closeCurrentPort() {
@@ -740,6 +777,7 @@ async function closeCurrentPort() {
     state.serial.port = null;
     state.serial.info = null;
     state.serial.connected = false;
+    updateDiagnostics();
   }
 }
 
@@ -826,4 +864,49 @@ function concatUint8Arrays(chunks) {
     offset += chunk.length;
   });
   return merged;
+}
+
+async function refreshDiagnostics() {
+  try {
+    await refreshBridgeStatus();
+    renderAuthorizedPorts();
+    updatePrinterStatus();
+    updateDiagnostics();
+    showToast('Diagnostics refreshed.');
+  } catch (error) {
+    console.error(error);
+    setSerialError(error);
+    updateDiagnostics();
+    showToast(error.message || 'Could not refresh diagnostics.');
+  }
+}
+
+function updateDiagnostics() {
+  diagSecureContextEl.textContent = window.isSecureContext ? 'Yes' : 'No';
+  diagOriginEl.textContent = window.location.origin;
+
+  diagWebSerialEl.textContent = navigator.serial ? 'Available' : 'Unavailable';
+  diagWebSerialMetaEl.textContent = navigator.serial
+    ? `User agent: ${navigator.userAgent.slice(0, 72)}${navigator.userAgent.length > 72 ? '…' : ''}`
+    : 'This browser does not expose navigator.serial';
+
+  diagAuthorizedPortsEl.textContent = String(state.authorizedPorts.length);
+  diagAuthorizedPortsMetaEl.textContent = state.authorizedPorts.length
+    ? state.authorizedPorts.map((entry) => entry.label).join(' | ')
+    : 'No authorized serial ports returned by the browser';
+
+  diagLastErrorEl.textContent = state.serial.lastError ? 'Captured' : 'None';
+  diagLastErrorMetaEl.textContent = state.serial.lastError
+    ? `${state.serial.lastErrorAt || ''} ${state.serial.lastError}`.trim()
+    : 'No serial errors captured';
+}
+
+function setSerialError(error) {
+  state.serial.lastError = String((error && (error.message || error.name)) || error || 'Unknown serial error');
+  state.serial.lastErrorAt = new Date().toLocaleString();
+}
+
+function clearSerialError() {
+  state.serial.lastError = '';
+  state.serial.lastErrorAt = null;
 }

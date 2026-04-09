@@ -160,6 +160,34 @@
             <button id="connect-button" class="btn-secondary" type="button">Reconnect</button>
             <button id="test-print-button" class="btn-secondary" type="button">Test Print</button>
           </div>
+          <div class="diagnostic-panel">
+            <div class="diagnostic-head">
+              <strong>Browser Diagnostics</strong>
+              <button id="refresh-diagnostics-button" class="btn-ghost diagnostic-refresh-button" type="button">Refresh Diagnostics</button>
+            </div>
+            <div class="diagnostic-grid">
+              <article class="diagnostic-card">
+                <span class="status-label">Secure Context</span>
+                <strong id="diag-secure-context">Checking…</strong>
+                <small id="diag-origin">Origin unknown</small>
+              </article>
+              <article class="diagnostic-card">
+                <span class="status-label">Web Serial</span>
+                <strong id="diag-web-serial">Checking…</strong>
+                <small id="diag-web-serial-meta">Browser capability unknown</small>
+              </article>
+              <article class="diagnostic-card">
+                <span class="status-label">Authorized Ports</span>
+                <strong id="diag-authorized-ports">0</strong>
+                <small id="diag-authorized-ports-meta">No ports queried yet</small>
+              </article>
+              <article class="diagnostic-card">
+                <span class="status-label">Last Serial Error</span>
+                <strong id="diag-last-error">None</strong>
+                <small id="diag-last-error-meta">No serial errors captured</small>
+              </article>
+            </div>
+          </div>
           <div class="printer-widget-results">
             <div id="discover-empty" class="empty-state">Pair a Brother printer from this tablet, then reconnect when you return to the page.</div>
             <div id="discover-list" class="jobs-list"></div>
