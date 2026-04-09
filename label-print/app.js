@@ -143,6 +143,7 @@ async function loadAll() {
     renderItems();
     templateStatusEl.textContent = `${state.templates.length} loaded`;
     await refreshBridgeStatus();
+    await attemptAutoReconnect();
     updateDiagnostics();
     renderAuthorizedPorts();
     updatePrinterStatus();
@@ -745,7 +746,7 @@ async function ensureBluetoothConnection(options = {}) {
     return state.serial.port;
   }
 
-  const port = await resolvePreferredPort({ interactive });
+  const port = await resolvePreferredPort();
   if (!port) {
     throw new Error(interactive
       ? 'No paired printer found. Tap Pair Printer first.'
@@ -772,18 +773,7 @@ async function ensureBluetoothConnection(options = {}) {
   }
 }
 
-async function resolvePreferredPort(options = {}) {
-  const interactive = Boolean(options.interactive);
-  if (interactive && shouldPreferFreshPortSelection()) {
-    const requestedPort = await requestFreshPort().catch((error) => {
-      if (error && error.name === 'NotFoundError') return null;
-      throw error;
-    });
-    if (requestedPort) {
-      return requestedPort;
-    }
-  }
-
+async function resolvePreferredPort() {
   const ports = await getAuthorizedPorts();
   return state.serial.port || ports[0] || null;
 }
@@ -858,6 +848,21 @@ async function closeCurrentPort() {
 function handlePageShutdown() {
   if (!state.serial.port) return;
   closeCurrentPort().catch(() => {});
+}
+
+async function attemptAutoReconnect() {
+  if (!navigator.serial || state.serial.connected) return;
+  const port = await resolvePreferredPort();
+  if (!port) return;
+  try {
+    await connectToPort(port);
+    clearSerialError();
+    setAction('Printer connected', 'Saved Bluetooth printer reconnected automatically.');
+  } catch (error) {
+    console.warn('Auto reconnect skipped:', error);
+    setSerialError(error);
+    await resetSerialStateAfterFailure();
+  }
 }
 
 async function sendTemplateToBluetooth(payload) {
