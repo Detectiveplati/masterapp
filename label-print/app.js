@@ -439,7 +439,7 @@ async function runPrint(item, options = {}) {
   setAction('Printing', `${item.name} · qty ${quantity} · ${cutMode}`);
 
   try {
-    await ensureBluetoothConnection();
+    await ensureBluetoothConnection({ interactive: true });
     await sendTemplateToBluetooth(payload);
     clearSerialError();
     const job = await createClientPrintJob({
@@ -497,7 +497,7 @@ async function requestTestPrint() {
   };
 
   try {
-    await ensureBluetoothConnection();
+    await ensureBluetoothConnection({ interactive: true });
     await sendTemplateToBluetooth(payload);
     clearSerialError();
     await createClientPrintJob({
@@ -558,13 +558,7 @@ async function pairBluetoothPrinter() {
 
 async function reconnectBluetoothPrinter() {
   try {
-    const ports = await getAuthorizedPorts();
-    const port = state.serial.port || ports[0];
-    if (!port) {
-      showToast('No paired printer found. Tap Pair Printer first.');
-      return;
-    }
-    await connectToPort(port);
+    await ensureBluetoothConnection({ interactive: true });
     setAction('Printer connected', 'Bluetooth printer is ready on this tablet.');
     clearSerialError();
     renderAuthorizedPorts();
@@ -742,25 +736,71 @@ async function getAuthorizedPorts() {
   return navigator.serial.getPorts();
 }
 
-async function ensureBluetoothConnection() {
+async function ensureBluetoothConnection(options = {}) {
+  const interactive = Boolean(options.interactive);
   if (!navigator.serial) {
     throw new Error('This browser does not support Web Serial. Use Chrome on Android.');
   }
   if (state.serial.port && state.serial.connected) {
     return state.serial.port;
   }
-  const ports = await getAuthorizedPorts();
-  const port = ports[0];
+
+  const port = await resolvePreferredPort({ interactive });
   if (!port) {
-    throw new Error('No paired printer found. Tap Pair Printer first.');
+    throw new Error(interactive
+      ? 'No paired printer found. Tap Pair Printer first.'
+      : 'No paired printer found. Tap Pair Printer first.');
   }
+
   try {
     await connectToPort(port);
     return port;
   } catch (error) {
+    if (interactive && shouldPreferFreshPortSelection() && canRetryWithFreshSelection(error)) {
+      const refreshedPort = await requestFreshPort().catch((requestError) => {
+        if (requestError && requestError.name === 'NotFoundError') return null;
+        throw requestError;
+      });
+      if (refreshedPort) {
+        await resetSerialStateAfterFailure();
+        await connectToPort(refreshedPort);
+        return refreshedPort;
+      }
+    }
     await resetSerialStateAfterFailure();
     throw new Error(buildReconnectErrorMessage(error));
   }
+}
+
+async function resolvePreferredPort(options = {}) {
+  const interactive = Boolean(options.interactive);
+  if (interactive && shouldPreferFreshPortSelection()) {
+    const requestedPort = await requestFreshPort().catch((error) => {
+      if (error && error.name === 'NotFoundError') return null;
+      throw error;
+    });
+    if (requestedPort) {
+      return requestedPort;
+    }
+  }
+
+  const ports = await getAuthorizedPorts();
+  return state.serial.port || ports[0] || null;
+}
+
+async function requestFreshPort() {
+  if (!navigator.serial) return null;
+  return navigator.serial.requestPort({});
+}
+
+function shouldPreferFreshPortSelection() {
+  const mode = getDisplayMode().label;
+  return mode === 'Standalone app' || mode === 'Minimal UI' || mode === 'Fullscreen';
+}
+
+function canRetryWithFreshSelection(error) {
+  const message = String(error && (error.message || error.name) || '');
+  return /failed to open serial port|networkerror|device has been lost|must be handling a user gesture/i.test(message);
 }
 
 async function connectToPort(port) {
