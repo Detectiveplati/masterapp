@@ -439,10 +439,33 @@ async function runPrint(item, options = {}) {
   const payload = buildPrintPayload(item, template, quantity, cutMode, printer);
   setAction('Printing', `${item.name} · qty ${quantity} · ${cutMode}`);
 
+  let writeError = null;
   try {
     await ensureBluetoothConnection({ interactive: true });
     await sendTemplateToBluetooth(payload);
-    clearSerialError();
+  } catch (error) {
+    writeError = error;
+    console.error(error);
+    setSerialError(error);
+    await resetSerialStateAfterFailure();
+    updateDiagnostics();
+    setAction('Print failed', error.message || 'Could not print label.');
+    showToast(error.message || 'Could not print label.');
+    await createClientPrintJob({
+      item,
+      printer,
+      template,
+      quantity,
+      cutMode,
+      payload,
+      status: 'failed',
+      error: error.message || 'Could not print label.',
+      bridgeResult: buildBridgeResult(error)
+    }).catch(() => {});
+  }
+  if (writeError) return;
+  clearSerialError();
+  try {
     const job = await createClientPrintJob({
       item,
       printer,
@@ -458,21 +481,8 @@ async function runPrint(item, options = {}) {
     await loadPrintersOnly();
   } catch (error) {
     console.error(error);
-    setSerialError(error);
-    updateDiagnostics();
-    setAction('Print failed', error.message || 'Could not print label.');
-    showToast(error.message || 'Could not print label.');
-    await createClientPrintJob({
-      item,
-      printer,
-      template,
-      quantity,
-      cutMode,
-      payload,
-      status: 'failed',
-      error: error.message || 'Could not print label.',
-      bridgeResult: buildBridgeResult(error)
-    }).catch(() => {});
+    setAction('Print complete', `${item.name} · logged offline`);
+    showToast(`${item.name} printed. Log failed: ${error.message || 'server error'}`);
   }
 }
 
@@ -497,10 +507,33 @@ async function requestTestPrint() {
     serialBaudRate: getSerialBaudRate()
   };
 
+  let writeError = null;
   try {
     await ensureBluetoothConnection({ interactive: true });
     await sendTemplateToBluetooth(payload);
-    clearSerialError();
+  } catch (error) {
+    writeError = error;
+    console.error(error);
+    setSerialError(error);
+    await resetSerialStateAfterFailure();
+    updateDiagnostics();
+    setAction('Test print failed', error.message || 'Could not run test print.');
+    showToast(error.message || 'Could not run test print.');
+    await createClientPrintJob({
+      printer,
+      template,
+      quantity: 1,
+      cutMode: 'auto-cut',
+      payload,
+      status: 'failed',
+      error: error.message || 'Could not run test print.',
+      itemSnapshot: { name: 'Test Print', description: 'Bluetooth printer validation' },
+      bridgeResult: { ...buildBridgeResult(error), testPrint: true }
+    }).catch(() => {});
+  }
+  if (writeError) return;
+  clearSerialError();
+  try {
     await createClientPrintJob({
       printer,
       template,
@@ -516,21 +549,8 @@ async function requestTestPrint() {
     await loadPrintersOnly();
   } catch (error) {
     console.error(error);
-    setSerialError(error);
-    updateDiagnostics();
-    setAction('Test print failed', error.message || 'Could not run test print.');
-    showToast(error.message || 'Could not run test print.');
-    await createClientPrintJob({
-      printer,
-      template,
-      quantity: 1,
-      cutMode: 'auto-cut',
-      payload,
-      status: 'failed',
-      error: error.message || 'Could not run test print.',
-      itemSnapshot: { name: 'Test Print', description: 'Bluetooth printer validation' },
-      bridgeResult: { ...buildBridgeResult(error), testPrint: true }
-    }).catch(() => {});
+    setAction('Test print complete', 'Printer responded · log failed');
+    showToast('Test print sent. Log failed: ' + (error.message || 'server error'));
   }
 }
 
@@ -790,7 +810,7 @@ function shouldPreferFreshPortSelection() {
 
 function canRetryWithFreshSelection(error) {
   const message = String(error && (error.message || error.name) || '');
-  return /failed to open serial port|networkerror|device has been lost|must be handling a user gesture/i.test(message);
+  return /failed to open serial port|networkerror|device has been lost|must be handling a user gesture|bluetooth|rfcomm|connection (refused|reset|lost)|broken pipe|serial port (unavailable|in use)|invalidstate/i.test(message);
 }
 
 async function connectToPort(port) {
@@ -799,17 +819,21 @@ async function connectToPort(port) {
     await closeCurrentPort().catch(() => {});
   }
 
-  const needsOpen = !port.readable || !port.writable;
-  if (needsOpen) {
-    try {
-      await port.open({
-        baudRate: getSerialBaudRate(),
-        dataBits: 8,
-        stopBits: 1,
-        parity: 'none',
-        flowControl: 'none'
-      });
-    } catch (error) {
+  // Always call port.open() — do not skip based on port.readable/port.writable.
+  // In installed mode after a page refresh those streams can be non-null but the
+  // underlying RFCOMM channel is dead.  open() is the only reliable liveness check.
+  try {
+    await port.open({
+      baudRate: getSerialBaudRate(),
+      dataBits: 8,
+      stopBits: 1,
+      parity: 'none',
+      flowControl: 'none'
+    });
+  } catch (error) {
+    if (error && error.name === 'InvalidStateError' && port.readable && port.writable) {
+      // Port was already open and streams are still alive — proceed.
+    } else {
       throw decorateSerialOpenError(error);
     }
   }
