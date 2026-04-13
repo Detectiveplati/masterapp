@@ -6,6 +6,7 @@ const searchSummaryEl = document.getElementById('search-summary');
 const categoryFilterEl = document.getElementById('category-filter');
 const printerSelectEl = document.getElementById('printer-select');
 const printerBaudInputEl = document.getElementById('printer-baud-input');
+const printerDefaultCutEl = document.getElementById('printer-default-cut');
 const printerSetupButtonEl = document.getElementById('printer-setup-button');
 const savePrinterButtonEl = document.getElementById('save-printer-button');
 const discoverButtonEl = document.getElementById('discover-button');
@@ -339,7 +340,7 @@ function renderAuthorizedPorts() {
 function renderItemCard(item) {
   const template = findTemplate(item.templateKey);
   const quantity = getItemQuantity(item._id);
-  const cutMode = item.defaultCutMode || 'auto-cut';
+  const cutMode = item.defaultCutMode || getDefaultCutMode();
   const supportText = buildSupportText(item);
   const printable = Boolean(template);
   return `
@@ -395,7 +396,7 @@ function bindCardEvents() {
       if (item) {
         runPrint(item, {
           quantity: getItemQuantity(item._id),
-          cutMode: item.defaultCutMode || 'auto-cut',
+          cutMode: item.defaultCutMode || getDefaultCutMode(),
           source: 'card-button'
         });
       }
@@ -414,7 +415,7 @@ function bindCardEvents() {
       if (item && findTemplate(item.templateKey)) {
         runPrint(item, {
           quantity: getItemQuantity(item._id),
-          cutMode: item.defaultCutMode || 'auto-cut',
+          cutMode: item.defaultCutMode || getDefaultCutMode(),
           source: 'card-body'
         });
       }
@@ -428,7 +429,7 @@ function openOptionsModal(item) {
   modalTitleEl.textContent = item.name;
   modalDescriptionEl.textContent = 'This tablet sends the stored printer template directly over Bluetooth. The printer applies all label content and rules from its own P-touch template.';
   modalQuantityEl.value = getItemQuantity(item._id);
-  modalCutModeEl.value = item.defaultCutMode || 'auto-cut';
+  modalCutModeEl.value = item.defaultCutMode || getDefaultCutMode();
   modalTemplateEl.value = template ? template.name : item.templateKey;
   modalTemplateNumberEl.value = template ? String(template.printerTemplateNumber) : '-';
   modalDimensionsEl.textContent = template ? `58 x ${template.heightMm} mm` : '58 x 62 mm';
@@ -756,6 +757,8 @@ async function savePrinterSettings() {
     syncPrinterInputs();
     updatePrinterStatus();
     await refreshBridgeStatus();
+    // Save default cut mode to localStorage so it persists across page loads
+    localStorage.setItem('label-print-default-cut', printerDefaultCutEl.value);
     showToast('Bluetooth printer setup saved.');
     closePrinterModal();
   } catch (error) {
@@ -767,6 +770,7 @@ async function savePrinterSettings() {
 function syncPrinterInputs() {
   const printer = selectedPrinter();
   printerBaudInputEl.value = String((printer && printer.serialBaudRate) || 9600);
+  printerDefaultCutEl.value = getDefaultCutMode();
 }
 
 async function loadPrintersOnly() {
@@ -778,6 +782,11 @@ async function loadPrintersOnly() {
   await refreshBridgeStatus();
   renderAuthorizedPorts();
   updatePrinterStatus();
+}
+
+function getDefaultCutMode() {
+  const saved = localStorage.getItem('label-print-default-cut');
+  return (saved === 'auto-cut' || saved === 'no-cut') ? saved : 'no-cut';
 }
 
 function getSerialBaudRate() {
