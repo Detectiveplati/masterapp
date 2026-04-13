@@ -9,9 +9,12 @@
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body data-module="label-print">
-  <div id="reconnect-banner" class="reconnect-banner hidden" role="alert">
-    <span id="reconnect-banner-text">Printer not connected</span>
-    <button id="reconnect-banner-button" class="reconnect-banner-btn" type="button">Tap to Connect</button>
+  <div id="reconnect-bar" class="reconnect-bar hidden" role="alert">
+    <div class="reconnect-bar-status">
+      <span class="reconnect-bar-label">Printer</span>
+      <span id="reconnect-bar-text" class="reconnect-bar-text">Not connected</span>
+    </div>
+    <button id="reconnect-bar-button" class="reconnect-bar-btn" type="button">🖨️ Connect Printer</button>
   </div>
 
   <main class="label-page">

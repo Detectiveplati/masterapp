@@ -1,34 +1,44 @@
-.reconnect-banner {
-  position: sticky;
-  top: 0;
-  z-index: 200;
+.reconnect-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
   padding: 14px 20px;
-  background: linear-gradient(135deg, #d97706, #b45309);
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  background: linear-gradient(135deg, #92400e, #b45309);
   color: #fff;
-  font-weight: 700;
-  font-size: 1rem;
-  box-shadow: 0 4px 16px rgba(180, 83, 9, 0.35);
+  box-shadow: 0 -4px 24px rgba(120, 53, 15, 0.35);
 }
-.reconnect-banner.hidden { display: none; }
-.reconnect-banner-btn {
+.reconnect-bar.hidden { display: none; }
+.reconnect-bar-status { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.reconnect-bar-label { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; opacity: 0.7; }
+.reconnect-bar-text { font-size: 0.96rem; font-weight: 700; }
+.reconnect-bar-btn {
   flex-shrink: 0;
-  border: 2px solid rgba(255,255,255,0.7);
-  border-radius: 14px;
-  background: rgba(255,255,255,0.15);
-  color: #fff;
+  border: 0;
+  border-radius: 16px;
+  background: #fff;
+  color: #92400e;
   font: inherit;
-  font-weight: 800;
+  font-weight: 900;
   font-size: 1rem;
-  padding: 10px 20px;
+  padding: 14px 28px;
   cursor: pointer;
   white-space: nowrap;
-  min-height: 48px;
+  min-height: 54px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: background 0.12s, transform 0.1s;
 }
-.reconnect-banner-btn:active { background: rgba(255,255,255,0.3); }
+.reconnect-bar-btn:active { background: #fff7ed; transform: scale(0.97); }
+.reconnect-bar-btn:disabled { opacity: 0.6; }
+/* pad page content so last card isn't hidden behind the bar */
+body[data-module="label-print"] .label-page { padding-bottom: 16px; }
+body.reconnect-bar-visible .label-page { padding-bottom: 90px; }
 
 body[data-module="label-print"] {
   background:

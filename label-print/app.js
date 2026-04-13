@@ -41,9 +41,9 @@ const previewQuantityEl = document.getElementById('preview-quantity');
 const modalPrintButtonEl = document.getElementById('modal-print-button');
 const modalCloseButtonEl = document.getElementById('modal-close-button');
 const printerModalCloseButtonEl = document.getElementById('printer-modal-close-button');
-const reconnectBannerEl = document.getElementById('reconnect-banner');
-const reconnectBannerTextEl = document.getElementById('reconnect-banner-text');
-const reconnectBannerButtonEl = document.getElementById('reconnect-banner-button');
+const reconnectBannerEl = document.getElementById('reconnect-bar');
+const reconnectBannerTextEl = document.getElementById('reconnect-bar-text');
+const reconnectBannerButtonEl = document.getElementById('reconnect-bar-button');
 const toastEl = document.getElementById('toast');
 const diagSecureContextEl = document.getElementById('diag-secure-context');
 const diagOriginEl = document.getElementById('diag-origin');
@@ -99,9 +99,10 @@ openSiteSettingsButtonEl.addEventListener('click', openSiteSettings);
 forgetPortsButtonEl.addEventListener('click', forgetAuthorizedPorts);
 reconnectBannerButtonEl.addEventListener('click', async () => {
   reconnectBannerButtonEl.disabled = true;
-  reconnectBannerTextEl.textContent = 'Connecting…';
+  reconnectBannerButtonEl.textContent = 'Connecting…';
+  reconnectBannerTextEl.textContent = 'Trying saved connection…';
 
-  // Step 1: try the saved (previously-authorized) port
+  // Step 1: silently try the saved authorized port (no picker, no interaction)
   const savedPort = await resolvePreferredPort().catch(() => null);
   if (savedPort) {
     try {
@@ -114,22 +115,17 @@ reconnectBannerButtonEl.addEventListener('click', async () => {
       showToast('Printer connected.');
       return;
     } catch (_) {
-      // Saved port's RFCOMM channel is dead — fall through to re-pair
+      // RFCOMM channel is dead after page reload — fall straight through to picker
       await resetSerialStateAfterFailure().catch(() => {});
     }
   }
 
-  // Step 2: saved port failed or doesn't exist — open the Bluetooth picker so the
-  // user can re-pair without needing to manually "Forget Ports" first.
-  reconnectBannerTextEl.textContent = 'Select printer from list…';
+  // Step 2: open the Bluetooth picker — this is one more tap in Android Chrome's
+  // native dialog. No extra steps inside the app needed.
+  reconnectBannerTextEl.textContent = 'Select your printer from the list that opens…';
+  reconnectBannerButtonEl.textContent = 'Waiting for selection…';
   try {
     const freshPort = await requestFreshPort();
-    if (!freshPort) {
-      reconnectBannerTextEl.textContent = 'No printer selected';
-      reconnectBannerButtonEl.disabled = false;
-      reconnectBannerButtonEl.textContent = 'Tap to Connect';
-      return;
-    }
     await connectToPort(freshPort);
     clearSerialError();
     hideReconnectBanner();
@@ -138,13 +134,10 @@ reconnectBannerButtonEl.addEventListener('click', async () => {
     updateDiagnostics();
     showToast('Printer connected.');
   } catch (error) {
-    console.error('[ReconnectBanner]', error);
+    console.error('[ReconnectBar]', error);
     setSerialError(error);
-    reconnectBannerTextEl.textContent = error.name === 'NotFoundError'
-      ? 'Cancelled — tap to try again'
-      : 'Connection failed — tap to retry';
-    reconnectBannerButtonEl.disabled = false;
-    reconnectBannerButtonEl.textContent = 'Tap to Connect';
+    const cancelled = error && (error.name === 'NotFoundError' || /cancel/i.test(error.message));
+    showReconnectBanner(cancelled ? 'Cancelled — tap to try again' : 'Failed — tap to retry');
   }
 });
 modalCloseButtonEl.addEventListener('click', closeOptionsModal);
@@ -230,14 +223,16 @@ function initSerialEvents() {
 }
 
 function showReconnectBanner(message) {
-  reconnectBannerTextEl.textContent = message || 'Printer not connected';
+  reconnectBannerTextEl.textContent = message || 'Not connected — tap to pair';
   reconnectBannerButtonEl.disabled = false;
-  reconnectBannerButtonEl.textContent = 'Tap to Connect';
+  reconnectBannerButtonEl.textContent = '\uD83D\uDDA8\uFE0F Connect Printer';
   reconnectBannerEl.classList.remove('hidden');
+  document.body.classList.add('reconnect-bar-visible');
 }
 
 function hideReconnectBanner() {
   reconnectBannerEl.classList.add('hidden');
+  document.body.classList.remove('reconnect-bar-visible');
 }
 
 function renderPrinterOptions() {
