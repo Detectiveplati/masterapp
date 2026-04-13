@@ -66,6 +66,7 @@ const state = {
   quantities: {},
   selectedPrinterId: '',
   activeItem: null,
+  pendingPrint: null,
   serial: {
     supported: Boolean(navigator.serial),
     port: null,
@@ -113,6 +114,7 @@ reconnectBannerButtonEl.addEventListener('click', async () => {
       updatePrinterStatus();
       updateDiagnostics();
       showToast('Printer connected.');
+      retryPendingPrint();
       return;
     } catch (_) {
       // RFCOMM channel is dead after page reload — fall straight through to picker
@@ -133,6 +135,7 @@ reconnectBannerButtonEl.addEventListener('click', async () => {
     updatePrinterStatus();
     updateDiagnostics();
     showToast('Printer connected.');
+    retryPendingPrint();
   } catch (error) {
     console.error('[ReconnectBar]', error);
     setSerialError(error);
@@ -498,9 +501,11 @@ async function runPrint(item, options = {}) {
   const payload = buildPrintPayload(item, template, quantity, cutMode, printer);
   setAction('Printing', `${item.name} · qty ${quantity} · ${cutMode}`);
 
+  // Store for auto-retry after reconnect via the bottom bar
+  state.pendingPrint = { item, options };
+
   let writeError = null;
   try {
-    await ensureBluetoothConnection({ interactive: true });
     await sendTemplateToBluetooth(payload);
   } catch (error) {
     writeError = error;
@@ -510,7 +515,7 @@ async function runPrint(item, options = {}) {
     updateDiagnostics();
     setAction('Print failed', error.message || 'Could not print label.');
     showToast(error.message || 'Could not print label.');
-    showReconnectBanner('Print failed — tap to reconnect');
+    showReconnectBanner('Print failed — tap to reconnect & retry');
     await createClientPrintJob({
       item,
       printer,
@@ -524,6 +529,7 @@ async function runPrint(item, options = {}) {
     }).catch(() => {});
   }
   if (writeError) return;
+  state.pendingPrint = null;
   clearSerialError();
   try {
     const job = await createClientPrintJob({
@@ -569,7 +575,6 @@ async function requestTestPrint() {
 
   let writeError = null;
   try {
-    await ensureBluetoothConnection({ interactive: true });
     await sendTemplateToBluetooth(payload);
   } catch (error) {
     writeError = error;
@@ -860,6 +865,68 @@ async function resolvePreferredPort() {
   return state.serial.port || ports[0] || null;
 }
 
+// Before every print, verify the RFCOMM channel is truly alive by closing and
+// re-opening the port.  writer.write() on a zombie Bluetooth port resolves
+// silently (Chrome buffers bytes without knowing the link is dead).  The only
+// reliable liveness check for a write-only protocol is port.open() —
+// it throws NetworkError when the BT link does not exist.
+async function verifyConnectionBeforePrint() {
+  if (!navigator.serial) {
+    throw new Error('This browser does not support Web Serial. Use Chrome on Android.');
+  }
+
+  if (state.serial.port && state.serial.connected) {
+    const port = state.serial.port;
+    console.debug('[verifyConnectionBeforePrint] Verifying RFCOMM channel via close+open...');
+
+    // Close with a timeout — a dead channel may cause port.close() to hang
+    try {
+      await Promise.race([
+        port.close(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('close timeout')), 2000))
+      ]);
+    } catch (_) {
+      // Ignore — port may already be gone
+    }
+    state.serial.port = null;
+    state.serial.info = null;
+    state.serial.connected = false;
+
+    // Re-open — will throw if the BT radio link is actually dead
+    try {
+      await port.open({
+        baudRate: getSerialBaudRate(),
+        dataBits: 8,
+        stopBits: 1,
+        parity: 'none',
+        flowControl: 'none'
+      });
+      state.serial.port = port;
+      state.serial.info = port.getInfo ? port.getInfo() : {};
+      state.serial.connected = true;
+      console.debug('[verifyConnectionBeforePrint] Channel confirmed alive.');
+      return port;
+    } catch (openErr) {
+      console.warn('[verifyConnectionBeforePrint] Re-open failed — BT link is dead:', openErr.name, openErr.message);
+      throw Object.assign(
+        new Error('Bluetooth printer disconnected. Tap Connect Printer to reconnect.'),
+        { name: 'NetworkError' }
+      );
+    }
+  }
+
+  // Not currently connected — use interactive reconnect (saved port → BT picker)
+  return await ensureBluetoothConnection({ interactive: true });
+}
+
+function retryPendingPrint() {
+  if (!state.pendingPrint) return;
+  const { item, options } = state.pendingPrint;
+  state.pendingPrint = null;
+  showToast('Reconnected — retrying print…');
+  runPrint(item, options);
+}
+
 // Verify that an open BT serial port is truly alive by writing a single null
 // byte with a 4-second timeout.  The QL-820NWB silently ignores stray 0x00
 // bytes in any mode.  If the RFCOMM channel is a zombie (looks open but the
@@ -996,7 +1063,7 @@ async function attemptAutoReconnect() {
 }
 
 async function sendTemplateToBluetooth(payload) {
-  const port = await ensureBluetoothConnection();
+  const port = await verifyConnectionBeforePrint();
   const bytes = buildPtouchTemplateJob(payload);
   const writer = port.writable.getWriter();
   try {
