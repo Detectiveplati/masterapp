@@ -105,8 +105,8 @@ body[data-module="label-print"] {
 .card-groups, .jobs-list { display: grid; gap: 18px; }
 .group-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .group-title h3 { font-size: 1.05rem; color: #111827; }
-.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 320px)); gap: 14px; justify-content: start; }
-.item-card { width: 320px; max-width: 100%; }
+.card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.item-card { width: auto; max-width: 100%; }
 .item-card { position: relative; display: grid; gap: 14px; padding: 16px; border-radius: 18px; background: linear-gradient(180deg, #ffffff, #fffaf2); border: 1px solid rgba(18, 19, 22, 0.08); transition: transform 0.16s ease, box-shadow 0.16s ease; }
 .item-card:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(18, 19, 22, 0.1); }
 .item-card[data-cut-mode="auto-cut"] { border-color: rgba(14, 116, 144, 0.2); }
@@ -243,6 +243,7 @@ body[data-module="label-print"] {
   .diagnostic-grid { grid-template-columns: 1fr; }
   .diagnostic-actions { flex-wrap: wrap; }
   .search-box { flex-direction: column; align-items: stretch; }
+  .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 720px) {
   .label-page { padding: 16px; }
