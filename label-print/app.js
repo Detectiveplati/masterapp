@@ -1,4 +1,5 @@
 const API_BASE = `${window.location.origin}/api/label-print`;
+const BLUETOOTH_RFCOMM_SERVICE_ID = '00001101-0000-1000-8000-00805f9b34fb';
 
 const searchInputEl = document.getElementById('search-input');
 const clearSearchButtonEl = document.getElementById('clear-search-button');
@@ -1063,13 +1064,31 @@ async function attemptSavedPortReconnect(options = {}) {
 
 async function resolvePreferredPort() {
   const ports = await getAuthorizedPorts();
-  console.debug('[resolvePreferredPort] state.serial.port:', state.serial.port, '| getPorts() count:', ports.length, ports);
+  const preferredPort = pickPreferredPort(ports);
+  console.debug('[resolvePreferredPort] state.serial.port:', state.serial.port, '| getPorts() count:', ports.length, '| preferred:', preferredPort, ports);
   appendRuntimeLog('resolvePreferredPort()', {
     statePort: safePortInfo(state.serial.port),
     browserPortCount: ports.length,
-    portInfos: ports.map((port) => safePortInfo(port))
+    portInfos: ports.map((port) => safePortInfo(port)),
+    chosenPort: safePortInfo(preferredPort)
   });
-  return state.serial.port || ports[0] || null;
+  return preferredPort;
+}
+
+function pickPreferredPort(ports) {
+  if (state.serial.port) return state.serial.port;
+  if (!Array.isArray(ports) || !ports.length) return null;
+
+  const rfcommPort = ports.find((port) => {
+    const info = safePortInfo(port);
+    return normalizeBluetoothServiceId(info && info.bluetoothServiceClassId) === BLUETOOTH_RFCOMM_SERVICE_ID;
+  });
+
+  return rfcommPort || ports[0] || null;
+}
+
+function normalizeBluetoothServiceId(serviceId) {
+  return String(serviceId || '').trim().toLowerCase();
 }
 
 // Before every print, verify the RFCOMM channel is truly alive by closing and
