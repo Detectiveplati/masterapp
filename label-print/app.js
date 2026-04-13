@@ -510,6 +510,7 @@ async function runPrint(item, options = {}) {
     updateDiagnostics();
     setAction('Print failed', error.message || 'Could not print label.');
     showToast(error.message || 'Could not print label.');
+    showReconnectBanner('Print failed — tap to reconnect');
     await createClientPrintJob({
       item,
       printer,
@@ -578,6 +579,7 @@ async function requestTestPrint() {
     updateDiagnostics();
     setAction('Test print failed', error.message || 'Could not run test print.');
     showToast(error.message || 'Could not run test print.');
+    showReconnectBanner('Print failed — tap to reconnect');
     await createClientPrintJob({
       printer,
       template,
@@ -858,6 +860,33 @@ async function resolvePreferredPort() {
   return state.serial.port || ports[0] || null;
 }
 
+// Verify that an open BT serial port is truly alive by writing a single null
+// byte with a 4-second timeout.  The QL-820NWB silently ignores stray 0x00
+// bytes in any mode.  If the RFCOMM channel is a zombie (looks open but the
+// radio link died after a page refresh) the write promise will reject, exposing
+// the dead connection before the user tries to print.
+async function probeBluetoothConnection(port) {
+  const target = port || state.serial.port;
+  if (!target || !target.writable) return false;
+  let writer;
+  try {
+    writer = target.writable.getWriter();
+    await Promise.race([
+      writer.write(new Uint8Array([0x00])),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Probe timeout')), 4000)
+      )
+    ]);
+    console.debug('[probeBluetoothConnection] Channel is alive.');
+    return true;
+  } catch (err) {
+    console.warn('[probeBluetoothConnection] Channel appears dead:', err.name, err.message);
+    return false;
+  } finally {
+    try { if (writer) writer.releaseLock(); } catch (_) {}
+  }
+}
+
 async function requestFreshPort() {
   if (!navigator.serial) return null;
   return navigator.serial.requestPort({});
@@ -890,8 +919,18 @@ async function connectToPort(port) {
     });
   } catch (error) {
     if (error && error.name === 'InvalidStateError' && port.readable && port.writable) {
-      // Port was already open and streams are still alive — proceed.
-      console.debug('[connectToPort] InvalidStateError but streams alive — treating as already open.');
+      // Port was already open — streams appear alive, but after a page refresh
+      // the underlying RFCOMM channel can be a zombie.  Probe before trusting it.
+      console.debug('[connectToPort] InvalidStateError — streams visible, probing channel liveness...');
+      const alive = await probeBluetoothConnection(port);
+      if (!alive) {
+        console.debug('[connectToPort] Probe failed — RFCOMM zombie detected, throwing.');
+        throw Object.assign(
+          new Error('Bluetooth printer is disconnected. Tap Connect Printer to reconnect.'),
+          { name: 'NetworkError' }
+        );
+      }
+      console.debug('[connectToPort] Probe passed — treating as truly open.');
     } else {
       console.debug('[connectToPort] port.open() failed:', error.name, error.message);
       throw decorateSerialOpenError(error);
