@@ -15,42 +15,25 @@
   </div>
 
   <main class="label-page">
-    <section class="hero-card">
-      <div class="hero-copy">
-        <p class="eyebrow">厨房使用 For Kitchen Staff</p>
-        <h1>标签打印 Label Printer</h1>
-        <p class="lede">Search the item, set quantity, and print. Printer setup stays hidden unless you need it.</p>
+    <header class="command-bar">
+      <div class="command-brand">
+        <span class="command-eyebrow">厨房 Kitchen</span>
+        <span class="command-title">Label Printer</span>
       </div>
-    </section>
-
-    <section class="toolbar-card">
-      <div class="toolbar-main">
-        <label class="field search-field">
-          <span>Find Item Fast</span>
-          <div class="search-box">
-            <input id="search-input" type="search" placeholder="Type item name, SKU, or barcode">
-            <button id="clear-search-button" class="btn-ghost search-clear-button hidden" type="button">Clear</button>
-          </div>
-          <small class="search-helper">Search first. The list hides everything that does not match.</small>
-        </label>
-        <label class="field category-field">
-          <span>Category</span>
-          <select id="category-filter"></select>
-        </label>
-      </div>
-      <div class="toolbar-side">
-        <button id="printer-setup-button" class="btn-secondary" type="button">Printer Setup</button>
-        <button id="refresh-button" class="btn-ghost" type="button">Refresh</button>
-      </div>
-    </section>
-
-    <section class="panel-card launcher-panel">
-      <div class="panel-head">
-        <div>
-          <h2>Label Launcher</h2>
-          <p>Find the item, adjust quantity, then print.</p>
+      <div class="command-search">
+        <div class="search-box">
+          <input id="search-input" type="search" placeholder="Search item name, SKU or barcode…" autocomplete="off">
+          <button id="clear-search-button" class="btn-ghost search-clear-button hidden" type="button">Clear</button>
         </div>
       </div>
+      <div class="command-controls">
+        <select id="category-filter" class="command-select"></select>
+        <button id="printer-setup-button" class="btn-secondary command-btn" type="button">⚙ Setup</button>
+        <button id="refresh-button" class="btn-ghost command-btn" type="button">↺</button>
+      </div>
+    </header>
+
+    <section class="launcher-panel">
       <div id="search-summary" class="search-summary hidden"></div>
       <div id="cards-empty" class="empty-state hidden">No label items match the current filters.</div>
       <div id="card-groups" class="card-groups"></div>
