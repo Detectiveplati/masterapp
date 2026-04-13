@@ -13,7 +13,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-2",
@@ -28,7 +33,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-3",
@@ -43,7 +53,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-4",
@@ -58,7 +73,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-5",
@@ -73,7 +93,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-6",
@@ -88,7 +113,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-7",
@@ -103,7 +133,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-8",
@@ -118,7 +153,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-9",
@@ -133,7 +173,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-10",
@@ -148,7 +193,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-11",
@@ -163,7 +213,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-12",
@@ -178,7 +233,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-13",
@@ -193,7 +253,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-14",
@@ -208,7 +273,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-15",
@@ -223,7 +293,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-16",
@@ -238,7 +313,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-17",
@@ -253,7 +333,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-18",
@@ -268,7 +353,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-19",
@@ -283,7 +373,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-20",
@@ -298,7 +393,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-21",
@@ -313,7 +413,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-22",
@@ -328,7 +433,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-23",
@@ -343,7 +453,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-24",
@@ -358,7 +473,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-25",
@@ -373,7 +493,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-26",
@@ -388,7 +513,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-27",
@@ -403,7 +533,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-28",
@@ -418,7 +553,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-29",
@@ -433,7 +573,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-30",
@@ -448,7 +593,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-31",
@@ -463,7 +613,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-32",
@@ -478,7 +633,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-33",
@@ -493,7 +653,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-34",
@@ -508,7 +673,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-35",
@@ -523,7 +693,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-36",
@@ -538,7 +713,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-37",
@@ -553,7 +733,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-38",
@@ -568,7 +753,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-39",
@@ -583,7 +773,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-40",
@@ -598,7 +793,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-41",
@@ -613,7 +813,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-42",
@@ -628,7 +833,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-43",
@@ -643,7 +853,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-44",
@@ -658,7 +873,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-45",
@@ -673,7 +893,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-46",
@@ -688,7 +913,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-47",
@@ -703,7 +933,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-48",
@@ -718,7 +953,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-49",
@@ -733,7 +973,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-50",
@@ -748,7 +993,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-51",
@@ -763,7 +1013,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-52",
@@ -778,7 +1033,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-53",
@@ -793,7 +1053,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-54",
@@ -808,7 +1073,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-55",
@@ -823,7 +1093,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-56",
@@ -838,7 +1113,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-57",
@@ -853,7 +1133,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-58",
@@ -868,7 +1153,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-59",
@@ -883,7 +1173,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-60",
@@ -898,7 +1193,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-61",
@@ -913,7 +1213,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-62",
@@ -928,7 +1233,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-63",
@@ -943,7 +1253,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-64",
@@ -958,7 +1273,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-65",
@@ -973,7 +1293,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-66",
@@ -988,7 +1313,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-67",
@@ -1003,7 +1333,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-68",
@@ -1018,7 +1353,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-69",
@@ -1033,7 +1373,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-70",
@@ -1048,7 +1393,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-71",
@@ -1063,7 +1413,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-72",
@@ -1078,7 +1433,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-73",
@@ -1093,7 +1453,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-74",
@@ -1108,7 +1473,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-75",
@@ -1123,7 +1493,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-76",
@@ -1138,7 +1513,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-77",
@@ -1153,7 +1533,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-78",
@@ -1168,7 +1553,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-79",
@@ -1183,7 +1573,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-80",
@@ -1198,7 +1593,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-81",
@@ -1213,7 +1613,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-82",
@@ -1228,7 +1633,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-83",
@@ -1243,7 +1653,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-84",
@@ -1258,7 +1673,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-85",
@@ -1273,7 +1693,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-86",
@@ -1288,7 +1713,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-87",
@@ -1303,7 +1733,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-88",
@@ -1318,7 +1753,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-89",
@@ -1333,7 +1773,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-90",
@@ -1348,7 +1793,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-91",
@@ -1363,7 +1813,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-92",
@@ -1378,7 +1833,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-93",
@@ -1393,7 +1853,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-94",
@@ -1408,7 +1873,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-95",
@@ -1423,7 +1893,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-96",
@@ -1438,7 +1913,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-97",
@@ -1453,7 +1933,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-98",
@@ -1468,7 +1953,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-99",
@@ -1483,7 +1973,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-100",
@@ -1498,7 +1993,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-101",
@@ -1513,7 +2013,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-102",
@@ -1528,7 +2033,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-103",
@@ -1543,7 +2053,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-104",
@@ -1558,7 +2073,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-105",
@@ -1573,7 +2093,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-106",
@@ -1588,7 +2113,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-107",
@@ -1603,7 +2133,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-108",
@@ -1618,7 +2153,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-109",
@@ -1633,7 +2173,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-110",
@@ -1648,7 +2193,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-111",
@@ -1663,7 +2213,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-112",
@@ -1678,7 +2233,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-113",
@@ -1693,7 +2253,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-114",
@@ -1708,7 +2273,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-115",
@@ -1723,7 +2293,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-116",
@@ -1738,7 +2313,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-117",
@@ -1753,7 +2333,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-118",
@@ -1768,7 +2353,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-119",
@@ -1783,7 +2373,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-120",
@@ -1798,7 +2393,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-121",
@@ -1813,7 +2413,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-122",
@@ -1828,7 +2433,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-123",
@@ -1843,7 +2453,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-124",
@@ -1858,7 +2473,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-125",
@@ -1873,7 +2493,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-126",
@@ -1888,7 +2513,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-127",
@@ -1903,7 +2533,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     },
     {
       "key": "template-128",
@@ -1918,7 +2553,12 @@
         "widthMm": 58,
         "heightMm": 62
       },
-      "active": true
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     }
   ],
   "items": [
@@ -1936,7 +2576,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "001. FROZEN ACHAR PASTE 冰冻 阿查酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "ASSAM & BUAH KELUAK PASTE",
@@ -1952,7 +2594,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "002. FROZEN ASSAM & BUAH KELUAK PASTE 冰冻 亚参和黑果酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "ASSAM PEDAS PASTE",
@@ -1968,7 +2612,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "003. FROZEN ASSAM PEDAS PASTE 冰冻 亚参酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "AYAM BUAH KELUAK",
@@ -1984,7 +2630,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "004. FROZEN AYAM BUAH KELUAK 冰冻 黑果鸡.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "AYAM MASAK MERAH PASTE",
@@ -2000,7 +2648,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "005. FROZEN AYAM MASAK MERAH PASTE 冰冻 红辣鸡酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "AYAM SIO PASTE",
@@ -2016,7 +2666,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "006. FROZEN AYAM SIO PASTE 冰冻 酸甜酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "BEEF GRAVY",
@@ -2032,7 +2684,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "007. FROZEN BEEF GRAVY 冰冻 牛肉汁.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "BUAH KELUAK MEAT",
@@ -2048,7 +2702,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "008. FROZEN BUAH KELUAK MEAT 冰冻 黑果肉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "BUAH KELUAK PASTE",
@@ -2064,7 +2720,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "009. FROZEN BUAH KELUAK PASTE 冰冻 黑果酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "BUTTER CHICKEN SAUCE",
@@ -2080,7 +2738,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "010. FROZEN BUTTER CHICKEN SAUCE 冰冻 牛油鸡酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CAJUN PASTE",
@@ -2096,7 +2756,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "011. FROZEN CAJUN PASTE 冰冻 卡津酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CHAP CHYE PASTE",
@@ -2112,7 +2774,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "012. FROZEN CHAP CHYE PASTE 冰冻 杂菜酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CHICKEN GRAVY",
@@ -2128,7 +2792,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "013. FROZEN CHICKEN GRAVY 冰冻 鸡肉汁.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CHICKEN STOCK",
@@ -2144,7 +2810,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "014. FROZEN CHICKEN STOCK 冰冻 鸡汤.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CHILLI CRAB SAUCE",
@@ -2160,7 +2828,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "015. FROZEN CHILLI CRAB SAUCE 冰冻 辣椒螃蟹酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CURRY CHICKEN",
@@ -2176,7 +2846,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "016. FROZEN CURRY CHICKEN 冰冻 咖喱鸡.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CURRY FISH PASTE",
@@ -2192,7 +2864,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "017. FROZEN CURRY FISH PASTE 冰冻 咖喱鱼酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CURRY KAPITAN PASTE",
@@ -2208,7 +2882,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "018. FROZEN CURRY KAPITAN PASTE 冰冻 槟城咖喱酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CURRY MEAT PASTE",
@@ -2224,7 +2900,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "019. FROZEN CURRY MEAT PASTE 冰冻 咖喱肉酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CURRY MUTTON PASTE",
@@ -2240,7 +2918,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "020. FROZEN CURRY MUTTON PASTE 冰冻 咖喱羊酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "EURASIAN CURRY PASTE",
@@ -2256,7 +2936,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "021. FROZEN EURASIAN CURRY PASTE 冰冻 恶魔咖喱酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "GADO-GADO PASTE",
@@ -2272,7 +2954,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "022. FROZEN GADO-GADO PASTE 冰冻 加多加多酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "GRATED COCONUT PASTE",
@@ -2288,7 +2972,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "023. FROZEN GRATED COCONUT PASTE 冰冻 炒椰丝.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "GULAI PASTE",
@@ -2304,7 +2990,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "024. FROZEN GULAI PASTE 冰冻 古来酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "KAM HEONG SAUCE",
@@ -2320,7 +3008,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "025. FROZEN KAM HEONG SAUCE 冰冻 甘香酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "KAMPUNG GORENG PASTE",
@@ -2336,7 +3026,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "026. FROZEN KAMPUNG GORENG PASTE 冰冻 甘榜酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "LAKSA CHILLI SAUCE",
@@ -2352,7 +3044,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "027. FROZEN LAKSA CHILLI SAUCE 冰冻 叻沙辣椒酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "LAKSA PASTE",
@@ -2368,7 +3062,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "028. FROZEN LAKSA PASTE 冰冻 叻沙酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "MANG GUANG",
@@ -2384,7 +3080,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "029. FROZEN MANG GUANG 冰冻 芒光.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "MEE GORENG PASTE",
@@ -2400,7 +3098,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "030. FROZEN MEE GORENG PASTE 冰冻 马来面酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "MEE REBUS PASTE",
@@ -2416,7 +3116,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "031. FROZEN MEE REBUS PASTE 冰冻 米罗卜酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "MEE SIAM PASTE",
@@ -2432,7 +3134,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "032. FROZEN MEE SIAM PASTE 冰冻 米香酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "MEE SOTO GRAVY",
@@ -2448,7 +3152,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "033. FROZEN MEE SOTO GRAVY 冰冻 马来鸡汤面汁.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "MUSHROOM PASTE",
@@ -2464,7 +3170,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "034. FROZEN MUSHROOM PASTE 冰冻 香菇酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "NASI LEMAK CHILLI SAUCE",
@@ -2480,7 +3188,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "035. FROZEN NASI LEMAK CHILLI SAUCE 冰冻 椰浆饭辣椒酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "PINEAPPLE TART PASTE",
@@ -2496,7 +3206,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "036. FROZEN PINEAPPLE TART PASTE 冰冻 黄梨挞酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "PIZZA SAUCE",
@@ -2512,7 +3224,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "037. FROZEN PIZZA SAUCE 冰冻 披萨酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "PLUM SAUCE",
@@ -2528,7 +3242,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "038. FROZEN PLUM SAUCE 冰冻 梅子酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "PRAWN NOODLE SOUP",
@@ -2544,7 +3260,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "039. FROZEN PRAWN NOODLE SOUP 冰冻 虾面汤.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "RENDANG MUTTON PASTE",
@@ -2560,7 +3278,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "040. FROZEN RENDANG MUTTON PASTE 冰冻 仁当羊酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "RENDANG PASTE",
@@ -2576,7 +3296,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "041. FROZEN RENDANG PASTE 冰冻 仁当酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "SAMBAL BELACAN PASTE",
@@ -2592,7 +3314,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "042. FROZEN SAMBAL BELACAN PASTE 冰冻 干叁巴.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "SAMBAL BELACAN SAUCE",
@@ -2624,7 +3348,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "043. FROZEN SAMBAL TUMIS PASTE 冰冻 参巴肚米酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "SATAY SAUCE",
@@ -2640,7 +3366,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "044. FROZEN SATAY SAUCE 冰冻 沙爹酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "SHRIMP ROLL",
@@ -2656,7 +3384,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "045. FROZEN SHRIMP ROLL 冰冻 虾卷.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "TAO SA",
@@ -2672,7 +3402,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "046. FROZEN TAO SA 冰冻 豆沙.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "VEGETARIAN CURRY PASTE",
@@ -2688,7 +3420,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "047. FROZEN VEGETARIAN CURRY PASTE 冰冻 素咖喱酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "VEGETARIAN TUMIS PASTE",
@@ -2704,7 +3438,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "048. FROZEN VEGETARIAN TUMIS PASTE 冰冻 素肚米酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "X.O. SAUCE",
@@ -2720,7 +3456,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "049. FROZEN X.O. SAUCE 冰冻 XO酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CHAI PO",
@@ -2736,7 +3474,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "050. CHILLED CHAI PO 冷藏 菜脯.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "GINGER WATER",
@@ -2752,7 +3492,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "051. CHILLED GINGER WATER 冷藏 姜水.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "MUAH CHEE",
@@ -2768,7 +3510,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "052. CHILLED MUAH CHEE 冷藏 麻糍.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "PANDAN WATER",
@@ -2784,7 +3528,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "053. CHILLED PANDAN WATER 冷藏 香兰水.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CHAI PO OIL",
@@ -2800,7 +3546,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "054. AMBIENT CHAI PO OIL 室温 菜脯油.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "FRAGRANCE OIL",
@@ -2816,7 +3564,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "055. AMBIENT FRAGRANCE OIL 室温 香油.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "KUEH BANGKIT FLOUR",
@@ -2832,7 +3582,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "056. AMBIENT KUEH BANGKIT FLOUR 室温 番婆饼粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "LAKSA OIL",
@@ -2848,7 +3600,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "057. AMBIENT LAKSA OIL 室温 叻沙油.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "MEE SIAM OIL",
@@ -2864,7 +3618,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "058. AMBIENT MEE SIAM OIL 室温 米香油.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "PANDAN OIL",
@@ -2880,7 +3636,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "059. AMBIENT PANDAN OIL 室温 香兰油.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "SERUNDING",
@@ -2896,7 +3654,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "060. AMBIENT SERUNDING 室温 炒椰丝.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "YU SHENG OIL",
@@ -2912,7 +3672,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "061. AMBIENT YU SHENG OIL 室温 鱼生油.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "YU SHENG SAUCE",
@@ -2928,7 +3690,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "062. AMBIENT YU SHENG SAUCE 室温 鱼生酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "FRESH CHILLI (BLENDED)",
@@ -2944,7 +3708,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "063. FROZEN FRESH CHILLI (BLENDED) 冰冻 鲜辣椒 (搅).lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "APRICOT JAM",
@@ -2960,7 +3726,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "064. CHILLED APRICOT JAM 冷藏 杏子酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "BLUE GINGER (BLENDED)",
@@ -2976,7 +3744,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "065. CHILLED BLUE GINGER (BLENDED) 冷藏 南姜 (搅).lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "FRESH CHILLI (BLENDED)",
@@ -2992,7 +3762,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "066. CHILLED FRESH CHILLI (BLENDED) 冷藏 鲜辣椒 (搅).lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "GARLIC (BLENDED)",
@@ -3008,7 +3780,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "067. CHILLED GARLIC (BLENDED) 冷藏 大蒜 (搅).lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "GINGER (BLENDED)",
@@ -3024,7 +3798,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "068. CHILLED GINGER (BLENDED) 冷藏 光姜 (搅).lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "LEMONGRASS (BLENDED)",
@@ -3040,7 +3816,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "069. CHILLED LEMONGRASS (BLENDED) 冷藏 香茅 (搅).lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "ONION (BLENDED)",
@@ -3056,7 +3834,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "070. CHILLED ONION (BLENDED) 冷藏 大葱 (搅).lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "YELLOW GINGER (BLENDED)",
@@ -3072,7 +3852,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "071. CHILLED YELLOW GINGER (BLENDED) 冷藏 黄姜 (搅).lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CARROT (CUT)",
@@ -3088,7 +3870,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "072. CHILLED CARROT (CUT) 冷藏 萝卜 (切).lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CELERY (CUT)",
@@ -3104,7 +3888,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "073. CHILLED CELERY (CUT) 冷藏 芹菜 (切).lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CHILLI PADI",
@@ -3120,7 +3906,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "074. CHILLED CHILLI PADI 冷藏 小辣椒.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CHILLI SAUCE - MAGGI",
@@ -3152,7 +3940,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "075. CHILLED FRESH CHILLI 冷藏 鲜辣椒.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "GINGER (CUT)",
@@ -3168,7 +3958,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "076. CHILLED GINGER (CUT) 冷藏 光姜 (切).lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "KAFFIR LEAVES",
@@ -3184,7 +3976,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "077. CHILLED KAFFIR LEAVES 冷藏 柠檬叶.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "LAKSA LEAVES",
@@ -3200,7 +3994,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "078. CHILLED LAKSA LEAVES 冷藏 叻沙叶.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "PINEAPPLE JUICE",
@@ -3216,7 +4012,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "079. CHILLED PINEAPPLE JUICE 冷藏 黄梨汁.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "POTATO (CUT)",
@@ -3232,7 +4030,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "080. CHILLED POTATO (CUT) 冷藏 马铃薯 (切）.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "PRESERVED RADISH",
@@ -3248,7 +4048,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "081. CHILLED PRESERVED RADISH 冷藏 腌萝卜.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "SALTED SOYA BEAN",
@@ -3264,7 +4066,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "082. CHILLED SALTED SOYA BEAN 冷藏 豆酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "SUPERIOR GRADE CHILLI PASTE",
@@ -3280,7 +4084,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "083. CHILLED SUPERIOR GRADE CHILLI PASTE 冷藏 辣椒酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "TOMATO PASTES & CONCENTRATES",
@@ -3296,7 +4102,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "084. CHILLED TOMATO PASTES & CONCENTRATES 冷藏 番茄浓缩.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "TOMATO SAUCE",
@@ -3328,7 +4136,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "085. CHILLED YELLOW ONION (CUT) 冷藏 黄葱 (切).lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "6A BELACAN",
@@ -3344,7 +4154,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "086. AMBIENT 6A BELACAN 室温 马拉煎 (方).lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "ARTIFICIAL VINEGAR",
@@ -3360,7 +4172,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "087. AMBIENT ARTIFICIAL VINEGAR 室温 白醋.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "BASIL LEAVES SHREDDED",
@@ -3376,7 +4190,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "088. AMBIENT BASIL SHREDDED 室温 罗勒碎.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "BELACAN",
@@ -3392,7 +4208,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "089. AMBIENT BELACAN 室温 马拉煎 (圆).lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "BLACK PEPPER COURSE",
@@ -3408,7 +4226,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "090. AMBIENT BLACK PEPPER COURSE 室温 黑胡椒粒.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "BROWN SUGAR IN PIECES",
@@ -3424,7 +4244,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "091. AMBIENT BROWN SUGAR IN PIECES 室温 冰片糖.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CARDAMOM POWDER",
@@ -3440,7 +4262,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "092. AMBIENT CARDAMOM POWDER 室温 豆蔻粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CHICKEN SEASONING POWDER",
@@ -3456,7 +4280,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "093. AMBIENT CHICKEN SEASONING POWDER 室温 鸡精粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CHILLI POWDER",
@@ -3472,7 +4298,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "094. AMBIENT CHILLI POWDER 室温 辣椒粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CHOCOLATE BROWN COLOUR PASTE",
@@ -3488,7 +4316,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "095. AMBIENT CHOCOLATE BROWN COLOUR PASTE 室温 褐色素酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CINNAMON POWDER",
@@ -3504,7 +4334,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "096. AMBIENT CINNAMON POWDER 室温 肉桂粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CLOVE POWDER",
@@ -3520,7 +4352,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "097. AMBIENT CLOVE POWDER 室温 丁香粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "COOKING OIL",
@@ -3536,7 +4370,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "098. AMBIENT COOKING OIL 室温 食用油.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CUMIN POWDER",
@@ -3552,7 +4388,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "099. AMBIENT CUMIN POWDER 室温 小茴香粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "CURRY POWDER",
@@ -3568,7 +4406,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "100. AMBIENT CURRY POWDER 室温 咖喱粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "DRIED PRAWN A1",
@@ -3584,7 +4424,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "101. AMBIENT DRIED PRAWN A1 室温 虾米（好）.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "DRIED SHRIMP",
@@ -3600,7 +4442,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "102. AMBIENT DRIED SHRIMP 室温 虾米（很好）.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "DRIED SMALL SHRIMP",
@@ -3616,7 +4460,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "103. AMBIENT DRIED SMALL SHRIMP 室温 虾米（普通）.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "FENNEL POWDER",
@@ -3632,7 +4478,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "104. AMBIENT FENNEL POWDER 室温 大茴香粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "FINE SALT",
@@ -3648,7 +4496,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "105. AMBIENT FINE SALT 室温 盐.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "FINE SUGAR",
@@ -3664,7 +4514,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "106. AMBIENT FINE SUGAR 室温 糖.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "FISH MIX POWDER",
@@ -3680,7 +4532,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "107. AMBIENT FISH MIX POWDER 室温 鱼粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "FISH SAUCE",
@@ -3696,7 +4550,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "108. AMBIENT FISH SAUCE 室温 鱼露.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "FRIED CORIANDER POWDER",
@@ -3712,7 +4568,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "109. AMBIENT FRIED CORIANDER POWDER 室温 芫荽粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "FRIED SHALLOT",
@@ -3728,7 +4586,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "110. AMBIENT FRIED SHALLOT 室温 炸葱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "GLUTINOUS RICE FLOUR",
@@ -3744,7 +4604,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "111. AMBIENT GLUTINOUS RICE FLOUR 室温 糯米粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "GULA MELAKA",
@@ -3760,7 +4622,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "112. AMBIENT GULA MELAKA 室温 椰糖.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "HONEY",
@@ -3776,7 +4640,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "113. AMBIENT HONEY 室温 蜜糖.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "LEMON SAUCE",
@@ -3792,7 +4658,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "114. AMBIENT LEMON SAUCE 室温 柠檬酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "MONOSODIUM GLUTATAME",
@@ -3824,7 +4692,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "115. AMBIENT MUSHROOM SEASONING 室温 蘑菇香料.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "OREGANO SHREDDED",
@@ -3840,7 +4710,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "116. AMBIENT OREGANO SHREDDED 室温 牛至碎.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "POMACE OLIVE OIL",
@@ -3856,7 +4728,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "117. AMBIENT POMACE OLIVE OIL 室温 橄榄油.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "RAW FISH SAUCE",
@@ -3872,7 +4746,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "118. AMBIENT RAW FISH SAUCE 室温 生鱼露.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "ROCK SUGAR",
@@ -3888,7 +4764,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "119. AMBIENT ROCK SUGAR 室温 冰糖.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "SESAME OIL",
@@ -3904,7 +4782,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "120. AMBIENT SESAME OIL 室温 芝麻油.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "SESAME SEED",
@@ -3920,7 +4800,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "121. AMBIENT SESAME SEED 室温 白芝麻.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "SOTO MASALA POWDER",
@@ -3936,7 +4818,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "122. AMBIENT SOTO MASALA POWDER 室温 马来鸡汤面香料.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "STAR ANISE POWDER",
@@ -3952,7 +4836,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "123. AMBIENT STAR ANISE POWDER 室温 八角粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "SWEET FLOUR SAUCE",
@@ -3968,7 +4854,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "124. AMBIENT SWEET FLOUR SAUCE 室温 甜面酱.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "TAMARIND",
@@ -3984,7 +4872,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "125. AMBIENT TAMARIND 室温 亚叁.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "TURMERIC POWDER",
@@ -4000,7 +4890,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "126. AMBIENT TURMERIC POWDER 室温 黄姜粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "WHITE PEPPER POWDER",
@@ -4016,7 +4908,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "127. AMBIENT WHITE PEPPER POWDER 室温 白胡椒粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "YUZU POWDERED BEVERAGE MIX",
@@ -4032,7 +4926,9 @@
       "assignmentStatus": "MATCHED",
       "location": "#05-27",
       "templateFile": "128. AMBIENT YUZU MIX 室温 柚子粉.lbx",
-      "hasTemplate": true
+      "hasTemplate": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department"
     },
     {
       "name": "LEMON JUICE",

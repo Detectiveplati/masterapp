@@ -23,6 +23,11 @@ const LabelPrintTemplateSchema = new mongoose.Schema({
     widthMm: { type: Number, default: 58 },
     heightMm: { type: Number, default: 62 }
   },
+  departmentCode: { type: String, default: '', trim: true },
+  departmentName: { type: String, default: '', trim: true },
+  departmentSignature: { type: String, default: '', trim: true },
+  departmentSignaturePlacement: { type: String, default: '', trim: true },
+  departmentSignatureEmbeddedInTemplate: { type: Boolean, default: false },
   active: { type: Boolean, default: true }
 }, { timestamps: true });
 

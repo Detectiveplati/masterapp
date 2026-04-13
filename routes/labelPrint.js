@@ -21,6 +21,13 @@ let defaultsPromise = null;
 const PLACEHOLDER_COUNT = 10;
 const EXCEL_SOURCE_PATH = path.join(process.env.USERPROFILE || 'C:\\Users\\Zack', 'Desktop', '#05-27', 'Sauce Department.xlsx');
 const BUNDLED_CATALOG_PATH = path.join(__dirname, '..', 'label-print', 'data', 'catalog.json');
+const SAUCE_DEPARTMENT = {
+  code: 'sauce',
+  name: 'Sauce Department',
+  signature: 'Sauce Department / 酱料部',
+  signaturePlacement: 'bottom-right',
+  signatureEmbeddedInTemplate: true
+};
 
 async function ensureDefaults() {
   if (defaultsPromise) return defaultsPromise;
@@ -77,7 +84,7 @@ function readCatalogFromExcel() {
   const workbook = xlsx.readFile(EXCEL_SOURCE_PATH);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
-  return buildCatalogFromRows(rows);
+  return applyDepartmentMetadata(buildCatalogFromRows(rows), SAUCE_DEPARTMENT);
 }
 
 function readBundledCatalog() {
@@ -86,10 +93,10 @@ function readBundledCatalog() {
   }
   try {
     const payload = JSON.parse(fs.readFileSync(BUNDLED_CATALOG_PATH, 'utf8'));
-    return {
+    return applyDepartmentMetadata({
       templates: Array.isArray(payload.templates) ? payload.templates : [],
       items: Array.isArray(payload.items) ? payload.items : []
-    };
+    }, SAUCE_DEPARTMENT);
   } catch (_err) {
     return { templates: [], items: [] };
   }
@@ -209,6 +216,26 @@ function buildPlaceholderCatalog() {
   });
 
   return { templates, items };
+}
+
+function applyDepartmentMetadata(catalog, department) {
+  if (!department) return catalog;
+
+  return {
+    templates: (catalog.templates || []).map((template) => ({
+      ...template,
+      departmentCode: department.code,
+      departmentName: department.name,
+      departmentSignature: department.signature,
+      departmentSignaturePlacement: department.signaturePlacement,
+      departmentSignatureEmbeddedInTemplate: department.signatureEmbeddedInTemplate
+    })),
+    items: (catalog.items || []).map((item) => ({
+      ...item,
+      departmentCode: department.code,
+      departmentName: department.name
+    }))
+  };
 }
 
 async function replaceCatalog({ templates, items }) {

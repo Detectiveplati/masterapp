@@ -1297,7 +1297,7 @@ async function attemptAutoReconnect() {
   const reconnectResult = await attemptSavedPortReconnect({
     actionStatus: 'Reconnecting / 重新连接中',
     actionMeta: 'Trying the saved Bluetooth printer automatically. / 正在自动连接已保存的蓝牙打印机。',
-    toastMessage: 'Connecting to saved printer… / 正在连接已保存的打印机…'
+    toastMessage: ''
   });
   if (reconnectResult === 'connected') {
     console.debug('[AutoReconnect] Connected successfully.');

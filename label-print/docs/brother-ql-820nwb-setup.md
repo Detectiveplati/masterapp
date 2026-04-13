@@ -131,6 +131,13 @@ Practical rule:
 - put the final text, barcode, QR, layout, and formatting directly into the P-touch template
 - do not rely on app-side value insertion during normal printing
 
+Department traceability rule for the current Sauce Department set:
+- add a static footer text object directly inside each Sauce Department template
+- footer text must be exactly `Sauce Department / 酱料部`
+- place it in bottom-right empty space
+- keep it smaller than the main item name/date text so it behaves as a traceability footer, not primary content
+- do not change template numbers when adding this footer
+
 Brother limits still apply:
 - a template can contain up to `50 objects`
 - QL-820NWB can store up to `255 templates`
@@ -286,6 +293,9 @@ Printer template number: 2
 Media: 62 mm continuous
 Stored content: fully defined inside P-touch Editor
 Cut default: auto-cut
+Department: Sauce Department
+Department signature: Sauce Department / 酱料部
+Department signature placement: bottom-right footer
 ```
 
 ## 12. Files in this repo that depend on these settings
