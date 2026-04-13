@@ -180,19 +180,19 @@ body[data-module="label-print"] {
 .hidden { display: none !important; }
 
 /* ── Modals ──────────────────────────────────────────────────── */
-.modal-shell { position: fixed; inset: 0; z-index: 600; display: grid; place-items: center; padding: 18px; }
+.modal-shell { position: fixed; inset: 0; z-index: 600; display: grid; place-items: center; padding: 12px; }
 .modal-backdrop { position: absolute; inset: 0; background: rgba(18, 19, 22, 0.5); }
-.modal-card { position: relative; z-index: 1; width: min(760px, 100%); padding: 22px; }
-.modal-head { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
-.modal-head h2 { font-size: clamp(1.3rem, 2.4vw, 1.9rem); line-height: 1.08; margin: 0; }
-.modal-description { margin-top: 10px; color: #475467; line-height: 1.55; }
-.modal-body { display: grid; gap: 18px; margin-top: 18px; }
+.modal-card { position: relative; z-index: 1; width: min(760px, 100%); padding: 18px; max-height: calc(100dvh - 24px); display: flex; flex-direction: column; overflow: hidden; }
+.modal-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-shrink: 0; }
+.modal-head h2 { font-size: clamp(1.1rem, 2.2vw, 1.6rem); line-height: 1.08; margin: 0; }
+.modal-description { margin-top: 6px; color: #475467; line-height: 1.45; font-size: 0.85rem; }
+.modal-body { display: grid; gap: 14px; margin-top: 14px; overflow-y: auto; flex: 1 1 0; padding-right: 4px; }
 .modal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .printer-modal-card { width: min(720px, 100%); }
 .printer-modal-host-field { grid-column: 1 / -1; }
-.printer-widget { display: grid; gap: 16px; }
-.printer-status-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.printer-status-grid .status-card { padding: 14px 16px; }
+.printer-widget { display: grid; gap: 12px; }
+.printer-status-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.printer-status-grid .status-card { padding: 10px 12px; }
 .printer-widget-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .diagnostic-panel { display: grid; gap: 12px; padding: 14px; border-radius: 18px; background: #f8fafc; border: 1px solid rgba(18, 19, 22, 0.08); }
 .diagnostic-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
