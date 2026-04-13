@@ -73,6 +73,7 @@ const state = {
     port: null,
     info: null,
     connected: false,
+    reconnectPromise: null,
     lastError: '',
     lastErrorAt: null
   }
@@ -191,11 +192,17 @@ async function loadAll() {
     renderItems();
     templateStatusEl.textContent = `${state.templates.length} loaded`;
     await refreshBridgeStatus();
-    await attemptAutoReconnect();
+    const reconnectResult = await attemptAutoReconnect();
     updateDiagnostics();
     renderAuthorizedPorts();
     updatePrinterStatus();
-    if (!state.serial.connected) showReconnectBanner();
+    if (!state.serial.connected) {
+      if (reconnectResult === 'failed') {
+        showReconnectBanner('Auto-reconnect failed — tap Connect Printer');
+      } else {
+        showReconnectBanner();
+      }
+    }
     setAction('Ready', 'Launcher is ready for Bluetooth printing from this tablet.');
   } catch (error) {
     console.error(error);
@@ -502,12 +509,20 @@ async function runPrint(item, options = {}) {
   const payload = buildPrintPayload(item, template, quantity, cutMode, printer);
 
   // If the printer is not connected, queue this job and prompt reconnect.
-  // Never attempt an inline auto-connect here — writer.write() on a zombie
-  // Bluetooth port resolves silently, giving a false "print successful" result.
+  // Try one silent reconnect using a saved authorized port before prompting.
   if (!state.serial.connected) {
     state.pendingPrint = { item, options };
-    showReconnectBanner(`Tap to connect & print "${item.name}"`);
-    return;
+    const reconnectResult = await attemptSavedPortReconnect({
+      actionStatus: 'Reconnecting',
+      actionMeta: `Trying saved printer before printing ${item.name}.`
+    });
+    if (reconnectResult !== 'connected') {
+      const message = reconnectResult === 'no-port'
+        ? `No saved printer found — tap to connect & print "${item.name}"`
+        : `Reconnect required — tap to connect & print "${item.name}"`;
+      showReconnectBanner(message);
+      return;
+    }
   }
 
   setAction('Printing', `${item.name} · qty ${quantity} · ${cutMode}`);
@@ -878,6 +893,42 @@ async function ensureBluetoothConnection(options = {}) {
   }
 }
 
+async function attemptSavedPortReconnect(options = {}) {
+  if (state.serial.connected) return 'connected';
+  if (!navigator.serial) return 'unsupported';
+  if (state.serial.reconnectPromise) return state.serial.reconnectPromise;
+
+  const reconnectTask = (async () => {
+    const { actionStatus = '', actionMeta = '' } = options;
+    if (actionStatus) setAction(actionStatus, actionMeta || 'Trying saved Bluetooth printer.');
+
+    const port = await resolvePreferredPort();
+    if (!port) return 'no-port';
+
+    try {
+      await connectToPort(port);
+      clearSerialError();
+      renderAuthorizedPorts();
+      updatePrinterStatus();
+      updateDiagnostics();
+      return 'connected';
+    } catch (error) {
+      console.warn('[SavedPortReconnect] Failed:', error && error.name, error && error.message, error);
+      setSerialError(error);
+      await resetSerialStateAfterFailure();
+      updateDiagnostics();
+      return 'failed';
+    }
+  })();
+
+  state.serial.reconnectPromise = reconnectTask;
+  try {
+    return await reconnectTask;
+  } finally {
+    state.serial.reconnectPromise = null;
+  }
+}
+
 async function resolvePreferredPort() {
   const ports = await getAuthorizedPorts();
   console.debug('[resolvePreferredPort] state.serial.port:', state.serial.port, '| getPorts() count:', ports.length, ports);
@@ -1072,25 +1123,23 @@ async function attemptAutoReconnect() {
   console.debug('[AutoReconnect] Starting. navigator.serial:', !!navigator.serial, '| already connected:', state.serial.connected);
   if (!navigator.serial || state.serial.connected) {
     console.debug('[AutoReconnect] Skipped early — serial unsupported or already connected.');
-    return;
+    return state.serial.connected ? 'connected' : 'unsupported';
   }
-  const port = await resolvePreferredPort();
-  console.debug('[AutoReconnect] resolvePreferredPort result:', port);
-  if (!port) {
-    console.debug('[AutoReconnect] No port found — browser has no authorized Bluetooth ports.');
-    return;
-  }
-  try {
-    console.debug('[AutoReconnect] Attempting connectToPort...');
-    await connectToPort(port);
-    clearSerialError();
+  const reconnectResult = await attemptSavedPortReconnect({
+    actionStatus: 'Reconnecting',
+    actionMeta: 'Trying the saved Bluetooth printer automatically.'
+  });
+  if (reconnectResult === 'connected') {
     console.debug('[AutoReconnect] Connected successfully.');
     setAction('Printer connected', 'Saved Bluetooth printer reconnected automatically.');
-  } catch (error) {
-    console.warn('[AutoReconnect] Failed:', error.name, error.message, error);
-    setSerialError(error);
-    await resetSerialStateAfterFailure();
+    return 'connected';
   }
+  if (reconnectResult === 'no-port') {
+    console.debug('[AutoReconnect] No port found — browser has no authorized Bluetooth ports.');
+    return 'no-port';
+  }
+  console.warn('[AutoReconnect] Failed to reconnect saved Bluetooth printer.');
+  return 'failed';
 }
 
 async function sendTemplateToBluetooth(payload) {
