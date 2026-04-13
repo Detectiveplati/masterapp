@@ -340,7 +340,7 @@ function renderAuthorizedPorts() {
 function renderItemCard(item) {
   const template = findTemplate(item.templateKey);
   const quantity = getItemQuantity(item._id);
-  const cutMode = item.defaultCutMode || getDefaultCutMode();
+  const cutMode = getDefaultCutMode();
   const supportText = buildSupportText(item);
   const printable = Boolean(template);
   return `
@@ -396,7 +396,7 @@ function bindCardEvents() {
       if (item) {
         runPrint(item, {
           quantity: getItemQuantity(item._id),
-          cutMode: item.defaultCutMode || getDefaultCutMode(),
+          cutMode: getDefaultCutMode(),
           source: 'card-button'
         });
       }
@@ -415,7 +415,7 @@ function bindCardEvents() {
       if (item && findTemplate(item.templateKey)) {
         runPrint(item, {
           quantity: getItemQuantity(item._id),
-          cutMode: item.defaultCutMode || getDefaultCutMode(),
+          cutMode: getDefaultCutMode(),
           source: 'card-body'
         });
       }
