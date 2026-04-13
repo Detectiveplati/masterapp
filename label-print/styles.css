@@ -1,3 +1,35 @@
+.reconnect-banner {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  box-shadow: 0 4px 16px rgba(180, 83, 9, 0.35);
+}
+.reconnect-banner.hidden { display: none; }
+.reconnect-banner-btn {
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.7);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 10px 20px;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 48px;
+}
+.reconnect-banner-btn:active { background: rgba(255,255,255,0.3); }
+
 body[data-module="label-print"] {
   background:
     radial-gradient(900px 460px at 8% -10%, rgba(217, 119, 6, 0.15), transparent 58%),

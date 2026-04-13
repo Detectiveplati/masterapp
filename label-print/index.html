@@ -9,6 +9,11 @@
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body data-module="label-print">
+  <div id="reconnect-banner" class="reconnect-banner hidden" role="alert">
+    <span id="reconnect-banner-text">Printer not connected</span>
+    <button id="reconnect-banner-button" class="reconnect-banner-btn" type="button">Tap to Connect</button>
+  </div>
+
   <main class="label-page">
     <section class="hero-card">
       <div class="hero-copy">
@@ -111,8 +116,8 @@
       <div class="modal-head">
         <div>
           <p class="eyebrow">Printer Setup</p>
-          <h2>Network printer widget</h2>
-          <p class="modal-description">Keep printer discovery and connection settings out of the main launcher. Configure the target printer here, then return to printing.</p>
+          <h2>Bluetooth printer widget</h2>
+          <p class="modal-description">Keep Bluetooth pairing and reconnection settings out of the main launcher. Configure the target printer here, then return to printing.</p>
         </div>
         <button id="printer-modal-close-button" class="icon-button" type="button" aria-label="Close">×</button>
       </div>

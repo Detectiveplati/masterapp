@@ -41,6 +41,9 @@ const previewQuantityEl = document.getElementById('preview-quantity');
 const modalPrintButtonEl = document.getElementById('modal-print-button');
 const modalCloseButtonEl = document.getElementById('modal-close-button');
 const printerModalCloseButtonEl = document.getElementById('printer-modal-close-button');
+const reconnectBannerEl = document.getElementById('reconnect-banner');
+const reconnectBannerTextEl = document.getElementById('reconnect-banner-text');
+const reconnectBannerButtonEl = document.getElementById('reconnect-banner-button');
 const toastEl = document.getElementById('toast');
 const diagSecureContextEl = document.getElementById('diag-secure-context');
 const diagOriginEl = document.getElementById('diag-origin');
@@ -94,6 +97,41 @@ testPrintButtonEl.addEventListener('click', requestTestPrint);
 refreshDiagnosticsButtonEl.addEventListener('click', refreshDiagnostics);
 openSiteSettingsButtonEl.addEventListener('click', openSiteSettings);
 forgetPortsButtonEl.addEventListener('click', forgetAuthorizedPorts);
+reconnectBannerButtonEl.addEventListener('click', async () => {
+  reconnectBannerButtonEl.disabled = true;
+  reconnectBannerTextEl.textContent = 'Connecting…';
+  try {
+    const port = await resolvePreferredPort();
+    if (!port) {
+      // No authorized port — open the pairing dialog (requires user gesture)
+      const freshPort = await requestFreshPort().catch((e) => {
+        if (e && e.name === 'NotFoundError') return null;
+        throw e;
+      });
+      if (!freshPort) {
+        reconnectBannerTextEl.textContent = 'No printer selected';
+        reconnectBannerButtonEl.disabled = false;
+        reconnectBannerButtonEl.textContent = 'Pair Printer';
+        return;
+      }
+      await connectToPort(freshPort);
+    } else {
+      await connectToPort(port);
+    }
+    clearSerialError();
+    hideReconnectBanner();
+    renderAuthorizedPorts();
+    updatePrinterStatus();
+    updateDiagnostics();
+    showToast('Printer connected.');
+  } catch (error) {
+    console.error('[ReconnectBanner]', error);
+    setSerialError(error);
+    reconnectBannerTextEl.textContent = 'Connection failed — tap to retry';
+    reconnectBannerButtonEl.disabled = false;
+    reconnectBannerButtonEl.textContent = 'Tap to Connect';
+  }
+});
 modalCloseButtonEl.addEventListener('click', closeOptionsModal);
 printerModalCloseButtonEl.addEventListener('click', closePrinterModal);
 modalPrintButtonEl.addEventListener('click', () => {
@@ -115,8 +153,6 @@ initSerialEvents();
 document.addEventListener('visibilitychange', updateDiagnostics);
 window.addEventListener('focus', updateDiagnostics);
 window.addEventListener('pageshow', updateDiagnostics);
-window.addEventListener('pagehide', handlePageShutdown);
-window.addEventListener('beforeunload', handlePageShutdown);
 loadAll();
 
 async function loadAll() {
@@ -147,6 +183,7 @@ async function loadAll() {
     updateDiagnostics();
     renderAuthorizedPorts();
     updatePrinterStatus();
+    if (!state.serial.connected) showReconnectBanner();
     setAction('Ready', 'Launcher is ready for Bluetooth printing from this tablet.');
   } catch (error) {
     console.error(error);
@@ -173,7 +210,19 @@ function initSerialEvents() {
     updateDiagnostics();
     renderAuthorizedPorts();
     updatePrinterStatus();
+    showReconnectBanner();
   });
+}
+
+function showReconnectBanner(message) {
+  reconnectBannerTextEl.textContent = message || 'Printer not connected';
+  reconnectBannerButtonEl.disabled = false;
+  reconnectBannerButtonEl.textContent = 'Tap to Connect';
+  reconnectBannerEl.classList.remove('hidden');
+}
+
+function hideReconnectBanner() {
+  reconnectBannerEl.classList.add('hidden');
 }
 
 function renderPrinterOptions() {
@@ -777,7 +826,7 @@ async function ensureBluetoothConnection(options = {}) {
     await connectToPort(port);
     return port;
   } catch (error) {
-    if (interactive && shouldPreferFreshPortSelection() && canRetryWithFreshSelection(error)) {
+    if (interactive && canRetryWithFreshSelection(error)) {
       const refreshedPort = await requestFreshPort().catch((requestError) => {
         if (requestError && requestError.name === 'NotFoundError') return null;
         throw requestError;
@@ -795,17 +844,13 @@ async function ensureBluetoothConnection(options = {}) {
 
 async function resolvePreferredPort() {
   const ports = await getAuthorizedPorts();
+  console.debug('[resolvePreferredPort] state.serial.port:', state.serial.port, '| getPorts() count:', ports.length, ports);
   return state.serial.port || ports[0] || null;
 }
 
 async function requestFreshPort() {
   if (!navigator.serial) return null;
   return navigator.serial.requestPort({});
-}
-
-function shouldPreferFreshPortSelection() {
-  const mode = getDisplayMode().label;
-  return mode === 'Standalone app' || mode === 'Minimal UI' || mode === 'Fullscreen';
 }
 
 function canRetryWithFreshSelection(error) {
@@ -815,7 +860,9 @@ function canRetryWithFreshSelection(error) {
 
 async function connectToPort(port) {
   if (!port) throw new Error('No Bluetooth serial port was selected.');
+  console.debug('[connectToPort] port info:', port.getInfo ? port.getInfo() : 'getInfo unavailable', '| readable:', !!port.readable, '| writable:', !!port.writable);
   if (state.serial.port && state.serial.port !== port) {
+    console.debug('[connectToPort] Different port in state — closing existing port first.');
     await closeCurrentPort().catch(() => {});
   }
 
@@ -823,6 +870,7 @@ async function connectToPort(port) {
   // In installed mode after a page refresh those streams can be non-null but the
   // underlying RFCOMM channel is dead.  open() is the only reliable liveness check.
   try {
+    console.debug('[connectToPort] Calling port.open() with baudRate:', getSerialBaudRate());
     await port.open({
       baudRate: getSerialBaudRate(),
       dataBits: 8,
@@ -833,14 +881,18 @@ async function connectToPort(port) {
   } catch (error) {
     if (error && error.name === 'InvalidStateError' && port.readable && port.writable) {
       // Port was already open and streams are still alive — proceed.
+      console.debug('[connectToPort] InvalidStateError but streams alive — treating as already open.');
     } else {
+      console.debug('[connectToPort] port.open() failed:', error.name, error.message);
       throw decorateSerialOpenError(error);
     }
   }
 
+  console.debug('[connectToPort] port.open() succeeded. Marking connected.');
   state.serial.port = port;
   state.serial.info = port.getInfo ? port.getInfo() : {};
   state.serial.connected = true;
+  hideReconnectBanner();
   await refreshBridgeStatus();
   updateDiagnostics();
 }
@@ -869,21 +921,26 @@ async function closeCurrentPort() {
   }
 }
 
-function handlePageShutdown() {
-  if (!state.serial.port) return;
-  closeCurrentPort().catch(() => {});
-}
-
 async function attemptAutoReconnect() {
-  if (!navigator.serial || state.serial.connected) return;
+  console.debug('[AutoReconnect] Starting. navigator.serial:', !!navigator.serial, '| already connected:', state.serial.connected);
+  if (!navigator.serial || state.serial.connected) {
+    console.debug('[AutoReconnect] Skipped early — serial unsupported or already connected.');
+    return;
+  }
   const port = await resolvePreferredPort();
-  if (!port) return;
+  console.debug('[AutoReconnect] resolvePreferredPort result:', port);
+  if (!port) {
+    console.debug('[AutoReconnect] No port found — browser has no authorized Bluetooth ports.');
+    return;
+  }
   try {
+    console.debug('[AutoReconnect] Attempting connectToPort...');
     await connectToPort(port);
     clearSerialError();
+    console.debug('[AutoReconnect] Connected successfully.');
     setAction('Printer connected', 'Saved Bluetooth printer reconnected automatically.');
   } catch (error) {
-    console.warn('Auto reconnect skipped:', error);
+    console.warn('[AutoReconnect] Failed:', error.name, error.message, error);
     setSerialError(error);
     await resetSerialStateAfterFailure();
   }
