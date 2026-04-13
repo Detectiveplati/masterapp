@@ -100,24 +100,37 @@ forgetPortsButtonEl.addEventListener('click', forgetAuthorizedPorts);
 reconnectBannerButtonEl.addEventListener('click', async () => {
   reconnectBannerButtonEl.disabled = true;
   reconnectBannerTextEl.textContent = 'Connecting…';
-  try {
-    const port = await resolvePreferredPort();
-    if (!port) {
-      // No authorized port — open the pairing dialog (requires user gesture)
-      const freshPort = await requestFreshPort().catch((e) => {
-        if (e && e.name === 'NotFoundError') return null;
-        throw e;
-      });
-      if (!freshPort) {
-        reconnectBannerTextEl.textContent = 'No printer selected';
-        reconnectBannerButtonEl.disabled = false;
-        reconnectBannerButtonEl.textContent = 'Pair Printer';
-        return;
-      }
-      await connectToPort(freshPort);
-    } else {
-      await connectToPort(port);
+
+  // Step 1: try the saved (previously-authorized) port
+  const savedPort = await resolvePreferredPort().catch(() => null);
+  if (savedPort) {
+    try {
+      await connectToPort(savedPort);
+      clearSerialError();
+      hideReconnectBanner();
+      renderAuthorizedPorts();
+      updatePrinterStatus();
+      updateDiagnostics();
+      showToast('Printer connected.');
+      return;
+    } catch (_) {
+      // Saved port's RFCOMM channel is dead — fall through to re-pair
+      await resetSerialStateAfterFailure().catch(() => {});
     }
+  }
+
+  // Step 2: saved port failed or doesn't exist — open the Bluetooth picker so the
+  // user can re-pair without needing to manually "Forget Ports" first.
+  reconnectBannerTextEl.textContent = 'Select printer from list…';
+  try {
+    const freshPort = await requestFreshPort();
+    if (!freshPort) {
+      reconnectBannerTextEl.textContent = 'No printer selected';
+      reconnectBannerButtonEl.disabled = false;
+      reconnectBannerButtonEl.textContent = 'Tap to Connect';
+      return;
+    }
+    await connectToPort(freshPort);
     clearSerialError();
     hideReconnectBanner();
     renderAuthorizedPorts();
@@ -127,7 +140,9 @@ reconnectBannerButtonEl.addEventListener('click', async () => {
   } catch (error) {
     console.error('[ReconnectBanner]', error);
     setSerialError(error);
-    reconnectBannerTextEl.textContent = 'Connection failed — tap to retry';
+    reconnectBannerTextEl.textContent = error.name === 'NotFoundError'
+      ? 'Cancelled — tap to try again'
+      : 'Connection failed — tap to retry';
     reconnectBannerButtonEl.disabled = false;
     reconnectBannerButtonEl.textContent = 'Tap to Connect';
   }
