@@ -363,7 +363,8 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
 // ── Alert helpers ────────────────────────────────────────────────────────────
 
 function evaluateAlertType(value, unit) {
-  // Warmers are monitored exclusively by the fault-state machine — no temperature range alerts
+  // Warmers are monitored exclusively by the fault-state machine (updateWarmerState).
+  // The fault alert and its inUse guard are handled there — not here.
   if (unit.type === 'warmer') return null;
   const { criticalMin, criticalMax } = unit;
   if (value < criticalMin) return 'critical_low';
@@ -395,7 +396,7 @@ async function maybeCreateOrNotifyAlert(unit, device, readingId, type, value, re
       console.log(`⏱  [TempMon] Excursion started (${unit.alertThresholdMinutes} min required): ${type} for "${unit.name}" at ${value}°C`);
       return false;
     }
-    // threshold = 0: fall through and raise immediately (requires a second reading though)
+    // threshold = 0: elapsedMs will be 0, and 0 >= 0 is true, so the alert fires on this reading
   }
 
   const elapsedMs = ts - global._tempmonExcursionStart[key];
@@ -410,13 +411,22 @@ async function maybeCreateOrNotifyAlert(unit, device, readingId, type, value, re
   await alert.save();
 
   const label = buildAlertLabel(type, value, unit);
-  const threshLabel = unit.alertThresholdMinutes > 0 ? ` after ${unit.alertThresholdMinutes} min out of range` : '';
+  const excursionTime = formatAlertTime(global._tempmonExcursionStart[key]);
+  const threshLabel = unit.alertThresholdMinutes > 0
+    ? ` after ${unit.alertThresholdMinutes} min out of range (since ${excursionTime})`
+    : ` (first detected at ${excursionTime})`;
   sendPush(`🔴 ${unit.name}: ${label}`,
     `Temperature alert raised${threshLabel}. Check the unit immediately.`,
     '/tempmon/alerts.html');
   console.log(`✓ [TempMon] Critical alert raised: ${type} for "${unit.name}" at ${value}°C (threshold: ${unit.alertThresholdMinutes || 0} min)`);
 
   return true;
+}
+
+function formatAlertTime(tsMs) {
+  return new Date(tsMs).toLocaleTimeString('en-SG', {
+    hour: '2-digit', minute: '2-digit', timeZone: process.env.TEMP_MON_REPORT_TZ || process.env.TZ || 'Asia/Singapore'
+  });
 }
 
 function buildAlertLabel(type, value, unit) {
@@ -1228,7 +1238,10 @@ if (!global._tempmonOfflineCronStarted) {
 async function checkPendingPushes() {
   try {
     // Safety-net: find open critical alerts that somehow have no push sent yet.
-    // Under normal flow alerts are created with pushSentAt already set, so this rarely fires.
+    // Under normal flow maybeCreateOrNotifyAlert only creates an alert AFTER the threshold is
+    // already met, setting pushSentAt immediately — so pushSentAt:null is an orphan record.
+    // Orphans can arise from a manual DB insert or a server crash mid-save.
+    // Correct action: send the push immediately without any additional delay check.
     const pending = await TempMonAlert.find({
       pushSentAt: null,
       status:     { $in: ['open', 'acknowledged'] },
@@ -1242,19 +1255,12 @@ async function checkPendingPushes() {
       if (!unit) continue;
       if (unit.inUse === false) continue;
 
-      // Use per-unit threshold
-      const thresholdMs = (unit.alertThresholdMinutes || 0) * 60 * 1000;
-      const alertAgeMs  = Date.now() - new Date(alert.createdAt).getTime();
-
-      if (alertAgeMs >= thresholdMs) {
-        await TempMonAlert.updateOne({ _id: alert._id }, { pushSentAt: new Date(), notificationSent: true });
-        const label = buildAlertLabel(alert.type, alert.value, unit);
-        const delayLabel = unit.alertThresholdMinutes > 0 ? `${unit.alertThresholdMinutes} min` : 'immediately';
-        sendPush(`🔴 ${unit.name}: ${label}`,
-          `Temperature has been out of range for ${delayLabel}. Check the unit.`,
-          '/tempmon/alerts.html');
-        console.log(`✓ [TempMon] Pending push fired (${delayLabel} threshold): ${alert.type} for "${unit.name}"`);
-      }
+      await TempMonAlert.updateOne({ _id: alert._id }, { pushSentAt: new Date(), notificationSent: true });
+      const label = buildAlertLabel(alert.type, alert.value, unit);
+      sendPush(`🔴 ${unit.name}: ${label}`,
+        `Temperature alert — push was delayed. Check the unit immediately.`,
+        '/tempmon/alerts.html');
+      console.log(`✓ [TempMon] Safety-net push fired for orphan alert: ${alert.type} for "${unit.name}"`);
     }
   } catch (err) {
     console.error('✗ [TempMon] Pending push check error:', err.message);
@@ -1331,8 +1337,9 @@ if (!global._tempmonExcursionStart) global._tempmonExcursionStart = {};
         });
         await alert.save();
         const label = buildAlertLabel(alertType, latest.value, unit);
+        const excursionTime = formatAlertTime(new Date(excursionStart).getTime());
         sendPush(`🔴 ${unit.name}: ${label}`,
-          `Temperature has been out of range for over ${unit.alertThresholdMinutes} min. Check the unit immediately.`,
+          `Temperature has been out of range since ${excursionTime} (over ${unit.alertThresholdMinutes} min). Check the unit immediately.`,
           '/tempmon/alerts.html');
         console.log(`✓ [TempMon] Startup: fired overdue alert for "${unit.name}" (out of range since ${excursionStart})`);
       } else {
