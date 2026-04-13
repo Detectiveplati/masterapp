@@ -499,9 +499,19 @@ async function runPrint(item, options = {}) {
   const quantity = clampQuantity(options.quantity || getItemQuantity(item._id));
   const cutMode = options.cutMode === 'no-cut' ? 'no-cut' : 'auto-cut';
   const payload = buildPrintPayload(item, template, quantity, cutMode, printer);
+
+  // If the printer is not connected, queue this job and prompt reconnect.
+  // Never attempt an inline auto-connect here — writer.write() on a zombie
+  // Bluetooth port resolves silently, giving a false "print successful" result.
+  if (!state.serial.connected) {
+    state.pendingPrint = { item, options };
+    showReconnectBanner(`Tap to connect & print "${item.name}"`);
+    return;
+  }
+
   setAction('Printing', `${item.name} · qty ${quantity} · ${cutMode}`);
 
-  // Store for auto-retry after reconnect via the bottom bar
+  // Store for auto-retry if the write fails mid-session
   state.pendingPrint = { item, options };
 
   let writeError = null;
@@ -915,8 +925,9 @@ async function verifyConnectionBeforePrint() {
     }
   }
 
-  // Not currently connected — use interactive reconnect (saved port → BT picker)
-  return await ensureBluetoothConnection({ interactive: true });
+  // Not connected — caller (runPrint) should have blocked before reaching here.
+  // This path should not be hit in normal flow.
+  throw new Error('Printer not connected. Tap Connect Printer to reconnect.');
 }
 
 function retryPendingPrint() {
@@ -986,18 +997,29 @@ async function connectToPort(port) {
     });
   } catch (error) {
     if (error && error.name === 'InvalidStateError' && port.readable && port.writable) {
-      // Port was already open — streams appear alive, but after a page refresh
-      // the underlying RFCOMM channel can be a zombie.  Probe before trusting it.
-      console.debug('[connectToPort] InvalidStateError — streams visible, probing channel liveness...');
-      const alive = await probeBluetoothConnection(port);
-      if (!alive) {
-        console.debug('[connectToPort] Probe failed — RFCOMM zombie detected, throwing.');
-        throw Object.assign(
-          new Error('Bluetooth printer is disconnected. Tap Connect Printer to reconnect.'),
-          { name: 'NetworkError' }
-        );
-      }
-      console.debug('[connectToPort] Probe passed — treating as truly open.');
+      // Port has zombie streams from a previous page session — Chrome kept the
+      // ReadableStream/WritableStream objects alive across the refresh but the
+      // RFCOMM link is gone.  Probing by writing a byte is useless because
+      // writer.write() always resolves immediately (Chrome buffers the bytes).
+      // The only reliable fix: force-cancel the streams, close the port, then
+      // reopen — port.open() actually tests the BT stack and will throw if the
+      // printer is unreachable.
+      console.debug('[connectToPort] InvalidStateError — force-closing zombie streams before reopening...');
+      try {
+        if (!port.readable.locked) await port.readable.cancel().catch(() => {});
+        if (!port.writable.locked) await port.writable.abort().catch(() => {});
+        await port.close().catch(() => {});
+      } catch (_) { /* ignore — streams may already be dead */ }
+      // Reopen fresh — will throw if the BT radio link is actually dead
+      console.debug('[connectToPort] Attempting clean reopen after zombie close...');
+      await port.open({
+        baudRate: getSerialBaudRate(),
+        dataBits: 8,
+        stopBits: 1,
+        parity: 'none',
+        flowControl: 'none'
+      });
+      console.debug('[connectToPort] Clean reopen succeeded — zombie resolved.');
     } else {
       console.debug('[connectToPort] port.open() failed:', error.name, error.message);
       throw decorateSerialOpenError(error);
