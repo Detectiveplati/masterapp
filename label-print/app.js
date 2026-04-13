@@ -46,6 +46,8 @@ const reconnectBannerEl = document.getElementById('reconnect-bar');
 const reconnectBannerTextEl = document.getElementById('reconnect-bar-text');
 const reconnectBannerButtonEl = document.getElementById('reconnect-bar-button');
 const toastEl = document.getElementById('toast');
+const runtimeLogEl = document.getElementById('runtime-log');
+const clearRuntimeLogButtonEl = document.getElementById('clear-runtime-log-button');
 const diagSecureContextEl = document.getElementById('diag-secure-context');
 const diagOriginEl = document.getElementById('diag-origin');
 const diagDisplayModeEl = document.getElementById('diag-display-mode');
@@ -68,6 +70,7 @@ const state = {
   selectedPrinterId: '',
   activeItem: null,
   pendingPrint: null,
+  runtimeLog: [],
   serial: {
     supported: Boolean(navigator.serial),
     port: null,
@@ -100,7 +103,9 @@ testPrintButtonEl.addEventListener('click', requestTestPrint);
 refreshDiagnosticsButtonEl.addEventListener('click', refreshDiagnostics);
 openSiteSettingsButtonEl.addEventListener('click', openSiteSettings);
 forgetPortsButtonEl.addEventListener('click', forgetAuthorizedPorts);
+clearRuntimeLogButtonEl.addEventListener('click', clearRuntimeLog);
 reconnectBannerButtonEl.addEventListener('click', async () => {
+  appendRuntimeLog('Reconnect banner button clicked', runtimeStateSnapshot());
   reconnectBannerButtonEl.disabled = true;
   reconnectBannerButtonEl.textContent = 'Connecting… / 连接中…';
   reconnectBannerTextEl.textContent = 'Trying saved connection… / 正在尝试已保存的连接…';
@@ -168,9 +173,11 @@ initSerialEvents();
 document.addEventListener('visibilitychange', updateDiagnostics);
 window.addEventListener('focus', updateDiagnostics);
 window.addEventListener('pageshow', updateDiagnostics);
+appendRuntimeLog('Module boot', runtimeStateSnapshot());
 loadAll();
 
 async function loadAll() {
+  appendRuntimeLog('loadAll() start', { origin: window.location.origin });
   setAction('Loading / 加载中', 'Refreshing label items, templates, and printer setup. / 正在刷新标签项目、模板和打印机设置。');
   try {
     const [items, templates, printers] = await Promise.all([
@@ -195,6 +202,7 @@ async function loadAll() {
     templateStatusEl.textContent = `${state.templates.length} loaded / 已加载 ${state.templates.length} 个`;
     await refreshBridgeStatus();
     const reconnectResult = await attemptAutoReconnect();
+    appendRuntimeLog('loadAll() auto reconnect result', { reconnectResult, serialConnected: state.serial.connected });
     updateDiagnostics();
     renderAuthorizedPorts();
     updatePrinterStatus();
@@ -206,8 +214,10 @@ async function loadAll() {
       }
     }
     setAction('Ready / 就绪', 'Launcher is ready for Bluetooth printing from this tablet. / 此平板已准备好进行蓝牙打印。');
+    appendRuntimeLog('loadAll() complete', runtimeStateSnapshot());
   } catch (error) {
     console.error(error);
+    appendRuntimeLog('loadAll() failed', { error: error && (error.message || error.name || String(error)) });
     setAction('Load failed / 加载失败', error.message || 'Could not load label printing data. / 无法加载标签打印数据。');
     showToast(error.message || 'Could not load label printing data. / 无法加载标签打印数据。');
   }
@@ -216,12 +226,17 @@ async function loadAll() {
 function initSerialEvents() {
   if (!navigator.serial) return;
   navigator.serial.addEventListener('connect', async () => {
+    appendRuntimeLog('navigator.serial connect event', runtimeStateSnapshot());
     await refreshBridgeStatus();
     updateDiagnostics();
     renderAuthorizedPorts();
     updatePrinterStatus();
   });
   navigator.serial.addEventListener('disconnect', async (event) => {
+    appendRuntimeLog('navigator.serial disconnect event', {
+      targetMatchesCurrent: state.serial.port === event.target,
+      currentPortInfo: safePortInfo(state.serial.port)
+    });
     if (state.serial.port === event.target) {
       state.serial.port = null;
       state.serial.info = null;
@@ -310,6 +325,10 @@ function renderItems() {
 }
 
 function renderAuthorizedPorts() {
+  appendRuntimeLog('renderAuthorizedPorts()', {
+    count: state.authorizedPorts.length,
+    connected: state.serial.connected
+  });
   discoverEmptyEl.classList.toggle('hidden', state.authorizedPorts.length > 0);
   discoverListEl.innerHTML = state.authorizedPorts.map((entry, index) => `
     <article class="job-card">
@@ -329,6 +348,11 @@ function renderAuthorizedPorts() {
       const portIndex = Number(button.dataset.portIndex);
       const entry = state.authorizedPorts[portIndex];
       if (!entry || !entry.port) return;
+      appendRuntimeLog('Saved port connect button clicked', {
+        portIndex,
+        label: entry.label,
+        info: entry.info || {}
+      });
       try {
         await connectToPort(entry.port);
         clearSerialError();
@@ -402,6 +426,12 @@ function bindCardEvents() {
     button.addEventListener('click', (event) => {
       event.stopPropagation();
       const item = findItem(button.dataset.itemId);
+      appendRuntimeLog('Print button clicked', {
+        itemId: button.dataset.itemId,
+        itemName: item && item.name,
+        selectedPrinterId: state.selectedPrinterId,
+        serialConnected: state.serial.connected
+      });
       if (item) {
         runPrint(item, {
           quantity: getItemQuantity(item._id),
@@ -421,6 +451,11 @@ function bindCardEvents() {
   cardGroupsEl.querySelectorAll('.item-body').forEach((body) => {
     body.addEventListener('click', () => {
       const item = findItem(body.dataset.itemId);
+      appendRuntimeLog('Item body clicked', {
+        itemId: body.dataset.itemId,
+        itemName: item && item.name,
+        hasTemplate: Boolean(item && findTemplate(item.templateKey))
+      });
       if (item && findTemplate(item.templateKey)) {
         runPrint(item, {
           quantity: getItemQuantity(item._id),
@@ -495,13 +530,22 @@ function buildSupportText(item) {
 }
 
 async function runPrint(item, options = {}) {
+  appendRuntimeLog('runPrint() start', {
+    itemId: item && item._id,
+    itemName: item && item.name,
+    options,
+    serialConnected: state.serial.connected,
+    selectedPrinterId: state.selectedPrinterId
+  });
   const printer = selectedPrinter();
   const template = findTemplate(item.templateKey);
   if (!printer) {
+    appendRuntimeLog('runPrint() blocked: no printer selected', runtimeStateSnapshot());
     showToast('Select a printer before printing. / 打印前请先选择打印机。');
     return;
   }
   if (!template) {
+    appendRuntimeLog('runPrint() blocked: no template', { itemName: item.name, templateKey: item.templateKey });
     showToast(`Template not found for ${item.name}. / 未找到 ${item.name} 的模板。`);
     return;
   }
@@ -514,12 +558,17 @@ async function runPrint(item, options = {}) {
   // Try one silent reconnect using a saved authorized port before prompting.
   if (!state.serial.connected) {
     state.pendingPrint = { item, options };
+    appendRuntimeLog('runPrint() attempting saved-port reconnect', {
+      itemName: item.name,
+      pendingPrint: true
+    });
     const reconnectResult = await attemptSavedPortReconnect({
       actionStatus: 'Reconnecting / 重新连接中',
       actionMeta: `Trying saved printer before printing ${item.name}. / 打印 ${item.name} 前尝试连接已保存的打印机。`,
       toastMessage: `Connecting to printer for ${item.name}… / 正在为 ${item.name} 连接打印机…`
     });
     if (reconnectResult !== 'connected') {
+      appendRuntimeLog('runPrint() reconnect did not complete', { reconnectResult, itemName: item.name });
       const message = reconnectResult === 'no-port'
         ? `No saved printer found — tap to connect & print "${item.name}" / 未找到已保存的打印机，点击连接并打印 "${item.name}"`
         : `Reconnect required — tap to connect & print "${item.name}" / 需要重新连接，点击连接并打印 "${item.name}"`;
@@ -535,10 +584,12 @@ async function runPrint(item, options = {}) {
 
   let writeError = null;
   try {
+    appendRuntimeLog('runPrint() sending template', { itemName: item.name, payload });
     await sendTemplateToBluetooth(payload);
   } catch (error) {
     writeError = error;
     console.error(error);
+    appendRuntimeLog('runPrint() send failed', { error: error && (error.message || error.name || String(error)) });
     setSerialError(error);
     await resetSerialStateAfterFailure();
     updateDiagnostics();
@@ -571,17 +622,20 @@ async function runPrint(item, options = {}) {
       status: 'success',
       bridgeResult: buildBridgeResult()
     });
+    appendRuntimeLog('runPrint() success', { itemName: item.name, jobStatus: job.status });
     setAction('Print complete / 打印完成', `${item.name} · ${job.status}`);
     showToast(`${item.name} printed successfully. / ${item.name} 打印成功。`);
     await loadPrintersOnly();
   } catch (error) {
     console.error(error);
+    appendRuntimeLog('runPrint() log request failed after print', { error: error && (error.message || error.name || String(error)) });
     setAction('Print complete / 打印完成', `${item.name} · logged offline / 已离线记录`);
     showToast(`${item.name} printed. Log failed: ${error.message || 'server error'} / ${item.name} 已打印，但记录失败：${error.message || '服务器错误'}`);
   }
 }
 
 async function requestTestPrint() {
+  appendRuntimeLog('requestTestPrint() start', runtimeStateSnapshot());
   const printer = selectedPrinter();
   const template = findTemplate('template-1') || state.templates[0] || null;
   if (!printer) {
@@ -650,6 +704,7 @@ async function requestTestPrint() {
 }
 
 async function pairBluetoothPrinter() {
+  appendRuntimeLog('pairBluetoothPrinter() start', runtimeStateSnapshot());
   if (!navigator.serial) {
     showToast('This browser does not support Web Serial. Use Chrome on Android. / 此浏览器不支持 Web Serial，请使用 Android Chrome。');
     return;
@@ -674,6 +729,7 @@ async function pairBluetoothPrinter() {
 }
 
 async function reconnectBluetoothPrinter() {
+  appendRuntimeLog('reconnectBluetoothPrinter() start', runtimeStateSnapshot());
   try {
     showToast('Connecting to printer… / 正在连接打印机…', { sticky: true });
     await ensureBluetoothConnection({ interactive: true });
@@ -693,6 +749,7 @@ async function reconnectBluetoothPrinter() {
 }
 
 async function refreshBridgeStatus() {
+  appendRuntimeLog('refreshBridgeStatus() start', runtimeStateSnapshot());
   if (!navigator.serial) {
     state.serial.supported = false;
     bridgeStatusEl.textContent = 'Browser not supported / 浏览器不受支持';
@@ -843,6 +900,54 @@ function showToast(message, options = {}) {
   }
 }
 
+function appendRuntimeLog(message, details = null) {
+  const timestamp = new Date().toISOString();
+  const line = details == null
+    ? `[${timestamp}] ${message}`
+    : `[${timestamp}] ${message} ${safeStringify(details)}`;
+  state.runtimeLog.push(line);
+  if (state.runtimeLog.length > 250) {
+    state.runtimeLog = state.runtimeLog.slice(-250);
+  }
+  if (runtimeLogEl) {
+    runtimeLogEl.textContent = state.runtimeLog.join('\n');
+    runtimeLogEl.scrollTop = runtimeLogEl.scrollHeight;
+  }
+}
+
+function clearRuntimeLog() {
+  state.runtimeLog = [];
+  appendRuntimeLog('Runtime log cleared', runtimeStateSnapshot());
+}
+
+function runtimeStateSnapshot() {
+  return {
+    selectedPrinterId: state.selectedPrinterId,
+    serialConnected: state.serial.connected,
+    pendingPrintItem: state.pendingPrint && state.pendingPrint.item ? state.pendingPrint.item.name : null,
+    authorizedPortCount: state.authorizedPorts.length,
+    currentPortInfo: safePortInfo(state.serial.port),
+    lastError: state.serial.lastError || null
+  };
+}
+
+function safePortInfo(port) {
+  if (!port) return null;
+  try {
+    return port.getInfo ? port.getInfo() : { hasGetInfo: false };
+  } catch (error) {
+    return { infoError: error && (error.message || error.name || String(error)) };
+  }
+}
+
+function safeStringify(value) {
+  try {
+    return JSON.stringify(value);
+  } catch (_) {
+    return String(value);
+  }
+}
+
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, options);
   const payload = await response.json().catch(() => ({}));
@@ -867,6 +972,10 @@ async function getAuthorizedPorts() {
 }
 
 async function ensureBluetoothConnection(options = {}) {
+  appendRuntimeLog('ensureBluetoothConnection() start', {
+    interactive: Boolean(options.interactive),
+    serialConnected: state.serial.connected
+  });
   const interactive = Boolean(options.interactive);
   if (!navigator.serial) {
     throw new Error('This browser does not support Web Serial. Use Chrome on Android. / 此浏览器不支持 Web Serial，请使用 Android Chrome。');
@@ -876,6 +985,10 @@ async function ensureBluetoothConnection(options = {}) {
   }
 
   const port = await resolvePreferredPort();
+  appendRuntimeLog('ensureBluetoothConnection() resolved port', {
+    portFound: Boolean(port),
+    portInfo: safePortInfo(port)
+  });
   if (!port) {
     throw new Error(interactive
       ? 'No paired printer found. Tap Pair Printer first. / 未找到已配对的打印机，请先点击配对打印机。'
@@ -903,6 +1016,10 @@ async function ensureBluetoothConnection(options = {}) {
 }
 
 async function attemptSavedPortReconnect(options = {}) {
+  appendRuntimeLog('attemptSavedPortReconnect() start', {
+    serialConnected: state.serial.connected,
+    hasReconnectPromise: Boolean(state.serial.reconnectPromise)
+  });
   if (state.serial.connected) return 'connected';
   if (!navigator.serial) return 'unsupported';
   if (state.serial.reconnectPromise) return state.serial.reconnectPromise;
@@ -913,6 +1030,10 @@ async function attemptSavedPortReconnect(options = {}) {
     if (toastMessage) showToast(toastMessage, { sticky: true });
 
     const port = await resolvePreferredPort();
+    appendRuntimeLog('attemptSavedPortReconnect() resolved port', {
+      portFound: Boolean(port),
+      portInfo: safePortInfo(port)
+    });
     if (!port) return 'no-port';
 
     try {
@@ -924,6 +1045,7 @@ async function attemptSavedPortReconnect(options = {}) {
       return 'connected';
     } catch (error) {
       console.warn('[SavedPortReconnect] Failed:', error && error.name, error && error.message, error);
+      appendRuntimeLog('attemptSavedPortReconnect() failed', { error: error && (error.message || error.name || String(error)) });
       setSerialError(error);
       await resetSerialStateAfterFailure();
       updateDiagnostics();
@@ -942,6 +1064,11 @@ async function attemptSavedPortReconnect(options = {}) {
 async function resolvePreferredPort() {
   const ports = await getAuthorizedPorts();
   console.debug('[resolvePreferredPort] state.serial.port:', state.serial.port, '| getPorts() count:', ports.length, ports);
+  appendRuntimeLog('resolvePreferredPort()', {
+    statePort: safePortInfo(state.serial.port),
+    browserPortCount: ports.length,
+    portInfos: ports.map((port) => safePortInfo(port))
+  });
   return state.serial.port || ports[0] || null;
 }
 
@@ -951,6 +1078,7 @@ async function resolvePreferredPort() {
 // reliable liveness check for a write-only protocol is port.open() —
 // it throws NetworkError when the BT link does not exist.
 async function verifyConnectionBeforePrint() {
+  appendRuntimeLog('verifyConnectionBeforePrint() start', runtimeStateSnapshot());
   if (!navigator.serial) {
     throw new Error('This browser does not support Web Serial. Use Chrome on Android. / 此浏览器不支持 Web Serial，请使用 Android Chrome。');
   }
@@ -985,9 +1113,11 @@ async function verifyConnectionBeforePrint() {
       state.serial.info = port.getInfo ? port.getInfo() : {};
       state.serial.connected = true;
       console.debug('[verifyConnectionBeforePrint] Channel confirmed alive.');
+      appendRuntimeLog('verifyConnectionBeforePrint() reopen succeeded', safePortInfo(port));
       return port;
     } catch (openErr) {
       console.warn('[verifyConnectionBeforePrint] Re-open failed — BT link is dead:', openErr.name, openErr.message);
+      appendRuntimeLog('verifyConnectionBeforePrint() reopen failed', { error: openErr && (openErr.message || openErr.name || String(openErr)) });
       throw Object.assign(
         new Error('Bluetooth printer disconnected. Tap Connect Printer to reconnect. / 蓝牙打印机已断开，请点击连接打印机重新连接。'),
         { name: 'NetworkError' }
@@ -1004,6 +1134,7 @@ function retryPendingPrint() {
   if (!state.pendingPrint) return;
   const { item, options } = state.pendingPrint;
   state.pendingPrint = null;
+  appendRuntimeLog('retryPendingPrint()', { itemName: item && item.name, options });
   showToast('Reconnected — retrying print… / 已重新连接，正在重试打印…');
   runPrint(item, options);
 }
@@ -1046,6 +1177,7 @@ function canRetryWithFreshSelection(error) {
 }
 
 async function connectToPort(port) {
+  appendRuntimeLog('connectToPort() start', { portInfo: safePortInfo(port) });
   if (!port) throw new Error('No Bluetooth serial port was selected. / 未选择蓝牙串口。');
   console.debug('[connectToPort] port info:', port.getInfo ? port.getInfo() : 'getInfo unavailable', '| readable:', !!port.readable, '| writable:', !!port.writable);
   if (state.serial.port && state.serial.port !== port) {
@@ -1067,6 +1199,7 @@ async function connectToPort(port) {
     });
   } catch (error) {
     if (error && error.name === 'InvalidStateError' && port.readable && port.writable) {
+      appendRuntimeLog('connectToPort() invalid state, trying clean reopen', safePortInfo(port));
       // Port has zombie streams from a previous page session — Chrome kept the
       // ReadableStream/WritableStream objects alive across the refresh but the
       // RFCOMM link is gone.  Probing by writing a byte is useless because
@@ -1090,8 +1223,10 @@ async function connectToPort(port) {
         flowControl: 'none'
       });
       console.debug('[connectToPort] Clean reopen succeeded — zombie resolved.');
+      appendRuntimeLog('connectToPort() clean reopen succeeded', safePortInfo(port));
     } else {
       console.debug('[connectToPort] port.open() failed:', error.name, error.message);
+      appendRuntimeLog('connectToPort() port.open failed', { error: error && (error.message || error.name || String(error)) });
       throw decorateSerialOpenError(error);
     }
   }
@@ -1100,12 +1235,14 @@ async function connectToPort(port) {
   state.serial.port = port;
   state.serial.info = port.getInfo ? port.getInfo() : {};
   state.serial.connected = true;
+  appendRuntimeLog('connectToPort() success', runtimeStateSnapshot());
   hideReconnectBanner();
   await refreshBridgeStatus();
   updateDiagnostics();
 }
 
 async function resetSerialStateAfterFailure() {
+  appendRuntimeLog('resetSerialStateAfterFailure()', runtimeStateSnapshot());
   await closeCurrentPort().catch(() => {});
   state.authorizedPorts = [];
   await refreshBridgeStatus().catch(() => {});
@@ -1116,6 +1253,7 @@ async function resetSerialStateAfterFailure() {
 async function closeCurrentPort() {
   if (!state.serial.port) return;
   const port = state.serial.port;
+  appendRuntimeLog('closeCurrentPort() start', safePortInfo(port));
   try {
     if (port.writable && port.writable.locked) {
       return;
@@ -1125,11 +1263,13 @@ async function closeCurrentPort() {
     state.serial.port = null;
     state.serial.info = null;
     state.serial.connected = false;
+    appendRuntimeLog('closeCurrentPort() complete', runtimeStateSnapshot());
     updateDiagnostics();
   }
 }
 
 async function attemptAutoReconnect() {
+  appendRuntimeLog('attemptAutoReconnect() start', runtimeStateSnapshot());
   console.debug('[AutoReconnect] Starting. navigator.serial:', !!navigator.serial, '| already connected:', state.serial.connected);
   if (!navigator.serial || state.serial.connected) {
     console.debug('[AutoReconnect] Skipped early — serial unsupported or already connected.');

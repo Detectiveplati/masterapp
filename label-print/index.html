@@ -41,6 +41,14 @@
       <div id="cards-empty" class="empty-state hidden">No label items match the current filters. / 没有符合当前筛选条件的标签项目。</div>
       <div id="card-groups" class="card-groups"></div>
     </section>
+
+    <section class="runtime-log-panel">
+      <div class="runtime-log-head">
+        <strong>Runtime Log / 运行日志</strong>
+        <button id="clear-runtime-log-button" class="btn-ghost diagnostic-refresh-button" type="button">Clear Log / 清空日志</button>
+      </div>
+      <pre id="runtime-log" class="runtime-log-output">Log starting… / 日志启动中…</pre>
+    </section>
   </main>
 
   <div id="options-modal" class="modal-shell hidden" aria-hidden="true">
