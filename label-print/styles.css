@@ -186,7 +186,7 @@ body[data-module="label-print"] {
 .modal-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-shrink: 0; }
 .modal-head h2 { font-size: clamp(1.1rem, 2.2vw, 1.6rem); line-height: 1.08; margin: 0; }
 .modal-description { margin-top: 6px; color: #475467; line-height: 1.45; font-size: 0.85rem; }
-.modal-body { display: grid; gap: 14px; margin-top: 14px; overflow-y: auto; flex: 1 1 0; padding-right: 4px; }
+.modal-body { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; overflow-y: auto; flex: 1 1 0; min-height: 0; padding-right: 4px; }
 .modal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .printer-modal-card { width: min(720px, 100%); }
 .printer-modal-host-field { grid-column: 1 / -1; }
