@@ -102,8 +102,9 @@ openSiteSettingsButtonEl.addEventListener('click', openSiteSettings);
 forgetPortsButtonEl.addEventListener('click', forgetAuthorizedPorts);
 reconnectBannerButtonEl.addEventListener('click', async () => {
   reconnectBannerButtonEl.disabled = true;
-  reconnectBannerButtonEl.textContent = 'Connecting…';
-  reconnectBannerTextEl.textContent = 'Trying saved connection…';
+  reconnectBannerButtonEl.textContent = 'Connecting… / 连接中…';
+  reconnectBannerTextEl.textContent = 'Trying saved connection… / 正在尝试已保存的连接…';
+  showToast('Connecting to printer… / 正在连接打印机…', { sticky: true });
 
   // Step 1: silently try the saved authorized port (no picker, no interaction)
   const savedPort = await resolvePreferredPort().catch(() => null);
@@ -115,7 +116,7 @@ reconnectBannerButtonEl.addEventListener('click', async () => {
       renderAuthorizedPorts();
       updatePrinterStatus();
       updateDiagnostics();
-      showToast('Printer connected.');
+      showToast('Printer connected. / 打印机已连接。');
       retryPendingPrint();
       return;
     } catch (_) {
@@ -126,8 +127,9 @@ reconnectBannerButtonEl.addEventListener('click', async () => {
 
   // Step 2: open the Bluetooth picker — this is one more tap in Android Chrome's
   // native dialog. No extra steps inside the app needed.
-  reconnectBannerTextEl.textContent = 'Select your printer from the list that opens…';
-  reconnectBannerButtonEl.textContent = 'Waiting for selection…';
+  reconnectBannerTextEl.textContent = 'Select your printer from the list that opens… / 请从打开的列表中选择打印机…';
+  reconnectBannerButtonEl.textContent = 'Waiting for selection… / 等待选择…';
+  showToast('Looking for printer… choose it from the list. / 正在查找打印机… 请从列表中选择。', { sticky: true });
   try {
     const freshPort = await requestFreshPort();
     await connectToPort(freshPort);
@@ -136,13 +138,13 @@ reconnectBannerButtonEl.addEventListener('click', async () => {
     renderAuthorizedPorts();
     updatePrinterStatus();
     updateDiagnostics();
-    showToast('Printer connected.');
+    showToast('Printer connected. / 打印机已连接。');
     retryPendingPrint();
   } catch (error) {
     console.error('[ReconnectBar]', error);
     setSerialError(error);
     const cancelled = error && (error.name === 'NotFoundError' || /cancel/i.test(error.message));
-    showReconnectBanner(cancelled ? 'Cancelled — tap to try again' : 'Failed — tap to retry');
+    showReconnectBanner(cancelled ? 'Cancelled — tap to try again / 已取消，点击重试' : 'Failed — tap to retry / 失败，点击重试');
   }
 });
 modalCloseButtonEl.addEventListener('click', closeOptionsModal);
@@ -169,7 +171,7 @@ window.addEventListener('pageshow', updateDiagnostics);
 loadAll();
 
 async function loadAll() {
-  setAction('Loading', 'Refreshing label items, templates, and printer setup.');
+  setAction('Loading / 加载中', 'Refreshing label items, templates, and printer setup. / 正在刷新标签项目、模板和打印机设置。');
   try {
     const [items, templates, printers] = await Promise.all([
       fetchJson(`${API_BASE}/items`),
@@ -190,7 +192,7 @@ async function loadAll() {
     renderPrinterOptions();
     renderCategoryOptions();
     renderItems();
-    templateStatusEl.textContent = `${state.templates.length} loaded`;
+    templateStatusEl.textContent = `${state.templates.length} loaded / 已加载 ${state.templates.length} 个`;
     await refreshBridgeStatus();
     const reconnectResult = await attemptAutoReconnect();
     updateDiagnostics();
@@ -198,16 +200,16 @@ async function loadAll() {
     updatePrinterStatus();
     if (!state.serial.connected) {
       if (reconnectResult === 'failed') {
-        showReconnectBanner('Auto-reconnect failed — tap Connect Printer');
+        showReconnectBanner('Auto-reconnect failed — tap Connect Printer / 自动重连失败，请点击连接打印机');
       } else {
         showReconnectBanner();
       }
     }
-    setAction('Ready', 'Launcher is ready for Bluetooth printing from this tablet.');
+    setAction('Ready / 就绪', 'Launcher is ready for Bluetooth printing from this tablet. / 此平板已准备好进行蓝牙打印。');
   } catch (error) {
     console.error(error);
-    setAction('Load failed', error.message || 'Could not load label printing data.');
-    showToast(error.message || 'Could not load label printing data.');
+    setAction('Load failed / 加载失败', error.message || 'Could not load label printing data. / 无法加载标签打印数据。');
+    showToast(error.message || 'Could not load label printing data. / 无法加载标签打印数据。');
   }
 }
 
@@ -234,9 +236,9 @@ function initSerialEvents() {
 }
 
 function showReconnectBanner(message) {
-  reconnectBannerTextEl.textContent = message || 'Not connected — tap to pair';
+  reconnectBannerTextEl.textContent = message || 'Not connected — tap to pair / 未连接，点击配对';
   reconnectBannerButtonEl.disabled = false;
-  reconnectBannerButtonEl.textContent = '\uD83D\uDDA8\uFE0F Connect Printer';
+  reconnectBannerButtonEl.textContent = '\uD83D\uDDA8\uFE0F Connect Printer / 连接打印机';
   reconnectBannerEl.classList.remove('hidden');
   document.body.classList.add('reconnect-bar-visible');
 }
@@ -248,7 +250,7 @@ function hideReconnectBanner() {
 
 function renderPrinterOptions() {
   if (!state.printers.length) {
-    printerSelectEl.innerHTML = '<option value="">No printers available</option>';
+    printerSelectEl.innerHTML = '<option value="">No printers available / 没有可用打印机</option>';
     return;
   }
   printerSelectEl.innerHTML = state.printers.map((printer) => `
@@ -260,8 +262,8 @@ function renderPrinterOptions() {
 }
 
 function renderCategoryOptions() {
-  const categories = Array.from(new Set(state.items.map((item) => item.category || 'Uncategorized')));
-  categoryFilterEl.innerHTML = ['<option value="">All categories</option>']
+  const categories = Array.from(new Set(state.items.map((item) => item.category || 'Uncategorized / 未分类')));
+  categoryFilterEl.innerHTML = ['<option value="">All categories / 全部分类</option>']
     .concat(categories.map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`))
     .join('');
 }
@@ -277,7 +279,7 @@ function renderItems() {
 
   clearSearchButtonEl.classList.toggle('hidden', !q);
   if (q) {
-    searchSummaryEl.textContent = `${visibleItems.length} matching item${visibleItems.length === 1 ? '' : 's'} for "${searchInputEl.value.trim()}"`;
+    searchSummaryEl.textContent = `"${searchInputEl.value.trim()}" ${visibleItems.length} matching item${visibleItems.length === 1 ? '' : 's'} / 共找到 ${visibleItems.length} 个匹配项目`;
     searchSummaryEl.classList.remove('hidden');
   } else {
     searchSummaryEl.classList.add('hidden');
@@ -286,7 +288,7 @@ function renderItems() {
 
   cardsEmptyEl.classList.toggle('hidden', visibleItems.length > 0);
   const groups = visibleItems.reduce((acc, item) => {
-    const key = item.category || 'Uncategorized';
+    const key = item.category || 'Uncategorized / 未分类';
     if (!acc[key]) acc[key] = [];
     acc[key].push(item);
     return acc;
@@ -296,7 +298,7 @@ function renderItems() {
     <section class="group-block">
       <div class="group-title">
         <h3>${escapeHtml(categoryName)}</h3>
-        <small>${groups[categoryName].length} item${groups[categoryName].length === 1 ? '' : 's'}</small>
+        <small>${groups[categoryName].length} item${groups[categoryName].length === 1 ? '' : 's'} / ${groups[categoryName].length} 个项目</small>
       </div>
       <div class="card-grid">
         ${groups[categoryName].map(renderItemCard).join('')}
@@ -313,11 +315,11 @@ function renderAuthorizedPorts() {
     <article class="job-card">
       <div class="job-row">
         <strong>${escapeHtml(entry.label)}</strong>
-        <span class="job-status ${entry.connected ? 'success' : 'queued'}">${entry.connected ? 'Connected' : 'Saved access'}</span>
+        <span class="job-status ${entry.connected ? 'success' : 'queued'}">${entry.connected ? 'Connected / 已连接' : 'Saved access / 已保存授权'}</span>
       </div>
       <div class="job-row">
         <span>${escapeHtml(entry.meta)}</span>
-        <button class="btn-secondary connect-port-button" type="button" data-port-index="${index}">${entry.connected ? 'Ready' : 'Connect'}</button>
+        <button class="btn-secondary connect-port-button" type="button" data-port-index="${index}">${entry.connected ? 'Ready / 就绪' : 'Connect / 连接'}</button>
       </div>
     </article>
   `).join('');
@@ -333,12 +335,12 @@ function renderAuthorizedPorts() {
         renderAuthorizedPorts();
         updatePrinterStatus();
         updateDiagnostics();
-        showToast('Bluetooth printer connected.');
+        showToast('Bluetooth printer connected. / 蓝牙打印机已连接。');
       } catch (error) {
         console.error(error);
         setSerialError(error);
         updateDiagnostics();
-        showToast(error.message || 'Could not connect to the Bluetooth printer.');
+        showToast(error.message || 'Could not connect to the Bluetooth printer. / 无法连接蓝牙打印机。');
       }
     });
   });
@@ -352,9 +354,9 @@ function renderItemCard(item) {
   const printable = Boolean(template);
   return `
     <article class="item-card" data-cut-mode="${escapeHtml(cutMode)}" data-printable="${printable ? 'yes' : 'no'}">
-      <div class="item-body" data-item-id="${escapeHtml(item._id)}" title="${printable ? 'Quick print using saved defaults' : 'No template is mapped for this item'}">
+      <div class="item-body" data-item-id="${escapeHtml(item._id)}" title="${printable ? 'Quick print using saved defaults / 使用已保存默认值快速打印' : 'No template is mapped for this item / 此项目未映射模板'}">
         <div class="item-meta">
-          <span class="pill">${printable ? (cutMode === 'no-cut' ? 'No cut' : 'Auto cut') : 'No template'}</span>
+          <span class="pill">${printable ? (cutMode === 'no-cut' ? 'No cut / 不切刀' : 'Auto cut / 自动切刀') : 'No template / 无模板'}</span>
         </div>
         <h3>${escapeHtml(item.name)}</h3>
         <p>${escapeHtml(item.description || '')}</p>
@@ -366,11 +368,11 @@ function renderItemCard(item) {
           <input class="qty-input" type="number" min="1" max="999" step="1" inputmode="numeric" value="${quantity}" data-item-id="${escapeHtml(item._id)}">
           <button class="qty-button" type="button" data-action="increment" data-item-id="${escapeHtml(item._id)}">+</button>
         </div>
-        <span class="cut-label">${escapeHtml(cutMode === 'no-cut' ? 'No cut' : 'Auto cut')}</span>
+        <span class="cut-label">${escapeHtml(cutMode === 'no-cut' ? 'No cut / 不切刀' : 'Auto cut / 自动切刀')}</span>
       </div>
       <div class="item-actions">
-        <button class="option-button" type="button" data-action="options" data-item-id="${escapeHtml(item._id)}">Options</button>
-        <button class="print-button" type="button" data-action="print" data-item-id="${escapeHtml(item._id)}" ${printable ? '' : 'disabled'}>${printable ? 'Print' : 'Unavailable'}</button>
+        <button class="option-button" type="button" data-action="options" data-item-id="${escapeHtml(item._id)}">Options / 选项</button>
+        <button class="print-button" type="button" data-action="print" data-item-id="${escapeHtml(item._id)}" ${printable ? '' : 'disabled'}>${printable ? 'Print / 打印' : 'Unavailable / 不可用'}</button>
       </div>
     </article>
   `;
@@ -434,14 +436,14 @@ function openOptionsModal(item) {
   state.activeItem = item;
   const template = findTemplate(item.templateKey);
   modalTitleEl.textContent = item.name;
-  modalDescriptionEl.textContent = 'This tablet sends the stored printer template directly over Bluetooth. The printer applies all label content and rules from its own P-touch template.';
+  modalDescriptionEl.textContent = 'This tablet sends the stored printer template directly over Bluetooth. The printer applies all label content and rules from its own P-touch template. / 此平板通过蓝牙直接发送已存储的打印机模板，打印机会使用自身的 P-touch 模板应用所有标签内容和规则。';
   modalQuantityEl.value = getItemQuantity(item._id);
   modalCutModeEl.value = item.defaultCutMode || getDefaultCutMode();
   modalTemplateEl.value = template ? template.name : item.templateKey;
   modalTemplateNumberEl.value = template ? String(template.printerTemplateNumber) : '-';
   modalDimensionsEl.textContent = template ? `58 x ${template.heightMm} mm` : '58 x 62 mm';
   previewNameEl.textContent = template ? template.name : item.name;
-  previewSubtitleEl.textContent = `Stored printer template #${template ? template.printerTemplateNumber : '-'}`;
+  previewSubtitleEl.textContent = `Stored printer template #${template ? template.printerTemplateNumber : '-'} / 已存储模板编号 ${template ? template.printerTemplateNumber : '-'}`;
   syncPreviewQuantity();
   modalEl.classList.remove('hidden');
   modalEl.setAttribute('aria-hidden', 'false');
@@ -466,7 +468,7 @@ function closePrinterModal() {
 }
 
 function syncPreviewQuantity() {
-  previewQuantityEl.textContent = `Qty ${clampQuantity(modalQuantityEl.value)}`;
+  previewQuantityEl.textContent = `Qty / 数量 ${clampQuantity(modalQuantityEl.value)}`;
 }
 
 function changeQuantity(itemId, delta) {
@@ -496,11 +498,11 @@ async function runPrint(item, options = {}) {
   const printer = selectedPrinter();
   const template = findTemplate(item.templateKey);
   if (!printer) {
-    showToast('Select a printer before printing.');
+    showToast('Select a printer before printing. / 打印前请先选择打印机。');
     return;
   }
   if (!template) {
-    showToast(`Template not found for ${item.name}.`);
+    showToast(`Template not found for ${item.name}. / 未找到 ${item.name} 的模板。`);
     return;
   }
 
@@ -513,19 +515,20 @@ async function runPrint(item, options = {}) {
   if (!state.serial.connected) {
     state.pendingPrint = { item, options };
     const reconnectResult = await attemptSavedPortReconnect({
-      actionStatus: 'Reconnecting',
-      actionMeta: `Trying saved printer before printing ${item.name}.`
+      actionStatus: 'Reconnecting / 重新连接中',
+      actionMeta: `Trying saved printer before printing ${item.name}. / 打印 ${item.name} 前尝试连接已保存的打印机。`,
+      toastMessage: `Connecting to printer for ${item.name}… / 正在为 ${item.name} 连接打印机…`
     });
     if (reconnectResult !== 'connected') {
       const message = reconnectResult === 'no-port'
-        ? `No saved printer found — tap to connect & print "${item.name}"`
-        : `Reconnect required — tap to connect & print "${item.name}"`;
+        ? `No saved printer found — tap to connect & print "${item.name}" / 未找到已保存的打印机，点击连接并打印 "${item.name}"`
+        : `Reconnect required — tap to connect & print "${item.name}" / 需要重新连接，点击连接并打印 "${item.name}"`;
       showReconnectBanner(message);
       return;
     }
   }
 
-  setAction('Printing', `${item.name} · qty ${quantity} · ${cutMode}`);
+  setAction('Printing / 打印中', `${item.name} · qty ${quantity} · ${cutMode} / ${item.name} · 数量 ${quantity} · ${cutMode === 'no-cut' ? '不切刀' : '自动切刀'}`);
 
   // Store for auto-retry if the write fails mid-session
   state.pendingPrint = { item, options };
@@ -539,9 +542,9 @@ async function runPrint(item, options = {}) {
     setSerialError(error);
     await resetSerialStateAfterFailure();
     updateDiagnostics();
-    setAction('Print failed', error.message || 'Could not print label.');
-    showToast(error.message || 'Could not print label.');
-    showReconnectBanner('Print failed — tap to reconnect & retry');
+    setAction('Print failed / 打印失败', error.message || 'Could not print label. / 无法打印标签。');
+    showToast(error.message || 'Could not print label. / 无法打印标签。');
+    showReconnectBanner('Print failed — tap to reconnect & retry / 打印失败，请点击重新连接并重试');
     await createClientPrintJob({
       item,
       printer,
@@ -568,13 +571,13 @@ async function runPrint(item, options = {}) {
       status: 'success',
       bridgeResult: buildBridgeResult()
     });
-    setAction('Print complete', `${item.name} · ${job.status}`);
-    showToast(`${item.name} printed successfully.`);
+    setAction('Print complete / 打印完成', `${item.name} · ${job.status}`);
+    showToast(`${item.name} printed successfully. / ${item.name} 打印成功。`);
     await loadPrintersOnly();
   } catch (error) {
     console.error(error);
-    setAction('Print complete', `${item.name} · logged offline`);
-    showToast(`${item.name} printed. Log failed: ${error.message || 'server error'}`);
+    setAction('Print complete / 打印完成', `${item.name} · logged offline / 已离线记录`);
+    showToast(`${item.name} printed. Log failed: ${error.message || 'server error'} / ${item.name} 已打印，但记录失败：${error.message || '服务器错误'}`);
   }
 }
 
@@ -582,11 +585,11 @@ async function requestTestPrint() {
   const printer = selectedPrinter();
   const template = findTemplate('template-1') || state.templates[0] || null;
   if (!printer) {
-    showToast('Select a printer before running a test print.');
+    showToast('Select a printer before running a test print. / 测试打印前请先选择打印机。');
     return;
   }
   if (!template) {
-    showToast('No template is available for a test print.');
+    showToast('No template is available for a test print. / 没有可用于测试打印的模板。');
     return;
   }
 
@@ -608,9 +611,9 @@ async function requestTestPrint() {
     setSerialError(error);
     await resetSerialStateAfterFailure();
     updateDiagnostics();
-    setAction('Test print failed', error.message || 'Could not run test print.');
-    showToast(error.message || 'Could not run test print.');
-    showReconnectBanner('Print failed — tap to reconnect');
+    setAction('Test print failed / 测试打印失败', error.message || 'Could not run test print. / 无法执行测试打印。');
+    showToast(error.message || 'Could not run test print. / 无法执行测试打印。');
+    showReconnectBanner('Print failed — tap to reconnect / 打印失败，请点击重新连接');
     await createClientPrintJob({
       printer,
       template,
@@ -636,48 +639,50 @@ async function requestTestPrint() {
       itemSnapshot: { name: 'Test Print', description: 'Bluetooth printer validation' },
       bridgeResult: { ...buildBridgeResult(), testPrint: true }
     });
-    setAction('Test print complete', 'Bluetooth printer responded from this tablet.');
-    showToast('Test print sent successfully.');
+    setAction('Test print complete / 测试打印完成', 'Bluetooth printer responded from this tablet. / 蓝牙打印机已从此平板响应。');
+    showToast('Test print sent successfully. / 测试打印发送成功。');
     await loadPrintersOnly();
   } catch (error) {
     console.error(error);
-    setAction('Test print complete', 'Printer responded · log failed');
-    showToast('Test print sent. Log failed: ' + (error.message || 'server error'));
+    setAction('Test print complete / 测试打印完成', 'Printer responded · log failed / 打印机已响应，但记录失败');
+    showToast('Test print sent. Log failed: ' + (error.message || 'server error') + ' / 测试打印已发送，但记录失败。');
   }
 }
 
 async function pairBluetoothPrinter() {
   if (!navigator.serial) {
-    showToast('This browser does not support Web Serial. Use Chrome on Android.');
+    showToast('This browser does not support Web Serial. Use Chrome on Android. / 此浏览器不支持 Web Serial，请使用 Android Chrome。');
     return;
   }
   try {
+    showToast('Looking for printer… choose it from the list. / 正在查找打印机… 请从列表中选择。', { sticky: true });
     const port = await navigator.serial.requestPort({});
     await connectToPort(port);
-    setAction('Printer paired', 'Bluetooth printer access has been granted on this tablet.');
+    setAction('Printer paired / 打印机已配对', 'Bluetooth printer access has been granted on this tablet. / 此平板已获得蓝牙打印机访问权限。');
     clearSerialError();
     renderAuthorizedPorts();
     updatePrinterStatus();
     updateDiagnostics();
-    showToast('Bluetooth printer paired.');
+    showToast('Bluetooth printer paired. / 蓝牙打印机已配对。');
   } catch (error) {
     if (error && error.name === 'NotFoundError') return;
     console.error(error);
     setSerialError(error);
     updateDiagnostics();
-    showToast(error.message || 'Could not pair the Bluetooth printer.');
+    showToast(error.message || 'Could not pair the Bluetooth printer. / 无法配对蓝牙打印机。');
   }
 }
 
 async function reconnectBluetoothPrinter() {
   try {
+    showToast('Connecting to printer… / 正在连接打印机…', { sticky: true });
     await ensureBluetoothConnection({ interactive: true });
-    setAction('Printer connected', 'Bluetooth printer is ready on this tablet.');
+    setAction('Printer connected / 打印机已连接', 'Bluetooth printer is ready on this tablet. / 蓝牙打印机已在此平板上就绪。');
     clearSerialError();
     renderAuthorizedPorts();
     updatePrinterStatus();
     updateDiagnostics();
-    showToast('Bluetooth printer connected.');
+    showToast('Bluetooth printer connected. / 蓝牙打印机已连接。');
   } catch (error) {
     console.error(error);
     await resetSerialStateAfterFailure();
@@ -690,8 +695,8 @@ async function reconnectBluetoothPrinter() {
 async function refreshBridgeStatus() {
   if (!navigator.serial) {
     state.serial.supported = false;
-    bridgeStatusEl.textContent = 'Browser not supported';
-    bridgeMetaEl.textContent = 'Use Android Chrome with Web Serial support.';
+    bridgeStatusEl.textContent = 'Browser not supported / 浏览器不受支持';
+    bridgeMetaEl.textContent = 'Use Android Chrome with Web Serial support. / 请使用支持 Web Serial 的 Android Chrome。';
     state.authorizedPorts = [];
     updateDiagnostics();
     return;
@@ -711,24 +716,24 @@ async function refreshBridgeStatus() {
   });
 
   if (state.serial.connected && state.serial.port) {
-    bridgeStatusEl.textContent = 'Bluetooth ready';
-    bridgeMetaEl.textContent = `${formatSerialLabel(state.serial.info)} · ${getSerialBaudRate()} baud`;
+    bridgeStatusEl.textContent = 'Bluetooth ready / 蓝牙已就绪';
+    bridgeMetaEl.textContent = `${formatSerialLabel(state.serial.info)} · ${getSerialBaudRate()} baud / 波特率 ${getSerialBaudRate()}`;
     updateDiagnostics();
     return;
   }
 
-  bridgeStatusEl.textContent = ports.length ? 'Permission saved' : 'No printer paired';
+  bridgeStatusEl.textContent = ports.length ? 'Permission saved / 权限已保存' : 'No printer paired / 未配对打印机';
   bridgeMetaEl.textContent = ports.length
-    ? 'Tap Reconnect to open the paired Brother printer.'
-    : 'Tap Pair Printer on this tablet to grant Bluetooth serial access.';
+    ? 'Tap Reconnect to open the paired Brother printer. / 点击重新连接以打开已配对的 Brother 打印机。'
+    : 'Tap Pair Printer on this tablet to grant Bluetooth serial access. / 在此平板上点击配对打印机以授予蓝牙串口访问权限。';
   updateDiagnostics();
 }
 
 function updatePrinterStatus() {
   const printer = selectedPrinter();
   if (!printer) {
-    printerStatusEl.textContent = 'No printer selected';
-    printerMetaEl.textContent = 'Select a printer from the setup widget.';
+    printerStatusEl.textContent = 'No printer selected / 未选择打印机';
+    printerMetaEl.textContent = 'Select a printer from the setup widget. / 请在设置窗口中选择打印机。';
     return;
   }
 
@@ -736,8 +741,8 @@ function updatePrinterStatus() {
     ? formatSerialLabel(state.serial.info)
     : printer.name;
   printerMetaEl.textContent = state.serial.connected
-    ? `${printer.model || 'QL-820NWB'} · Bluetooth serial · ${getSerialBaudRate()} baud`
-    : `${printer.model || 'QL-820NWB'} · Bluetooth serial · pair and reconnect on this tablet`;
+    ? `${printer.model || 'QL-820NWB'} · Bluetooth serial / 蓝牙串口 · ${getSerialBaudRate()} baud / 波特率 ${getSerialBaudRate()}`
+    : `${printer.model || 'QL-820NWB'} · Bluetooth serial / 蓝牙串口 · pair and reconnect on this tablet / 请在此平板上配对并重新连接`;
 }
 
 function buildPrintPayload(_item, template, quantity, cutMode, printer) {
@@ -754,7 +759,7 @@ function buildPrintPayload(_item, template, quantity, cutMode, printer) {
 async function savePrinterSettings() {
   const printer = selectedPrinter();
   if (!printer) {
-    showToast('Select a printer first.');
+    showToast('Select a printer first. / 请先选择打印机。');
     return;
   }
   try {
@@ -774,11 +779,11 @@ async function savePrinterSettings() {
     await refreshBridgeStatus();
     // Save default cut mode to localStorage so it persists across page loads
     localStorage.setItem('label-print-default-cut', printerDefaultCutEl.value);
-    showToast('Bluetooth printer setup saved.');
+    showToast('Bluetooth printer setup saved. / 蓝牙打印机设置已保存。');
     closePrinterModal();
   } catch (error) {
     console.error(error);
-    showToast(error.message || 'Could not save printer settings.');
+    showToast(error.message || 'Could not save printer settings. / 无法保存打印机设置。');
   }
 }
 
@@ -827,11 +832,15 @@ function setAction(title, message) {
   actionMetaEl.textContent = message;
 }
 
-function showToast(message) {
+function showToast(message, options = {}) {
+  const sticky = Boolean(options.sticky);
   toastEl.textContent = message;
   toastEl.classList.remove('hidden');
   clearTimeout(showToast.timeoutId);
-  showToast.timeoutId = setTimeout(() => toastEl.classList.add('hidden'), 3200);
+  showToast.timeoutId = null;
+  if (!sticky) {
+    showToast.timeoutId = setTimeout(() => toastEl.classList.add('hidden'), 3200);
+  }
 }
 
 async function fetchJson(url, options = {}) {
@@ -860,7 +869,7 @@ async function getAuthorizedPorts() {
 async function ensureBluetoothConnection(options = {}) {
   const interactive = Boolean(options.interactive);
   if (!navigator.serial) {
-    throw new Error('This browser does not support Web Serial. Use Chrome on Android.');
+    throw new Error('This browser does not support Web Serial. Use Chrome on Android. / 此浏览器不支持 Web Serial，请使用 Android Chrome。');
   }
   if (state.serial.port && state.serial.connected) {
     return state.serial.port;
@@ -869,8 +878,8 @@ async function ensureBluetoothConnection(options = {}) {
   const port = await resolvePreferredPort();
   if (!port) {
     throw new Error(interactive
-      ? 'No paired printer found. Tap Pair Printer first.'
-      : 'No paired printer found. Tap Pair Printer first.');
+      ? 'No paired printer found. Tap Pair Printer first. / 未找到已配对的打印机，请先点击配对打印机。'
+      : 'No paired printer found. Tap Pair Printer first. / 未找到已配对的打印机，请先点击配对打印机。');
   }
 
   try {
@@ -899,8 +908,9 @@ async function attemptSavedPortReconnect(options = {}) {
   if (state.serial.reconnectPromise) return state.serial.reconnectPromise;
 
   const reconnectTask = (async () => {
-    const { actionStatus = '', actionMeta = '' } = options;
-    if (actionStatus) setAction(actionStatus, actionMeta || 'Trying saved Bluetooth printer.');
+    const { actionStatus = '', actionMeta = '', toastMessage = 'Connecting to printer… / 正在连接打印机…' } = options;
+    if (actionStatus) setAction(actionStatus, actionMeta || 'Trying saved Bluetooth printer. / 正在尝试已保存的蓝牙打印机。');
+    if (toastMessage) showToast(toastMessage, { sticky: true });
 
     const port = await resolvePreferredPort();
     if (!port) return 'no-port';
@@ -942,7 +952,7 @@ async function resolvePreferredPort() {
 // it throws NetworkError when the BT link does not exist.
 async function verifyConnectionBeforePrint() {
   if (!navigator.serial) {
-    throw new Error('This browser does not support Web Serial. Use Chrome on Android.');
+    throw new Error('This browser does not support Web Serial. Use Chrome on Android. / 此浏览器不支持 Web Serial，请使用 Android Chrome。');
   }
 
   if (state.serial.port && state.serial.connected) {
@@ -979,7 +989,7 @@ async function verifyConnectionBeforePrint() {
     } catch (openErr) {
       console.warn('[verifyConnectionBeforePrint] Re-open failed — BT link is dead:', openErr.name, openErr.message);
       throw Object.assign(
-        new Error('Bluetooth printer disconnected. Tap Connect Printer to reconnect.'),
+        new Error('Bluetooth printer disconnected. Tap Connect Printer to reconnect. / 蓝牙打印机已断开，请点击连接打印机重新连接。'),
         { name: 'NetworkError' }
       );
     }
@@ -987,14 +997,14 @@ async function verifyConnectionBeforePrint() {
 
   // Not connected — caller (runPrint) should have blocked before reaching here.
   // This path should not be hit in normal flow.
-  throw new Error('Printer not connected. Tap Connect Printer to reconnect.');
+  throw new Error('Printer not connected. Tap Connect Printer to reconnect. / 打印机未连接，请点击连接打印机重新连接。');
 }
 
 function retryPendingPrint() {
   if (!state.pendingPrint) return;
   const { item, options } = state.pendingPrint;
   state.pendingPrint = null;
-  showToast('Reconnected — retrying print…');
+  showToast('Reconnected — retrying print… / 已重新连接，正在重试打印…');
   runPrint(item, options);
 }
 
@@ -1036,7 +1046,7 @@ function canRetryWithFreshSelection(error) {
 }
 
 async function connectToPort(port) {
-  if (!port) throw new Error('No Bluetooth serial port was selected.');
+  if (!port) throw new Error('No Bluetooth serial port was selected. / 未选择蓝牙串口。');
   console.debug('[connectToPort] port info:', port.getInfo ? port.getInfo() : 'getInfo unavailable', '| readable:', !!port.readable, '| writable:', !!port.writable);
   if (state.serial.port && state.serial.port !== port) {
     console.debug('[connectToPort] Different port in state — closing existing port first.');
@@ -1126,12 +1136,13 @@ async function attemptAutoReconnect() {
     return state.serial.connected ? 'connected' : 'unsupported';
   }
   const reconnectResult = await attemptSavedPortReconnect({
-    actionStatus: 'Reconnecting',
-    actionMeta: 'Trying the saved Bluetooth printer automatically.'
+    actionStatus: 'Reconnecting / 重新连接中',
+    actionMeta: 'Trying the saved Bluetooth printer automatically. / 正在自动连接已保存的蓝牙打印机。',
+    toastMessage: 'Connecting to saved printer… / 正在连接已保存的打印机…'
   });
   if (reconnectResult === 'connected') {
     console.debug('[AutoReconnect] Connected successfully.');
-    setAction('Printer connected', 'Saved Bluetooth printer reconnected automatically.');
+    setAction('Printer connected / 打印机已连接', 'Saved Bluetooth printer reconnected automatically. / 已自动重新连接已保存的蓝牙打印机。');
     return 'connected';
   }
   if (reconnectResult === 'no-port') {
@@ -1197,19 +1208,19 @@ function buildBridgeResult(error = null) {
 }
 
 function formatSerialLabel(info) {
-  if (!info) return 'Brother Bluetooth Serial';
-  if (info.bluetoothServiceClassId) return `Brother RFCOMM ${info.bluetoothServiceClassId}`;
-  if (info.usbVendorId || info.usbProductId) return `Port ${info.usbVendorId || ''}:${info.usbProductId || ''}`;
-  return 'Brother Bluetooth Serial';
+  if (!info) return 'Brother Bluetooth Serial / Brother 蓝牙串口';
+  if (info.bluetoothServiceClassId) return `Brother RFCOMM ${info.bluetoothServiceClassId} / Brother RFCOMM ${info.bluetoothServiceClassId}`;
+  if (info.usbVendorId || info.usbProductId) return `Port / 端口 ${info.usbVendorId || ''}:${info.usbProductId || ''}`;
+  return 'Brother Bluetooth Serial / Brother 蓝牙串口';
 }
 
 function formatSerialMeta(info) {
-  if (!info) return 'Authorized in browser';
+  if (!info) return 'Authorized in browser / 已在浏览器中授权';
   const parts = [];
-  if (info.bluetoothServiceClassId) parts.push(`service ${info.bluetoothServiceClassId}`);
-  if (info.usbVendorId) parts.push(`vendor ${info.usbVendorId}`);
-  if (info.usbProductId) parts.push(`product ${info.usbProductId}`);
-  return parts.join(' · ') || 'Authorized in browser';
+  if (info.bluetoothServiceClassId) parts.push(`service / 服务 ${info.bluetoothServiceClassId}`);
+  if (info.usbVendorId) parts.push(`vendor / 厂商 ${info.usbVendorId}`);
+  if (info.usbProductId) parts.push(`product / 产品 ${info.usbProductId}`);
+  return parts.join(' · ') || 'Authorized in browser / 已在浏览器中授权';
 }
 
 function asciiBytes(value) {
@@ -1233,18 +1244,18 @@ async function refreshDiagnostics() {
     renderAuthorizedPorts();
     updatePrinterStatus();
     updateDiagnostics();
-    showToast('Diagnostics refreshed.');
+    showToast('Diagnostics refreshed. / 诊断信息已刷新。');
   } catch (error) {
     console.error(error);
     setSerialError(error);
     updateDiagnostics();
-    showToast(error.message || 'Could not refresh diagnostics.');
+    showToast(error.message || 'Could not refresh diagnostics. / 无法刷新诊断信息。');
   }
 }
 
 async function forgetAuthorizedPorts() {
   if (!navigator.serial) {
-    showToast('Web Serial is not available in this browser.');
+    showToast('Web Serial is not available in this browser. / 此浏览器中无法使用 Web Serial。');
     return;
   }
 
@@ -1268,43 +1279,43 @@ async function forgetAuthorizedPorts() {
     updateDiagnostics();
 
     if (forgotten > 0) {
-      showToast(`Forgot ${forgotten} saved port${forgotten === 1 ? '' : 's'}. Pair Printer again.`);
+      showToast(`Forgot ${forgotten} saved port${forgotten === 1 ? '' : 's'}. Pair Printer again. / 已忘记 ${forgotten} 个已保存端口，请重新配对打印机。`);
     } else {
-      showToast('No saved ports could be forgotten here. Remove the device from Chrome or Android Bluetooth settings, then pair again.');
+      showToast('No saved ports could be forgotten here. Remove the device from Chrome or Android Bluetooth settings, then pair again. / 这里没有可忘记的已保存端口，请在 Chrome 或 Android 蓝牙设置中移除设备后重新配对。');
     }
   } catch (error) {
     console.error(error);
     setSerialError(error);
     updateDiagnostics();
-    showToast(error.message || 'Could not forget the saved ports.');
+    showToast(error.message || 'Could not forget the saved ports. / 无法忘记已保存的端口。');
   }
 }
 
 function updateDiagnostics() {
-  diagSecureContextEl.textContent = window.isSecureContext ? 'Yes' : 'No';
+  diagSecureContextEl.textContent = window.isSecureContext ? 'Yes / 是' : 'No / 否';
   diagOriginEl.textContent = window.location.origin;
 
   const displayMode = getDisplayMode();
   diagDisplayModeEl.textContent = displayMode.label;
   diagDisplayModeMetaEl.textContent = displayMode.meta;
 
-  diagWebSerialEl.textContent = navigator.serial ? 'Available' : 'Unavailable';
+  diagWebSerialEl.textContent = navigator.serial ? 'Available / 可用' : 'Unavailable / 不可用';
   diagWebSerialMetaEl.textContent = navigator.serial
-      ? `User agent: ${navigator.userAgent.slice(0, 72)}${navigator.userAgent.length > 72 ? '…' : ''}`
-      : 'This browser does not expose navigator.serial';
+      ? `User agent / 浏览器标识: ${navigator.userAgent.slice(0, 72)}${navigator.userAgent.length > 72 ? '…' : ''}`
+      : 'This browser does not expose navigator.serial / 此浏览器未提供 navigator.serial';
 
   diagAuthorizedPortsEl.textContent = String(state.authorizedPorts.length);
   diagAuthorizedPortsMetaEl.textContent = state.authorizedPorts.length
     ? state.authorizedPorts.map((entry) => entry.label).join(' | ')
-    : 'No authorized serial ports returned by the browser';
+    : 'No authorized serial ports returned by the browser / 浏览器未返回任何已授权串口';
 
-  diagPageStateEl.textContent = document.visibilityState === 'visible' ? 'Visible' : document.visibilityState;
-  diagPageStateMetaEl.textContent = `Focused: ${document.hasFocus() ? 'Yes' : 'No'} · Referrer: ${document.referrer || 'Direct open'}`;
+  diagPageStateEl.textContent = document.visibilityState === 'visible' ? 'Visible / 可见' : document.visibilityState;
+  diagPageStateMetaEl.textContent = `Focused / 已聚焦: ${document.hasFocus() ? 'Yes / 是' : 'No / 否'} · Referrer / 来源: ${document.referrer || 'Direct open / 直接打开'}`;
 
-  diagLastErrorEl.textContent = state.serial.lastError ? 'Captured' : 'None';
+  diagLastErrorEl.textContent = state.serial.lastError ? 'Captured / 已捕获' : 'None / 无';
   diagLastErrorMetaEl.textContent = state.serial.lastError
     ? `${state.serial.lastErrorAt || ''} ${state.serial.lastError}`.trim()
-    : 'No serial errors captured';
+    : 'No serial errors captured / 未捕获串口错误';
 }
 
 function getDisplayMode() {
@@ -1313,11 +1324,11 @@ function getDisplayMode() {
   const fullscreen = window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches;
   const browser = window.matchMedia && window.matchMedia('(display-mode: browser)').matches;
   const navigatorStandalone = typeof navigator.standalone === 'boolean' ? navigator.standalone : null;
-  let label = 'Unknown';
-  if (standalone) label = 'Standalone app';
-  else if (minimalUi) label = 'Minimal UI';
-  else if (fullscreen) label = 'Fullscreen';
-  else if (browser) label = 'Browser tab';
+  let label = 'Unknown / 未知';
+  if (standalone) label = 'Standalone app / 独立应用';
+  else if (minimalUi) label = 'Minimal UI / 精简界面';
+  else if (fullscreen) label = 'Fullscreen / 全屏';
+  else if (browser) label = 'Browser tab / 浏览器标签页';
   const metaParts = [
     `matchMedia: ${label}`,
     `navigator.standalone: ${navigatorStandalone === null ? 'n/a' : navigatorStandalone ? 'true' : 'false'}`
@@ -1329,7 +1340,7 @@ function getDisplayMode() {
 }
 
 function setSerialError(error) {
-  state.serial.lastError = String((error && (error.message || error.name)) || error || 'Unknown serial error');
+  state.serial.lastError = String((error && (error.message || error.name)) || error || 'Unknown serial error / 未知串口错误');
   state.serial.lastErrorAt = new Date().toLocaleString();
 }
 
@@ -1342,26 +1353,26 @@ function openSiteSettings() {
   const target = `chrome://settings/content/siteDetails?site=${encodeURIComponent(window.location.origin)}`;
   const popup = window.open(target, '_blank', 'noopener');
   if (!popup) {
-    showToast('Could not open Chrome site settings automatically. Open Chrome settings for this site manually.');
+    showToast('Could not open Chrome site settings automatically. Open Chrome settings for this site manually. / 无法自动打开 Chrome 网站设置，请手动打开此站点的 Chrome 设置。');
   }
 }
 
 function decorateSerialOpenError(error) {
-  const message = String(error && (error.message || error.name) || 'Could not open serial port.');
+  const message = String(error && (error.message || error.name) || 'Could not open serial port. / 无法打开串口。');
   if (/failed to open serial port/i.test(message)) {
-    return new Error('Failed to open serial port. Bluetooth may have reset. Tap Pair Printer again.');
+    return new Error('Failed to open serial port. Bluetooth may have reset. Tap Pair Printer again. / 打开串口失败，蓝牙可能已重置，请再次点击配对打印机。');
   }
   if (/networkerror/i.test(message)) {
-    return new Error('Bluetooth connection was interrupted. Turn Bluetooth back on, then tap Pair Printer again.');
+    return new Error('Bluetooth connection was interrupted. Turn Bluetooth back on, then tap Pair Printer again. / 蓝牙连接已中断，请重新开启蓝牙后再次点击配对打印机。');
   }
   return error instanceof Error ? error : new Error(message);
 }
 
 function buildReconnectErrorMessage(error) {
-  const message = String(error && (error.message || error.name) || 'Could not reconnect the Bluetooth printer.');
+  const message = String(error && (error.message || error.name) || 'Could not reconnect the Bluetooth printer. / 无法重新连接蓝牙打印机。');
   if (/pair printer again/i.test(message)) return message;
   if (/failed to open serial port/i.test(message)) {
-    return 'Failed to reopen the Bluetooth printer after the connection changed. Tap Pair Printer again.';
+    return 'Failed to reopen the Bluetooth printer after the connection changed. Tap Pair Printer again. / 连接变化后无法重新打开蓝牙打印机，请再次点击配对打印机。';
   }
   return message;
 }

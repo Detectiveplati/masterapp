@@ -4,41 +4,41 @@
   <meta charset="utf-8">
   <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Label Printing</title>
+  <title>Label Printing / 标签打印</title>
   <link rel="stylesheet" href="/css/app.css">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body data-module="label-print">
   <div id="reconnect-bar" class="reconnect-bar hidden" role="alert">
     <div class="reconnect-bar-status">
-      <span class="reconnect-bar-label">Printer</span>
-      <span id="reconnect-bar-text" class="reconnect-bar-text">Not connected</span>
+      <span class="reconnect-bar-label">Printer / 打印机</span>
+      <span id="reconnect-bar-text" class="reconnect-bar-text">Not connected / 未连接</span>
     </div>
-    <button id="reconnect-bar-button" class="reconnect-bar-btn" type="button">🖨️ Connect Printer</button>
+    <button id="reconnect-bar-button" class="reconnect-bar-btn" type="button">🖨️ Connect Printer / 连接打印机</button>
   </div>
 
   <main class="label-page">
     <header class="command-bar">
       <div class="command-brand">
         <span class="command-eyebrow">厨房 Kitchen</span>
-        <span class="command-title">Label Printer</span>
+        <span class="command-title">Label Printer / 标签打印机</span>
       </div>
       <div class="command-search">
         <div class="search-box">
-          <input id="search-input" type="search" placeholder="Search item name, SKU or barcode…" autocomplete="off">
-          <button id="clear-search-button" class="btn-ghost search-clear-button hidden" type="button">Clear</button>
+          <input id="search-input" type="search" placeholder="Search item name, SKU or barcode… / 搜索品名、SKU 或条码…" autocomplete="off">
+          <button id="clear-search-button" class="btn-ghost search-clear-button hidden" type="button">Clear / 清除</button>
         </div>
       </div>
       <div class="command-controls">
         <select id="category-filter" class="command-select"></select>
-        <button id="printer-setup-button" class="btn-secondary command-btn" type="button">⚙ Setup</button>
+        <button id="printer-setup-button" class="btn-secondary command-btn" type="button">⚙ Setup / 设置</button>
         <button id="refresh-button" class="btn-ghost command-btn" type="button">↺</button>
       </div>
     </header>
 
     <section class="launcher-panel">
       <div id="search-summary" class="search-summary hidden"></div>
-      <div id="cards-empty" class="empty-state hidden">No label items match the current filters.</div>
+      <div id="cards-empty" class="empty-state hidden">No label items match the current filters. / 没有符合当前筛选条件的标签项目。</div>
       <div id="card-groups" class="card-groups"></div>
     </section>
   </main>
@@ -48,50 +48,50 @@
     <section class="modal-card">
       <div class="modal-head">
         <div>
-          <p class="eyebrow">Print Options</p>
-          <h2 id="modal-title">Food item</h2>
+          <p class="eyebrow">Print Options / 打印选项</p>
+          <h2 id="modal-title">Food item / 食品项目</h2>
           <p id="modal-description" class="modal-description"></p>
         </div>
-        <button id="modal-close-button" class="icon-button" type="button" aria-label="Close">×</button>
+        <button id="modal-close-button" class="icon-button" type="button" aria-label="Close / 关闭">×</button>
       </div>
       <div class="modal-body">
         <div class="modal-grid">
           <label class="field">
-            <span>Copies</span>
+            <span>Copies / 份数</span>
             <input id="modal-quantity" type="number" min="1" max="999" step="1" inputmode="numeric">
           </label>
           <label class="field">
-            <span>Cut mode</span>
+            <span>Cut mode / 切刀模式</span>
             <select id="modal-cut-mode">
-              <option value="auto-cut">Auto cut</option>
-              <option value="no-cut">No cut</option>
+              <option value="auto-cut">Auto cut / 自动切刀</option>
+              <option value="no-cut">No cut / 不切刀</option>
             </select>
           </label>
           <label class="field">
-            <span>Template</span>
+            <span>Template / 模板</span>
             <input id="modal-template" type="text" readonly>
           </label>
           <label class="field">
-            <span>Printer template #</span>
+            <span>Printer template # / 打印机模板编号</span>
             <input id="modal-template-number" type="text" readonly>
           </label>
         </div>
         <div class="preview-card">
           <div class="preview-meta">
-            <strong>Design target</strong>
+            <strong>Design target / 设计尺寸</strong>
             <span id="modal-dimensions">58 x 62 mm</span>
           </div>
           <div class="preview-canvas">
             <div class="preview-paper">
-              <span class="preview-name" id="preview-name">Food Item</span>
-              <span class="preview-subtitle" id="preview-subtitle">Description</span>
-              <span class="preview-quantity" id="preview-quantity">Qty 1</span>
+              <span class="preview-name" id="preview-name">Food Item / 食品项目</span>
+              <span class="preview-subtitle" id="preview-subtitle">Description / 描述</span>
+              <span class="preview-quantity" id="preview-quantity">Qty / 数量 1</span>
             </div>
           </div>
         </div>
       </div>
       <div class="modal-actions">
-        <button id="modal-print-button" class="btn-primary" type="button">Print Now</button>
+        <button id="modal-print-button" class="btn-primary" type="button">Print Now / 立即打印</button>
       </div>
     </section>
   </div>
@@ -101,108 +101,108 @@
     <section class="modal-card printer-modal-card">
       <div class="modal-head">
         <div>
-          <p class="eyebrow">Printer Setup</p>
-          <h2>Bluetooth printer widget</h2>
-          <p class="modal-description">Keep Bluetooth pairing and reconnection settings out of the main launcher. Configure the target printer here, then return to printing.</p>
+          <p class="eyebrow">Printer Setup / 打印机设置</p>
+          <h2>Bluetooth Printer Widget / 蓝牙打印机设置</h2>
+          <p class="modal-description">Keep Bluetooth pairing and reconnection settings out of the main launcher. Configure the target printer here, then return to printing. / 将蓝牙配对和重新连接设置放在主界面之外。在这里配置目标打印机，然后返回打印。</p>
         </div>
-        <button id="printer-modal-close-button" class="icon-button" type="button" aria-label="Close">×</button>
+        <button id="printer-modal-close-button" class="icon-button" type="button" aria-label="Close / 关闭">×</button>
       </div>
       <div class="modal-body">
         <div class="printer-widget">
           <div class="status-grid printer-status-grid">
             <article class="status-card">
-              <span class="status-label">Browser</span>
-              <strong id="bridge-status">Checking browser support…</strong>
-              <small id="bridge-meta">This tablet needs Chrome with Web Serial enabled.</small>
+              <span class="status-label">Browser / 浏览器</span>
+              <strong id="bridge-status">Checking browser support… / 正在检查浏览器支持…</strong>
+              <small id="bridge-meta">This tablet needs Chrome with Web Serial enabled. / 此平板需要启用 Web Serial 的 Chrome。</small>
             </article>
             <article class="status-card">
-              <span class="status-label">Printer</span>
-              <strong id="printer-status">Not loaded</strong>
-              <small id="printer-meta">Pair the Brother printer on this tablet.</small>
+              <span class="status-label">Printer / 打印机</span>
+              <strong id="printer-status">Not loaded / 未加载</strong>
+              <small id="printer-meta">Pair the Brother printer on this tablet. / 请在此平板上配对 Brother 打印机。</small>
             </article>
             <article class="status-card">
-              <span class="status-label">Templates</span>
-              <strong id="template-status">0 loaded</strong>
+              <span class="status-label">Templates / 模板</span>
+              <strong id="template-status">0 loaded / 已加载 0 个</strong>
               <small>58 x 29 mm, 58 x 62 mm, 58 x 100 mm</small>
             </article>
             <article class="status-card">
-              <span class="status-label">Last Action</span>
-              <strong id="action-status">Idle</strong>
-              <small id="action-meta">Waiting for print input.</small>
+              <span class="status-label">Last Action / 最近操作</span>
+              <strong id="action-status">Idle / 空闲</strong>
+              <small id="action-meta">Waiting for print input. / 等待打印操作。</small>
             </article>
           </div>
           <div class="modal-grid">
             <label class="field">
-              <span>Printer</span>
+              <span>Printer / 打印机</span>
               <select id="printer-select"></select>
             </label>
             <label class="field">
-              <span>Serial baud rate</span>
+              <span>Serial baud rate / 串口波特率</span>
               <input id="printer-baud-input" type="number" min="1" max="921600" step="1" value="9600">
             </label>
             <label class="field printer-modal-host-field">
-              <span>Bluetooth mode</span>
+              <span>Bluetooth mode / 蓝牙模式</span>
               <input type="text" value="Android Chrome Web Serial" readonly>
             </label>
             <label class="field">
-              <span>Default cut mode</span>
+              <span>Default cut mode / 默认切刀模式</span>
               <select id="printer-default-cut">
-                <option value="no-cut">Cut after all items (recommended)</option>
-                <option value="auto-cut">Cut after each item</option>
+                <option value="no-cut">Cut after all items (recommended) / 全部项目打印后切刀（推荐）</option>
+                <option value="auto-cut">Cut after each item / 每个项目打印后切刀</option>
               </select>
             </label>
           </div>
           <div class="printer-widget-actions">
-            <button id="save-printer-button" class="btn-secondary" type="button">Save Setup</button>
-            <button id="discover-button" class="btn-secondary" type="button">Pair Printer</button>
-            <button id="connect-button" class="btn-secondary" type="button">Reconnect</button>
-            <button id="test-print-button" class="btn-secondary" type="button">Test Print</button>
+            <button id="save-printer-button" class="btn-secondary" type="button">Save Setup / 保存设置</button>
+            <button id="discover-button" class="btn-secondary" type="button">Pair Printer / 配对打印机</button>
+            <button id="connect-button" class="btn-secondary" type="button">Reconnect / 重新连接</button>
+            <button id="test-print-button" class="btn-secondary" type="button">Test Print / 测试打印</button>
           </div>
           <div class="diagnostic-panel">
             <div class="diagnostic-head">
-              <strong>Browser Diagnostics</strong>
+              <strong>Browser Diagnostics / 浏览器诊断</strong>
               <div class="diagnostic-actions">
-                <a class="btn-ghost diagnostic-link-button" href="./bluetooth-probe.html" target="_blank" rel="noopener">Open Probe Page</a>
-                <button id="open-site-settings-button" class="btn-ghost diagnostic-refresh-button" type="button">Open Site Settings</button>
-                <button id="forget-ports-button" class="btn-ghost diagnostic-refresh-button" type="button">Forget Ports</button>
-                <button id="refresh-diagnostics-button" class="btn-ghost diagnostic-refresh-button" type="button">Refresh Diagnostics</button>
+                <a class="btn-ghost diagnostic-link-button" href="./bluetooth-probe.html" target="_blank" rel="noopener">Open Probe Page / 打开检测页</a>
+                <button id="open-site-settings-button" class="btn-ghost diagnostic-refresh-button" type="button">Open Site Settings / 打开网站设置</button>
+                <button id="forget-ports-button" class="btn-ghost diagnostic-refresh-button" type="button">Forget Ports / 忘记端口</button>
+                <button id="refresh-diagnostics-button" class="btn-ghost diagnostic-refresh-button" type="button">Refresh Diagnostics / 刷新诊断</button>
               </div>
             </div>
             <div class="diagnostic-grid">
               <article class="diagnostic-card">
-                <span class="status-label">Secure Context</span>
-                <strong id="diag-secure-context">Checking…</strong>
-                <small id="diag-origin">Origin unknown</small>
+                <span class="status-label">Secure Context / 安全上下文</span>
+                <strong id="diag-secure-context">Checking… / 检查中…</strong>
+                <small id="diag-origin">Origin unknown / 来源未知</small>
               </article>
               <article class="diagnostic-card">
-                <span class="status-label">Display Mode</span>
-                <strong id="diag-display-mode">Checking…</strong>
-                <small id="diag-display-mode-meta">Runtime mode unknown</small>
+                <span class="status-label">Display Mode / 显示模式</span>
+                <strong id="diag-display-mode">Checking… / 检查中…</strong>
+                <small id="diag-display-mode-meta">Runtime mode unknown / 运行模式未知</small>
               </article>
               <article class="diagnostic-card">
                 <span class="status-label">Web Serial</span>
-                <strong id="diag-web-serial">Checking…</strong>
-                <small id="diag-web-serial-meta">Browser capability unknown</small>
+                <strong id="diag-web-serial">Checking… / 检查中…</strong>
+                <small id="diag-web-serial-meta">Browser capability unknown / 浏览器能力未知</small>
               </article>
               <article class="diagnostic-card">
-                <span class="status-label">Authorized Ports</span>
+                <span class="status-label">Authorized Ports / 已授权端口</span>
                 <strong id="diag-authorized-ports">0</strong>
-                <small id="diag-authorized-ports-meta">No ports queried yet</small>
+                <small id="diag-authorized-ports-meta">No ports queried yet / 尚未查询端口</small>
               </article>
               <article class="diagnostic-card">
-                <span class="status-label">Page State</span>
-                <strong id="diag-page-state">Checking…</strong>
-                <small id="diag-page-state-meta">Visibility unknown</small>
+                <span class="status-label">Page State / 页面状态</span>
+                <strong id="diag-page-state">Checking… / 检查中…</strong>
+                <small id="diag-page-state-meta">Visibility unknown / 可见性未知</small>
               </article>
               <article class="diagnostic-card">
-                <span class="status-label">Last Serial Error</span>
-                <strong id="diag-last-error">None</strong>
-                <small id="diag-last-error-meta">No serial errors captured</small>
+                <span class="status-label">Last Serial Error / 最近串口错误</span>
+                <strong id="diag-last-error">None / 无</strong>
+                <small id="diag-last-error-meta">No serial errors captured / 未捕获串口错误</small>
               </article>
             </div>
           </div>
           <div class="printer-widget-results">
-            <div id="discover-empty" class="empty-state">Pair a Brother printer from this tablet, then reconnect when you return to the page.</div>
+            <div id="discover-empty" class="empty-state">Pair a Brother printer from this tablet, then reconnect when you return to the page. / 请在此平板上配对 Brother 打印机，返回页面后再重新连接。</div>
             <div id="discover-list" class="jobs-list"></div>
           </div>
         </div>
