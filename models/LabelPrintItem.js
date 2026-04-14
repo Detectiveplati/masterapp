@@ -3,6 +3,8 @@ const { COLLECTIONS } = require('../config/databaseLayout');
 
 const LabelPrintItemSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
+  nameEnglish: { type: String, default: '', trim: true },
+  nameChinese: { type: String, default: '', trim: true },
   description: { type: String, default: '', trim: true },
   category: { type: String, default: 'Uncategorized', trim: true },
   templateKey: { type: String, required: true, trim: true },

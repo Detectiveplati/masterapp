@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Template Setup / 模板设置</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body data-module="label-template-setup">
+  <main class="template-setup-page">
+    <header class="template-setup-header">
+      <div>
+        <p class="command-eyebrow">Label Print Admin</p>
+        <h1>Template Setup / 模板设置</h1>
+        <p class="template-setup-intro">Edit the Chinese name, English name, and printer template number used by the label printer. / 编辑标签打印所使用的中文名、英文名和打印机模板编号。</p>
+      </div>
+      <div class="template-setup-header-actions">
+        <a class="btn-ghost" href="./">Back To Print / 返回打印页</a>
+        <button id="new-template-button" class="btn-primary" type="button">New Template / 新建模板</button>
+      </div>
+    </header>
+
+    <section class="template-setup-toolbar">
+      <div class="search-box">
+        <input id="template-search-input" type="search" placeholder="Search English, Chinese, or template #... / 搜索英文、中文或模板编号..." autocomplete="off">
+      </div>
+      <label class="field template-filter-field">
+        <span>Status / 状态</span>
+        <select id="template-status-filter">
+          <option value="active">Active only / 仅启用</option>
+          <option value="all">All templates / 全部模板</option>
+        </select>
+      </label>
+      <button id="refresh-templates-button" class="btn-secondary" type="button">Refresh / 刷新</button>
+    </section>
+
+    <section class="template-setup-list-shell">
+      <div id="template-setup-empty" class="empty-state hidden">No templates match the current filters. / 没有符合当前筛选条件的模板。</div>
+      <div id="template-setup-list" class="template-setup-list"></div>
+    </section>
+  </main>
+
+  <div id="template-editor-modal" class="modal-shell hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-template-modal="true"></div>
+    <section class="modal-card template-editor-card">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Template Editor / 模板编辑</p>
+          <h2 id="template-editor-title">New Template / 新建模板</h2>
+          <p class="modal-description">Keep names clean and map each record to the printer template number already loaded into the Brother printer. / 请保持名称清晰，并将记录映射到 Brother 打印机中已加载的模板编号。</p>
+        </div>
+        <button id="template-editor-close-button" class="icon-button" type="button" aria-label="Close / 关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-grid">
+          <label class="field">
+            <span>Chinese Name / 中文名</span>
+            <input id="template-name-chinese-input" type="text" maxlength="120">
+          </label>
+          <label class="field">
+            <span>English Name / 英文名</span>
+            <input id="template-name-english-input" type="text" maxlength="120">
+          </label>
+          <label class="field">
+            <span>Printer Template # / 打印机模板编号</span>
+            <input id="template-number-input" type="number" min="1" max="255" step="1">
+          </label>
+          <label class="field">
+            <span>Label Height / 标签高度</span>
+            <select id="template-height-input">
+              <option value="29">29 mm</option>
+              <option value="62">62 mm</option>
+              <option value="100">100 mm</option>
+            </select>
+          </label>
+          <label class="field template-editor-wide-field">
+            <span>Description / 描述</span>
+            <input id="template-description-input" type="text" maxlength="240">
+          </label>
+          <label class="field template-editor-checkbox-field">
+            <span>Active / 启用</span>
+            <span class="template-editor-checkbox-row">
+              <input id="template-active-input" type="checkbox" checked>
+              <span>Available for printing / 可用于打印</span>
+            </span>
+          </label>
+        </div>
+        <div class="template-editor-meta-card">
+          <strong id="template-usage-count">0 linked items / 0 个关联项目</strong>
+          <small id="template-editor-key">Key will be created automatically for new templates. / 新模板会自动生成键值。</small>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="template-editor-save-button" class="btn-primary" type="button">Save Template / 保存模板</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="template-setup-toast" class="label-print-toast hidden"></div>
+
+  <script src="/js/shell.js"></script>
+  <script src="./template-setup.js"></script>
+</body>
+</html>

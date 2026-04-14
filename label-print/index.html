@@ -34,6 +34,7 @@
       </div>
       <div class="command-controls">
         <select id="category-filter" class="command-select"></select>
+        <a class="btn-ghost command-btn command-link-btn" href="./template-setup.html">Template Setup / 模板设置</a>
         <button id="printer-setup-button" class="btn-secondary command-btn" type="button">
           <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-.4-1 1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1-.4 1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 .4 1 1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.27.3.48.65.6 1a1.7 1.7 0 0 0 1 .4H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1 .4 1.7 1.7 0 0 0-.5.6z"/></svg></span>
           <span>Setup / 设置</span>
@@ -178,6 +179,7 @@
               <strong>Browser Diagnostics / 浏览器诊断</strong>
               <div class="diagnostic-actions">
                 <a class="btn-ghost diagnostic-link-button" href="./bluetooth-probe.html" target="_blank" rel="noopener">Open Probe Page / 打开检测页</a>
+                <button id="download-diagnostics-button" class="btn-ghost diagnostic-refresh-button" type="button">Download Diagnostics / 下载诊断</button>
                 <button id="upload-diagnostics-button" class="btn-ghost diagnostic-refresh-button" type="button">Upload Diagnostics / 上传诊断</button>
                 <button id="open-site-settings-button" class="btn-ghost diagnostic-refresh-button" type="button">Open Site Settings / 打开网站设置</button>
                 <button id="forget-ports-button" class="btn-ghost diagnostic-refresh-button" type="button">Forget Ports / 忘记端口</button>
@@ -186,7 +188,7 @@
             </div>
             <div class="diagnostic-grid">
               <article class="diagnostic-card">
-                <span class="status-label">Secure Context / 安全上下文</span>
+                <span class="status-label">Secure Site / 安全站点</span>
                 <strong id="diag-secure-context">Checking… / 检查中…</strong>
                 <small id="diag-origin">Origin unknown / 来源未知</small>
               </article>

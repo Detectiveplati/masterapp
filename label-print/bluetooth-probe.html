@@ -79,13 +79,13 @@
     <section class="probe-card probe-head">
       <p class="eyebrow">Label Printer Diagnostics</p>
       <h1>Bluetooth / Serial Probe</h1>
-      <p>Use this page to isolate what the browser can actually see. It tests secure context, Web Serial, authorized ports, the serial picker, and a raw Web Bluetooth visibility request separately.</p>
+      <p>Use this page to isolate what the browser can actually see. It tests whether the site is secure, Web Serial, authorized ports, the serial picker, and a raw Web Bluetooth visibility request separately.</p>
     </section>
 
     <section class="probe-card">
       <div class="probe-grid">
         <article class="probe-item">
-          <span>Secure Context</span>
+          <span>Secure Site</span>
           <strong id="secure-context-value">Checking…</strong>
           <small id="origin-value">Origin unknown</small>
         </article>
@@ -123,6 +123,7 @@
         <button id="serial-request-button" class="btn-primary" type="button">Request Serial Port</button>
         <button id="serial-list-button" class="btn-secondary" type="button">List Authorized Ports</button>
         <button id="bluetooth-request-button" class="btn-secondary" type="button">Request Bluetooth Device</button>
+        <button id="download-probe-button" class="btn-secondary" type="button">Download Probe Data</button>
         <a class="btn-ghost" href="./">Back To Label Printer</a>
       </div>
     </section>
@@ -154,11 +155,18 @@
     const pageStateMetaEl = document.getElementById('page-state-meta');
     const portListEl = document.getElementById('port-list');
     const logBoxEl = document.getElementById('log-box');
+    const probeState = {
+      runtimeLog: [],
+      lastAuthorizedPorts: [],
+      lastSerialSelection: null,
+      lastBluetoothSelection: null
+    };
 
     document.getElementById('refresh-button').addEventListener('click', refreshState);
     document.getElementById('serial-request-button').addEventListener('click', requestSerialPort);
     document.getElementById('serial-list-button').addEventListener('click', listAuthorizedPorts);
     document.getElementById('bluetooth-request-button').addEventListener('click', requestBluetoothDevice);
+    document.getElementById('download-probe-button').addEventListener('click', downloadProbeData);
     document.addEventListener('visibilitychange', refreshState);
     window.addEventListener('focus', refreshState);
     window.addEventListener('pageshow', refreshState);
@@ -199,6 +207,7 @@
 
       try {
         const ports = await navigator.serial.getPorts();
+        probeState.lastAuthorizedPorts = ports.map((port) => port.getInfo ? port.getInfo() : {});
         authorizedPortsValueEl.textContent = String(ports.length);
         authorizedPortsMetaEl.textContent = ports.length
           ? ports.map((port) => formatPortLabel(port.getInfo ? port.getInfo() : {})).join(' | ')
@@ -222,9 +231,11 @@
         log('Opening serial port picker…');
         const port = await navigator.serial.requestPort({});
         const info = port.getInfo ? port.getInfo() : {};
+        probeState.lastSerialSelection = { ok: true, info, capturedAt: new Date().toISOString() };
         log(`Serial port selected: ${JSON.stringify(info)}`);
         await listAuthorizedPorts({ silent: true });
       } catch (error) {
+        probeState.lastSerialSelection = { ok: false, error: `${error.name || 'Error'}: ${error.message || error}`, capturedAt: new Date().toISOString() };
         log(`requestPort() failed: ${error.name || 'Error'} - ${error.message || error}`);
       }
     }
@@ -237,10 +248,48 @@
       try {
         log('Opening Bluetooth device picker…');
         const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
+        probeState.lastBluetoothSelection = {
+          ok: true,
+          name: device.name || 'Unnamed device',
+          id: device.id || '',
+          capturedAt: new Date().toISOString()
+        };
         log(`Bluetooth device selected: ${device.name || 'Unnamed device'} (${device.id || 'no-id'})`);
       } catch (error) {
+        probeState.lastBluetoothSelection = { ok: false, error: `${error.name || 'Error'}: ${error.message || error}`, capturedAt: new Date().toISOString() };
         log(`requestDevice() failed: ${error.name || 'Error'} - ${error.message || error}`);
       }
+    }
+
+    function downloadProbeData() {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        secureSite: Boolean(window.isSecureContext),
+        origin: window.location.origin,
+        href: window.location.href,
+        displayMode: getDisplayMode(),
+        webSerialAvailable: Boolean(navigator.serial),
+        webBluetoothAvailable: Boolean(navigator.bluetooth),
+        pageState: {
+          visibility: document.visibilityState,
+          focused: document.hasFocus(),
+          referrer: document.referrer || 'Direct open'
+        },
+        authorizedPorts: probeState.lastAuthorizedPorts,
+        lastSerialSelection: probeState.lastSerialSelection,
+        lastBluetoothSelection: probeState.lastBluetoothSelection,
+        runtimeLog: probeState.runtimeLog.slice()
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `label-print-probe-${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+      log('Probe data downloaded');
     }
 
     function renderPorts(ports) {
@@ -286,7 +335,8 @@
 
     function log(message) {
       const timestamp = new Date().toLocaleTimeString();
-      logBoxEl.textContent += `[${timestamp}] ${message}\n`;
+      probeState.runtimeLog.push(`[${timestamp}] ${message}`);
+      logBoxEl.textContent = probeState.runtimeLog.join('\n') + '\n';
       logBoxEl.scrollTop = logBoxEl.scrollHeight;
     }
 

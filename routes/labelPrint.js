@@ -34,8 +34,12 @@ async function ensureDefaults() {
   if (defaultsPromise) return defaultsPromise;
   defaultsPromise = (async () => {
     const printerCount = await LabelPrintPrinter.countDocuments();
+    const templateCount = await LabelPrintTemplate.countDocuments();
+    const itemCount = await LabelPrintItem.countDocuments();
 
-    await syncCatalog();
+    if (!templateCount || !itemCount) {
+      await syncCatalog();
+    }
 
     if (!printerCount) {
       await LabelPrintPrinter.create({
@@ -133,7 +137,9 @@ function buildCatalogFromRows(rows) {
       seenTemplates.add(templateKey);
       templates.push({
         key: templateKey,
-        name: `Template ${templateNumber}`,
+        name: englishName || `Template ${templateNumber}`,
+        nameEnglish: englishName,
+        nameChinese: chineseName,
         description: templateFile || `Assigned from Sauce Department.xlsx as printer template ${templateNumber}.`,
         printerTemplateNumber: templateNumber,
         mediaWidthMm: 62,
@@ -147,6 +153,8 @@ function buildCatalogFromRows(rows) {
 
     items.push({
       name: englishName,
+      nameEnglish: englishName,
+      nameChinese: chineseName,
       description: displayDescription || `Location ${location || 'N/A'}`,
       category: normalizeCategory(storage, shelfLife),
       templateKey,
@@ -181,6 +189,8 @@ function buildPlaceholderCatalog() {
     return {
       key: `template-${number}`,
       name: `Template ${number}`,
+      nameEnglish: `Template ${number}`,
+      nameChinese: '',
       description: `Placeholder template ${number}, mapped to printer template ${number}.`,
       printerTemplateNumber: number,
       mediaWidthMm: 62,
@@ -200,6 +210,8 @@ function buildPlaceholderCatalog() {
     const number = index + 1;
     return {
       name: `Placeholder ${number}`,
+      nameEnglish: `Placeholder ${number}`,
+      nameChinese: '',
       description: `Linked to Template ${number} and printer tag ${number}.`,
       category: 'Placeholders',
       templateKey: `template-${number}`,
@@ -263,18 +275,162 @@ function buildQuery(req) {
   }
   if (req.query.q) {
     const rx = new RegExp(String(req.query.q).trim(), 'i');
-    query.$or = [{ name: rx }, { description: rx }, { sku: rx }, { barcode: rx }];
+    query.$or = [{ name: rx }, { nameEnglish: rx }, { nameChinese: rx }, { description: rx }, { sku: rx }, { barcode: rx }];
   }
   return query;
+}
+
+function deriveChineseName(item) {
+  if (item && item.nameChinese) return String(item.nameChinese).trim();
+  const description = String(item && item.description || '').trim();
+  if (!description) return '';
+  return description.split('·')[0].trim();
+}
+
+function serializeItem(item) {
+  const plainItem = item && typeof item.toObject === 'function' ? item.toObject() : item;
+  return {
+    ...plainItem,
+    nameEnglish: String(plainItem && (plainItem.nameEnglish || plainItem.name) || '').trim(),
+    nameChinese: deriveChineseName(plainItem)
+  };
+}
+
+async function buildTemplateUsageMap() {
+  const counts = await LabelPrintItem.aggregate([
+    { $match: { active: true } },
+    { $group: { _id: '$templateKey', usageCount: { $sum: 1 } } }
+  ]);
+  return new Map(counts.map((entry) => [String(entry._id || ''), Number(entry.usageCount) || 0]));
+}
+
+function normalizeTemplateInput(input = {}, existingTemplate = null) {
+  const fallbackName = String(existingTemplate && existingTemplate.name || '').trim();
+  const fallbackEnglish = String(existingTemplate && existingTemplate.nameEnglish || '').trim();
+  const fallbackChinese = String(existingTemplate && existingTemplate.nameChinese || '').trim();
+  const fallbackDescription = String(existingTemplate && existingTemplate.description || '').trim();
+  const fallbackNumber = Number(existingTemplate && existingTemplate.printerTemplateNumber) || 1;
+  const fallbackHeight = Number(existingTemplate && existingTemplate.heightMm) || 62;
+
+  const nameEnglish = String(input.nameEnglish !== undefined ? input.nameEnglish : fallbackEnglish || fallbackName).trim();
+  const nameChinese = String(input.nameChinese !== undefined ? input.nameChinese : fallbackChinese).trim();
+  const name = String(input.name !== undefined ? input.name : nameEnglish || fallbackName).trim() || `Template ${fallbackNumber}`;
+  const description = String(input.description !== undefined ? input.description : fallbackDescription).trim();
+  const printerTemplateNumber = Math.max(1, Math.min(255, Math.round(Number(input.printerTemplateNumber !== undefined ? input.printerTemplateNumber : fallbackNumber) || fallbackNumber)));
+  const heightMm = [29, 62, 100].includes(Number(input.heightMm)) ? Number(input.heightMm) : fallbackHeight;
+
+  return {
+    key: String(input.key !== undefined ? input.key : existingTemplate && existingTemplate.key || `template-${printerTemplateNumber}`).trim() || `template-${printerTemplateNumber}`,
+    name,
+    nameEnglish,
+    nameChinese,
+    description,
+    printerTemplateNumber,
+    mediaWidthMm: Number(input.mediaWidthMm !== undefined ? input.mediaWidthMm : existingTemplate && existingTemplate.mediaWidthMm) || 62,
+    printWidthMm: Number(input.printWidthMm !== undefined ? input.printWidthMm : existingTemplate && existingTemplate.printWidthMm) || 58,
+    heightMm,
+    active: input.active !== undefined ? Boolean(input.active) : existingTemplate ? existingTemplate.active !== false : true,
+    preview: {
+      widthMm: Number(input.preview && input.preview.widthMm !== undefined ? input.preview.widthMm : existingTemplate && existingTemplate.preview && existingTemplate.preview.widthMm) || 58,
+      heightMm: Number(input.preview && input.preview.heightMm !== undefined ? input.preview.heightMm : existingTemplate && existingTemplate.preview && existingTemplate.preview.heightMm) || heightMm
+    },
+    departmentCode: String(input.departmentCode !== undefined ? input.departmentCode : existingTemplate && existingTemplate.departmentCode || '').trim(),
+    departmentName: String(input.departmentName !== undefined ? input.departmentName : existingTemplate && existingTemplate.departmentName || '').trim(),
+    departmentSignature: String(input.departmentSignature !== undefined ? input.departmentSignature : existingTemplate && existingTemplate.departmentSignature || '').trim(),
+    departmentSignaturePlacement: String(input.departmentSignaturePlacement !== undefined ? input.departmentSignaturePlacement : existingTemplate && existingTemplate.departmentSignaturePlacement || '').trim(),
+    departmentSignatureEmbeddedInTemplate: input.departmentSignatureEmbeddedInTemplate !== undefined
+      ? Boolean(input.departmentSignatureEmbeddedInTemplate)
+      : Boolean(existingTemplate && existingTemplate.departmentSignatureEmbeddedInTemplate),
+    supportedOptions: {
+      autoCut: input.supportedOptions && input.supportedOptions.autoCut !== undefined
+        ? Boolean(input.supportedOptions.autoCut)
+        : !(existingTemplate && existingTemplate.supportedOptions) || existingTemplate.supportedOptions.autoCut !== false,
+      noCut: input.supportedOptions && input.supportedOptions.noCut !== undefined
+        ? Boolean(input.supportedOptions.noCut)
+        : !(existingTemplate && existingTemplate.supportedOptions) || existingTemplate.supportedOptions.noCut !== false
+    },
+    fieldSchema: Array.isArray(input.fieldSchema) ? input.fieldSchema : (existingTemplate && existingTemplate.fieldSchema) || []
+  };
 }
 
 router.get('/templates', async (_req, res) => {
   try {
     await ensureDefaults();
-    const templates = await LabelPrintTemplate.find({ active: true }).sort({ printerTemplateNumber: 1 }).lean();
-    res.json(templates);
+    const includeInactive = _req.query.active === 'false';
+    const query = includeInactive ? {} : { active: true };
+    const templates = await LabelPrintTemplate.find(query).sort({ printerTemplateNumber: 1 }).lean();
+    const usageMap = await buildTemplateUsageMap();
+    res.json(templates.map((template) => ({
+      ...template,
+      nameEnglish: template.nameEnglish || template.name || '',
+      nameChinese: template.nameChinese || '',
+      usageCount: usageMap.get(String(template.key || '')) || 0
+    })));
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/templates/:id', async (req, res) => {
+  try {
+    await ensureDefaults();
+    const template = await LabelPrintTemplate.findById(req.params.id).lean();
+    if (!template) return res.status(404).json({ error: 'Template not found' });
+    const usageMap = await buildTemplateUsageMap();
+    res.json({
+      ...template,
+      nameEnglish: template.nameEnglish || template.name || '',
+      nameChinese: template.nameChinese || '',
+      usageCount: usageMap.get(String(template.key || '')) || 0
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/templates', express.json(), async (req, res) => {
+  try {
+    await ensureDefaults();
+    const payload = normalizeTemplateInput(req.body || {});
+    const collision = await LabelPrintTemplate.findOne({
+      $or: [
+        { key: payload.key },
+        { printerTemplateNumber: payload.printerTemplateNumber }
+      ]
+    }).lean();
+    if (collision) {
+      return res.status(400).json({ error: 'A template with this key or printer template number already exists.' });
+    }
+    const template = await LabelPrintTemplate.create(payload);
+    res.status(201).json(template);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.put('/templates/:id', express.json(), async (req, res) => {
+  try {
+    await ensureDefaults();
+    const existingTemplate = await LabelPrintTemplate.findById(req.params.id);
+    if (!existingTemplate) return res.status(404).json({ error: 'Template not found' });
+
+    const payload = normalizeTemplateInput(req.body || {}, existingTemplate.toObject());
+    const collision = await LabelPrintTemplate.findOne({
+      _id: { $ne: existingTemplate._id },
+      $or: [
+        { key: payload.key },
+        { printerTemplateNumber: payload.printerTemplateNumber }
+      ]
+    }).lean();
+    if (collision) {
+      return res.status(400).json({ error: 'Another template already uses this key or printer template number.' });
+    }
+
+    Object.assign(existingTemplate, payload);
+    await existingTemplate.save();
+    res.json(existingTemplate);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 
@@ -282,7 +438,7 @@ router.get('/items', async (req, res) => {
   try {
     await ensureDefaults();
     const items = await LabelPrintItem.find(buildQuery(req)).sort({ category: 1, name: 1 }).lean();
-    res.json(items);
+    res.json(items.map(serializeItem));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -293,7 +449,7 @@ router.get('/items/:id', async (req, res) => {
     await ensureDefaults();
     const item = await LabelPrintItem.findById(req.params.id).lean();
     if (!item) return res.status(404).json({ error: 'Item not found' });
-    res.json(item);
+    res.json(serializeItem(item));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
