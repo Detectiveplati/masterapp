@@ -5,7 +5,7 @@
 //   • API calls (/api/)                          → Network-only (never cache)
 //   • Push notifications                         → handled below
 
-var CACHE_NAME    = 'ck-shell-v2';
+var CACHE_NAME    = 'ck-shell-v3';
 var OFFLINE_URL   = '/offline.html';
 
 // Assets to pre-cache on install (app shell)
