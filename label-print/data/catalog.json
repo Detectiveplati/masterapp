@@ -2559,6 +2559,72 @@
       "departmentSignature": "Sauce Department / 酱料部",
       "departmentSignaturePlacement": "bottom-right",
       "departmentSignatureEmbeddedInTemplate": true
+    },
+    {
+      "key": "template-129",
+      "name": "SAMBAL BELACAN SAUCE",
+      "nameEnglish": "SAMBAL BELACAN SAUCE",
+      "nameChinese": "湿叁巴",
+      "description": "129. FROZEN SAMBAL BELACAN SAUCE 冰冻 湿叁巴.lbx",
+      "printerTemplateNumber": 129,
+      "mediaWidthMm": 62,
+      "printWidthMm": 58,
+      "heightMm": 62,
+      "fieldSchema": [],
+      "preview": {
+        "widthMm": 58,
+        "heightMm": 62
+      },
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
+    },
+    {
+      "key": "template-130",
+      "name": "CHILLI SAUCE - MAGGI",
+      "nameEnglish": "CHILLI SAUCE - MAGGI",
+      "nameChinese": "辣椒酱",
+      "description": "130. CHILLED CHILLI SAUCE - MAGGI 冷藏 辣椒酱.lbx",
+      "printerTemplateNumber": 130,
+      "mediaWidthMm": 62,
+      "printWidthMm": 58,
+      "heightMm": 62,
+      "fieldSchema": [],
+      "preview": {
+        "widthMm": 58,
+        "heightMm": 62
+      },
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
+    },
+    {
+      "key": "template-131",
+      "name": "MONOSODIUM GLUTATAME",
+      "nameEnglish": "MONOSODIUM GLUTATAME",
+      "nameChinese": "味精",
+      "description": "131. AMBIENT MONOSODIUM GLUTATAME 室温 味精.lbx",
+      "printerTemplateNumber": 131,
+      "mediaWidthMm": 62,
+      "printWidthMm": 58,
+      "heightMm": 62,
+      "fieldSchema": [],
+      "preview": {
+        "widthMm": 58,
+        "heightMm": 62
+      },
+      "active": true,
+      "departmentCode": "sauce",
+      "departmentName": "Sauce Department",
+      "departmentSignature": "Sauce Department / 酱料部",
+      "departmentSignaturePlacement": "bottom-right",
+      "departmentSignatureEmbeddedInTemplate": true
     }
   ],
   "items": [
@@ -3322,15 +3388,15 @@
       "name": "SAMBAL BELACAN SAUCE",
       "description": "湿叁巴 - FROZEN 冰冻 - 3 MONTHS",
       "category": "FROZEN",
-      "templateKey": "template-na-43",
-      "sku": "NA",
+      "templateKey": "template-129",
+      "sku": "129. FROZEN SAMBAL BELACAN SAUCE 冰冻 湿叁巴.lbx",
       "barcode": "",
       "defaultQuantity": 1,
       "defaultCutMode": "auto-cut",
       "defaultFieldValues": {
         "assignmentStatus": "AMBIGUOUS",
         "location": "#05-27",
-        "hasTemplate": false
+        "hasTemplate": true
       },
       "active": true,
       "departmentCode": "sauce",
@@ -3916,15 +3982,15 @@
       "name": "CHILLI SAUCE - MAGGI",
       "description": "辣椒酱 - CHILLED 冷藏 - 2 WEEKS",
       "category": "CHILLED",
-      "templateKey": "template-na-76",
-      "sku": "NA",
+      "templateKey": "template-130",
+      "sku": "130. CHILLED CHILLI SAUCE - MAGGI 冷藏 辣椒酱.lbx",
       "barcode": "",
       "defaultQuantity": 1,
       "defaultCutMode": "auto-cut",
       "defaultFieldValues": {
         "assignmentStatus": "NA",
         "location": "#05-27",
-        "hasTemplate": false
+        "hasTemplate": true
       },
       "active": true,
       "departmentCode": "sauce",
@@ -4672,15 +4738,15 @@
       "name": "MONOSODIUM GLUTATAME",
       "description": "味精 - AMBIENT 室温 - 1 MONTH",
       "category": "AMBIENT",
-      "templateKey": "template-na-118",
-      "sku": "NA",
+      "templateKey": "template-131",
+      "sku": "131. AMBIENT MONOSODIUM GLUTATAME 室温 味精.lbx",
       "barcode": "",
       "defaultQuantity": 1,
       "defaultCutMode": "auto-cut",
       "defaultFieldValues": {
         "assignmentStatus": "NA",
         "location": "#05-27",
-        "hasTemplate": false
+        "hasTemplate": true
       },
       "active": true,
       "departmentCode": "sauce",
