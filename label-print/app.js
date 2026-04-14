@@ -1,5 +1,6 @@
 const API_BASE = `${window.location.origin}/api/label-print`;
 const BLUETOOTH_RFCOMM_SERVICE_ID = '00001101-0000-1000-8000-00805f9b34fb';
+const DIAGNOSTIC_SESSION_KEY = 'label-print-diagnostic-session-id';
 
 const searchInputEl = document.getElementById('search-input');
 const clearSearchButtonEl = document.getElementById('clear-search-button');
@@ -61,6 +62,10 @@ const diagPageStateEl = document.getElementById('diag-page-state');
 const diagPageStateMetaEl = document.getElementById('diag-page-state-meta');
 const diagLastErrorEl = document.getElementById('diag-last-error');
 const diagLastErrorMetaEl = document.getElementById('diag-last-error-meta');
+const diagPairingResultEl = document.getElementById('diag-pairing-result');
+const diagPairingResultMetaEl = document.getElementById('diag-pairing-result-meta');
+const diagBrowserNameEl = document.getElementById('diag-browser-name');
+const diagBrowserMetaEl = document.getElementById('diag-browser-meta');
 
 const state = {
   items: [],
@@ -79,8 +84,12 @@ const state = {
     connected: false,
     reconnectPromise: null,
     lastError: '',
-    lastErrorAt: null
-  }
+    lastErrorAt: null,
+    lastPairingResult: '',
+    lastPairingMeta: '',
+    lastPairingAt: null
+  },
+  remoteDiagnosticsSessionId: getDiagnosticSessionId()
 };
 
 searchInputEl.addEventListener('input', renderItems);
@@ -220,6 +229,9 @@ async function loadAll() {
     console.error(error);
     appendRuntimeLog('loadAll() failed', { error: error && (error.message || error.name || String(error)) });
     setAction('Load failed / 加载失败', error.message || 'Could not load label printing data. / 无法加载标签打印数据。');
+    sendDiagnosticLog('error', 'load-failed', 'Label print data load failed', {
+      error: error && (error.message || error.name || String(error))
+    });
     showToast(error.message || 'Could not load label printing data. / 无法加载标签打印数据。');
   }
 }
@@ -496,9 +508,12 @@ function openPrinterModal() {
   renderAuthorizedPorts();
   printerModalEl.classList.remove('hidden');
   printerModalEl.setAttribute('aria-hidden', 'false');
+  appendRuntimeLog('Printer setup opened', { remoteDiagnosticsEnabled: shouldSendRemoteDiagnostics() });
+  updateDiagnostics();
 }
 
 function closePrinterModal() {
+  appendRuntimeLog('Printer setup closed', { remoteDiagnosticsEnabled: shouldSendRemoteDiagnostics() });
   printerModalEl.classList.add('hidden');
   printerModalEl.setAttribute('aria-hidden', 'true');
 }
@@ -707,24 +722,62 @@ async function requestTestPrint() {
 async function pairBluetoothPrinter() {
   appendRuntimeLog('pairBluetoothPrinter() start', runtimeStateSnapshot());
   if (!navigator.serial) {
+    setPairingResult(
+      'Web Serial unavailable / Web Serial 不可用',
+      'This browser does not expose navigator.serial. Use Android Chrome. / 此浏览器未提供 navigator.serial，请使用 Android Chrome。'
+    );
+    updateDiagnostics();
     showToast('This browser does not support Web Serial. Use Chrome on Android. / 此浏览器不支持 Web Serial，请使用 Android Chrome。');
     return;
   }
   try {
+    setPairingResult(
+      'Picker opened / 已打开选择器',
+      'Waiting for Chrome to return a Bluetooth serial device. / 正在等待 Chrome 返回蓝牙串口设备。'
+    );
+    updateDiagnostics();
     showToast('Looking for printer… choose it from the list. / 正在查找打印机… 请从列表中选择。', { sticky: true });
     const port = await navigator.serial.requestPort({});
+    setPairingResult(
+      'Device selected / 已选择设备',
+      `Chrome returned a port: ${formatSerialLabel(port && port.getInfo ? port.getInfo() : {})} / Chrome 已返回一个端口`
+    );
     await connectToPort(port);
     setAction('Printer paired / 打印机已配对', 'Bluetooth printer access has been granted on this tablet. / 此平板已获得蓝牙打印机访问权限。');
     clearSerialError();
+    setPairingResult(
+      'Pairing succeeded / 配对成功',
+      'Bluetooth serial permission was granted and the port opened successfully. / 蓝牙串口权限已授予，端口已成功打开。'
+    );
     renderAuthorizedPorts();
     updatePrinterStatus();
     updateDiagnostics();
+    sendDiagnosticLog('info', 'pairing-selected', 'Bluetooth serial device selected and connected', {
+      portInfo: safePortInfo(port)
+    });
     showToast('Bluetooth printer paired. / 蓝牙打印机已配对。');
   } catch (error) {
-    if (error && error.name === 'NotFoundError') return;
+    if (error && error.name === 'NotFoundError') {
+      setPairingResult(
+        'No compatible device / 未找到兼容设备',
+        'Chrome did not return a serial-capable Bluetooth device. Check browser, permissions, Android pairing, and whether another tablet is already connected. / Chrome 未返回支持串口的蓝牙设备，请检查浏览器、权限、Android 配对，以及是否已有其他平板连接。'
+      );
+      updateDiagnostics();
+      sendDiagnosticLog('warn', 'pairing-no-compatible-device', 'Chrome returned no compatible serial Bluetooth device', {
+        error: error && (error.message || error.name || String(error))
+      });
+      return;
+    }
     console.error(error);
     setSerialError(error);
+    setPairingResult(
+      'Pairing failed / 配对失败',
+      `${error && (error.name || 'Error')}: ${error && (error.message || 'Unknown error')} / 配对过程中出现错误`
+    );
     updateDiagnostics();
+    sendDiagnosticLog('error', 'pairing-failed', 'Bluetooth pairing failed', {
+      error: error && (error.message || error.name || String(error))
+    });
     showToast(error.message || 'Could not pair the Bluetooth printer. / 无法配对蓝牙打印机。');
   }
 }
@@ -745,6 +798,9 @@ async function reconnectBluetoothPrinter() {
     await resetSerialStateAfterFailure();
     setSerialError(error);
     updateDiagnostics();
+    sendDiagnosticLog('error', 'reconnect-failed', 'Bluetooth printer reconnect failed', {
+      error: error && (error.message || error.name || String(error))
+    });
     showToast(buildReconnectErrorMessage(error));
   }
 }
@@ -930,6 +986,48 @@ function runtimeStateSnapshot() {
     currentPortInfo: safePortInfo(state.serial.port),
     lastError: state.serial.lastError || null
   };
+}
+
+function getDiagnosticSessionId() {
+  try {
+    const existing = localStorage.getItem(DIAGNOSTIC_SESSION_KEY);
+    if (existing) return existing;
+    const created = `lpdiag-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(DIAGNOSTIC_SESSION_KEY, created);
+    return created;
+  } catch (_error) {
+    return `lpdiag-memory-${Date.now()}`;
+  }
+}
+
+function shouldSendRemoteDiagnostics() {
+  return Boolean(printerModalEl) && !printerModalEl.classList.contains('hidden');
+}
+
+function sendDiagnosticLog(level, eventType, message, details = {}) {
+  if (!shouldSendRemoteDiagnostics()) return;
+  const payload = {
+    source: 'client',
+    level,
+    eventType,
+    message,
+    details,
+    device: {
+      sessionId: state.remoteDiagnosticsSessionId,
+      userAgent: navigator.userAgent || '',
+      origin: window.location.origin,
+      href: window.location.href,
+      displayMode: getDisplayMode().label
+    },
+    runtime: runtimeStateSnapshot()
+  };
+
+  fetch(`${API_BASE}/diagnostic-logs`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).catch(() => {});
 }
 
 function safePortInfo(port) {
@@ -1475,6 +1573,15 @@ function updateDiagnostics() {
   diagLastErrorMetaEl.textContent = state.serial.lastError
     ? `${state.serial.lastErrorAt || ''} ${state.serial.lastError}`.trim()
     : 'No serial errors captured / 未捕获串口错误';
+
+  diagPairingResultEl.textContent = state.serial.lastPairingResult || 'Not attempted / 未尝试';
+  diagPairingResultMetaEl.textContent = state.serial.lastPairingMeta
+    ? `${state.serial.lastPairingAt || ''} ${state.serial.lastPairingMeta}`.trim()
+    : 'No pairing attempt recorded yet / 尚未记录配对尝试';
+
+  const browserInfo = getBrowserDiagnostics();
+  diagBrowserNameEl.textContent = browserInfo.title;
+  diagBrowserMetaEl.textContent = browserInfo.meta;
 }
 
 function getDisplayMode() {
@@ -1501,11 +1608,44 @@ function getDisplayMode() {
 function setSerialError(error) {
   state.serial.lastError = String((error && (error.message || error.name)) || error || 'Unknown serial error / 未知串口错误');
   state.serial.lastErrorAt = new Date().toLocaleString();
+  sendDiagnosticLog('error', 'serial-error', 'Label print serial error captured', {
+    error: state.serial.lastError
+  });
 }
 
 function clearSerialError() {
   state.serial.lastError = '';
   state.serial.lastErrorAt = null;
+}
+
+function setPairingResult(title, meta) {
+  state.serial.lastPairingResult = title || '';
+  state.serial.lastPairingMeta = meta || '';
+  state.serial.lastPairingAt = new Date().toLocaleString();
+  appendRuntimeLog('setPairingResult()', {
+    title: state.serial.lastPairingResult,
+    meta: state.serial.lastPairingMeta
+  });
+  if (/failed|unavailable|no compatible/i.test(state.serial.lastPairingResult)) {
+    sendDiagnosticLog('warn', 'pairing-result', state.serial.lastPairingResult, {
+      meta: state.serial.lastPairingMeta
+    });
+  }
+}
+
+function getBrowserDiagnostics() {
+  const ua = navigator.userAgent || 'Unknown user agent';
+  let browser = 'Unknown browser / 未知浏览器';
+  if (/Chrome\/\d+/i.test(ua) && !/Edg\//i.test(ua)) browser = 'Chrome / Chrome';
+  else if (/Edg\//i.test(ua)) browser = 'Edge / Edge';
+  else if (/SamsungBrowser\//i.test(ua)) browser = 'Samsung Internet / 三星浏览器';
+  else if (/Firefox\//i.test(ua)) browser = 'Firefox / Firefox';
+  else if (/Safari\//i.test(ua) && !/Chrome\//i.test(ua)) browser = 'Safari / Safari';
+
+  return {
+    title: browser,
+    meta: `navigator.serial: ${navigator.serial ? 'yes' : 'no'} · secure: ${window.isSecureContext ? 'yes' : 'no'} · ua: ${ua.slice(0, 120)}${ua.length > 120 ? '…' : ''}`
+  };
 }
 
 function openSiteSettings() {

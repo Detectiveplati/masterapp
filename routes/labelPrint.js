@@ -10,6 +10,7 @@ const xlsx = require('xlsx');
 const router = express.Router();
 
 const LabelPrintItem = require('../models/LabelPrintItem');
+const LabelPrintDiagnosticLog = require('../models/LabelPrintDiagnosticLog');
 const LabelPrintTemplate = require('../models/LabelPrintTemplate');
 const LabelPrintPrinter = require('../models/LabelPrintPrinter');
 const LabelPrintJob = require('../models/LabelPrintJob');
@@ -493,6 +494,55 @@ router.post('/print-jobs', express.json(), async (req, res) => {
     res.status(201).json(job);
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/diagnostic-logs', express.json({ limit: '64kb' }), async (req, res) => {
+  try {
+    await ensureDefaults();
+    const body = req.body || {};
+    const log = await LabelPrintDiagnosticLog.create({
+      source: String(body.source || 'client').trim() || 'client',
+      level: ['info', 'warn', 'error'].includes(body.level) ? body.level : 'info',
+      eventType: String(body.eventType || 'runtime').trim() || 'runtime',
+      message: String(body.message || '').slice(0, 600),
+      details: body.details || {},
+      device: {
+        sessionId: String(body.device && body.device.sessionId || '').slice(0, 120),
+        userAgent: String(body.device && body.device.userAgent || '').slice(0, 500),
+        origin: String(body.device && body.device.origin || '').slice(0, 200),
+        href: String(body.device && body.device.href || '').slice(0, 500),
+        displayMode: String(body.device && body.device.displayMode || '').slice(0, 80)
+      },
+      runtime: body.runtime || {},
+      requestedBy: {
+        id: String(req.user._id || req.user.id || ''),
+        username: req.user.username || '',
+        displayName: req.user.displayName || req.user.username || ''
+      }
+    });
+    res.status(201).json({ ok: true, id: String(log._id) });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Could not save diagnostic log.' });
+  }
+});
+
+router.get('/diagnostic-logs', async (req, res) => {
+  try {
+    await ensureDefaults();
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 30));
+    const query = {};
+    if (req.query.sessionId) query['device.sessionId'] = String(req.query.sessionId);
+    if (req.query.level) query.level = String(req.query.level);
+    if (req.query.eventType) query.eventType = String(req.query.eventType);
+
+    const logs = await LabelPrintDiagnosticLog.find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Could not load diagnostic logs.' });
   }
 });
 

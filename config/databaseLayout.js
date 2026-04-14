@@ -44,6 +44,7 @@ const COLLECTIONS = {
     PEST_SESSIONS: "core_pest_sessions",
     PEST_STATIONS: "core_pest_stations",
     LABEL_PRINT_ITEMS: "core_label_print_items",
+    LABEL_PRINT_DIAGNOSTIC_LOGS: "core_label_print_diagnostic_logs",
     LABEL_PRINT_JOBS: "core_label_print_jobs",
     LABEL_PRINT_PRINTERS: "core_label_print_printers",
     LABEL_PRINT_TEMPLATES: "core_label_print_templates",
@@ -178,6 +179,11 @@ const COLLECTION_MIGRATION_PLAN = [
   {
     owner: "core",
     targetCollection: COLLECTIONS.core.LABEL_PRINT_ITEMS,
+    sources: []
+  },
+  {
+    owner: "core",
+    targetCollection: COLLECTIONS.core.LABEL_PRINT_DIAGNOSTIC_LOGS,
     sources: []
   },
   {
