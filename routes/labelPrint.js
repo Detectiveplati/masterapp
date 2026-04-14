@@ -1,10 +1,7 @@
 'use strict';
 
 const express = require('express');
-const dns = require('dns');
 const fs = require('fs');
-const net = require('net');
-const os = require('os');
 const path = require('path');
 const xlsx = require('xlsx');
 const router = express.Router();
@@ -45,9 +42,6 @@ async function ensureDefaults() {
       await LabelPrintPrinter.create({
         name: 'Brother QL-820NWB',
         model: 'QL-820NWB',
-        connectionType: 'web-serial-bluetooth',
-        host: '',
-        port: 9100,
         serialBaudRate: 9600,
         status: 'unavailable',
         bridgeAvailable: false,
@@ -487,45 +481,14 @@ router.get('/printers', async (_req, res) => {
   }
 });
 
-router.get('/printers/discover', async (req, res) => {
-  try {
-    await ensureDefaults();
-    const port = clampPort(req.query.port);
-    const host = String(req.query.host || '').trim();
-    let targets = [];
-
-    if (host) {
-      targets = [host];
-    } else {
-      const prefixes = discoverPrivatePrefixes();
-      for (const prefix of prefixes) {
-        for (let suffix = 1; suffix <= 254; suffix += 1) {
-          targets.push(`${prefix}.${suffix}`);
-        }
-      }
-      targets = Array.from(new Set(targets));
-    }
-
-    const found = await scanHosts(targets, port);
-    res.json({
-      port,
-      scanned: targets.length,
-      results: found
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message || 'Could not scan network for printers.' });
-  }
-});
-
 router.put('/printers/:id', express.json(), async (req, res) => {
   try {
     await ensureDefaults();
     const body = req.body || {};
     const update = {};
-    ['name', 'model', 'connectionType', 'host', 'status', 'androidClientId', 'bridgeAvailable'].forEach((key) => {
+    ['name', 'model', 'status', 'androidClientId', 'bridgeAvailable'].forEach((key) => {
       if (body[key] !== undefined) update[key] = body[key];
     });
-    if (body.port !== undefined) update.port = Number(body.port) || 9100;
     if (body.serialBaudRate !== undefined) update.serialBaudRate = Number(body.serialBaudRate) || 9600;
     if (body.objectNameMap && typeof body.objectNameMap === 'object') update.objectNameMap = body.objectNameMap;
     const printer = await LabelPrintPrinter.findByIdAndUpdate(req.params.id, { $set: update }, { new: true, runValidators: true });
@@ -533,31 +496,6 @@ router.put('/printers/:id', express.json(), async (req, res) => {
     res.json(printer);
   } catch (err) {
     res.status(400).json({ error: err.message });
-  }
-});
-
-router.post('/printers/:id/connect-test', async (req, res) => {
-  try {
-    await ensureDefaults();
-    const printer = await LabelPrintPrinter.findById(req.params.id);
-    if (!printer) return res.status(404).json({ error: 'Printer not found' });
-    if (!printer.host) return res.status(400).json({ error: 'Set printer IP/host first.' });
-    await testPrinterConnection(printer.host, printer.port || 9100);
-    printer.status = 'ready';
-    printer.lastSeenAt = new Date();
-    await printer.save();
-    res.json({
-      ok: true,
-      printer: printer.toObject(),
-      message: `Connected to ${printer.host}:${printer.port || 9100}`
-    });
-  } catch (err) {
-    const printer = await LabelPrintPrinter.findById(req.params.id).catch(() => null);
-    if (printer) {
-      printer.status = 'error';
-      await printer.save().catch(() => {});
-    }
-    res.status(400).json({ error: err.message || 'Could not reach printer over the network.' });
   }
 });
 
@@ -576,7 +514,9 @@ router.post('/print-jobs', express.json(), async (req, res) => {
 
     if (!template) return res.status(400).json({ error: 'Template not found for print job.' });
     if (!printer) return res.status(400).json({ error: 'Printer not found for print job.' });
-    if (!clientHandled && !printer.host) return res.status(400).json({ error: 'Printer IP/host is not configured.' });
+    if (!clientHandled) {
+      return res.status(400).json({ error: 'Only client-handled Bluetooth print logging is supported.' });
+    }
 
     const quantity = Math.max(1, Number(body.quantity) || Number(item && item.defaultQuantity) || 1);
     const requestedBy = {
@@ -606,46 +546,16 @@ router.post('/print-jobs', express.json(), async (req, res) => {
       completedAt: body.completedAt ? new Date(body.completedAt) : null
     });
 
-    if (clientHandled) {
-      job.status = body.status || 'success';
-      job.bridgeResult = body.bridgeResult || {};
-      job.error = body.error || '';
-      job.completedAt = body.completedAt ? new Date(body.completedAt) : new Date();
-      await job.save();
+    job.status = body.status || 'success';
+    job.bridgeResult = body.bridgeResult || {};
+    job.error = body.error || '';
+    job.completedAt = body.completedAt ? new Date(body.completedAt) : new Date();
+    await job.save();
 
-      printer.status = job.status === 'success' ? 'ready' : 'error';
-      printer.bridgeAvailable = true;
-      printer.lastSeenAt = new Date();
-      await printer.save();
-
-      res.status(201).json(job);
-      return;
-    }
-
-    try {
-      const printPayload = body.payload || buildTemplatePayload({
-        template,
-        printer,
-        quantity,
-        cutMode: body.cutMode === 'no-cut' ? 'no-cut' : 'auto-cut'
-      });
-      await sendTemplateToPrinter(printer, printPayload);
-      job.status = 'success';
-      job.bridgeResult = { transport: 'network-raw-tcp', host: printer.host, port: printer.port || 9100 };
-      job.completedAt = new Date();
-      await job.save();
-      printer.status = 'ready';
-      printer.lastSeenAt = new Date();
-      await printer.save();
-    } catch (printErr) {
-      job.status = 'failed';
-      job.error = printErr.message || 'Print failed';
-      job.bridgeResult = { transport: 'network-raw-tcp', error: printErr.message || 'Print failed' };
-      job.completedAt = new Date();
-      await job.save();
-      printer.status = 'error';
-      await printer.save();
-    }
+    printer.status = job.status === 'success' ? 'ready' : 'error';
+    printer.bridgeAvailable = true;
+    printer.lastSeenAt = new Date();
+    await printer.save();
 
     res.status(201).json(job);
   } catch (err) {
@@ -735,63 +645,6 @@ router.get('/print-jobs', async (req, res) => {
   }
 });
 
-router.post('/printers/:id/test-print', express.json(), async (req, res) => {
-  try {
-    await ensureDefaults();
-    const printer = await LabelPrintPrinter.findById(req.params.id);
-    if (!printer) return res.status(404).json({ error: 'Printer not found' });
-    const template = await LabelPrintTemplate.findOne({ key: 'template-1' }).lean();
-    if (!template) return res.status(404).json({ error: 'Default test template not found' });
-    if (!printer.host) return res.status(400).json({ error: 'Printer IP/host is not configured.' });
-
-    const payload = {
-      printerId: String(printer._id),
-      printerTemplateNumber: template.printerTemplateNumber,
-      copies: 1,
-      cutMode: 'auto-cut'
-    };
-
-    const job = await LabelPrintJob.create({
-      printer: printer._id,
-      itemSnapshot: { name: 'Test Print', description: 'Printer setup validation' },
-      templateKey: template.key,
-      printerTemplateNumber: template.printerTemplateNumber,
-      quantity: 1,
-      cutMode: 'auto-cut',
-      payload,
-      requestedBy: {
-        id: String(req.user._id || req.user.id || ''),
-        username: req.user.username || '',
-        displayName: req.user.displayName || req.user.username || ''
-      },
-      status: 'test'
-    });
-
-    try {
-      await sendTemplateToPrinter(printer, payload);
-      job.status = 'success';
-      job.bridgeResult = { transport: 'network-raw-tcp', testPrint: true, host: printer.host, port: printer.port || 9100 };
-      job.completedAt = new Date();
-      await job.save();
-      printer.status = 'ready';
-      printer.lastSeenAt = new Date();
-      await printer.save();
-    } catch (err) {
-      job.status = 'failed';
-      job.error = err.message || 'Test print failed';
-      job.completedAt = new Date();
-      await job.save();
-      printer.status = 'error';
-      await printer.save();
-      throw err;
-    }
-
-    res.json({ printer: printer.toObject(), payload, jobId: String(job._id), message: 'Test print sent.' });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
 function buildTemplatePayload({ template, printer, quantity, cutMode }) {
   return {
     printerId: String(printer._id || ''),
@@ -801,138 +654,6 @@ function buildTemplatePayload({ template, printer, quantity, cutMode }) {
     cutMode,
     serialBaudRate: Number(printer.serialBaudRate) || 9600
   };
-}
-
-async function sendTemplateToPrinter(printer, payload) {
-  const bytes = buildPtouchTemplateJob(printer, payload);
-  await sendRawTcp(printer.host, printer.port || 9100, bytes);
-}
-
-function buildPtouchTemplateJob(printer, payload) {
-  const chunks = [];
-  chunks.push(Buffer.from([0x1B, 0x69, 0x61, 0x03])); // ESC i a 03h => P-touch Template mode
-  chunks.push(Buffer.from('^II', 'ascii'));
-  chunks.push(Buffer.from(`^TS${formatTemplateNumber(payload.printerTemplateNumber)}`, 'ascii'));
-  chunks.push(Buffer.from(`^CN${String(Math.floor(payload.copies / 100) % 10)}${String(Math.floor(payload.copies / 10) % 10)}${String(payload.copies % 10)}`, 'ascii'));
-  chunks.push(Buffer.from(payload.cutMode === 'no-cut' ? '^CO0010' : '^CO1011', 'ascii'));
-  chunks.push(Buffer.from('^FF', 'ascii'));
-  return Buffer.concat(chunks);
-}
-
-function sendRawTcp(host, port, bytes) {
-  return new Promise((resolve, reject) => {
-    const socket = net.createConnection({ host, port }, () => {
-      socket.write(bytes);
-      socket.end();
-    });
-    socket.setTimeout(5000);
-    socket.on('timeout', () => {
-      socket.destroy();
-      reject(new Error(`Timed out connecting to printer at ${host}:${port}`));
-    });
-    socket.on('close', (hadError) => {
-      if (!hadError) resolve();
-    });
-    socket.on('error', (err) => reject(err));
-  });
-}
-
-function testPrinterConnection(host, port) {
-  return new Promise((resolve, reject) => {
-    const socket = net.createConnection({ host, port }, () => {
-      socket.end();
-      resolve();
-    });
-    socket.setTimeout(3000);
-    socket.on('timeout', () => {
-      socket.destroy();
-      reject(new Error(`Timed out connecting to printer at ${host}:${port}`));
-    });
-    socket.on('error', (err) => reject(err));
-  });
-}
-
-function clampPort(value) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return 9100;
-  return Math.max(1, Math.min(65535, Math.round(parsed)));
-}
-
-function formatTemplateNumber(value) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return '001';
-  return String(Math.max(1, Math.min(255, Math.round(parsed)))).padStart(3, '0');
-}
-
-function discoverPrivatePrefixes() {
-  const interfaces = os.networkInterfaces();
-  const prefixes = new Set();
-
-  for (const entries of Object.values(interfaces)) {
-    for (const entry of entries || []) {
-      if (!entry || entry.internal || entry.family !== 'IPv4') continue;
-      const address = String(entry.address || '').trim();
-      if (!isPrivateIpv4(address)) continue;
-      const octets = address.split('.');
-      if (octets.length === 4) {
-        prefixes.add(`${octets[0]}.${octets[1]}.${octets[2]}`);
-      }
-    }
-  }
-
-  return Array.from(prefixes);
-}
-
-function isPrivateIpv4(address) {
-  const octets = address.split('.').map((part) => Number(part));
-  if (octets.length !== 4 || octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
-    return false;
-  }
-  if (octets[0] === 10) return true;
-  if (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) return true;
-  if (octets[0] === 192 && octets[1] === 168) return true;
-  return false;
-}
-
-async function scanHosts(hosts, port) {
-  const pending = [...hosts];
-  const found = [];
-  const concurrency = 32;
-
-  async function worker() {
-    while (pending.length) {
-      const host = pending.shift();
-      if (!host) return;
-      try {
-        await testPrinterConnection(host, port);
-        const hostname = await lookupHostname(host);
-        found.push({
-          host,
-          port,
-          name: hostname || `Printer @ ${host}`,
-          source: hostname ? 'reverse-dns' : 'tcp-probe'
-        });
-      } catch (_err) {
-        // Ignore unreachable hosts.
-      }
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(concurrency, pending.length || 1) }, () => worker()));
-  found.sort((a, b) => a.host.localeCompare(b.host, 'en'));
-  return found;
-}
-
-function lookupHostname(host) {
-  return new Promise((resolve) => {
-    dns.reverse(host, (err, hostnames) => {
-      if (err || !Array.isArray(hostnames) || !hostnames.length) {
-        resolve('');
-        return;
-      }
-      resolve(String(hostnames[0] || ''));
-    });
-  });
 }
 
 module.exports = router;

@@ -539,30 +539,6 @@ async function runPrint(item, options = {}) {
   const cutMode = options.cutMode === 'no-cut' ? 'no-cut' : 'auto-cut';
   const payload = buildPrintPayload(item, template, quantity, cutMode, printer);
 
-  if (isNetworkPrinter()) {
-    try {
-      appendRuntimeLog('runPrint() sending network print job', {
-        itemName: item.name,
-        payload,
-        host: printer.host,
-        port: printer.port
-      });
-      setAction('Printing / 打印中', `${item.name} · network raw TCP / 网络原始 TCP`);
-      const job = await createNetworkPrintJob({ item, printer, template, quantity, cutMode, payload });
-      appendRuntimeLog('runPrint() success', { itemName: item.name, jobStatus: job.status, transport: 'network-raw-tcp' });
-      setAction('Print complete / 打印完成', `${item.name} · ${job.status}`);
-      showToast(`${item.name} printed successfully over the network. / ${item.name} 已通过网络打印。`);
-      await loadPrintersOnly();
-    } catch (error) {
-      console.error(error);
-      appendRuntimeLog('runPrint() network send failed', { error: error && (error.message || error.name || String(error)) });
-      setAction('Print failed / 打印失败', error.message || 'Could not print over the network. / 无法通过网络打印。');
-      showToast(error.message || 'Could not print over the network. / 无法通过网络打印。');
-      await loadPrintersOnly().catch(() => {});
-    }
-    return;
-  }
-
   // If the printer is not connected, queue this job and prompt reconnect.
   // Try one silent reconnect using a saved authorized port before prompting.
   if (!state.serial.connected) {
@@ -653,27 +629,6 @@ async function requestTestPrint() {
   }
   if (!template) {
     showToast('No template is available for a test print. / 没有可用于测试打印的模板。');
-    return;
-  }
-
-  if (isNetworkPrinter()) {
-    try {
-      await persistSelectedPrinterSettings();
-      const result = await fetchJson(`${API_BASE}/printers/${encodeURIComponent(printer._id)}/test-print`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-      appendRuntimeLog('requestTestPrint() network success', result);
-      setAction('Test print complete / 测试打印完成', 'Network printer responded through the server. / 网络打印机已通过服务器响应。');
-      showToast('Test print sent over the network. / 已通过网络发送测试打印。');
-      await loadPrintersOnly();
-    } catch (error) {
-      console.error(error);
-      appendRuntimeLog('requestTestPrint() network failed', { error: error && (error.message || error.name || String(error)) });
-      setAction('Test print failed / 测试打印失败', error.message || 'Could not run the network test print. / 无法执行网络测试打印。');
-      showToast(error.message || 'Could not run the network test print. / 无法执行网络测试打印。');
-    }
     return;
   }
 
@@ -809,18 +764,6 @@ async function reconnectBluetoothPrinter() {
 
 async function refreshBridgeStatus() {
   appendRuntimeLog('refreshBridgeStatus() start', runtimeStateSnapshot());
-  const printer = selectedPrinter();
-
-  if (isNetworkPrinter()) {
-    const host = printer ? String(printer.host || '').trim() : getPrinterHost();
-    const port = printer ? Number(printer.port) || 9100 : getNetworkPort();
-    bridgeStatusEl.textContent = host ? 'Network target configured / 已配置网络目标' : 'Network target required / 需要网络目标';
-    bridgeMetaEl.textContent = host
-      ? `${host}:${port} · server raw TCP / 服务器原始 TCP`
-      : 'Enter the printer IP/host and use Test Connection before printing. / 请输入打印机 IP 或主机名，并在打印前执行测试连接。';
-    updateDiagnostics();
-    return;
-  }
 
   if (!navigator.serial) {
     state.serial.supported = false;
@@ -866,16 +809,6 @@ function updatePrinterStatus() {
     return;
   }
 
-  if (isNetworkPrinter()) {
-    const host = String(printer.host || '').trim();
-    const port = Number(printer.port) || 9100;
-    printerStatusEl.textContent = host ? `${host}:${port}` : printer.name;
-    printerMetaEl.textContent = host
-      ? `${printer.model || 'QL-820NWB'} · Network raw TCP / 网络原始 TCP`
-      : `${printer.model || 'QL-820NWB'} · enter printer IP/host and port 9100 / 请输入打印机 IP 和端口 9100`;
-    return;
-  }
-
   printerStatusEl.textContent = state.serial.connected
     ? formatSerialLabel(state.serial.info)
     : printer.name;
@@ -887,9 +820,6 @@ function updatePrinterStatus() {
 function buildPrintPayload(_item, template, quantity, cutMode, printer) {
   return {
     printerId: printer._id,
-    connectionType: getPrinterConnectionType(),
-    host: String(printer.host || '').trim(),
-    port: Number(printer.port) || 9100,
     templateKey: template.key,
     printerTemplateNumber: template.printerTemplateNumber,
     copies: quantity,
@@ -911,9 +841,7 @@ async function savePrinterSettings() {
     await refreshBridgeStatus();
     // Save default cut mode to localStorage so it persists across page loads
     localStorage.setItem('label-print-default-cut', printerDefaultCutEl.value);
-    showToast(isBluetoothPrinter()
-      ? 'Bluetooth printer setup saved. / 蓝牙打印机设置已保存。'
-      : 'Network printer setup saved. / 网络打印机设置已保存。');
+    showToast('Bluetooth printer setup saved. / 蓝牙打印机设置已保存。');
     closePrinterModal();
   } catch (error) {
     console.error(error);
@@ -923,14 +851,8 @@ async function savePrinterSettings() {
 
 function syncPrinterInputs() {
   const printer = selectedPrinter();
-  printerConnectionTypeEl.value = String((printer && printer.connectionType) || 'network-raw-tcp') === 'web-serial-bluetooth'
-    ? 'web-serial-bluetooth'
-    : 'network-raw-tcp';
-  printerHostInputEl.value = String((printer && printer.host) || '');
-  printerPortInputEl.value = String((printer && printer.port) || 9100);
   printerBaudInputEl.value = String((printer && printer.serialBaudRate) || 9600);
   printerDefaultCutEl.value = getDefaultCutMode();
-  updateTransportModeUi();
 }
 
 async function loadPrintersOnly() {
@@ -969,11 +891,8 @@ async function persistSelectedPrinterSettings() {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      connectionType: getPrinterConnectionType(),
-      host: getPrinterHost(),
-      port: getNetworkPort(),
       serialBaudRate: getSerialBaudRate(),
-      bridgeAvailable: isBluetoothPrinter() ? state.serial.connected : Boolean(getPrinterHost())
+      bridgeAvailable: state.serial.connected
     })
   });
 
@@ -1068,14 +987,10 @@ function buildDiagnosticsPayload(options = {}) {
         info: entry.info || {}
       })),
       runtimeLogTail: includeFullLog ? state.runtimeLog.slice() : state.runtimeLog.slice(-60),
-      networkScanResults: state.networkScanResults.slice(),
       selectedPrinter: printer ? {
         id: printer._id,
         name: printer.name,
         model: printer.model,
-        connectionType: getPrinterConnectionType(),
-        host: String(printer.host || '').trim(),
-        port: Number(printer.port) || 9100,
         serialBaudRate: Number(printer.serialBaudRate) || 9600
       } : null
     },
@@ -1088,12 +1003,9 @@ function buildDiagnosticsPayload(options = {}) {
     },
     runtime: {
       ...runtimeStateSnapshot(),
-      connectionType: getPrinterConnectionType(),
       webSerialAvailable: Boolean(navigator.serial),
       webBluetoothAvailable: Boolean(navigator.bluetooth),
-      secureSite: Boolean(window.isSecureContext),
-      printerHostInput: getPrinterHost(),
-      printerPortInput: getNetworkPort()
+      secureSite: Boolean(window.isSecureContext)
     }
   };
 }
@@ -1174,65 +1086,6 @@ async function fetchJson(url, options = {}) {
     throw new Error(payload.error || `Request failed (${response.status})`);
   }
   return payload;
-}
-
-async function scanNetworkPrinters() {
-  if (!isNetworkPrinter()) {
-    showToast('Switch to Network raw TCP mode first. / 请先切换到网络 TCP 模式。');
-    return;
-  }
-  try {
-    showToast('Scanning the local network… / 正在扫描本地网络…', { sticky: true });
-    const result = await fetchJson(`${API_BASE}/printers/discover?port=${encodeURIComponent(String(getNetworkPort()))}`);
-    state.networkScanResults = Array.isArray(result.results) ? result.results : [];
-    appendRuntimeLog('scanNetworkPrinters() result', {
-      scanned: result.scanned,
-      count: state.networkScanResults.length,
-      port: result.port
-    });
-    renderAuthorizedPorts();
-    showToast(state.networkScanResults.length
-      ? `Found ${state.networkScanResults.length} network printer target(s). / 找到 ${state.networkScanResults.length} 个网络打印目标。`
-      : 'No network printers responded on this subnet. / 此子网中没有网络打印机响应。');
-  } catch (error) {
-    console.error(error);
-    appendRuntimeLog('scanNetworkPrinters() failed', { error: error && (error.message || error.name || String(error)) });
-    showToast(error.message || 'Could not scan the local network. / 无法扫描本地网络。');
-  }
-}
-
-async function testPrinterConnectionByMode() {
-  const printer = selectedPrinter();
-  if (!printer) {
-    showToast('Select a printer first. / 请先选择打印机。');
-    return;
-  }
-  if (isBluetoothPrinter()) {
-    await reconnectBluetoothPrinter();
-    return;
-  }
-
-  const host = getPrinterHost();
-  if (!host) {
-    showToast('Enter the printer IP or host first. / 请先输入打印机 IP 或主机名。');
-    return;
-  }
-
-  try {
-    await persistSelectedPrinterSettings();
-    const result = await fetchJson(`${API_BASE}/printers/${encodeURIComponent(printer._id)}/connect-test`, {
-      method: 'POST'
-    });
-    appendRuntimeLog('testPrinterConnectionByMode() success', result);
-    setAction('Connection ready / 连接就绪', result.message || 'Network printer is reachable. / 网络打印机可访问。');
-    showToast('Network printer is reachable. / 网络打印机可访问。');
-    await loadPrintersOnly();
-  } catch (error) {
-    console.error(error);
-    appendRuntimeLog('testPrinterConnectionByMode() failed', { error: error && (error.message || error.name || String(error)) });
-    setAction('Connection failed / 连接失败', error.message || 'Could not reach the network printer. / 无法连接网络打印机。');
-    showToast(error.message || 'Could not reach the network printer. / 无法连接网络打印机。');
-  }
 }
 
 function escapeHtml(value) {
@@ -1633,30 +1486,12 @@ async function createClientPrintJob({ item, printer, template, quantity, cutMode
   });
 }
 
-async function createNetworkPrintJob({ item, printer, template, quantity, cutMode, payload }) {
-  return fetchJson(`${API_BASE}/print-jobs`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      itemId: item ? item._id : undefined,
-      printerId: printer._id,
-      templateKey: template.key,
-      printerTemplateNumber: template.printerTemplateNumber,
-      quantity,
-      cutMode,
-      payload
-    })
-  });
-}
-
 function buildBridgeResult(error = null) {
   return {
-    transport: isBluetoothPrinter() ? 'web-serial-bluetooth' : 'network-raw-tcp',
+    transport: 'web-serial-bluetooth',
     serialBaudRate: getSerialBaudRate(),
     portInfo: state.serial.info || {},
     browser: navigator.userAgent,
-    printerHost: getPrinterHost(),
-    printerPort: getNetworkPort(),
     error: error ? String(error.message || error) : ''
   };
 }
