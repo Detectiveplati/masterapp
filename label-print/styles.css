@@ -810,7 +810,6 @@ body[data-module="label-template-setup"] {
   .modal-grid { grid-template-columns: 1fr; }
   .diagnostic-grid { grid-template-columns: 1fr; }
   .diagnostic-actions { flex-wrap: wrap; }
-  .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .template-setup-toolbar { grid-template-columns: 1fr; }
   .template-setup-item { grid-template-columns: 1fr; }
   .template-setup-item-actions { justify-items: stretch; }
