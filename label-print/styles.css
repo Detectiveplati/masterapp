@@ -310,6 +310,24 @@ body[data-module="label-print"] {
   font-weight: 700;
 }
 
+.modal-card {
+  color: #111827;
+}
+
+.modal-head {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-head .eyebrow {
+  margin: 0 0 6px;
+  color: #667085;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .search-box input {
   min-height: 40px;
   border-radius: 8px;
@@ -331,6 +349,21 @@ body[data-module="label-print"] {
   border-radius: 8px;
   border: 1px solid var(--border-strong, #c3ccd8);
   background: #fff;
+  color: #111827;
+}
+
+.field span,
+.status-label,
+.preview-meta span,
+.group-title small {
+  color: #475467;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.field input::placeholder,
+.search-box input::placeholder {
+  color: #98a2b3;
 }
 
 .command-select {
@@ -437,6 +470,22 @@ body[data-module="label-print"] {
 
 .status-card {
   padding: 14px 16px;
+  background: #fcfcfd;
+}
+
+.status-card strong,
+.diagnostic-card strong,
+.runtime-log-head strong {
+  color: #111827;
+  font-weight: 700;
+}
+
+.status-card small,
+.diagnostic-card small,
+.job-row,
+.job-card strong,
+.empty-state {
+  color: #667085;
 }
 
 .modal-card {
@@ -454,6 +503,21 @@ body[data-module="label-print"] {
   border-radius: 8px;
   border: 1px solid var(--border);
   background: #fff;
+}
+
+.printer-widget {
+  gap: 14px;
+}
+
+.printer-widget-actions {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.printer-widget-actions > button {
+  flex: 1 1 160px;
 }
 
 .diagnostic-panel,
@@ -479,6 +543,26 @@ body[data-module="label-print"] {
 .runtime-log-panel {
   margin-top: 12px;
   padding: 12px;
+}
+
+.printer-widget-results {
+  border: 1px dashed var(--border-strong, #c3ccd8);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fcfcfd;
+}
+
+.printer-widget-results .empty-state {
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+  background: #fff;
+}
+
+.diagnostic-link-button,
+.diagnostic-refresh-button,
+.connect-port-button {
+  color: #111827;
 }
 
 .runtime-log-output {
