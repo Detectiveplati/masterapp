@@ -1293,7 +1293,7 @@ section h2 {
 }
 
 .lock-note {
-  display: inline-flex;
+  display: none;
   align-items: center;
   margin-top: 6px;
   padding: 4px 8px;
@@ -1303,6 +1303,10 @@ section h2 {
   color: var(--danger);
   font-size: 0.74rem;
   font-weight: 600;
+}
+
+.hub-card.locked .lock-note {
+  display: inline-flex;
 }
 
 .hub-card .icon,
