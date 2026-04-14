@@ -312,9 +312,14 @@ body[data-module="label-print"] {
 
 .modal-card {
   color: #111827;
+  margin: 12px 0;
 }
 
 .modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
 }
@@ -326,6 +331,18 @@ body[data-module="label-print"] {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.modal-head h2 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #111827;
+  border-radius: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .search-box input {
@@ -492,9 +509,25 @@ body[data-module="label-print"] {
   padding: 16px;
 }
 
-.modal-head h2 {
-  font-size: 1.25rem;
-  font-weight: 700;
+.modal-shell {
+  place-items: start center;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 4px;
+}
+
+.printer-modal-card {
+  width: min(920px, 100%);
 }
 
 .printer-status-grid .status-card,
@@ -594,4 +627,6 @@ body[data-module="label-print"] {
   .runtime-log-head { flex-direction: column; align-items: stretch; }
   .card-grid { grid-template-columns: 1fr; }
   .print-button, .option-button, .btn-primary, .btn-secondary, .btn-ghost { width: 100%; }
+  .modal-shell { padding: 10px; }
+  .modal-card { margin: 0; }
 }
