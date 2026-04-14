@@ -389,6 +389,7 @@ function renderItemCard(item) {
   const printable = Boolean(template);
   const chineseName = item.nameChinese || '';
   const englishName = item.nameEnglish || item.name || '';
+  const quantity = getItemQuantity(item._id);
   return `
     <article class="item-card" data-cut-mode="${escapeHtml(cutMode)}" data-printable="${printable ? 'yes' : 'no'}">
       <button class="option-icon-button" type="button" data-action="options" data-item-id="${escapeHtml(item._id)}" aria-label="Options for ${escapeHtml(englishName)} / ${escapeHtml(chineseName || englishName)}">
@@ -398,12 +399,32 @@ function renderItemCard(item) {
         ${chineseName ? `<p class="item-chinese-name">${escapeHtml(chineseName)}</p>` : ''}
         <h3 class="item-english-name">${escapeHtml(englishName)}</h3>
       </div>
+      <div class="qty-row">
+        <span class="qty-label">Qty / 数量</span>
+        <div class="qty-controls">
+          <button class="qty-button" type="button" data-action="decrement" data-item-id="${escapeHtml(item._id)}" aria-label="Decrease quantity for ${escapeHtml(englishName)}">-</button>
+          <span class="qty-value" aria-live="polite">${quantity}</span>
+          <button class="qty-button" type="button" data-action="increment" data-item-id="${escapeHtml(item._id)}" aria-label="Increase quantity for ${escapeHtml(englishName)}">+</button>
+        </div>
+      </div>
       <button class="print-button" type="button" data-action="print" data-item-id="${escapeHtml(item._id)}" ${printable ? '' : 'disabled'}>${printable ? 'Print / 打印' : 'Unavailable / 不可用'}</button>
     </article>
   `;
 }
 
 function bindCardEvents() {
+  cardGroupsEl.querySelectorAll('[data-action="decrement"]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      changeQuantity(button.dataset.itemId, -1);
+    });
+  });
+  cardGroupsEl.querySelectorAll('[data-action="increment"]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      changeQuantity(button.dataset.itemId, 1);
+    });
+  });
   cardGroupsEl.querySelectorAll('[data-action="print"]').forEach((button) => {
     button.addEventListener('click', (event) => {
       event.stopPropagation();

@@ -1,9 +1,6 @@
 'use strict';
 
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const xlsx = require('xlsx');
 const router = express.Router();
 
 const LabelPrintItem = require('../models/LabelPrintItem');
@@ -16,27 +13,11 @@ const { requireAuth, requirePermission } = require('../services/auth-middleware'
 router.use(requireAuth, requirePermission('labelprint'));
 
 let defaultsPromise = null;
-const PLACEHOLDER_COUNT = 10;
-const EXCEL_SOURCE_PATH = path.join(process.env.USERPROFILE || 'C:\\Users\\Zack', 'Desktop', '#05-27', 'Sauce Department.xlsx');
-const BUNDLED_CATALOG_PATH = path.join(__dirname, '..', 'label-print', 'data', 'catalog.json');
-const SAUCE_DEPARTMENT = {
-  code: 'sauce',
-  name: 'Sauce Department',
-  signature: 'Sauce Department / 酱料部',
-  signaturePlacement: 'bottom-right',
-  signatureEmbeddedInTemplate: true
-};
 
 async function ensureDefaults() {
   if (defaultsPromise) return defaultsPromise;
   defaultsPromise = (async () => {
     const printerCount = await LabelPrintPrinter.countDocuments();
-    const templateCount = await LabelPrintTemplate.countDocuments();
-    const itemCount = await LabelPrintItem.countDocuments();
-
-    if (!templateCount || !itemCount) {
-      await syncCatalog();
-    }
 
     if (!printerCount) {
       await LabelPrintPrinter.create({
@@ -57,206 +38,6 @@ async function ensureDefaults() {
     }
   })();
   return defaultsPromise;
-}
-
-async function syncCatalog() {
-  const excelCatalog = readCatalogFromExcel();
-  if (excelCatalog.items.length && excelCatalog.templates.length) {
-    await replaceCatalog(excelCatalog);
-    return;
-  }
-
-  const bundledCatalog = readBundledCatalog();
-  if (bundledCatalog.items.length) {
-    await replaceCatalog(bundledCatalog);
-    return;
-  }
-
-  await replaceCatalog(buildPlaceholderCatalog());
-}
-
-function readCatalogFromExcel() {
-  if (!EXCEL_SOURCE_PATH || !fs.existsSync(EXCEL_SOURCE_PATH)) {
-    return { templates: [], items: [] };
-  }
-
-  const workbook = xlsx.readFile(EXCEL_SOURCE_PATH);
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
-  return applyDepartmentMetadata(buildCatalogFromRows(rows), SAUCE_DEPARTMENT);
-}
-
-function readBundledCatalog() {
-  if (!fs.existsSync(BUNDLED_CATALOG_PATH)) {
-    return { templates: [], items: [] };
-  }
-  try {
-    const payload = JSON.parse(fs.readFileSync(BUNDLED_CATALOG_PATH, 'utf8'));
-    return applyDepartmentMetadata({
-      templates: Array.isArray(payload.templates) ? payload.templates : [],
-      items: Array.isArray(payload.items) ? payload.items : []
-    }, SAUCE_DEPARTMENT);
-  } catch (_err) {
-    return { templates: [], items: [] };
-  }
-}
-
-function buildCatalogFromRows(rows) {
-  const templates = [];
-  const items = [];
-  const seenTemplates = new Set();
-
-  for (const row of rows) {
-    const englishName = String(readColumn(row, (normalized) => normalized.startsWith('english')) || '').trim();
-    if (!englishName) continue;
-
-    const chineseName = String(readColumn(row, (normalized) => normalized.startsWith('chinese')) || '').trim();
-    const storage = String(readColumn(row, (normalized) => normalized.includes('storagecondition')) || '').trim();
-    const shelfLife = String(readColumn(row, (normalized) => normalized === 'shelflife') || '').trim();
-    const location = String(readColumn(row, (normalized) => normalized === 'location') || '').trim();
-    const templateFile = String(readColumn(row, (normalized) => normalized === 'templatefile') || '').trim();
-    const assignmentStatus = String(readColumn(row, (normalized) => normalized === 'assignmentstatus') || '').trim().toUpperCase();
-
-    let templateNumber = Number(readColumn(row, (normalized) => normalized === 'templateno'));
-    if ((!Number.isFinite(templateNumber) || templateNumber <= 0) && templateFile) {
-      const match = templateFile.match(/^(\d{1,3})\./);
-      if (match) templateNumber = Number(match[1]);
-    }
-
-    const hasTemplate = Number.isFinite(templateNumber) && templateNumber > 0;
-    const templateKey = hasTemplate ? `template-${templateNumber}` : `template-na-${items.length + 1}`;
-    const displayDescription = [chineseName, storage, shelfLife].filter(Boolean).join(' · ');
-
-    if (hasTemplate && !seenTemplates.has(templateKey)) {
-      seenTemplates.add(templateKey);
-      templates.push({
-        key: templateKey,
-        name: englishName || `Template ${templateNumber}`,
-        nameEnglish: englishName,
-        nameChinese: chineseName,
-        description: templateFile || `Assigned from Sauce Department.xlsx as printer template ${templateNumber}.`,
-        printerTemplateNumber: templateNumber,
-        mediaWidthMm: 62,
-        printWidthMm: 58,
-        heightMm: 62,
-        fieldSchema: [],
-        preview: { widthMm: 58, heightMm: 62 },
-        active: true
-      });
-    }
-
-    items.push({
-      name: englishName,
-      nameEnglish: englishName,
-      nameChinese: chineseName,
-      description: displayDescription || `Location ${location || 'N/A'}`,
-      category: normalizeCategory(storage, shelfLife),
-      templateKey,
-      sku: templateFile || 'NA',
-      barcode: '',
-      defaultQuantity: 1,
-      defaultCutMode: 'auto-cut',
-      defaultFieldValues: {
-        assignmentStatus,
-        location,
-        hasTemplate
-      },
-      active: true
-    });
-  }
-
-  return { templates, items };
-}
-
-function readColumn(row, matcher) {
-  const key = Object.keys(row).find((rawKey) => matcher(normalizeHeader(rawKey), rawKey));
-  return key ? row[key] : '';
-}
-
-function normalizeHeader(value) {
-  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-}
-
-function buildPlaceholderCatalog() {
-  const templates = Array.from({ length: PLACEHOLDER_COUNT }, (_value, index) => {
-    const number = index + 1;
-    return {
-      key: `template-${number}`,
-      name: `Template ${number}`,
-      nameEnglish: `Template ${number}`,
-      nameChinese: '',
-      description: `Placeholder template ${number}, mapped to printer template ${number}.`,
-      printerTemplateNumber: number,
-      mediaWidthMm: 62,
-      printWidthMm: 58,
-      heightMm: 62,
-      fieldSchema: [
-        { key: 'name', label: 'Name', required: true },
-        { key: 'description', label: 'Description' },
-        { key: 'quantity', label: 'Quantity' }
-      ],
-      preview: { widthMm: 58, heightMm: 62 },
-      active: true
-    };
-  });
-
-  const items = Array.from({ length: PLACEHOLDER_COUNT }, (_value, index) => {
-    const number = index + 1;
-    return {
-      name: `Placeholder ${number}`,
-      nameEnglish: `Placeholder ${number}`,
-      nameChinese: '',
-      description: `Linked to Template ${number} and printer tag ${number}.`,
-      category: 'Placeholders',
-      templateKey: `template-${number}`,
-      sku: `TPL-${String(number).padStart(2, '0')}`,
-      barcode: `TPL${String(number).padStart(2, '0')}`,
-      defaultQuantity: 1,
-      defaultCutMode: 'auto-cut',
-      defaultFieldValues: {
-        name: `Placeholder ${number}`,
-        description: `Template ${number}`,
-        quantity: '1'
-      },
-      active: true
-    };
-  });
-
-  return { templates, items };
-}
-
-function applyDepartmentMetadata(catalog, department) {
-  if (!department) return catalog;
-
-  return {
-    templates: (catalog.templates || []).map((template) => ({
-      ...template,
-      departmentCode: department.code,
-      departmentName: department.name,
-      departmentSignature: department.signature,
-      departmentSignaturePlacement: department.signaturePlacement,
-      departmentSignatureEmbeddedInTemplate: department.signatureEmbeddedInTemplate
-    })),
-    items: (catalog.items || []).map((item) => ({
-      ...item,
-      departmentCode: department.code,
-      departmentName: department.name
-    }))
-  };
-}
-
-async function replaceCatalog({ templates, items }) {
-  await LabelPrintTemplate.deleteMany({});
-  await LabelPrintItem.deleteMany({});
-  await LabelPrintTemplate.insertMany(templates);
-  await LabelPrintItem.insertMany(items);
-}
-
-function normalizeCategory(storage, shelfLife) {
-  const storageText = String(storage || '').trim();
-  const shelfText = String(shelfLife || '').trim();
-  const storageLead = storageText.split(/\s+/)[0];
-  return storageLead || shelfText || 'Imported';
 }
 
 function buildQuery(req) {

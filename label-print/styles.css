@@ -147,6 +147,16 @@ body[data-module="label-print"] {
 .item-card[data-printable="no"] .item-body { cursor: default; }
 .item-english-name { font-size: 1.08rem; line-height: 1.15; margin: 0; color: #111827; font-weight: 900; padding-right: 42px; }
 .item-chinese-name { color: #b45309; line-height: 1.3; margin: 0; font-size: 1.05rem; font-weight: 800; padding-right: 42px; }
+.qty-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.qty-label { color: #667085; font-size: 0.76rem; font-weight: 700; white-space: nowrap; }
+.qty-controls { display: inline-flex; align-items: center; gap: 8px; }
+.qty-value {
+  min-width: 30px;
+  text-align: center;
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #111827;
+}
 .modal-actions { display: flex; gap: 8px; align-items: center; }
 .qty-button, .icon-button { width: 38px; height: 38px; background: #fff1dc; color: #b45309; }
 .print-button { width: 100%; min-height: 46px; font-size: 0.98rem; box-shadow: 0 8px 18px rgba(217, 119, 6, 0.2); }
@@ -821,6 +831,7 @@ body[data-module="label-template-setup"] {
   .template-setup-header, .template-setup-toolbar, .template-setup-list-shell { padding: 12px; }
   .template-setup-header, .template-setup-header-actions, .template-setup-item-actions { flex-direction: column; align-items: stretch; }
   .qty-row, .item-actions, .modal-head, .modal-actions, .printer-widget-actions { flex-direction: column; align-items: stretch; }
+  .qty-controls { justify-content: space-between; }
   .runtime-log-head { flex-direction: column; align-items: stretch; }
   .card-grid { grid-template-columns: 1fr; }
   .print-button, .option-button, .btn-primary, .btn-secondary, .btn-ghost { width: 100%; }
