@@ -14,7 +14,10 @@
       <span class="reconnect-bar-label">Printer / 打印机</span>
       <span id="reconnect-bar-text" class="reconnect-bar-text">Not connected / 未连接</span>
     </div>
-    <button id="reconnect-bar-button" class="reconnect-bar-btn" type="button">🖨️ Connect Printer / 连接打印机</button>
+    <button id="reconnect-bar-button" class="reconnect-bar-btn" type="button">
+      <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8V3h10v5"/><path d="M7 17H6a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-1"/><path d="M7 14h10v7H7z"/><path d="M17 11h.01"/></svg></span>
+      <span>Connect Printer / 连接打印机</span>
+    </button>
   </div>
 
   <main class="label-page">
@@ -31,8 +34,13 @@
       </div>
       <div class="command-controls">
         <select id="category-filter" class="command-select"></select>
-        <button id="printer-setup-button" class="btn-secondary command-btn" type="button">⚙ Setup / 设置</button>
-        <button id="refresh-button" class="btn-ghost command-btn" type="button">↺</button>
+        <button id="printer-setup-button" class="btn-secondary command-btn" type="button">
+          <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-.4-1 1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1-.4 1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 .4 1 1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.27.3.48.65.6 1a1.7 1.7 0 0 0 1 .4H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1 .4 1.7 1.7 0 0 0-.5.6z"/></svg></span>
+          <span>Setup / 设置</span>
+        </button>
+        <button id="refresh-button" class="btn-ghost command-btn command-icon-btn" type="button" aria-label="Refresh / 刷新">
+          <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span>
+        </button>
       </div>
     </header>
 

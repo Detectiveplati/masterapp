@@ -12,6 +12,55 @@
 (function () {
   'use strict';
 
+  function iconSvg(name) {
+    var icons = {
+      menu:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>',
+      home:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>',
+      bell:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>',
+      maintenance:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6.5a4 4 0 0 0-5 5L4 17l3 3 5.5-5.5a4 4 0 0 0 5-5l-3 2-2-2 2-3z"/></svg>',
+      forms:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h7l5 5v13H9z"/><path d="M16 3v5h5"/><path d="M5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1"/><path d="M12 13h5"/><path d="M12 17h5"/><path d="M12 9h1"/></svg>',
+      shield:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>',
+      printer:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8V3h10v5"/><path d="M7 17H6a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-1"/><path d="M7 14h10v7H7z"/><path d="M17 11h.01"/></svg>',
+      thermometer:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V5a2 2 0 1 0-4 0v9.76a4 4 0 1 0 4 0z"/><path d="M12 9v7"/></svg>',
+      clipboard:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/></svg>',
+      procurement:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2l2.2 10.2a1 1 0 0 0 1 .8h9.8a1 1 0 0 0 1-.8L21 7H7.2"/></svg>',
+      pest:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10c0-2.2 1.8-4 4-4s4 1.8 4 4"/><path d="M8 10v4a4 4 0 0 0 8 0v-4"/><path d="M4 10l4 2"/><path d="M20 10l-4 2"/><path d="M6 6l3 2"/><path d="M18 6l-3 2"/><path d="M6 18l3-2"/><path d="M18 18l-3-2"/></svg>',
+      archive:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8h14v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8z"/><path d="M10 12h4"/></svg>',
+      settings:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-.4-1 1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1-.4 1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 .4 1 1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.27.3.48.65.6 1a1.7 1.7 0 0 0 1 .4H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1 .4 1.7 1.7 0 0 0-.5.6z"/></svg>',
+      user:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>',
+      dashboard:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13a9 9 0 1 1 18 0"/><path d="M12 13l4-4"/><path d="M7 16h.01"/><path d="M17 16h.01"/></svg>'
+    };
+    return icons[name] || icons.dashboard;
+  }
+
+  function iconSpan(name, extraClass) {
+    return '<span class="' + (extraClass || 'nav-icon') + '" aria-hidden="true">' + iconSvg(name) + '</span>';
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   // ── PWA: inject manifest, icons, iOS meta tags, and register SW ──────────
   (function injectPWA() {
     var head = document.head;
@@ -75,123 +124,123 @@
 
   /* ── Module metadata ─────────────────────────────────────────── */
   var MODULE_INFO = {
-    maintenance: { label: '🔧 Maintenance'       },
-    foodsafety:  { label: '🥗 Food Safety'        },
-    foodsafetyforms: { label: '🧾 Food Safety Forms' },
-    'label-print': { label: '🖨️ Label Printing' },
-    pest:        { label: '🐭 Rat Trap Surveillance' },
-    templog:     { label: '🌡️ Kitchen Logs'      },
-    'order-manager': { label: '📋 Order Manager' },
-    procurement: { label: '📦 Procurement'        },
-    settings:    { label: '🔔 Notifications'      },
-    admin:       { label: '⚙️ Admin'             },
-    'push-test': { label: '🔔 Push Test'         },
-    tempmon:     { label: '🌡️ Temp Monitor'         },
-    iso:         { label: '📂 ISO Records'            },
+    maintenance: { label: 'Maintenance', icon: 'maintenance' },
+    foodsafety: { label: 'Food Safety', icon: 'shield' },
+    foodsafetyforms: { label: 'Food Safety Forms', icon: 'forms' },
+    'label-print': { label: 'Label Printing', icon: 'printer' },
+    pest: { label: 'Pest Control', icon: 'pest' },
+    templog: { label: 'Kitchen Logs', icon: 'thermometer' },
+    'order-manager': { label: 'Order Manager', icon: 'clipboard' },
+    procurement: { label: 'Procurement', icon: 'procurement' },
+    settings: { label: 'Notifications', icon: 'bell' },
+    admin: { label: 'Admin', icon: 'settings' },
+    'push-test': { label: 'Push Test', icon: 'bell' },
+    tempmon: { label: 'Temp Monitor', icon: 'thermometer' },
+    iso: { label: 'ISO Records', icon: 'archive' }
   };
 
   /* ── Navigation tree ─────────────────────────────────────────── */
   var NAV = [
-    { href: '/', icon: '🏠', label: 'Hub', module: 'hub' },
-    { href: '/notification-settings', icon: '🔔', label: 'Notifications', module: 'settings' },
+    { href: '/', icon: 'home', label: 'Hub', module: 'hub' },
+    { href: '/notification-settings', icon: 'bell', label: 'Notifications', module: 'settings' },
     { divider: true },
     {
-      icon: '🔧', label: 'Maintenance', module: 'maintenance',
+      icon: 'maintenance', label: 'Maintenance', module: 'maintenance',
       href: '/maintenance/maintenance.html', perm: 'maintenance',
       children: [
-        { href: '/maintenance/maintenance.html',    label: '📊 Dashboard'         },
-        { href: '/maintenance/equipment-list.html', label: '⚙️ Equipment'          },
-        { href: '/maintenance/areas.html',          label: '📍 Areas & QR Codes'   },
-        { href: '/maintenance/all-issues.html',     label: '⚠️ All Issues'          },
-        { href: '/maintenance/log-maintenance.html',label: '📝 Log Maintenance'    },
+        { href: '/maintenance/maintenance.html',    label: 'Dashboard' },
+        { href: '/maintenance/equipment-list.html', label: 'Equipment' },
+        { href: '/maintenance/areas.html',          label: 'Areas & QR Codes' },
+        { href: '/maintenance/all-issues.html',     label: 'All Issues' },
+        { href: '/maintenance/log-maintenance.html',label: 'Log Maintenance' },
       ],
     },
     {
-      icon: '🧾', label: 'Food Safety Forms', module: 'foodsafetyforms',
+      icon: 'forms', label: 'Food Safety Forms', module: 'foodsafetyforms',
       href: '/foodsafety-forms/', perm: 'foodsafetyforms',
       children: [
-        { href: '/foodsafety-forms/',          label: '🏠 Overview'            },
-        { href: '/foodsafety-forms/forms',     label: '🗂️ Forms Workspace'    },
-        { href: '/foodsafety-forms/reports',   label: '🧾 Reports Dashboard'  },
+        { href: '/foodsafety-forms/',          label: 'Overview' },
+        { href: '/foodsafety-forms/forms',     label: 'Forms Workspace' },
+        { href: '/foodsafety-forms/reports',   label: 'Reports Dashboard' },
       ],
     },
     {
-      icon: '🥗', label: 'Food Safety', module: 'foodsafety',
+      icon: 'shield', label: 'Food Safety', module: 'foodsafety',
       activeModules: ['foodsafety', 'pest'],
       href: '/foodsafety/', perm: 'foodsafety',
       children: [
-        { href: '/foodsafety/',               label: '🏠 Overview'                    },
-        { href: '/foodsafety/nc',             label: '📋 NC Reports'                  },
-        { href: '/foodsafety/report-nc.html', label: '\u00a0\u00a0 ➕ Log NC'         },
-        { href: '/foodsafety/nc-list.html',   label: '\u00a0\u00a0 📄 View NCs'       },
-        { href: '/foodsafety/fhc',            label: '📜 Cert & Licence Tracker'      },
-        { href: '/pest/',                     label: '🐭 Rat Trap Dashboard'           },
-        { href: '/pest/record.html',          label: '\u00a0\u00a0 ✏️ Record Findings' },
-        { href: '/pest/report.html',          label: '\u00a0\u00a0 📋 Pest Report'     },
-        { href: '/pest/stations.html',        label: '\u00a0\u00a0 📍 RTS Stations'    },
+        { href: '/foodsafety/',               label: 'Overview' },
+        { href: '/foodsafety/nc',             label: 'NC Reports' },
+        { href: '/foodsafety/report-nc.html', label: 'Log NC' },
+        { href: '/foodsafety/nc-list.html',   label: 'View NCs' },
+        { href: '/foodsafety/fhc',            label: 'Cert & Licence Tracker' },
+        { href: '/pest/',                     label: 'Pest Dashboard' },
+        { href: '/pest/record.html',          label: 'Record Findings' },
+        { href: '/pest/report.html',          label: 'Pest Report' },
+        { href: '/pest/stations.html',        label: 'RTS Stations' },
       ],
     },
     {
-      icon: '🖨️', label: 'Label Printing', module: 'label-print',
+      icon: 'printer', label: 'Label Printing', module: 'label-print',
       href: '/label-print/', perm: 'labelprint',
       children: [
-        { href: '/label-print/', label: '🏠 Print Launcher' },
+        { href: '/label-print/', label: 'Print Launcher' },
       ],
     },
     {
-      icon: '🌡️', label: 'Kitchen Logs', module: 'templog',
+      icon: 'thermometer', label: 'Kitchen Logs', module: 'templog',
       href: '/templog/', perm: 'templog',
       children: [
-        { href: '/templog/',                               label: '🏠 Overview'   },
-        { href: '/templog/departments/combioven.html',     label: '🔥 Combi Oven' },
+        { href: '/templog/',                               label: 'Overview' },
+        { href: '/templog/departments/combioven.html',     label: 'Combi Oven' },
       ],
     },
     {
-      icon: '📋', label: 'Order Manager', module: 'order-manager',
+      icon: 'clipboard', label: 'Order Manager', module: 'order-manager',
       href: '/order-manager/', perm: 'templog',
       children: [
-        { href: '/order-manager/',                         label: '🏠 Overview'        },
-        { href: '/order-manager/extractor.html',           label: '🧲 Manual Extract'  },
-        { href: '/order-manager/order-summary.html',       label: '📊 Order Summary'   },
-        { href: '/order-manager/chef-preorder.html',       label: '🧾 Chef Pre-Order'  },
-        { href: '/order-manager/kitchen/kitchentemplog.html', label: '🔥 Kitchen Temp Log' },
+        { href: '/order-manager/',                         label: 'Overview' },
+        { href: '/order-manager/extractor.html',           label: 'Manual Extract' },
+        { href: '/order-manager/order-summary.html',       label: 'Order Summary' },
+        { href: '/order-manager/chef-preorder.html',       label: 'Chef Pre-Order' },
+        { href: '/order-manager/kitchen/kitchentemplog.html', label: 'Kitchen Temp Log' },
       ],
     },
     {
-      icon: '📦', label: 'Procurement', module: 'procurement',
+      icon: 'procurement', label: 'Procurement', module: 'procurement',
       href: '/procurement/', perm: 'procurement',
       children: [
-        { href: '/procurement/',         label: '🏠 Overview'     },
-        { href: '/procurement/requests', label: '📊 All Requests' },
-        { href: '/procurement/request',  label: '➕ New Request'  },
+        { href: '/procurement/',         label: 'Overview' },
+        { href: '/procurement/requests', label: 'All Requests' },
+        { href: '/procurement/request',  label: 'New Request' },
       ],
     },
     {
-      icon: '🌡️', label: 'Temp Monitor', module: 'tempmon',
+      icon: 'thermometer', label: 'Temp Monitor', module: 'tempmon',
       href: '/tempmon/', perm: 'tempmon',
       children: [
-        { href: '/tempmon/',                    label: '📡 Live Dashboard'    },
-        { href: '/tempmon/alerts.html',         label: '🔴 Alerts'            },
-        { href: '/tempmon/report.html',         label: '🧾 Monthly Report'    },
-        { href: '/tempmon/calibration.html',    label: '🔧 Calibration'       },
-        { href: '/tempmon/setup.html',          label: '⚙️ Setup'              },
+        { href: '/tempmon/',                    label: 'Live Dashboard' },
+        { href: '/tempmon/alerts.html',         label: 'Alerts' },
+        { href: '/tempmon/report.html',         label: 'Monthly Report' },
+        { href: '/tempmon/calibration.html',    label: 'Calibration' },
+        { href: '/tempmon/setup.html',          label: 'Setup' },
       ],
     },
     {
-      icon: '📂', label: 'ISO Records', module: 'iso',
+      icon: 'archive', label: 'ISO Records', module: 'iso',
       href: '/iso/', perm: 'iso',
       children: [
-        { href: '/iso/', label: '📋 Records Keeper' },
+        { href: '/iso/', label: 'Records Keeper' },
       ],
     },
     { divider: true },
     {
-      icon: '⚙️', label: 'Admin', module: 'admin',
+      icon: 'settings', label: 'Admin', module: 'admin',
       href: '/admin/', perm: '__admin__',
       children: [],
     },
     {
-      icon: '🔔', label: 'Push Test', module: 'push-test',
+      icon: 'bell', label: 'Push Test', module: 'push-test',
       href: '/push-test/', perm: '__admin__',
       children: [],
     },
@@ -205,19 +254,19 @@
   /* ── Build top navbar HTML ───────────────────────────────────── */
   var modInfo  = MODULE_INFO[currentModule];
   var modPill  = modInfo
-    ? '<span class="topnav-module">' + modInfo.label + '</span>'
+    ? '<span class="topnav-module">' + iconSpan(modInfo.icon, 'nav-icon') + modInfo.label + '</span>'
     : '';
 
   var topnavHTML =
     '<nav id="topnav">' +
-      '<button id="nav-toggle" aria-label="Toggle navigation" title="Menu">☰</button>' +
+      '<button id="nav-toggle" aria-label="Toggle navigation" title="Menu">' + iconSvg('menu') + '</button>' +
       '<a href="/" style="line-height:0;text-decoration:none;">' +
         '<img class="topnav-logo" src="/maintenance/assets/Chilli-Api-Logo-170px.png" alt="Central Kitchen">' +
       '</a>' +
       '<span class="topnav-brand">Central Kitchen</span>' +
       modPill +
       '<span class="topnav-spacer"></span>' +
-      '<button id="nav-notif" class="notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>' +
+      '<button id="nav-notif" class="notif-btn" title="Notifications" aria-label="Notifications">' + iconSvg('bell') + '<span id="notif-badge"></span></button>' +
       '<span class="topnav-user" id="nav-user">…</span>' +
       '<button id="nav-logout" title="Sign out">Sign Out</button>' +
     '</nav>';
@@ -247,7 +296,7 @@
 
     sideItems +=
       '<a href="' + item.href + '" class="' + cls + '"' + permAttr + '>' +
-        '<span class="nav-icon">' + item.icon + '</span>' +
+        iconSpan(item.icon, 'nav-icon') +
         item.label +
       '</a>';
 
@@ -316,8 +365,11 @@
   function applyUser(user) {
     var navUser = document.getElementById('nav-user');
     if (navUser) {
-      var icon = user.role === 'admin' ? '⚙️' : '👤';
-      navUser.textContent = icon + ' ' + (user.displayName || user.username || 'User');
+      var userIcon = user.role === 'admin' ? 'settings' : 'user';
+      navUser.innerHTML =
+        iconSpan(userIcon, 'nav-icon') +
+        '<span>' + escapeHtml(user.displayName || user.username || 'User') + '</span>' +
+        '<span class="topnav-user-role">' + (user.role === 'admin' ? 'Admin' : 'Staff') + '</span>';
     }
 
     // Logout button
@@ -386,7 +438,7 @@
     function renderItems(items) {
       var html =
         '<div class="notif-header">' +
-          '<span>🔔 Notifications</span>' +
+          '<span class="notification-title">' + iconSpan('bell', 'nav-icon') + '<span>Notifications</span></span>' +
           '<button id="notif-mark-all" class="notif-mark-all">Mark all read</button>' +
         '</div>';
       if (!items.length) {

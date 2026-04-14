@@ -226,6 +226,272 @@ body[data-module="label-print"] {
   animation: toastIn 0.28s ease-out;
 }
 
+/* ── Professional refresh overrides ─────────────────────────── */
+.action-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+  flex-shrink: 0;
+}
+
+.action-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  stroke: currentColor;
+}
+
+.reconnect-bar {
+  padding: 12px 20px;
+  background: #1d2939;
+  box-shadow: 0 -8px 24px rgba(16, 24, 40, 0.18);
+}
+
+.reconnect-bar-btn {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: #fff;
+  color: #101828;
+  font-size: 0.9rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: none;
+}
+
+.reconnect-bar-btn:active {
+  background: #f8fafc;
+  transform: none;
+}
+
+body[data-module="label-print"] {
+  background: var(--bg);
+}
+
+.label-page {
+  gap: 12px;
+  padding: 12px;
+}
+
+.command-bar,
+.status-card,
+.modal-card,
+.job-card,
+.diagnostic-panel,
+.runtime-log-panel,
+.preview-card {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  backdrop-filter: none;
+}
+
+.command-bar {
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.command-eyebrow {
+  color: #667085;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+.command-title {
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.search-box input {
+  min-height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong, #c3ccd8);
+  background: #fff;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.search-box input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(23, 92, 211, 0.10);
+}
+
+.command-select,
+.field input,
+.field select,
+.qty-input {
+  border-radius: 8px;
+  border: 1px solid var(--border-strong, #c3ccd8);
+  background: #fff;
+}
+
+.command-select {
+  height: 40px;
+  font-size: 0.86rem;
+}
+
+.command-btn,
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.print-button,
+.option-button,
+.qty-button,
+.icon-button {
+  min-height: 40px;
+  border-radius: 8px;
+  box-shadow: none;
+  font-weight: 600;
+}
+
+.btn-primary,
+.print-button {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-secondary {
+  background: #fff;
+  color: #111827;
+  border: 1px solid var(--border-strong, #c3ccd8);
+}
+
+.btn-ghost,
+.option-button,
+.icon-button,
+.qty-button {
+  background: #fff;
+  color: #475467;
+  border: 1px solid var(--border);
+}
+
+.command-icon-btn {
+  min-width: 40px;
+  padding: 0;
+  justify-content: center;
+}
+
+.search-summary {
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475467;
+}
+
+.card-grid,
+.card-groups,
+.jobs-list {
+  gap: 12px;
+}
+
+.item-card {
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.item-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.item-card[data-cut-mode="auto-cut"],
+.item-card[data-cut-mode="no-cut"],
+.item-card[data-printable="no"] {
+  border-color: var(--border);
+  background: #fff;
+}
+
+.item-body h3 {
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.item-body p,
+.item-support,
+.cut-label,
+.diagnostic-card small,
+.modal-description {
+  color: #667085;
+}
+
+.pill {
+  background: #f2f4f7;
+  color: #344054;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.status-grid {
+  gap: 12px;
+}
+
+.status-card {
+  padding: 14px 16px;
+}
+
+.modal-card {
+  padding: 16px;
+}
+
+.modal-head h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.printer-status-grid .status-card,
+.diagnostic-card,
+.preview-paper {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+}
+
+.diagnostic-panel,
+.preview-card {
+  padding: 14px;
+}
+
+.preview-card,
+.preview-canvas {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+}
+
+.preview-canvas {
+  min-height: 180px;
+  border-radius: 8px;
+}
+
+.preview-paper {
+  border-radius: 6px;
+}
+
+.runtime-log-panel {
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.runtime-log-output {
+  border-radius: 8px;
+  background: #101828;
+}
+
+.label-print-toast {
+  border-radius: 8px;
+  background: #101828;
+  box-shadow: 0 14px 28px rgba(16, 24, 40, 0.16);
+}
+
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 1100px) {
   .command-bar { grid-template-columns: 1fr; gap: 8px; }

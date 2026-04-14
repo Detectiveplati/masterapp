@@ -8,47 +8,26 @@
   <link rel="stylesheet" href="/css/app.css">
   <style>
     .module-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 24px;
       max-width: 860px;
       margin: 0 auto;
     }
-    .module-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 32px 28px;
-      text-decoration: none;
-      color: inherit;
-      box-shadow: 0 6px 20px var(--shadow);
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      position: relative;
-      overflow: hidden;
-      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    .module-card .card-icon {
+      color: #344054;
     }
-    .module-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 4px;
-      border-radius: 16px 16px 0 0;
+    .module-card .card-icon svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      stroke: currentColor;
     }
-    .module-card.workspace::before { background: linear-gradient(90deg, #16a085, #48c9b0); }
-    .module-card.workspace .card-go { color: #16a085; }
-    .module-card.reports::before { background: linear-gradient(90deg, #f39c12, #f7c948); }
-    .module-card.reports .card-go { color: #b9770e; }
-    .module-card:hover { transform: translateY(-5px); box-shadow: 0 14px 36px rgba(0,0,0,0.12); }
-    .module-card .card-icon { font-size: 2.4rem; line-height: 1; }
-    .module-card h2 { font-size: 1.25rem; font-weight: 700; color: var(--ink); margin: 0; }
-    .module-card p  { font-size: 0.9rem; color: var(--muted); line-height: 1.6; margin: 0; }
     .card-go {
-      margin-top: auto;
-      padding-top: 14px;
-      font-size: 0.88rem;
-      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-go .arrow {
+      width: 14px;
+      height: 14px;
     }
     @media (max-width: 600px) { .module-grid { grid-template-columns: 1fr; } }
   </style>
@@ -57,16 +36,16 @@
   <main>
     <div class="module-grid">
       <a class="module-card workspace" href="/foodsafety-forms/forms">
-        <div class="card-icon">🗂️</div>
+        <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10h18"/></svg></div>
         <h2>Forms Workspace</h2>
         <p>Open assigned or available food safety forms by month, location, and form type.</p>
-        <div class="card-go">Open Forms Workspace →</div>
+        <div class="card-go">Open Forms Workspace <span class="arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span></div>
       </a>
       <a class="module-card reports" href="/foodsafety-forms/reports">
-        <div class="card-icon">🧾</div>
+        <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h7l5 5v13H9z"/><path d="M16 3v5h5"/><path d="M12 13h5"/><path d="M12 17h5"/><path d="M12 9h1"/><path d="M5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1"/></svg></div>
         <h2>Reports Dashboard</h2>
         <p>Review submitted forms, open archived PDFs, monitor due items, and verify completed reports.</p>
-        <div class="card-go">Open Reports Dashboard →</div>
+        <div class="card-go">Open Reports Dashboard <span class="arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span></div>
       </a>
     </div>
   </main>
