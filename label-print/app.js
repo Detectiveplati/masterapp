@@ -27,6 +27,7 @@ const actionStatusEl = document.getElementById('action-status');
 const actionMetaEl = document.getElementById('action-meta');
 const testPrintButtonEl = document.getElementById('test-print-button');
 const refreshDiagnosticsButtonEl = document.getElementById('refresh-diagnostics-button');
+const uploadDiagnosticsButtonEl = document.getElementById('upload-diagnostics-button');
 const openSiteSettingsButtonEl = document.getElementById('open-site-settings-button');
 const forgetPortsButtonEl = document.getElementById('forget-ports-button');
 const modalEl = document.getElementById('options-modal');
@@ -88,8 +89,7 @@ const state = {
     lastPairingResult: '',
     lastPairingMeta: '',
     lastPairingAt: null
-  },
-  remoteDiagnosticsSessionId: getDiagnosticSessionId()
+  }
 };
 
 searchInputEl.addEventListener('input', renderItems);
@@ -111,6 +111,7 @@ connectButtonEl.addEventListener('click', reconnectBluetoothPrinter);
 refreshButtonEl.addEventListener('click', loadAll);
 testPrintButtonEl.addEventListener('click', requestTestPrint);
 refreshDiagnosticsButtonEl.addEventListener('click', refreshDiagnostics);
+uploadDiagnosticsButtonEl.addEventListener('click', uploadDiagnosticsSnapshot);
 openSiteSettingsButtonEl.addEventListener('click', openSiteSettings);
 forgetPortsButtonEl.addEventListener('click', forgetAuthorizedPorts);
 clearRuntimeLogButtonEl.addEventListener('click', clearRuntimeLog);
@@ -229,9 +230,6 @@ async function loadAll() {
     console.error(error);
     appendRuntimeLog('loadAll() failed', { error: error && (error.message || error.name || String(error)) });
     setAction('Load failed / 加载失败', error.message || 'Could not load label printing data. / 无法加载标签打印数据。');
-    sendDiagnosticLog('error', 'load-failed', 'Label print data load failed', {
-      error: error && (error.message || error.name || String(error))
-    });
     showToast(error.message || 'Could not load label printing data. / 无法加载标签打印数据。');
   }
 }
@@ -508,12 +506,12 @@ function openPrinterModal() {
   renderAuthorizedPorts();
   printerModalEl.classList.remove('hidden');
   printerModalEl.setAttribute('aria-hidden', 'false');
-  appendRuntimeLog('Printer setup opened', { remoteDiagnosticsEnabled: shouldSendRemoteDiagnostics() });
+  appendRuntimeLog('Printer setup opened', { diagnosticsUploadAvailable: true });
   updateDiagnostics();
 }
 
 function closePrinterModal() {
-  appendRuntimeLog('Printer setup closed', { remoteDiagnosticsEnabled: shouldSendRemoteDiagnostics() });
+  appendRuntimeLog('Printer setup closed', { diagnosticsUploadAvailable: true });
   printerModalEl.classList.add('hidden');
   printerModalEl.setAttribute('aria-hidden', 'true');
 }
@@ -752,9 +750,6 @@ async function pairBluetoothPrinter() {
     renderAuthorizedPorts();
     updatePrinterStatus();
     updateDiagnostics();
-    sendDiagnosticLog('info', 'pairing-selected', 'Bluetooth serial device selected and connected', {
-      portInfo: safePortInfo(port)
-    });
     showToast('Bluetooth printer paired. / 蓝牙打印机已配对。');
   } catch (error) {
     if (error && error.name === 'NotFoundError') {
@@ -763,9 +758,6 @@ async function pairBluetoothPrinter() {
         'Chrome did not return a serial-capable Bluetooth device. Check browser, permissions, Android pairing, and whether another tablet is already connected. / Chrome 未返回支持串口的蓝牙设备，请检查浏览器、权限、Android 配对，以及是否已有其他平板连接。'
       );
       updateDiagnostics();
-      sendDiagnosticLog('warn', 'pairing-no-compatible-device', 'Chrome returned no compatible serial Bluetooth device', {
-        error: error && (error.message || error.name || String(error))
-      });
       return;
     }
     console.error(error);
@@ -775,9 +767,6 @@ async function pairBluetoothPrinter() {
       `${error && (error.name || 'Error')}: ${error && (error.message || 'Unknown error')} / 配对过程中出现错误`
     );
     updateDiagnostics();
-    sendDiagnosticLog('error', 'pairing-failed', 'Bluetooth pairing failed', {
-      error: error && (error.message || error.name || String(error))
-    });
     showToast(error.message || 'Could not pair the Bluetooth printer. / 无法配对蓝牙打印机。');
   }
 }
@@ -798,9 +787,6 @@ async function reconnectBluetoothPrinter() {
     await resetSerialStateAfterFailure();
     setSerialError(error);
     updateDiagnostics();
-    sendDiagnosticLog('error', 'reconnect-failed', 'Bluetooth printer reconnect failed', {
-      error: error && (error.message || error.name || String(error))
-    });
     showToast(buildReconnectErrorMessage(error));
   }
 }
@@ -1000,34 +986,58 @@ function getDiagnosticSessionId() {
   }
 }
 
-function shouldSendRemoteDiagnostics() {
-  return Boolean(printerModalEl) && !printerModalEl.classList.contains('hidden');
-}
+async function uploadDiagnosticsSnapshot() {
+  try {
+    uploadDiagnosticsButtonEl.disabled = true;
+    uploadDiagnosticsButtonEl.textContent = 'Uploading… / 上传中…';
+    updateDiagnostics();
 
-function sendDiagnosticLog(level, eventType, message, details = {}) {
-  if (!shouldSendRemoteDiagnostics()) return;
-  const payload = {
-    source: 'client',
-    level,
-    eventType,
-    message,
-    details,
-    device: {
-      sessionId: state.remoteDiagnosticsSessionId,
-      userAgent: navigator.userAgent || '',
-      origin: window.location.origin,
-      href: window.location.href,
-      displayMode: getDisplayMode().label
-    },
-    runtime: runtimeStateSnapshot()
-  };
+    const payload = {
+      source: 'client',
+      level: state.serial.lastError ? 'error' : 'info',
+      eventType: 'manual-diagnostics-upload',
+      message: 'Manual diagnostics upload from label print setup',
+      details: {
+        lastPairingResult: state.serial.lastPairingResult || null,
+        lastPairingMeta: state.serial.lastPairingMeta || null,
+        lastError: state.serial.lastError || null,
+        authorizedPorts: state.authorizedPorts.map((entry) => ({
+          label: entry.label,
+          meta: entry.meta,
+          info: entry.info || {}
+        })),
+        runtimeLogTail: state.runtimeLog.slice(-60)
+      },
+      device: {
+        sessionId: getDiagnosticSessionId(),
+        userAgent: navigator.userAgent || '',
+        origin: window.location.origin,
+        href: window.location.href,
+        displayMode: getDisplayMode().label
+      },
+      runtime: runtimeStateSnapshot()
+    };
 
-  fetch(`${API_BASE}/diagnostic-logs`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  }).catch(() => {});
+    await fetchJson(`${API_BASE}/diagnostic-logs`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    appendRuntimeLog('Manual diagnostics uploaded', {
+      sessionId: payload.device.sessionId,
+      level: payload.level
+    });
+    showToast('Diagnostics uploaded. / 诊断信息已上传。');
+  } catch (error) {
+    console.error(error);
+    appendRuntimeLog('Manual diagnostics upload failed', { error: error && (error.message || error.name || String(error)) });
+    showToast(error.message || 'Could not upload diagnostics. / 无法上传诊断信息。');
+  } finally {
+    uploadDiagnosticsButtonEl.disabled = false;
+    uploadDiagnosticsButtonEl.textContent = 'Upload Diagnostics / 上传诊断';
+  }
 }
 
 function safePortInfo(port) {
@@ -1608,9 +1618,6 @@ function getDisplayMode() {
 function setSerialError(error) {
   state.serial.lastError = String((error && (error.message || error.name)) || error || 'Unknown serial error / 未知串口错误');
   state.serial.lastErrorAt = new Date().toLocaleString();
-  sendDiagnosticLog('error', 'serial-error', 'Label print serial error captured', {
-    error: state.serial.lastError
-  });
 }
 
 function clearSerialError() {
@@ -1626,11 +1633,6 @@ function setPairingResult(title, meta) {
     title: state.serial.lastPairingResult,
     meta: state.serial.lastPairingMeta
   });
-  if (/failed|unavailable|no compatible/i.test(state.serial.lastPairingResult)) {
-    sendDiagnosticLog('warn', 'pairing-result', state.serial.lastPairingResult, {
-      meta: state.serial.lastPairingMeta
-    });
-  }
 }
 
 function getBrowserDiagnostics() {
