@@ -86,11 +86,19 @@
           </label>
           <label class="field">
             <span>Template / 模板</span>
-            <input id="modal-template" type="text" readonly>
+            <select id="modal-template"></select>
           </label>
           <label class="field">
             <span>Printer template # / 打印机模板编号</span>
-            <input id="modal-template-number" type="text" readonly>
+            <input id="modal-template-number" type="number" min="1" max="255" step="1" inputmode="numeric">
+          </label>
+          <label class="field">
+            <span>Template English / 模板英文名</span>
+            <input id="modal-template-name-english" type="text" placeholder="Stored template name">
+          </label>
+          <label class="field">
+            <span>Template Chinese / 模板中文名</span>
+            <input id="modal-template-name-chinese" type="text" placeholder="已存储模板中文名">
           </label>
         </div>
         <div class="preview-card">
@@ -108,6 +116,7 @@
         </div>
       </div>
       <div class="modal-actions">
+        <button id="modal-save-template-button" class="btn-secondary" type="button">Save Template / 保存模板</button>
         <button id="modal-print-button" class="btn-primary" type="button">Print Now / 立即打印</button>
       </div>
     </section>

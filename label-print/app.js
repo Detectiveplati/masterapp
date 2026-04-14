@@ -39,10 +39,13 @@ const modalQuantityEl = document.getElementById('modal-quantity');
 const modalCutModeEl = document.getElementById('modal-cut-mode');
 const modalTemplateEl = document.getElementById('modal-template');
 const modalTemplateNumberEl = document.getElementById('modal-template-number');
+const modalTemplateNameEnglishEl = document.getElementById('modal-template-name-english');
+const modalTemplateNameChineseEl = document.getElementById('modal-template-name-chinese');
 const modalDimensionsEl = document.getElementById('modal-dimensions');
 const previewNameEl = document.getElementById('preview-name');
 const previewSubtitleEl = document.getElementById('preview-subtitle');
 const previewQuantityEl = document.getElementById('preview-quantity');
+const modalSaveTemplateButtonEl = document.getElementById('modal-save-template-button');
 const modalPrintButtonEl = document.getElementById('modal-print-button');
 const modalCloseButtonEl = document.getElementById('modal-close-button');
 const printerModalCloseButtonEl = document.getElementById('printer-modal-close-button');
@@ -167,6 +170,8 @@ reconnectBannerButtonEl.addEventListener('click', async () => {
 });
 modalCloseButtonEl.addEventListener('click', closeOptionsModal);
 printerModalCloseButtonEl.addEventListener('click', closePrinterModal);
+modalTemplateEl.addEventListener('change', syncModalTemplateEditor);
+modalSaveTemplateButtonEl.addEventListener('click', saveModalTemplateChanges);
 modalPrintButtonEl.addEventListener('click', () => {
   if (!state.activeItem) return;
   const quantity = clampQuantity(modalQuantityEl.value);
@@ -472,16 +477,12 @@ function bindCardEvents() {
 
 function openOptionsModal(item) {
   state.activeItem = item;
-  const template = findTemplate(item.templateKey);
   modalTitleEl.textContent = item.name;
-  modalDescriptionEl.textContent = 'This tablet sends the stored printer template directly over Bluetooth. The printer applies all label content and rules from its own P-touch template. / 此平板通过蓝牙直接发送已存储的打印机模板，打印机会使用自身的 P-touch 模板应用所有标签内容和规则。';
+  modalDescriptionEl.textContent = 'This tablet sends the stored printer template directly over Bluetooth. You can also remap or correct the saved template here before printing. / 此平板通过蓝牙直接发送已存储的打印机模板，您也可以在打印前直接在这里重新映射或修正模板。';
   modalQuantityEl.value = getItemQuantity(item._id);
   modalCutModeEl.value = item.defaultCutMode || getDefaultCutMode();
-  modalTemplateEl.value = template ? template.name : item.templateKey;
-  modalTemplateNumberEl.value = template ? String(template.printerTemplateNumber) : '-';
-  modalDimensionsEl.textContent = template ? `58 x ${template.heightMm} mm` : '58 x 62 mm';
-  previewNameEl.textContent = template ? template.name : item.name;
-  previewSubtitleEl.textContent = `Stored printer template #${template ? template.printerTemplateNumber : '-'} / 已存储模板编号 ${template ? template.printerTemplateNumber : '-'}`;
+  populateModalTemplateOptions(item.templateKey);
+  syncModalTemplateEditor();
   syncPreviewQuantity();
   modalEl.classList.remove('hidden');
   modalEl.setAttribute('aria-hidden', 'false');
@@ -510,6 +511,114 @@ function closePrinterModal() {
 
 function syncPreviewQuantity() {
   previewQuantityEl.textContent = `Qty / 数量 ${clampQuantity(modalQuantityEl.value)}`;
+}
+
+function populateModalTemplateOptions(selectedKey) {
+  const normalizedKey = String(selectedKey || '').trim();
+  const options = [];
+  if (normalizedKey && !findTemplate(normalizedKey)) {
+    options.push(`<option value="${escapeHtml(normalizedKey)}">${escapeHtml(normalizedKey)} (unmapped / 未映射)</option>`);
+  } else {
+    options.push('<option value="">Select a template / 选择模板</option>');
+  }
+  state.templates.forEach((template) => {
+    const englishName = template.nameEnglish || template.name || template.key;
+    const chineseName = template.nameChinese ? ` / ${template.nameChinese}` : '';
+    options.push(`<option value="${escapeHtml(template.key)}">#${escapeHtml(template.printerTemplateNumber)} · ${escapeHtml(englishName)}${escapeHtml(chineseName)}</option>`);
+  });
+  modalTemplateEl.innerHTML = options.join('');
+  modalTemplateEl.value = normalizedKey;
+}
+
+function syncModalTemplateEditor() {
+  const item = state.activeItem;
+  const selectedKey = String(modalTemplateEl.value || '').trim();
+  const template = findTemplate(selectedKey);
+  const itemName = item ? (item.nameEnglish || item.name || 'Food Item / 食品项目') : 'Food Item / 食品项目';
+
+  modalTemplateNumberEl.value = template ? String(template.printerTemplateNumber || '') : '';
+  modalTemplateNameEnglishEl.value = template ? String(template.nameEnglish || template.name || '') : '';
+  modalTemplateNameChineseEl.value = template ? String(template.nameChinese || '') : '';
+  modalDimensionsEl.textContent = template ? `58 x ${template.heightMm} mm` : '58 x 62 mm';
+  previewNameEl.textContent = itemName;
+  previewSubtitleEl.textContent = template
+    ? `Stored printer template #${template.printerTemplateNumber} / 已存储模板编号 ${template.printerTemplateNumber}`
+    : `No saved template for key ${selectedKey || '-'} / 模板键 ${selectedKey || '-'} 未找到已存储模板`;
+}
+
+async function saveModalTemplateChanges() {
+  if (!state.activeItem) return;
+
+  const selectedKey = String(modalTemplateEl.value || '').trim();
+  const template = findTemplate(selectedKey);
+  if (!selectedKey || !template) {
+    showToast('Choose a saved template before saving. / 保存前请先选择已保存模板。');
+    return;
+  }
+
+  const printerTemplateNumber = Math.round(Number(modalTemplateNumberEl.value));
+  if (!Number.isFinite(printerTemplateNumber) || printerTemplateNumber < 1 || printerTemplateNumber > 255) {
+    showToast('Printer template number must be between 1 and 255. / 打印机模板编号必须介于 1 到 255。');
+    modalTemplateNumberEl.focus();
+    return;
+  }
+
+  const templateNameEnglish = modalTemplateNameEnglishEl.value.trim();
+  const templateNameChinese = modalTemplateNameChineseEl.value.trim();
+  const nextTemplateName = templateNameEnglish || template.nameEnglish || template.name || state.activeItem.nameEnglish || state.activeItem.name;
+
+  modalSaveTemplateButtonEl.disabled = true;
+  modalSaveTemplateButtonEl.textContent = 'Saving… / 保存中…';
+
+  try {
+    const updatedTemplate = await fetchJson(`${API_BASE}/templates/${encodeURIComponent(template._id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        key: template.key,
+        name: nextTemplateName,
+        nameEnglish: templateNameEnglish,
+        nameChinese: templateNameChinese,
+        description: template.description || '',
+        printerTemplateNumber,
+        mediaWidthMm: template.mediaWidthMm,
+        printWidthMm: template.printWidthMm,
+        heightMm: template.heightMm,
+        active: template.active !== false,
+        preview: template.preview || {},
+        departmentCode: template.departmentCode || '',
+        departmentName: template.departmentName || '',
+        departmentSignature: template.departmentSignature || '',
+        departmentSignaturePlacement: template.departmentSignaturePlacement || '',
+        departmentSignatureEmbeddedInTemplate: Boolean(template.departmentSignatureEmbeddedInTemplate),
+        supportedOptions: template.supportedOptions || {},
+        fieldSchema: Array.isArray(template.fieldSchema) ? template.fieldSchema : []
+      })
+    });
+
+    let updatedItem = state.activeItem;
+    if (state.activeItem.templateKey !== selectedKey) {
+      updatedItem = await fetchJson(`${API_BASE}/items/${encodeURIComponent(state.activeItem._id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateKey: selectedKey })
+      });
+    }
+
+    replaceTemplate(updatedTemplate);
+    replaceItem(updatedItem);
+    state.activeItem = findItem(updatedItem._id) || updatedItem;
+    renderItems();
+    populateModalTemplateOptions(state.activeItem.templateKey);
+    syncModalTemplateEditor();
+    showToast('Template mapping saved on this page. / 已在此页面保存模板映射。');
+  } catch (error) {
+    console.error(error);
+    showToast(error.message || 'Could not save template changes. / 无法保存模板更改。');
+  } finally {
+    modalSaveTemplateButtonEl.disabled = false;
+    modalSaveTemplateButtonEl.textContent = 'Save Template / 保存模板';
+  }
 }
 
 function changeQuantity(itemId, delta) {
@@ -920,6 +1029,24 @@ async function persistSelectedPrinterSettings() {
   const index = state.printers.findIndex((entry) => entry._id === updated._id);
   if (index >= 0) state.printers[index] = updated;
   return updated;
+}
+
+function replaceTemplate(updated) {
+  const index = state.templates.findIndex((entry) => entry._id === updated._id);
+  if (index >= 0) {
+    state.templates[index] = updated;
+  } else {
+    state.templates.push(updated);
+  }
+}
+
+function replaceItem(updated) {
+  const index = state.items.findIndex((entry) => entry._id === updated._id);
+  if (index >= 0) {
+    state.items[index] = updated;
+  } else {
+    state.items.push(updated);
+  }
 }
 
 function findTemplate(key) {
