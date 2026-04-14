@@ -408,7 +408,7 @@ function renderItemCard(item) {
         <span class="qty-label">Qty / 数量</span>
         <div class="qty-controls">
           <button class="qty-button" type="button" data-action="decrement" data-item-id="${escapeHtml(item._id)}" aria-label="Decrease quantity for ${escapeHtml(englishName)}">-</button>
-          <span class="qty-value" aria-live="polite">${quantity}</span>
+          <input class="qty-input qty-inline-input" type="number" min="1" max="999" step="1" inputmode="numeric" data-action="set-quantity" data-item-id="${escapeHtml(item._id)}" value="${quantity}" aria-label="Quantity for ${escapeHtml(englishName)}">
           <button class="qty-button" type="button" data-action="increment" data-item-id="${escapeHtml(item._id)}" aria-label="Increase quantity for ${escapeHtml(englishName)}">+</button>
         </div>
       </div>
@@ -428,6 +428,23 @@ function bindCardEvents() {
     button.addEventListener('click', (event) => {
       event.stopPropagation();
       changeQuantity(button.dataset.itemId, 1);
+    });
+  });
+  cardGroupsEl.querySelectorAll('[data-action="set-quantity"]').forEach((input) => {
+    input.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
+    input.addEventListener('input', (event) => {
+      event.stopPropagation();
+      setItemQuantity(input.dataset.itemId, input.value, { rerender: false });
+    });
+    input.addEventListener('blur', () => {
+      const quantity = getItemQuantity(input.dataset.itemId);
+      input.value = String(quantity);
+    });
+    input.addEventListener('change', () => {
+      const quantity = getItemQuantity(input.dataset.itemId);
+      input.value = String(quantity);
     });
   });
   cardGroupsEl.querySelectorAll('[data-action="print"]').forEach((button) => {
@@ -623,8 +640,14 @@ async function saveModalTemplateChanges() {
 
 function changeQuantity(itemId, delta) {
   const current = getItemQuantity(itemId);
-  state.quantities[itemId] = clampQuantity(current + delta);
-  renderItems();
+  setItemQuantity(itemId, current + delta);
+}
+
+function setItemQuantity(itemId, value, options = {}) {
+  state.quantities[itemId] = clampQuantity(value);
+  if (options.rerender !== false) {
+    renderItems();
+  }
 }
 
 function getItemQuantity(itemId) {

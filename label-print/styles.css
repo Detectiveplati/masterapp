@@ -150,8 +150,11 @@ body[data-module="label-print"] {
 .qty-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .qty-label { color: #667085; font-size: 0.76rem; font-weight: 700; white-space: nowrap; }
 .qty-controls { display: inline-flex; align-items: center; gap: 8px; }
-.qty-value {
-  min-width: 30px;
+.qty-inline-input {
+  width: 64px;
+  min-width: 64px;
+  padding: 0 8px;
+  min-height: 38px;
   text-align: center;
   font-size: 0.98rem;
   font-weight: 800;
