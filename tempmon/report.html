@@ -27,6 +27,19 @@
     .btn { padding: 9px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.86rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
     .btn-primary { background: linear-gradient(135deg, var(--accent, #2f6fed), #32a870); color: #fff; }
     .btn-outline { background: #fff; border: 2px solid var(--accent, #2f6fed); color: var(--accent, #2f6fed); }
+    .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+    .submission-status {
+      background: #fff;
+      border: 1px solid var(--border, #dde5ee);
+      border-radius: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.05);
+      padding: 14px 16px;
+      margin-bottom: 18px;
+      display: none;
+    }
+    .submission-status.open { display: block; }
+    .submission-status strong { display: block; margin-bottom: 4px; }
+    .submission-status p { margin: 0; color: var(--muted, #5a616c); font-size: 0.9rem; }
     .report-shell { background: #fff; border: 1px solid var(--border, #dde5ee); border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.05); padding: 24px; }
     .report-head { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; margin-bottom: 16px; }
     .report-brand { display: flex; align-items: center; justify-content: center; }
@@ -166,8 +179,11 @@
       <input id="monthInput" type="month">
     </label>
     <button class="btn btn-primary" type="button" onclick="loadReport()">Load Report</button>
-    <a class="btn btn-outline" id="pdfBtn" href="#" target="_blank" rel="noopener">Download PDF</a>
+    <button class="btn btn-primary" id="confirmBtn" type="button" onclick="confirmReport()">Confirm Monthly Form</button>
+    <a class="btn btn-outline" id="pdfBtn" href="#" target="_blank" rel="noopener">Download Raw PDF</a>
   </section>
+
+  <section class="submission-status" id="submissionStatus"></section>
 
   <section class="report-shell" id="reportRoot">Loading…</section>
 </main>
@@ -180,6 +196,7 @@
   window.__reportError = '';
   let currentUser = null;
   let units = [];
+  let currentSubmission = null;
   const params = new URLSearchParams(location.search);
 
   function esc(text) {
@@ -220,6 +237,35 @@
     document.getElementById('pdfBtn').href = unitId && month
       ? `/api/tempmon/reports/monthly-unit.pdf?unitId=${encodeURIComponent(unitId)}&month=${encodeURIComponent(month)}`
       : '#';
+  }
+
+  function formatDateTime(value) {
+    return value ? new Date(value).toLocaleString('en-SG') : '—';
+  }
+
+  function renderSubmissionStatus(submission) {
+    currentSubmission = submission || null;
+    const box = document.getElementById('submissionStatus');
+    const confirmBtn = document.getElementById('confirmBtn');
+    if (!submission) {
+      box.classList.remove('open');
+      box.innerHTML = '';
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Confirm Monthly Form';
+      return;
+    }
+
+    const reportsUrl = `/foodsafety-forms/reports?month=${encodeURIComponent(document.getElementById('monthInput').value || '')}`;
+    const statusLabel = submission.status === 'verified' ? 'Verified' : 'Submitted for verification';
+    const detail = submission.status === 'verified'
+      ? `Verified by ${esc(submission.verifiedBy || 'Food Safety Officer')} on ${esc(formatDateTime(submission.verifiedAt))}.`
+      : `Submitted by ${esc(submission.submittedBy || 'Unknown User')} on ${esc(formatDateTime(submission.submittedAt))}.`;
+    box.innerHTML = `
+      <strong>${statusLabel}</strong>
+      <p>${detail} <a href="${reportsUrl}">Open reports dashboard</a>.</p>`;
+    box.classList.add('open');
+    confirmBtn.disabled = submission.status === 'verified';
+    confirmBtn.textContent = submission.status === 'verified' ? 'Already Verified' : 'Reconfirm Monthly Form';
   }
 
   function renderReport(data) {
@@ -293,12 +339,48 @@
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'Failed to load report');
       renderReport(data);
+      renderSubmissionStatus(data.foodSafetySubmission || null);
       window.__reportError = '';
       window.__reportReady = true;
     } catch (err) {
       window.__reportError = err.message || 'Failed to load report';
       document.getElementById('reportRoot').innerHTML = `<div class="error-box">${esc(window.__reportError)}</div>`;
+      renderSubmissionStatus(null);
       window.__reportReady = true;
+    }
+  }
+
+  async function confirmReport() {
+    const confirmBtn = document.getElementById('confirmBtn');
+    const unitId = document.getElementById('unitSelect').value;
+    const month = document.getElementById('monthInput').value;
+    if (!unitId || !month) {
+      document.getElementById('reportRoot').innerHTML = '<div class="error-box">Select a unit and month first.</div>';
+      return;
+    }
+    if (currentSubmission && currentSubmission.status === 'verified') return;
+
+    const originalLabel = confirmBtn.textContent;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Submitting…';
+    try {
+      const r = await apiFetch(`${API}/reports/monthly-unit/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unitId, month, confirmed: true })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed to confirm monthly form');
+      renderSubmissionStatus(data.submission || null);
+    } catch (err) {
+      document.getElementById('submissionStatus').innerHTML = `<strong style="color:var(--bad);">Submission failed</strong><p>${esc(err.message || 'Failed to confirm monthly form')}</p>`;
+      document.getElementById('submissionStatus').classList.add('open');
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = originalLabel;
+      return;
+    }
+    if (!currentSubmission || currentSubmission.status !== 'verified') {
+      confirmBtn.disabled = false;
     }
   }
 

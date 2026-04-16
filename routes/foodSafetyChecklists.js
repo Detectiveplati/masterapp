@@ -11,6 +11,15 @@ const {
 } = require('../services/auth-middleware');
 const { logFoodSafetyDebug, readFoodSafetyDebugLines, LOG_FILE } = require('../services/foodsafety-debug-log');
 const {
+  TEMPMON_FOODSAFETY_TEMPLATE_CODE,
+  TEMPMON_FOODSAFETY_FORM_TYPE,
+  TEMPMON_FOODSAFETY_TITLE,
+  TEMPMON_FOODSAFETY_CATEGORY,
+  isTempMonFoodSafetyTemplate,
+  getTempMonFoodSafetyEntryUrl,
+  getTempMonFoodSafetyPdfUrl
+} = require('../services/foodsafety-tempmon-report');
+const {
   TEMPLATES,
   DEFAULT_TEMPLATE,
   DEFAULT_TEMPLATE_CODE,
@@ -78,6 +87,76 @@ function getPdfUrl(templateCode, monthKey, unitCode) {
   return `/api/foodsafety-checklists/month/report.pdf?template=${encodeURIComponent(templateCode)}&month=${encodeURIComponent(monthKey)}&unit=${encodeURIComponent(unitCode)}`;
 }
 
+function getTempMonTemplate() {
+  return {
+    code: TEMPMON_FOODSAFETY_TEMPLATE_CODE,
+    revision: '01',
+    title: TEMPMON_FOODSAFETY_TITLE,
+    titleZh: TEMPMON_FOODSAFETY_TITLE,
+    formType: TEMPMON_FOODSAFETY_FORM_TYPE,
+    periodType: 'monthly',
+    category: TEMPMON_FOODSAFETY_CATEGORY,
+    categoryZh: TEMPMON_FOODSAFETY_CATEGORY,
+    paper: { paperSize: 'A4', orientation: 'portrait', reportType: 'tempmon-monthly' }
+  };
+}
+
+function getRecordPdfUrl(record) {
+  if (isTempMonFoodSafetyTemplate(record.templateCode) || record.formType === TEMPMON_FOODSAFETY_FORM_TYPE) {
+    return getTempMonFoodSafetyPdfUrl(record.unitCode, record.monthKey);
+  }
+  return getPdfUrl(record.templateCode, record.monthKey, record.unitCode);
+}
+
+function buildReportSummaryFromRecord(record) {
+  if (isTempMonFoodSafetyTemplate(record.templateCode) || record.formType === TEMPMON_FOODSAFETY_FORM_TYPE) {
+    return {
+      _id: String(record._id),
+      templateCode: record.templateCode,
+      templateTitle: TEMPMON_FOODSAFETY_TITLE,
+      templateTitleZh: TEMPMON_FOODSAFETY_TITLE,
+      formType: TEMPMON_FOODSAFETY_FORM_TYPE,
+      category: TEMPMON_FOODSAFETY_CATEGORY,
+      categoryZh: TEMPMON_FOODSAFETY_CATEGORY,
+      unitCode: record.unitCode,
+      unitLabel: record.unitLabel,
+      monthKey: record.monthKey,
+      status: record.status,
+      submittedAt: record.finalization && record.finalization.at ? record.finalization.at : null,
+      submittedBy: record.finalization && record.finalization.name ? record.finalization.name : '',
+      verifiedAt: record.verification && record.verification.at ? record.verification.at : null,
+      verifiedBy: record.verification && record.verification.name ? record.verification.name : '',
+      archivedAt: record.reportArchive && record.reportArchive.generatedAt ? record.reportArchive.generatedAt : null,
+      archiveSize: record.reportArchive && record.reportArchive.size ? record.reportArchive.size : 0,
+      pdfUrl: getRecordPdfUrl(record),
+      entryUrl: getTempMonFoodSafetyEntryUrl(record.unitCode, record.monthKey)
+    };
+  }
+
+  const template = getTemplateByCode(record.templateCode);
+  return {
+    _id: String(record._id),
+    templateCode: record.templateCode,
+    templateTitle: template.title,
+    templateTitleZh: template.titleZh,
+    formType: template.formType,
+    category: template.category,
+    categoryZh: template.categoryZh,
+    unitCode: record.unitCode,
+    unitLabel: record.unitLabel,
+    monthKey: record.monthKey,
+    status: record.status,
+    submittedAt: record.finalization && record.finalization.at ? record.finalization.at : null,
+    submittedBy: record.finalization && record.finalization.name ? record.finalization.name : '',
+    verifiedAt: record.verification && record.verification.at ? record.verification.at : null,
+    verifiedBy: record.verification && record.verification.name ? record.verification.name : '',
+    archivedAt: record.reportArchive && record.reportArchive.generatedAt ? record.reportArchive.generatedAt : null,
+    archiveSize: record.reportArchive && record.reportArchive.size ? record.reportArchive.size : 0,
+    pdfUrl: getRecordPdfUrl(record),
+    entryUrl: getEntryUrl(template, record.monthKey, record.unitCode)
+  };
+}
+
 async function ensureMonthRecord(monthKey, unitCode, templateCode) {
   const { template, unit } = resolveTemplateAndUnit(unitCode, templateCode);
   const existing = await FoodSafetyChecklistMonth.findOne({
@@ -107,6 +186,37 @@ async function ensureMonthRecord(monthKey, unitCode, templateCode) {
 }
 
 function serializeRecord(record) {
+  if (isTempMonFoodSafetyTemplate(record.templateCode) || record.formType === TEMPMON_FOODSAFETY_FORM_TYPE) {
+    return {
+      _id: record._id,
+      templateCode: record.templateCode,
+      templateVersion: record.templateVersion || '01',
+      formType: record.formType || TEMPMON_FOODSAFETY_FORM_TYPE,
+      periodType: record.periodType || 'monthly',
+      unitCode: record.unitCode,
+      unitLabel: record.unitLabel,
+      monthKey: record.monthKey,
+      year: record.year,
+      month: record.month,
+      daysInMonth: record.daysInMonth,
+      status: record.status,
+      data: record.data || {},
+      progress: record.progress || { completedCells: 1, totalCells: 1, completionRate: 100 },
+      lastEditedBy: record.lastEditedBy || {},
+      finalizedBy: record.finalizedBy || {},
+      finalization: record.finalization || {},
+      verification: record.verification || {},
+      reportArchive: record.reportArchive ? {
+        fileName: record.reportArchive.fileName || '',
+        contentType: record.reportArchive.contentType || 'application/pdf',
+        size: record.reportArchive.size || 0,
+        generatedAt: record.reportArchive.generatedAt || null
+      } : {},
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt
+    };
+  }
+
   const template = getTemplateByCode(record.templateCode);
   return {
     _id: record._id,
@@ -299,55 +409,13 @@ router.get('/reports-summary', requireAuth, requirePermission('foodsafety'), asy
           entryUrl: summary.entryUrl
         };
       }
-      const template = getTemplateByCode(record.templateCode);
-      return {
-        _id: String(record._id),
-        templateCode: record.templateCode,
-        templateTitle: template.title,
-        templateTitleZh: template.titleZh,
-        formType: template.formType,
-        category: template.category,
-        categoryZh: template.categoryZh,
-        unitCode: record.unitCode,
-        unitLabel: record.unitLabel,
-        monthKey: record.monthKey,
-        status: record.status,
-        submittedAt: record.finalization && record.finalization.at ? record.finalization.at : null,
-        submittedBy: record.finalization && record.finalization.name ? record.finalization.name : '',
-        verifiedAt: record.verification && record.verification.at ? record.verification.at : null,
-        verifiedBy: record.verification && record.verification.name ? record.verification.name : '',
-        archivedAt: record.reportArchive && record.reportArchive.generatedAt ? record.reportArchive.generatedAt : null,
-        archiveSize: record.reportArchive && record.reportArchive.size ? record.reportArchive.size : 0,
-        pdfUrl: getPdfUrl(record.templateCode, record.monthKey, record.unitCode),
-        entryUrl: getEntryUrl(template, record.monthKey, record.unitCode)
-      };
+      return buildReportSummaryFromRecord(record);
     });
 
     for (const record of records) {
       const key = `${record.templateCode}:${record.unitCode}`;
       if (items.some((item) => `${item.templateCode}:${item.unitCode}` === key)) continue;
-      const template = getTemplateByCode(record.templateCode);
-      items.push({
-        _id: String(record._id),
-        templateCode: record.templateCode,
-        templateTitle: template.title,
-        templateTitleZh: template.titleZh,
-        formType: template.formType,
-        category: template.category,
-        categoryZh: template.categoryZh,
-        unitCode: record.unitCode,
-        unitLabel: record.unitLabel,
-        monthKey: record.monthKey,
-        status: record.status,
-        submittedAt: record.finalization && record.finalization.at ? record.finalization.at : null,
-        submittedBy: record.finalization && record.finalization.name ? record.finalization.name : '',
-        verifiedAt: record.verification && record.verification.at ? record.verification.at : null,
-        verifiedBy: record.verification && record.verification.name ? record.verification.name : '',
-        archivedAt: record.reportArchive && record.reportArchive.generatedAt ? record.reportArchive.generatedAt : null,
-        archiveSize: record.reportArchive && record.reportArchive.size ? record.reportArchive.size : 0,
-        pdfUrl: getPdfUrl(record.templateCode, record.monthKey, record.unitCode),
-        entryUrl: getEntryUrl(template, record.monthKey, record.unitCode)
-      });
+      items.push(buildReportSummaryFromRecord(record));
     }
 
     const filteredItems = items.filter((item) => !status || item.status === status);
@@ -535,7 +603,12 @@ router.post('/month/verify', requireAuth, requirePermission('foodsafety'), async
     if (!confirmed) return res.status(400).json({ error: 'Verification confirmation is required' });
     if (!verifierName) return res.status(400).json({ error: 'Verifier name is required' });
     if (!signatureDataUrl) return res.status(400).json({ error: 'Verifier signature is required' });
-    const record = await ensureMonthRecord(monthKey, unitCode, templateCode);
+    const record = isTempMonFoodSafetyTemplate(templateCode)
+      ? await FoodSafetyChecklistMonth.findOne({ templateCode, monthKey, unitCode })
+      : await ensureMonthRecord(monthKey, unitCode, templateCode);
+    if (!record) {
+      return res.status(404).json({ error: 'Submitted report not found' });
+    }
     if (!isFinalizedOrVerified(record.status)) {
       return res.status(400).json({ error: 'Form must be submitted before verification' });
     }
@@ -556,6 +629,27 @@ router.post('/month/verify', requireAuth, requirePermission('foodsafety'), async
   } catch (err) {
     console.error('✗ [FoodSafety Checklists] POST /month/verify:', err.message);
     res.status(400).json({ error: err.message });
+  }
+});
+
+router.get('/month/report-tempmon', requireAuth, requirePermission('foodsafety'), async (req, res) => {
+  try {
+    const monthKey = parseMonthKey(req.query.month);
+    const unitCode = String(req.query.unit || '').trim();
+    if (!unitCode) return res.status(400).json({ error: 'unit is required' });
+    const record = await FoodSafetyChecklistMonth.findOne({
+      templateCode: TEMPMON_FOODSAFETY_TEMPLATE_CODE,
+      monthKey,
+      unitCode
+    });
+    if (!record) return res.status(404).json({ error: 'TempMon monthly report not found' });
+    res.json({
+      template: getTempMonTemplate(),
+      record: serializeRecord(record)
+    });
+  } catch (err) {
+    console.error('✗ [FoodSafety Checklists] GET /month/report-tempmon:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 

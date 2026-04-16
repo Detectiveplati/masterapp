@@ -16,9 +16,16 @@ const TempMonAlert            = require('../models/TempMonAlert');
 const TempMonCorrectiveAction = require('../models/TempMonCorrectiveAction');
 const TempMonCalibration      = require('../models/TempMonCalibration');
 const TempMonConfig           = require('../models/TempMonConfig');
+const FoodSafetyChecklistMonth = require('../models/FoodSafetyChecklistMonth');
 
-const { requireAuth, requireAdmin } = require('../services/auth-middleware');
+const { requireAuth, requireAdmin, requirePermission } = require('../services/auth-middleware');
 const { memUpload, uploadBufferToCloudinary } = require('../services/cloudinary-upload');
+const {
+  TEMPMON_FOODSAFETY_TEMPLATE_CODE,
+  TEMPMON_FOODSAFETY_FORM_TYPE,
+  getTempMonFoodSafetyEntryUrl,
+  getTempMonFoodSafetyPdfUrl
+} = require('../services/foodsafety-tempmon-report');
 
 // Lazily resolve sendPushToPermission from the push router (avoids circular-at-load issues)
 function sendPush(title, message, url) {
@@ -1029,6 +1036,35 @@ function selectWindowSample(readings, unit, timeZone, seedKey) {
   return toSample(inRangeReadings[idx], unit, timeZone);
 }
 
+function makeActor(req) {
+  return {
+    userId: String(req.user && (req.user.id || req.user._id) || ''),
+    name: String(req.user && (req.user.displayName || req.user.username) || 'Unknown User'),
+    position: String(req.user && req.user.position || ''),
+    at: new Date()
+  };
+}
+
+async function getFoodSafetySubmission(unitId, monthKey) {
+  const record = await FoodSafetyChecklistMonth.findOne({
+    templateCode: TEMPMON_FOODSAFETY_TEMPLATE_CODE,
+    unitCode: String(unitId || ''),
+    monthKey: String(monthKey || '')
+  }).lean();
+  if (!record) return null;
+  return {
+    templateCode: record.templateCode,
+    formType: record.formType,
+    status: record.status,
+    submittedAt: record.finalization && record.finalization.at ? record.finalization.at : null,
+    submittedBy: record.finalization && record.finalization.name ? record.finalization.name : '',
+    verifiedAt: record.verification && record.verification.at ? record.verification.at : null,
+    verifiedBy: record.verification && record.verification.name ? record.verification.name : '',
+    entryUrl: getTempMonFoodSafetyEntryUrl(unitId, monthKey),
+    pdfUrl: getTempMonFoodSafetyPdfUrl(unitId, monthKey)
+  };
+}
+
 async function buildMonthlyUnitReportData(unitId, monthKey, options = {}) {
   const timeZone = options.timeZone || REPORT_TIMEZONE;
   const unit = await TempMonUnit.findById(unitId).lean();
@@ -1110,9 +1146,99 @@ router.get('/reports/monthly-unit', requireAuth, async (req, res) => {
     if (!unitId) return res.status(400).json({ error: 'unitId is required' });
     if (!month) return res.status(400).json({ error: 'month is required' });
     const report = await buildMonthlyUnitReportData(unitId, month);
+    report.foodSafetySubmission = await getFoodSafetySubmission(unitId, month);
     res.json(report);
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message || 'Could not build monthly unit report' });
+  }
+});
+
+router.post('/reports/monthly-unit/confirm', requireAuth, requirePermission('tempmon'), async (req, res) => {
+  try {
+    const unitId = String(req.body.unitId || '').trim();
+    const monthKey = String(req.body.month || '').trim();
+    const confirmed = req.body.confirmed === true;
+    if (!unitId) return res.status(400).json({ error: 'unitId is required' });
+    if (!monthKey) return res.status(400).json({ error: 'month is required' });
+    if (!confirmed) return res.status(400).json({ error: 'Confirmation is required' });
+
+    const reportData = await buildMonthlyUnitReportData(unitId, monthKey);
+    const actor = makeActor(req);
+    const [year, month] = monthKey.split('-').map(Number);
+    let record = await FoodSafetyChecklistMonth.findOne({
+      templateCode: TEMPMON_FOODSAFETY_TEMPLATE_CODE,
+      unitCode: unitId,
+      monthKey
+    });
+
+    if (record && record.status === 'verified') {
+      return res.status(400).json({ error: 'This monthly temperature form has already been verified' });
+    }
+
+    if (!record) {
+      record = new FoodSafetyChecklistMonth({
+        templateCode: TEMPMON_FOODSAFETY_TEMPLATE_CODE,
+        unitCode: unitId,
+        monthKey
+      });
+    }
+
+    record.templateVersion = '01';
+    record.formType = TEMPMON_FOODSAFETY_FORM_TYPE;
+    record.periodType = 'monthly';
+    record.unitLabel = reportData.unit && reportData.unit.name ? reportData.unit.name : 'TempMon Unit';
+    record.year = year;
+    record.month = month;
+    record.daysInMonth = Array.isArray(reportData.days) ? reportData.days.length : daysInMonth(monthKey);
+    record.status = 'finalized';
+    record.data = {
+      source: 'tempmon',
+      report: reportData
+    };
+    record.progress = {
+      completedCells: 1,
+      totalCells: 1,
+      completionRate: 100
+    };
+    record.lastEditedBy = actor;
+    record.finalizedBy = actor;
+    record.finalization = {
+      userId: actor.userId,
+      name: actor.name,
+      position: actor.position,
+      roleLabel: 'Submitted By',
+      typedSignature: actor.name,
+      signatureDataUrl: '',
+      confirmed: true,
+      at: actor.at
+    };
+    record.reportArchive = {
+      fileName: '',
+      contentType: 'application/pdf',
+      size: 0,
+      generatedAt: null,
+      data: null
+    };
+    if (!record.verification || !record.verification.roleLabel) {
+      record.verification = {
+        userId: '',
+        name: '',
+        position: '',
+        roleLabel: 'Verified By',
+        typedSignature: '',
+        signatureDataUrl: '',
+        confirmed: false,
+        at: null
+      };
+    }
+    await record.save();
+
+    res.json({
+      ok: true,
+      submission: await getFoodSafetySubmission(unitId, monthKey)
+    });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message || 'Could not confirm monthly temperature form' });
   }
 });
 

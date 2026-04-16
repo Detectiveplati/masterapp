@@ -43,6 +43,9 @@ const { logFoodSafetyDebug } = require('./services/foodsafety-debug-log');
 const FoodSafetyChecklistMonth = require('./models/FoodSafetyChecklistMonth');
 const FoodSafetyFormAssignment = require('./models/FoodSafetyFormAssignment');
 const { getTemplateByCode, getUnit } = require('./config/foodSafetyChecklistTemplate');
+const {
+    TEMPMON_FOODSAFETY_TEMPLATE_CODE
+} = require('./services/foodsafety-tempmon-report');
 
 // Try to load puppeteer (optional - for PDF generation)
 let puppeteer = null;
@@ -427,6 +430,9 @@ app.get('/foodsafety-forms/checklists-report.html', requireFoodSafetyFormsAssign
     unitCode: req.query.unit,
     monthKey: req.query.month
 })), (req, res) => res.sendFile(path.join(__dirname, 'foodsafety', 'checklists-report.html')));
+app.get('/foodsafety-forms/tempmon-report.html', requirePageAccess('foodsafety'), (req, res) => {
+    res.sendFile(path.join(__dirname, 'foodsafety', 'tempmon-report.html'));
+});
 app.get('/foodsafety-forms/forms', requirePageAccessAny(['foodsafetyforms', 'foodsafety']), (req, res) => {
     logFoodSafetyDebug('forms-page-open', {
         path: req.originalUrl || req.url,
@@ -609,6 +615,66 @@ app.get('/api/foodsafety-checklists/month/report.pdf', requireFoodSafetyFormsAss
         res.send(storedBuffer);
     } catch (err) {
         console.error('✗ [FoodSafety Checklists] PDF export failed:', err.message);
+        res.status(500).json({ error: `PDF export failed: ${err.message}` });
+    }
+});
+
+app.get('/api/foodsafety-checklists/month/report-tempmon.pdf', requireAuth, requirePermission('foodsafety'), async (req, res) => {
+    try {
+        if (!puppeteer) return res.status(500).json({ error: 'PDF export requires puppeteer. Run: npm install puppeteer' });
+        const month = String(req.query.month || '').trim();
+        const unit = String(req.query.unit || '').trim();
+        if (!month || !unit) return res.status(400).json({ error: 'month and unit are required' });
+
+        const query = {
+            templateCode: TEMPMON_FOODSAFETY_TEMPLATE_CODE,
+            monthKey: month,
+            unitCode: unit
+        };
+        const existing = await FoodSafetyChecklistMonth.findOne(query).select('unitLabel reportArchive');
+        if (!existing) return res.status(404).json({ error: 'TempMon monthly report not found' });
+        if (existing.reportArchive && existing.reportArchive.data && !req.query.refresh) {
+            res.setHeader('Content-Type', existing.reportArchive.contentType || 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${existing.reportArchive.fileName || `tempmon-report-${month}.pdf`}"`);
+            return res.send(existing.reportArchive.data);
+        }
+
+        const url = `http://localhost:${PORT}/foodsafety-forms/tempmon-report.html?month=${encodeURIComponent(month)}&unit=${encodeURIComponent(unit)}&print=1`;
+        const safeUnit = String(existing.unitLabel || 'tempmon-unit').replace(/[^A-Za-z0-9_-]+/g, '-');
+        const fileName = `${safeUnit}-${month}-verified.pdf`;
+        const pdfBuffer = await renderPdfFromLocalPage({
+            req,
+            url,
+            waitForExpression: 'window.__reportReady === true',
+            logLabel: 'foodsafety-tempmon-report',
+            pdfOptions: {
+                format: 'A4',
+                landscape: false,
+                printBackground: true,
+                margin: { top:'8mm', right:'8mm', bottom:'8mm', left:'8mm' },
+                scale: 0.9
+            }
+        });
+        const storedBuffer = Buffer.from(pdfBuffer);
+        await FoodSafetyChecklistMonth.updateOne(
+            query,
+            {
+                $set: {
+                    reportArchive: {
+                        fileName,
+                        contentType: 'application/pdf',
+                        size: storedBuffer.length,
+                        generatedAt: new Date(),
+                        data: storedBuffer
+                    }
+                }
+            }
+        );
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.send(storedBuffer);
+    } catch (err) {
+        console.error('✗ [FoodSafety Checklists] TempMon PDF export failed:', err.message);
         res.status(500).json({ error: `PDF export failed: ${err.message}` });
     }
 });

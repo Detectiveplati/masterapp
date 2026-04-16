@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.style.visibility='hidden'</script><script src="/auth-guard.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Safety TempMon Report</title>
+  <style>
+    :root {
+      --good: #2e7d32;
+      --line: #ccd6e0;
+      --head: #eef5fb;
+      --ink: #17212b;
+      --muted: #5a616c;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #fff; color: var(--ink); font-family: Arial, "Segoe UI", sans-serif; }
+    body { padding: 10mm; }
+    .report-shell { width: 100%; }
+    .report-head { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; margin-bottom: 12px; }
+    .report-brand { display: flex; align-items: center; justify-content: center; }
+    .report-logo { width: 60px; height: 60px; object-fit: contain; }
+    .report-center { text-align: center; }
+    .report-title { font-size: 18px; font-weight: 800; margin: 0; }
+    .report-sub { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .report-doc { text-align: center; font-size: 11px; color: var(--muted); }
+    .report-doc strong { display: block; color: var(--ink); }
+    .meta-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .meta-card { border: 1px solid var(--line); padding: 8px 10px; text-align: center; }
+    .meta-card strong { display: block; font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid var(--line); padding: 6px 5px; font-size: 11px; text-align: center; vertical-align: middle; }
+    thead th { background: var(--head); font-weight: 700; }
+    td.day { width: 54px; font-weight: 700; }
+    .sample-time { font-size: 10px; color: var(--muted); }
+    .sample-val { font-size: 12px; font-weight: 700; color: var(--good); }
+    .sample-empty { color: #b0b7c0; font-style: italic; }
+    .sample-good { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 34px; }
+    .notice { margin-top: 10px; font-size: 11px; color: var(--muted); }
+    .signature-wrap { margin-top: 12mm; border: 1px solid var(--line); }
+    .signature-grid { display: grid; grid-template-columns: 1fr 1fr; }
+    .sig-box { min-height: 88px; border-right: 1px solid var(--line); padding: 10px 12px; }
+    .sig-box:last-child { border-right: none; }
+    .sig-title { font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+    .sig-row { display: grid; grid-template-columns: 82px 1fr; gap: 8px; font-size: 10px; margin-bottom: 6px; }
+    .sig-value { border-bottom: 1px solid var(--line); min-height: 16px; }
+    .error-box { color: #b91c1c; font-weight: 700; }
+    @page { size: A4 portrait; margin: 8mm; }
+  </style>
+</head>
+<body data-module="foodsafetyforms">
+  <div class="report-shell" id="reportRoot">Loading report…</div>
+  <script>
+    window.__reportReady = false;
+    window.__reportError = '';
+    const params = new URLSearchParams(window.location.search);
+    const month = params.get('month') || '';
+    const unit = params.get('unit') || '';
+
+    function esc(text) {
+      return String(text == null ? '' : text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function monthLabel(value) {
+      if (!/^\d{4}-\d{2}$/.test(String(value || ''))) return value || '';
+      const parts = value.split('-').map(Number);
+      return new Date(parts[0], parts[1] - 1, 1).toLocaleString('en-SG', { month: 'long', year: 'numeric' });
+    }
+
+    function sampleCell(sample) {
+      if (!sample) return '<div class="sample-empty">—</div>';
+      return '<div class="sample-good">' +
+        '<div class="sample-val">' + esc(Number(sample.value).toFixed(1)) + '°C</div>' +
+        '<div class="sample-time">' + esc(sample.timeLabel || '') + (sample.deviceLabel ? ' · ' + esc(sample.deviceLabel) : '') + '</div>' +
+        '</div>';
+    }
+
+    function renderSignatureValue(signature) {
+      if (signature && signature.signatureDataUrl) {
+        return '<img src="' + esc(signature.signatureDataUrl) + '" alt="Signature" style="max-height:34px;max-width:100%;display:block;">';
+      }
+      return esc((signature && (signature.typedSignature || signature.name)) || '');
+    }
+
+    async function load() {
+      const res = await fetch('/api/foodsafety-checklists/month/report-tempmon?month=' + encodeURIComponent(month) + '&unit=' + encodeURIComponent(unit), { credentials: 'include' });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || 'Failed to load report');
+      const record = payload.record || {};
+      const report = record.data && record.data.report ? record.data.report : null;
+      if (!report) throw new Error('Report snapshot is missing');
+      const rows = (report.days || []).map((day) => (
+        '<tr>' +
+          '<td class="day">' + esc(day.day) + '</td>' +
+          '<td>' + sampleCell(day.am) + '</td>' +
+          '<td>' + sampleCell(day.pm) + '</td>' +
+        '</tr>'
+      )).join('');
+      const finalization = record.finalization || {};
+      const verification = record.verification || {};
+      const archivedAt = record.reportArchive && record.reportArchive.generatedAt
+        ? new Date(record.reportArchive.generatedAt).toLocaleString('en-SG')
+        : (report.generatedAtLabel || '');
+
+      document.getElementById('reportRoot').innerHTML =
+        '<div class="report-head">' +
+          '<div class="report-brand"><img class="report-logo" src="/templog/assets/Chilli-Api-Logo-170px.png" alt="Chilli Api logo"></div>' +
+          '<div class="report-center">' +
+            '<h1 class="report-title">CHILLI API CATERING PTE LTD</h1>' +
+            '<p class="report-sub">Equipment Temperature Monitoring Log</p>' +
+          '</div>' +
+          '<div class="report-doc">' +
+            '<strong>CAC-SOP-02-F01</strong>' +
+            '<div>Revision REV01</div>' +
+            '<div>Archived ' + esc(archivedAt) + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="meta-grid">' +
+          '<div class="meta-card"><strong>Unit</strong>' + esc(report.unit && report.unit.name ? report.unit.name : record.unitLabel || '') + '</div>' +
+          '<div class="meta-card"><strong>Month</strong>' + esc(monthLabel(report.month || record.monthKey || '')) + '</div>' +
+          '<div class="meta-card"><strong>Acceptable Range</strong>' + esc(String(report.unit && report.unit.criticalMin) + '°C to ' + String(report.unit && report.unit.criticalMax) + '°C') + '</div>' +
+          '<div class="meta-card"><strong>Sampling Windows</strong>' + esc((report.windows && report.windows.am ? report.windows.am.label + ' ' + report.windows.am.start + '-' + report.windows.am.end : '') + ' · ' + (report.windows && report.windows.pm ? report.windows.pm.label + ' ' + report.windows.pm.start + '-' + report.windows.pm.end : '')) + '</div>' +
+        '</div>' +
+        '<table>' +
+          '<thead><tr><th style="width:70px">Date</th><th>' + esc(report.windows && report.windows.am ? report.windows.am.label : 'AM') + ' Reading</th><th>' + esc(report.windows && report.windows.pm ? report.windows.pm.label : 'PM') + ' Reading</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>' +
+        '<div class="notice">Selection rule: one stable random in-range reading is selected within each window. If no compliant reading exists in the window, the cell is left blank.</div>' +
+        '<div class="signature-wrap"><div class="signature-grid">' +
+          '<div class="sig-box">' +
+            '<div class="sig-title">' + esc(finalization.roleLabel || 'Submitted By') + '</div>' +
+            '<div class="sig-row"><div>Name</div><div class="sig-value">' + esc(finalization.name || '') + '</div></div>' +
+            '<div class="sig-row"><div>Position</div><div class="sig-value">' + esc(finalization.position || '') + '</div></div>' +
+            '<div class="sig-row"><div>Signature</div><div class="sig-value">' + renderSignatureValue(finalization) + '</div></div>' +
+            '<div class="sig-row"><div>Date</div><div class="sig-value">' + esc(finalization.at ? new Date(finalization.at).toLocaleString('en-SG') : '') + '</div></div>' +
+          '</div>' +
+          '<div class="sig-box">' +
+            '<div class="sig-title">' + esc(verification.roleLabel || 'Verified By') + '</div>' +
+            '<div class="sig-row"><div>Name</div><div class="sig-value">' + esc(verification.name || '') + '</div></div>' +
+            '<div class="sig-row"><div>Position</div><div class="sig-value">' + esc(verification.position || '') + '</div></div>' +
+            '<div class="sig-row"><div>Signature</div><div class="sig-value">' + renderSignatureValue(verification) + '</div></div>' +
+            '<div class="sig-row"><div>Date</div><div class="sig-value">' + esc(verification.at ? new Date(verification.at).toLocaleString('en-SG') : '') + '</div></div>' +
+          '</div>' +
+        '</div></div>';
+      document.documentElement.style.visibility = '';
+      window.__reportReady = true;
+    }
+
+    load().catch((err) => {
+      window.__reportError = err && err.message ? String(err.message) : 'Failed to load report';
+      document.getElementById('reportRoot').innerHTML = '<div class="error-box">' + esc(window.__reportError) + '</div>';
+      document.documentElement.style.visibility = '';
+      window.__reportReady = true;
+    });
+  </script>
+</body>
+</html>
