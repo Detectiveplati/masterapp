@@ -106,8 +106,48 @@
       box-shadow: 0 16px 48px rgba(18,19,22,0.22);
       padding: 22px;
     }
+    .modal-card.preview-card {
+      max-width: 1180px;
+      height: min(90vh, 920px);
+      display: flex;
+      flex-direction: column;
+      padding: 18px;
+    }
     .modal-card h3 { margin: 0 0 8px; color: var(--ink); }
     .modal-card p { margin: 0 0 16px; color: var(--muted); line-height: 1.55; }
+    .preview-meta { margin-bottom: 10px; color: var(--muted); font-size: 0.9rem; }
+    .preview-frame-wrap {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 420px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .preview-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #fff;
+    }
+    .preview-loading,
+    .preview-error {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      background: rgba(255,255,255,0.96);
+      color: var(--muted);
+      font-size: 0.95rem;
+      z-index: 1;
+    }
+    .preview-error { color: #b42318; }
+    .preview-loading.open,
+    .preview-error.open { display: flex; }
     .signature-pad-head {
       display: flex;
       justify-content: space-between;
@@ -199,6 +239,23 @@
     </section>
   </main>
 
+  <div class="modal-overlay" id="previewModal">
+    <div class="modal-card preview-card">
+      <h3>Review Form</h3>
+      <p class="preview-meta" id="previewMeta">Loading preview…</p>
+      <div class="preview-frame-wrap">
+        <div class="preview-loading open" id="previewLoading">Loading form preview…</div>
+        <div class="preview-error" id="previewError">Could not load the form preview.</div>
+        <iframe id="previewFrame" class="preview-frame" title="Form preview"></iframe>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="cancelPreviewBtn" type="button">Cancel</button>
+        <a class="btn btn-outline" id="openPreviewTabBtn" href="#" target="_blank" rel="noopener">Open in New Tab</a>
+        <button class="btn btn-primary" id="continuePreviewBtn" type="button" disabled>Confirm and Continue</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="verifyModal">
     <div class="modal-card">
       <h3>Verify Form</h3>
@@ -256,6 +313,14 @@
       const draftCount = document.getElementById('draftCount');
       const notDueCount = document.getElementById('notDueCount');
       const msg = document.getElementById('msg');
+      const previewModal = document.getElementById('previewModal');
+      const previewMeta = document.getElementById('previewMeta');
+      const previewFrame = document.getElementById('previewFrame');
+      const previewLoading = document.getElementById('previewLoading');
+      const previewError = document.getElementById('previewError');
+      const cancelPreviewBtn = document.getElementById('cancelPreviewBtn');
+      const openPreviewTabBtn = document.getElementById('openPreviewTabBtn');
+      const continuePreviewBtn = document.getElementById('continuePreviewBtn');
       const verifyModal = document.getElementById('verifyModal');
       const verifierNameInput = document.getElementById('verifierNameInput');
       const verifierTitleInput = document.getElementById('verifierTitleInput');
@@ -263,7 +328,18 @@
       const clearVerifySignatureBtn = document.getElementById('clearVerifySignatureBtn');
       const cancelVerifyBtn = document.getElementById('cancelVerifyBtn');
       const confirmVerifyBtn = document.getElementById('confirmVerifyBtn');
-      const verifyState = { templateCode: '', monthKey: '', unitCode: '', pdfUrl: '', drawing: false, hasInk: false, ctx: null };
+      const verifyState = {
+        templateCode: '',
+        monthKey: '',
+        unitCode: '',
+        pdfUrl: '',
+        reportUrl: '',
+        previewLoaded: false,
+        previewConfirmed: false,
+        drawing: false,
+        hasInk: false,
+        ctx: null
+      };
       let allItems = [];
 
       function showMessage(type, text) {
@@ -363,17 +439,57 @@
         verifyState.drawing = false;
       }
 
-      function openVerifyModal(templateCode, monthKey, unitCode, pdfUrl) {
-        const authUser = window._authUser || {};
+      function resetPreviewState() {
+        verifyState.previewLoaded = false;
+        verifyState.previewConfirmed = false;
+        previewLoading.classList.add('open');
+        previewError.classList.remove('open');
+        continuePreviewBtn.disabled = true;
+      }
+
+      function openPreviewModal(templateCode, monthKey, unitCode, pdfUrl, reportUrl, titleText) {
         verifyState.templateCode = templateCode;
         verifyState.monthKey = monthKey;
         verifyState.unitCode = unitCode;
         verifyState.pdfUrl = pdfUrl || '';
+        verifyState.reportUrl = reportUrl || '';
+        resetPreviewState();
+        previewMeta.textContent = titleText || 'Review the submitted form before continuing to verification.';
+        openPreviewTabBtn.href = verifyState.reportUrl || '#';
+        previewModal.classList.add('open');
+        if (!verifyState.reportUrl) {
+          previewLoading.classList.remove('open');
+          previewError.textContent = 'Could not load the form preview.';
+          previewError.classList.add('open');
+          previewFrame.src = 'about:blank';
+          return;
+        }
+        previewFrame.removeAttribute('srcdoc');
+        previewFrame.src = verifyState.reportUrl;
+      }
+
+      function openVerifyModal() {
+        const authUser = window._authUser || {};
+        if (!verifyState.previewConfirmed) return;
         verifierNameInput.value = authUser.displayName || authUser.username || '';
         verifierTitleInput.value = ft('reports_verifier_position_placeholder', 'Food Safety Officer');
         verifyModal.classList.add('open');
         resizeSignatureCanvas();
         window.setTimeout(() => verifierNameInput.focus(), 0);
+      }
+
+      function closePreviewModal(options) {
+        const preserveConfirmation = Boolean(options && options.preserveConfirmation);
+        previewModal.classList.remove('open');
+        previewFrame.src = 'about:blank';
+        if (preserveConfirmation) {
+          verifyState.previewLoaded = false;
+          previewLoading.classList.add('open');
+          previewError.classList.remove('open');
+          continuePreviewBtn.disabled = true;
+          return;
+        }
+        resetPreviewState();
       }
 
       function closeVerifyModal() {
@@ -441,7 +557,7 @@
             <td>
               ${esc(formatDateTime(item.submittedAt))}<br><span style="color:var(--muted);">${esc(item.submittedBy || '')}</span>
               <div class="actions">
-                ${item.status === 'finalized' ? `<button class="btn btn-primary btn-sm" data-verify-template="${esc(item.templateCode)}" data-verify-month="${esc(item.monthKey)}" data-verify-unit="${esc(item.unitCode)}" data-verify-pdf="${esc(item.pdfUrl || '')}" type="button">${esc(ft('reports_verify', 'Verify'))}</button>` : ''}
+                ${item.status === 'finalized' ? `<button class="btn btn-primary btn-sm" data-verify-template="${esc(item.templateCode)}" data-verify-month="${esc(item.monthKey)}" data-verify-unit="${esc(item.unitCode)}" data-verify-pdf="${esc(item.pdfUrl || '')}" data-verify-report="${esc(item.reportUrl || '')}" data-verify-title="${esc((flang() === 'zh' ? (item.templateTitleZh || item.templateTitle) : item.templateTitle) + ' · ' + localizeUnitLabel(item))}" type="button">${esc(ft('reports_verify', 'Verify'))}</button>` : ''}
               </div>
             </td>
             <td>${esc(formatDateTime(item.verifiedAt))}<br><span style="color:var(--muted);">${esc(item.verifiedBy || '')}</span></td>
@@ -450,11 +566,13 @@
         `).join('');
 
         reportsBody.querySelectorAll('[data-verify-month]').forEach((button) => {
-          button.addEventListener('click', () => openVerifyModal(
+          button.addEventListener('click', () => openPreviewModal(
             button.getAttribute('data-verify-template'),
             button.getAttribute('data-verify-month'),
             button.getAttribute('data-verify-unit'),
-            button.getAttribute('data-verify-pdf')
+            button.getAttribute('data-verify-pdf'),
+            button.getAttribute('data-verify-report'),
+            button.getAttribute('data-verify-title')
           ));
         });
       }
@@ -518,9 +636,26 @@
         const href = row.getAttribute('data-entry-url');
         if (href) window.location.assign(href);
       });
+      previewFrame.addEventListener('load', () => {
+        if (!previewModal.classList.contains('open')) return;
+        verifyState.previewLoaded = true;
+        previewLoading.classList.remove('open');
+        previewError.classList.remove('open');
+        continuePreviewBtn.disabled = !verifyState.reportUrl;
+      });
+      cancelPreviewBtn.addEventListener('click', closePreviewModal);
+      continuePreviewBtn.addEventListener('click', () => {
+        if (!verifyState.previewLoaded || !verifyState.reportUrl) return;
+        verifyState.previewConfirmed = true;
+        closePreviewModal({ preserveConfirmation: true });
+        openVerifyModal();
+      });
       clearVerifySignatureBtn.addEventListener('click', clearVerifySignature);
       cancelVerifyBtn.addEventListener('click', closeVerifyModal);
       confirmVerifyBtn.addEventListener('click', verifyRecord);
+      previewModal.addEventListener('click', (event) => {
+        if (event.target === previewModal) closePreviewModal();
+      });
       verifyModal.addEventListener('click', (event) => {
         if (event.target === verifyModal) closeVerifyModal();
       });

@@ -87,6 +87,10 @@ function getPdfUrl(templateCode, monthKey, unitCode) {
   return `/api/foodsafety-checklists/month/report.pdf?template=${encodeURIComponent(templateCode)}&month=${encodeURIComponent(monthKey)}&unit=${encodeURIComponent(unitCode)}`;
 }
 
+function getReportUrl(templateCode, monthKey, unitCode) {
+  return `/foodsafety-forms/checklists-report.html?template=${encodeURIComponent(templateCode)}&month=${encodeURIComponent(monthKey)}&unit=${encodeURIComponent(unitCode)}`;
+}
+
 function getTempMonTemplate() {
   return {
     code: TEMPMON_FOODSAFETY_TEMPLATE_CODE,
@@ -106,6 +110,13 @@ function getRecordPdfUrl(record) {
     return getTempMonFoodSafetyPdfUrl(record.unitCode, record.monthKey);
   }
   return getPdfUrl(record.templateCode, record.monthKey, record.unitCode);
+}
+
+function getRecordReportUrl(record) {
+  if (isTempMonFoodSafetyTemplate(record.templateCode) || record.formType === TEMPMON_FOODSAFETY_FORM_TYPE) {
+    return `/foodsafety-forms/tempmon-report.html?month=${encodeURIComponent(record.monthKey)}&unit=${encodeURIComponent(record.unitCode)}`;
+  }
+  return getReportUrl(record.templateCode, record.monthKey, record.unitCode);
 }
 
 function buildReportSummaryFromRecord(record) {
@@ -129,6 +140,7 @@ function buildReportSummaryFromRecord(record) {
       archivedAt: record.reportArchive && record.reportArchive.generatedAt ? record.reportArchive.generatedAt : null,
       archiveSize: record.reportArchive && record.reportArchive.size ? record.reportArchive.size : 0,
       pdfUrl: getRecordPdfUrl(record),
+      reportUrl: getRecordReportUrl(record),
       entryUrl: getTempMonFoodSafetyEntryUrl(record.unitCode, record.monthKey)
     };
   }
@@ -153,6 +165,7 @@ function buildReportSummaryFromRecord(record) {
     archivedAt: record.reportArchive && record.reportArchive.generatedAt ? record.reportArchive.generatedAt : null,
     archiveSize: record.reportArchive && record.reportArchive.size ? record.reportArchive.size : 0,
     pdfUrl: getRecordPdfUrl(record),
+    reportUrl: getRecordReportUrl(record),
     entryUrl: getEntryUrl(template, record.monthKey, record.unitCode)
   };
 }
