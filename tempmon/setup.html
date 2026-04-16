@@ -157,6 +157,24 @@
         </table>
       </div>
     </div>
+
+    <div class="section-card admin-only" style="display:none">
+      <h2>🧭 Apply New Default Ranges</h2>
+      <p class="page-sub" style="margin-bottom:14px">Use this once to update all active deployed units by type without editing each unit manually.</p>
+      <div style="overflow-x:auto;margin-bottom:14px">
+        <table class="data-table">
+          <thead><tr><th>Type</th><th>Critical Min</th><th>Critical Max</th><th>Target Temp</th></tr></thead>
+          <tbody>
+            <tr><td><span class="type-badge type-chiller">chiller</span></td><td>0°C</td><td>6°C</td><td>3°C</td></tr>
+            <tr><td><span class="type-badge type-freezer">freezer</span></td><td>-25°C</td><td>-14°C</td><td>-18°C</td></tr>
+            <tr><td><span class="type-badge type-warmer">warmer</span></td><td>70°C</td><td>90°C</td><td>75°C</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:0.82rem;color:var(--muted);margin:0 0 14px">This updates every active deployed chiller, freezer, and warmer. Warning buffers and alert thresholds will stay unchanged.</p>
+      <div id="bulkRangeNotice" class="notice"></div>
+      <button class="btn btn-primary" onclick="applyDefaultRanges()">Apply New Default Ranges to All Deployed Units</button>
+    </div>
   </div>
 
   <!-- ── LORA GATEWAY TAB ──────────────────────────────────── -->
@@ -384,9 +402,9 @@
               <th style="padding:4px 0;text-align:center;color:var(--muted)">Delay</th>
             </tr></thead>
             <tbody>
-              <tr><td style="padding:4px 8px 4px 0;font-weight:700">🧊 Freezer</td><td style="padding:4px 6px;text-align:center">−25°C</td><td style="padding:4px 6px;text-align:center">−12°C</td><td style="padding:4px 6px;text-align:center">3°C</td><td style="padding:4px 6px;text-align:center">−18°C</td><td style="padding:4px 0;text-align:center">20 min</td></tr>
-              <tr><td style="padding:4px 8px 4px 0;font-weight:700">❄️ Chiller</td><td style="padding:4px 6px;text-align:center">−1°C</td><td style="padding:4px 6px;text-align:center">8°C</td><td style="padding:4px 6px;text-align:center">2°C</td><td style="padding:4px 6px;text-align:center">3°C</td><td style="padding:4px 0;text-align:center">20 min</td></tr>
-              <tr><td style="padding:4px 8px 4px 0;font-weight:700">🔥 Warmer</td><td style="padding:4px 6px;text-align:center">63°C</td><td style="padding:4px 6px;text-align:center">90°C</td><td style="padding:4px 6px;text-align:center">5°C</td><td style="padding:4px 6px;text-align:center">75°C</td><td style="padding:4px 0;text-align:center">15 min</td></tr>
+              <tr><td style="padding:4px 8px 4px 0;font-weight:700">🧊 Freezer</td><td style="padding:4px 6px;text-align:center">−25°C</td><td style="padding:4px 6px;text-align:center">−14°C</td><td style="padding:4px 6px;text-align:center">3°C</td><td style="padding:4px 6px;text-align:center">−18°C</td><td style="padding:4px 0;text-align:center">20 min</td></tr>
+              <tr><td style="padding:4px 8px 4px 0;font-weight:700">❄️ Chiller</td><td style="padding:4px 6px;text-align:center">0°C</td><td style="padding:4px 6px;text-align:center">6°C</td><td style="padding:4px 6px;text-align:center">2°C</td><td style="padding:4px 6px;text-align:center">3°C</td><td style="padding:4px 0;text-align:center">20 min</td></tr>
+              <tr><td style="padding:4px 8px 4px 0;font-weight:700">🔥 Warmer</td><td style="padding:4px 6px;text-align:center">70°C</td><td style="padding:4px 6px;text-align:center">90°C</td><td style="padding:4px 6px;text-align:center">5°C</td><td style="padding:4px 6px;text-align:center">75°C</td><td style="padding:4px 0;text-align:center">15 min</td></tr>
               <tr><td style="padding:4px 8px 4px 0;font-weight:700">🌡️ Ambient</td><td colspan="5" style="padding:4px 0;color:var(--muted);font-size:0.75rem">Set to your environment's acceptable range</td></tr>
             </tbody>
           </table>
@@ -423,7 +441,7 @@
           <tr><td style="padding:5px 10px 5px 0;font-weight:700">Warmup Start Temp</td><td style="padding:5px 10px;text-align:center">40°C</td><td style="padding:5px 0;color:var(--muted)">Above this temp → warmer is considered switched on and in the warming-up phase.</td></tr>
           <tr><td style="padding:5px 10px 5px 0;font-weight:700">Off Confirm (min)</td><td style="padding:5px 10px;text-align:center">20 min</td><td style="padding:5px 0;color:var(--muted)">How long to sit at room temp before confirming the state as OFF (not just a brief dip).</td></tr>
           <tr><td style="padding:5px 10px 5px 0;font-weight:700">Fault Timeout (min)</td><td style="padding:5px 10px;text-align:center">30 min</td><td style="padding:5px 0;color:var(--muted)">If the warmer has been on (warming up) for this long without reaching the target, it is flagged as FAULT and a push alert is sent. Most warmers reach temperature within 15–20 min.</td></tr>
-          <tr><td style="padding:5px 10px 5px 0;font-weight:700">Target (Critical Min)</td><td style="padding:5px 10px;text-align:center">63°C</td><td style="padding:5px 0;color:var(--muted)">This is the temperature the warmer must reach to be considered ACTIVE. Use the Critical Min field on the unit — the state machine uses this as the target threshold.</td></tr>
+          <tr><td style="padding:5px 10px 5px 0;font-weight:700">Target (Critical Min)</td><td style="padding:5px 10px;text-align:center">70°C</td><td style="padding:5px 0;color:var(--muted)">This is the temperature the warmer must reach to be considered ACTIVE. Use the Critical Min field on the unit — the state machine uses this as the target threshold.</td></tr>
         </tbody>
       </table>
       <p style="font-size:0.75rem;color:var(--muted);margin-top:10px">💡 These values can be adjusted per unit by an administrator via the database if a specific warmer warms up slower or operates at a different typical room temperature.</p>
@@ -459,7 +477,7 @@
       </h2>
       <p style="color:var(--muted);font-size:0.85rem;margin-bottom:16px">
         Edit temperature limits and alert delay for all equipment in one view. Changes are saved per-row or all at once with <strong>Save All</strong>.
-        <br><span style="font-size:0.78rem">💡 <strong>Warmer equipment:</strong> set Critical Min to your legal hot-holding minimum (63°C). The state machine uses this as the target that defines when the warmer is considered ACTIVE.</span>
+        <br><span style="font-size:0.78rem">💡 <strong>Warmer equipment:</strong> set Critical Min to the required minimum holding temperature for your operation. The state machine uses this as the target that defines when the warmer is considered ACTIVE.</span>
       </p>
       <div id="thresholdNotice" class="notice"></div>
       <div style="overflow-x:auto;margin-top:12px">
@@ -533,30 +551,22 @@
   // Standard temperature limits per equipment type.
   // Sources: UK FSA, FDA Food Code 2022, EU Food Hygiene Regulation 852/2004.
   //
-  // FREEZER:  -18°C is the FSA/FDA target. Food safety risk begins above -12°C
-  //           (thawing starts, bacteria become active). Using -12°C as the critical
-  //           high and -15°C as the warning (-12 - 3°C buffer) means a standard
-  //           door opening (typical temp rise to -14–-16°C) only triggers a warning,
-  //           not a critical alarm. -25°C critical low covers compressor failure.
+  // FREEZER:  -25°C to -14°C is the configured acceptable band. Target -18°C
+  //           remains the standard frozen storage operating point.
   //
-  // CHILLER:  FSA danger zone starts at 8°C — this is the legal/practical
-  //           intervention threshold. 5°C is the recommended operating TARGET,
-  //           not the critical limit. Warning fires at 6°C (8 - 2°C buffer),
-  //           giving staff a head-up before the critical limit is hit.
-  //           Critical low -2°C covers freezing risk for produce/dairy.
+  // CHILLER:  0°C to 6°C is the configured acceptable band. Target 3°C keeps
+  //           normal operation centered inside the allowed range.
   //
-  // WARMER:   UK law (Food Safety (Temperature Control) Regulations) requires
-  //           hot holding at ≥63°C. Using 63°C as the critical low is legally
-  //           sound; warning fires at 68°C (63 + 5°C buffer). Critical high at
-  //           90°C covers quality/safety risk from overheating.
+  // WARMER:   70°C to 90°C is the configured acceptable band. Target 75°C keeps
+  //           hot-holding above the minimum acceptable operating temperature.
   //
   // alertThresholdMinutes defaults are set per-type to reflect normal operation:
   //   Freezer/Chiller: 20 min — door openings typically recover within 5–10 min.
   //   Warmer: 15 min — shorter window as hot-holding is a legal CCP.
   const TYPE_DEFAULTS = {
-    freezer: { criticalMin: -25, criticalMax: -12, targetTemp: -18, warningBuffer: 3, alertThresholdMinutes: 20 },
-    chiller: { criticalMin:  -1, criticalMax:   8, targetTemp:   3, warningBuffer: 2, alertThresholdMinutes: 20 },
-    warmer:  { criticalMin:  63, criticalMax:  90, targetTemp:  75, warningBuffer: 5, alertThresholdMinutes: 15 },
+    freezer: { criticalMin: -25, criticalMax: -14, targetTemp: -18, warningBuffer: 3, alertThresholdMinutes: 20 },
+    chiller: { criticalMin:   0, criticalMax:   6, targetTemp:   3, warningBuffer: 2, alertThresholdMinutes: 20 },
+    warmer:  { criticalMin:  70, criticalMax:  90, targetTemp:  75, warningBuffer: 5, alertThresholdMinutes: 15 },
     ambient: null // no standard limits
   };
 
@@ -875,6 +885,41 @@
       ? `⚠️ ${ok} saved, ${fail} failed — check rows with ❌`
       : `✅ All ${ok} unit(s) saved successfully`;
     setTimeout(() => { notice.style.display = 'none'; }, 4000);
+  }
+
+  async function applyDefaultRanges() {
+    const message = [
+      'Apply the new default acceptable ranges to all active deployed units?',
+      '',
+      'Chiller: 0°C to 6°C (target 3°C)',
+      'Freezer: -25°C to -14°C (target -18°C)',
+      'Warmer: 70°C to 90°C (target 75°C)',
+      '',
+      'This will overwrite the current min/max/target values for all active chillers, freezers, and warmers.'
+    ].join('\n');
+    if (!confirm(message)) return;
+
+    const notice = document.getElementById('bulkRangeNotice');
+    notice.className = 'notice';
+    notice.textContent = 'Applying default ranges…';
+    notice.style.display = 'block';
+    try {
+      const r = await apiFetch(API + '/admin/apply-type-default-ranges', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmed: true })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Could not apply default ranges');
+      const results = data.results || {};
+      notice.className = 'notice ok';
+      notice.textContent =
+        `✅ Updated ${data.totalModified || 0} unit(s) (${results.chiller?.modified || 0} chillers, ${results.freezer?.modified || 0} freezers, ${results.warmer?.modified || 0} warmers).`;
+      await loadUnits();
+    } catch (err) {
+      notice.className = 'notice err';
+      notice.textContent = '❌ ' + err.message;
+    }
   }
 
   applyTypeDefaults('u'); // pre-fill Add Unit form with freezer defaults on load

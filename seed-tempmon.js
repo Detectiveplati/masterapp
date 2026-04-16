@@ -26,9 +26,9 @@ const TempMonDevice = require('./models/TempMonDevice');
 
 // ── Temperature limit defaults ────────────────────────────────────────────────
 const LIMITS = {
-  freezer: { criticalMin: -25, criticalMax: -12, warningBuffer: 2, targetTemp: -18 },
-  chiller: { criticalMin:   1, criticalMax:   8, warningBuffer: 2, targetTemp:   4 },
-  warmer:  { criticalMin:  60, criticalMax:  90, warningBuffer: 5, targetTemp:  68 },
+  freezer: { criticalMin: -25, criticalMax: -14, warningBuffer: 2, targetTemp: -18 },
+  chiller: { criticalMin:   0, criticalMax:   6, warningBuffer: 2, targetTemp:   3 },
+  warmer:  { criticalMin:  70, criticalMax:  90, warningBuffer: 5, targetTemp:  75 },
 };
 
 // ── Equipment type → TempLog equipment label ──────────────────────────────────
@@ -168,7 +168,7 @@ async function main() {
 
   console.log(`\n✅ Done — ${created} created, ${updated} updated, ${skipped} skipped`);
   console.log('⚠️  Default temp limits applied (adjust per unit in Setup if needed):');
-  console.log('   Freezer: -25 to -12°C  |  Chiller: 1 to 8°C  |  Warmer: 60 to 90°C');
+  console.log('   Freezer: -25 to -14°C  |  Chiller: 0 to 6°C  |  Warmer: 70 to 90°C');
 
   await mongoose.disconnect();
   await templogClient.close();

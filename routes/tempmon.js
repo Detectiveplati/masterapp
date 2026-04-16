@@ -27,6 +27,12 @@ const {
   getTempMonFoodSafetyPdfUrl
 } = require('../services/foodsafety-tempmon-report');
 
+const TYPE_RANGE_DEFAULTS = {
+  chiller: { criticalMin: 0, criticalMax: 6, targetTemp: 3 },
+  freezer: { criticalMin: -25, criticalMax: -14, targetTemp: -18 },
+  warmer: { criticalMin: 70, criticalMax: 90, targetTemp: 75 }
+};
+
 // Lazily resolve sendPushToPermission from the push router (avoids circular-at-load issues)
 function sendPush(title, message, url) {
   try {
@@ -135,6 +141,47 @@ router.delete('/units/:id', requireAuth, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/admin/apply-type-default-ranges', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    if (req.body.confirmed !== true) {
+      return res.status(400).json({ error: 'Confirmation is required' });
+    }
+
+    const results = {};
+    let totalMatched = 0;
+    let totalModified = 0;
+    for (const [type, defaults] of Object.entries(TYPE_RANGE_DEFAULTS)) {
+      const update = {
+        criticalMin: defaults.criticalMin,
+        criticalMax: defaults.criticalMax,
+        targetTemp: defaults.targetTemp
+      };
+      const r = await TempMonUnit.updateMany(
+        { type, active: true },
+        { $set: update }
+      );
+      results[type] = {
+        criticalMin: defaults.criticalMin,
+        criticalMax: defaults.criticalMax,
+        targetTemp: defaults.targetTemp,
+        matched: r.matchedCount || 0,
+        modified: r.modifiedCount || 0
+      };
+      totalMatched += r.matchedCount || 0;
+      totalModified += r.modifiedCount || 0;
+    }
+
+    res.json({
+      ok: true,
+      results,
+      totalMatched,
+      totalModified
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Could not apply default ranges' });
   }
 });
 
@@ -951,8 +998,8 @@ router.get('/reports/compliance', requireAuth, async (req, res) => {
 
 const REPORT_TIMEZONE = process.env.TEMP_MON_REPORT_TZ || process.env.TZ || 'Asia/Singapore';
 const WINDOW_DEFS = {
-  am: { key: 'am', label: 'AM', startHour: 6, endHour: 10 },
-  pm: { key: 'pm', label: 'PM', startHour: 16, endHour: 20 }
+  am: { key: 'am', label: 'Opening Temperature', startHour: 4, endHour: 5 },
+  pm: { key: 'pm', label: 'Closing Temperature', startHour: 17, endHour: 18 }
 };
 
 function getTzParts(date, timeZone) {
@@ -1132,8 +1179,8 @@ async function buildMonthlyUnitReportData(unitId, monthKey, options = {}) {
       criticalMax: unit.criticalMax
     },
     windows: {
-      am: { label: WINDOW_DEFS.am.label, start: '06:00', end: '10:59' },
-      pm: { label: WINDOW_DEFS.pm.label, start: '16:00', end: '20:59' }
+      am: { label: WINDOW_DEFS.am.label, start: '04:00', end: '05:59' },
+      pm: { label: WINDOW_DEFS.pm.label, start: '17:00', end: '18:59' }
     },
     days
   };
