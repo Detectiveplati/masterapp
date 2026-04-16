@@ -160,7 +160,7 @@
 
     <div class="section-card admin-only" style="display:none">
       <h2>🧭 Apply New Default Ranges</h2>
-      <p class="page-sub" style="margin-bottom:14px">Use this once to update all active deployed units by type without editing each unit manually.</p>
+      <p class="page-sub" style="margin-bottom:14px">Use this once to update all active deployed units by type and backfill existing TempMon Food Safety forms to the same acceptable ranges.</p>
       <div style="overflow-x:auto;margin-bottom:14px">
         <table class="data-table">
           <thead><tr><th>Type</th><th>Critical Min</th><th>Critical Max</th><th>Target Temp</th></tr></thead>
@@ -171,7 +171,7 @@
           </tbody>
         </table>
       </div>
-      <p style="font-size:0.82rem;color:var(--muted);margin:0 0 14px">This updates every active deployed chiller, freezer, and warmer. Warning buffers and alert thresholds will stay unchanged.</p>
+      <p style="font-size:0.82rem;color:var(--muted);margin:0 0 14px">This updates every active deployed chiller, freezer, and warmer. Existing TempMon Food Safety forms are backfilled to match, and archived PDFs will regenerate on next open/download. Warning buffers and alert thresholds stay unchanged.</p>
       <div id="bulkRangeNotice" class="notice"></div>
       <button class="btn btn-primary" onclick="applyDefaultRanges()">Apply New Default Ranges to All Deployed Units</button>
     </div>
@@ -889,13 +889,13 @@
 
   async function applyDefaultRanges() {
     const message = [
-      'Apply the new default acceptable ranges to all active deployed units?',
+      'Apply the new default acceptable ranges everywhere?',
       '',
       'Chiller: 0°C to 6°C (target 3°C)',
       'Freezer: -25°C to -14°C (target -18°C)',
       'Warmer: 70°C to 90°C (target 75°C)',
       '',
-      'This will overwrite the current min/max/target values for all active chillers, freezers, and warmers.'
+      'This will overwrite the current min/max/target values for all active chillers, freezers, and warmers, backfill existing TempMon Food Safety forms, and clear stale archived TempMon form PDFs.'
     ].join('\n');
     if (!confirm(message)) return;
 
@@ -911,10 +911,11 @@
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'Could not apply default ranges');
-      const results = data.results || {};
+      const results = data.unitResults || {};
+      const foodSafety = data.foodSafetyResults || {};
       notice.className = 'notice ok';
       notice.textContent =
-        `✅ Updated ${data.totalModified || 0} unit(s) (${results.chiller?.modified || 0} chillers, ${results.freezer?.modified || 0} freezers, ${results.warmer?.modified || 0} warmers).`;
+        `✅ Updated ${data.totalUnitModified || 0} live unit(s) (${results.chiller?.modified || 0} chillers, ${results.freezer?.modified || 0} freezers, ${results.warmer?.modified || 0} warmers) and backfilled ${foodSafety.modified || 0} TempMon Food Safety form(s) (${foodSafety.skipped || 0} skipped).`;
       await loadUnits();
     } catch (err) {
       notice.className = 'notice err';

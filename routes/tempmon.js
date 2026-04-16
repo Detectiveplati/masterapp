@@ -150,9 +150,9 @@ router.post('/admin/apply-type-default-ranges', requireAuth, requireAdmin, async
       return res.status(400).json({ error: 'Confirmation is required' });
     }
 
-    const results = {};
-    let totalMatched = 0;
-    let totalModified = 0;
+    const unitResults = {};
+    let totalUnitMatched = 0;
+    let totalUnitModified = 0;
     for (const [type, defaults] of Object.entries(TYPE_RANGE_DEFAULTS)) {
       const update = {
         criticalMin: defaults.criticalMin,
@@ -163,22 +163,73 @@ router.post('/admin/apply-type-default-ranges', requireAuth, requireAdmin, async
         { type, active: true },
         { $set: update }
       );
-      results[type] = {
+      unitResults[type] = {
         criticalMin: defaults.criticalMin,
         criticalMax: defaults.criticalMax,
         targetTemp: defaults.targetTemp,
         matched: r.matchedCount || 0,
         modified: r.modifiedCount || 0
       };
-      totalMatched += r.matchedCount || 0;
-      totalModified += r.modifiedCount || 0;
+      totalUnitMatched += r.matchedCount || 0;
+      totalUnitModified += r.modifiedCount || 0;
+    }
+
+    const foodSafetyRecords = await FoodSafetyChecklistMonth.find({
+      templateCode: TEMPMON_FOODSAFETY_TEMPLATE_CODE
+    });
+    const liveUnits = await TempMonUnit.find({
+      _id: { $in: foodSafetyRecords.map((record) => record.unitCode).filter(Boolean) }
+    }).lean();
+    const unitById = new Map(liveUnits.map((unit) => [String(unit._id), unit]));
+
+    let foodSafetyMatched = foodSafetyRecords.length;
+    let foodSafetyModified = 0;
+    let foodSafetySkipped = 0;
+    for (const record of foodSafetyRecords) {
+      const unit = unitById.get(String(record.unitCode || ''));
+      if (!unit) {
+        foodSafetySkipped += 1;
+        continue;
+      }
+      if (!record.data || !record.data.report || !record.data.report.unit) {
+        foodSafetySkipped += 1;
+        continue;
+      }
+
+      record.data.report.unit = {
+        ...record.data.report.unit,
+        _id: String(unit._id),
+        name: unit.name,
+        type: unit.type,
+        location: unit.location || '',
+        area: unit.area || '',
+        criticalMin: unit.criticalMin,
+        criticalMax: unit.criticalMax
+      };
+      record.unitLabel = unit.name || record.unitLabel;
+      record.reportArchive = {
+        fileName: '',
+        contentType: 'application/pdf',
+        size: 0,
+        generatedAt: null,
+        data: null
+      };
+      record.markModified('data');
+      record.markModified('reportArchive');
+      await record.save();
+      foodSafetyModified += 1;
     }
 
     res.json({
       ok: true,
-      results,
-      totalMatched,
-      totalModified
+      unitResults,
+      totalUnitMatched,
+      totalUnitModified,
+      foodSafetyResults: {
+        matched: foodSafetyMatched,
+        modified: foodSafetyModified,
+        skipped: foodSafetySkipped
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message || 'Could not apply default ranges' });
