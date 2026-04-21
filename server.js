@@ -1578,6 +1578,36 @@ app.get('/templog/api/lora/tcp-config', requirePageAccess('tempmon'), (req, res)
 });
 
 /**
+ * GET /templog/api/lora/tcp-status
+ * Shows currently connected TCP gateway sockets and latest in-memory frames.
+ */
+app.get('/templog/api/lora/tcp-status', requirePageAccess('tempmon'), (req, res) => {
+    const now = Date.now();
+    const sockets = Array.from(activeLoraTcpSockets).map((socket) => {
+        const state = socket._loraState || {};
+        const lastDataAt = state.lastDataAt || state.connectedAt || 0;
+        return {
+            remote: state.remote || `${socket.remoteAddress || ''}:${socket.remotePort || ''}`,
+            imei: state.imei || '',
+            connectedAt: state.connectedAt ? new Date(state.connectedAt).toISOString() : null,
+            lastDataAt: state.lastDataAt ? new Date(state.lastDataAt).toISOString() : null,
+            idleMs: lastDataAt ? now - lastDataAt : null,
+            destroyed: socket.destroyed === true
+        };
+    });
+    const latestFrame = loraTcpLog.length ? loraTcpLog[loraTcpLog.length - 1] : null;
+    res.json({
+        listening: loraTcpServer.listening,
+        port: LORA_TCP_PORT,
+        keepAliveDelayMs: LORA_TCP_KEEPALIVE_DELAY_MS,
+        idleTimeoutMs: LORA_TCP_IDLE_TIMEOUT_MS,
+        activeConnections: sockets.length,
+        sockets,
+        latestFrame
+    });
+});
+
+/**
  * GET /templog/api/lora/events
  * Recent raw gateway receive records for troubleshooting
  */
@@ -2048,7 +2078,7 @@ app.use((err, req, res, next) => {
 
 // ─── Start ───────────────────────────────────────────────────────────────────
 
-app.listen(PORT, '0.0.0.0', () => {
+const httpServer = app.listen(PORT, '0.0.0.0', () => {
     startOrderManagerScheduler();
     console.log(`\n🍽  Master Kitchen Management App`);
     console.log(`   Server running on http://localhost:${PORT}`);
@@ -2106,9 +2136,12 @@ const loraTcpLog    = [];   // ring buffer
 const TCP_LOG_ROTATE_BYTES = 2 * 1024 * 1024;
 const TCP_FILE_LOG_ENABLED = String(process.env.LORA_TCP_FILE_LOG_ENABLED || 'false').toLowerCase() === 'true';
 const LORA_DEVICE_CACHE_TTL_MS = Math.max(5000, parseInt(process.env.LORA_DEVICE_CACHE_TTL_MS || '30000', 10) || 30000);
+const LORA_TCP_KEEPALIVE_DELAY_MS = Math.max(10000, parseInt(process.env.LORA_TCP_KEEPALIVE_DELAY_MS || '30000', 10) || 30000);
+const LORA_TCP_IDLE_TIMEOUT_MS = Math.max(60000, parseInt(process.env.LORA_TCP_IDLE_TIMEOUT_MS || String(25 * 60 * 1000), 10) || (25 * 60 * 1000));
 let tcpLogBuffer = [];
 let tcpLogFlushTimer = null;
 let tcpLogFlushInFlight = false;
+const activeLoraTcpSockets = new Set();
 let loraDeviceCache = {
     loadedAt: 0,
     enabledMap: new Map(),
@@ -2491,7 +2524,20 @@ async function processTcpBuffer(socket, state) {
 const loraTcpServer = net.createServer((socket) => {
     const remote = `${socket.remoteAddress}:${socket.remotePort}`;
     console.log(`[TCP] LoRa gateway connected: ${remote}`);
-    const state = { buffer: Buffer.alloc(0), imei: '' };
+    const connectedAt = Date.now();
+    const state = { buffer: Buffer.alloc(0), imei: '', remote, connectedAt, lastDataAt: connectedAt };
+    socket._loraState = state;
+    activeLoraTcpSockets.add(socket);
+    socket.setKeepAlive(true, LORA_TCP_KEEPALIVE_DELAY_MS);
+    socket.setNoDelay(true);
+    socket.setTimeout(LORA_TCP_IDLE_TIMEOUT_MS);
+    logTcpFrame({
+        ts: new Date(connectedAt).toISOString(),
+        type: 'connect',
+        remote,
+        idleTimeoutMs: LORA_TCP_IDLE_TIMEOUT_MS,
+        keepAliveDelayMs: LORA_TCP_KEEPALIVE_DELAY_MS
+    });
 
     // Send RTC sync immediately on connect (UTC time, required by protocol)
     const nowUtc = new Date();
@@ -2499,12 +2545,38 @@ const loraTcpServer = net.createServer((socket) => {
     socket.write(`@UTC,${rtcSync}#\r\n`);
 
     socket.on('data', (chunk) => {
+        state.lastDataAt = Date.now();
         state.buffer = Buffer.concat([state.buffer, chunk]);
         processTcpBuffer(socket, state).catch(e => console.error('[TCP] process error:', e.message));
     });
 
+    socket.on('timeout', () => {
+        const idleMs = Date.now() - (state.lastDataAt || state.connectedAt || Date.now());
+        console.warn(`[TCP] gateway idle timeout after ${Math.round(idleMs / 1000)}s: ${remote}${state.imei ? ` imei=${state.imei}` : ''}`);
+        logTcpFrame({
+            ts: new Date().toISOString(),
+            type: 'timeout',
+            remote,
+            imei: state.imei || '',
+            idleMs
+        });
+        socket.destroy();
+    });
+
     socket.on('end',   () => console.log(`[TCP] gateway disconnected: ${remote}`));
     socket.on('error', (err) => console.warn(`[TCP] socket error (${remote}): ${err.message}`));
+    socket.on('close', (hadError) => {
+        activeLoraTcpSockets.delete(socket);
+        logTcpFrame({
+            ts: new Date().toISOString(),
+            type: 'disconnect',
+            remote,
+            imei: state.imei || '',
+            hadError: Boolean(hadError),
+            connectedForMs: Date.now() - connectedAt,
+            idleMs: Date.now() - (state.lastDataAt || connectedAt)
+        });
+    });
 });
 
 loraTcpServer.on('error', (err) => console.error('[TCP] server error:', err.message));
@@ -2513,3 +2585,40 @@ loraTcpServer.listen(LORA_TCP_PORT, '0.0.0.0', () => {
     console.log(`📡 LoRa TCP server listening on port ${LORA_TCP_PORT}`);
     console.log(`   TZConfig → Data Transfer Protocol: TCP/IP, Port: ${LORA_TCP_PORT}`);
 });
+
+function closeServer(server, label) {
+    return new Promise((resolve) => {
+        if (!server || !server.listening) return resolve();
+        server.close((err) => {
+            if (err) console.error(`[Shutdown] ${label} close error:`, err.message);
+            resolve();
+        });
+    });
+}
+
+let shuttingDown = false;
+async function shutdown(signal) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.warn(`[Shutdown] ${signal} received — closing HTTP and LoRa TCP sockets`);
+    for (const socket of Array.from(activeLoraTcpSockets)) {
+        try {
+            socket.end();
+            setTimeout(() => {
+                if (!socket.destroyed) socket.destroy();
+            }, 1000).unref();
+        } catch (_) {}
+    }
+    await Promise.race([
+        Promise.all([
+            closeServer(loraTcpServer, 'LoRa TCP server'),
+            closeServer(httpServer, 'HTTP server')
+        ]),
+        new Promise((resolve) => setTimeout(resolve, 8000))
+    ]);
+    try { await mongoose.connection.close(false); } catch (_) {}
+    process.exit(0);
+}
+
+process.once('SIGTERM', () => { shutdown('SIGTERM').catch(() => process.exit(1)); });
+process.once('SIGINT', () => { shutdown('SIGINT').catch(() => process.exit(1)); });
