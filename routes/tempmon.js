@@ -1052,6 +1052,10 @@ const WINDOW_DEFS = {
   am: { key: 'am', label: 'Opening Temperature', startHour: 4, endHour: 5 },
   pm: { key: 'pm', label: 'Closing Temperature', startHour: 17, endHour: 18 }
 };
+const WARMER_REPORT_WINDOWS = {
+  am: { key: 'am', label: 'First', start: 'Whole day', end: '' },
+  pm: { key: 'pm', label: 'Second', start: 'Whole day', end: '' }
+};
 
 function getTzParts(date, timeZone) {
   const fmt = new Intl.DateTimeFormat('en-CA', {
@@ -1134,6 +1138,15 @@ function selectWindowSample(readings, unit, timeZone, seedKey) {
   return toSample(inRangeReadings[idx], unit, timeZone);
 }
 
+function selectWarmerDailySamples(readings, unit, timeZone) {
+  if (!Array.isArray(readings) || readings.length === 0) return [null, null];
+  const inRangeReadings = readings.filter((reading) => isReadingInRange(reading, unit));
+  return [
+    inRangeReadings[0] ? toSample(inRangeReadings[0], unit, timeZone) : null,
+    inRangeReadings[1] ? toSample(inRangeReadings[1], unit, timeZone) : null
+  ];
+}
+
 function makeActor(req) {
   return {
     userId: String(req.user && (req.user.id || req.user._id) || ''),
@@ -1180,6 +1193,7 @@ async function buildMonthlyUnitReportData(unitId, monthKey, options = {}) {
 
   const totalDays = daysInMonth(monthKey);
   const [year, month] = monthKey.split('-').map(Number);
+  const isWarmerReport = String(unit.type || '').toLowerCase() === 'warmer';
   const generatedAt = new Date();
   const rangeStart = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0) - 24 * 60 * 60 * 1000);
   const rangeEnd = new Date(Date.UTC(year, month, 1, 0, 0, 0) + 24 * 60 * 60 * 1000);
@@ -1197,21 +1211,32 @@ async function buildMonthlyUnitReportData(unitId, monthKey, options = {}) {
     const parts = getTzParts(new Date(reading.recordedAt), timeZone);
     const monthLabel = `${parts.year}-${String(parts.month).padStart(2, '0')}`;
     if (monthLabel !== monthKey) return;
-    const bucket = dayMap.get(parts.dateKey) || { am: [], pm: [] };
-    if (parts.hour >= WINDOW_DEFS.am.startHour && parts.hour <= WINDOW_DEFS.am.endHour) bucket.am.push(reading);
-    if (parts.hour >= WINDOW_DEFS.pm.startHour && parts.hour <= WINDOW_DEFS.pm.endHour) bucket.pm.push(reading);
+    const bucket = dayMap.get(parts.dateKey) || { am: [], pm: [], fullDay: [] };
+    if (isWarmerReport) {
+      bucket.fullDay.push(reading);
+    } else {
+      if (parts.hour >= WINDOW_DEFS.am.startHour && parts.hour <= WINDOW_DEFS.am.endHour) bucket.am.push(reading);
+      if (parts.hour >= WINDOW_DEFS.pm.startHour && parts.hour <= WINDOW_DEFS.pm.endHour) bucket.pm.push(reading);
+    }
     dayMap.set(parts.dateKey, bucket);
   });
 
   const days = [];
   for (let day = 1; day <= totalDays; day++) {
     const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const bucket = dayMap.get(dateKey) || { am: [], pm: [] };
+    const bucket = dayMap.get(dateKey) || { am: [], pm: [], fullDay: [] };
+    const warmerSamples = isWarmerReport
+      ? selectWarmerDailySamples(bucket.fullDay, unit, timeZone)
+      : null;
     days.push({
       day,
       dateKey,
-      am: selectWindowSample(bucket.am, unit, timeZone, `${unit._id}|${monthKey}|${dateKey}|am`),
-      pm: selectWindowSample(bucket.pm, unit, timeZone, `${unit._id}|${monthKey}|${dateKey}|pm`)
+      am: isWarmerReport
+        ? warmerSamples[0]
+        : selectWindowSample(bucket.am, unit, timeZone, `${unit._id}|${monthKey}|${dateKey}|am`),
+      pm: isWarmerReport
+        ? warmerSamples[1]
+        : selectWindowSample(bucket.pm, unit, timeZone, `${unit._id}|${monthKey}|${dateKey}|pm`)
     });
   }
 
@@ -1229,10 +1254,15 @@ async function buildMonthlyUnitReportData(unitId, monthKey, options = {}) {
       criticalMin: unit.criticalMin,
       criticalMax: unit.criticalMax
     },
-    windows: {
-      am: { label: WINDOW_DEFS.am.label, start: '04:00', end: '05:59' },
-      pm: { label: WINDOW_DEFS.pm.label, start: '17:00', end: '18:59' }
-    },
+    windows: isWarmerReport
+      ? WARMER_REPORT_WINDOWS
+      : {
+          am: { label: WINDOW_DEFS.am.label, start: '04:00', end: '05:59' },
+          pm: { label: WINDOW_DEFS.pm.label, start: '17:00', end: '18:59' }
+        },
+    selectionRule: isWarmerReport
+      ? 'warmer-full-day-first-two-in-range'
+      : 'fixed-window-stable-random-in-range',
     days
   };
 }

@@ -79,6 +79,24 @@
         '</div>';
     }
 
+    function isWarmerReport(report) {
+      return String(report && report.unit && report.unit.type || '').toLowerCase() === 'warmer';
+    }
+
+    function samplingSummary(report) {
+      if (isWarmerReport(report)) return 'Whole day: first two in-range readings';
+      return (report.windows && report.windows.am ? report.windows.am.label + ' ' + report.windows.am.start + '-' + report.windows.am.end : '') +
+        ' · ' +
+        (report.windows && report.windows.pm ? report.windows.pm.label + ' ' + report.windows.pm.start + '-' + report.windows.pm.end : '');
+    }
+
+    function reportNotice(report) {
+      if (isWarmerReport(report)) {
+        return 'Selection rule: because food warmers are turned on only when used, the first two in-range readings from the whole day are shown. If fewer than two compliant readings exist, remaining cells are left blank.';
+      }
+      return 'Selection rule: one stable random in-range reading is selected within each window. Opening uses 04:00-05:59 and closing uses 17:00-18:59. If no compliant reading exists in the window, the cell is left blank.';
+    }
+
     function renderSignatureValue(signature) {
       if (signature && signature.signatureDataUrl) {
         return '<img src="' + esc(signature.signatureDataUrl) + '" alt="Signature" style="max-height:34px;max-width:100%;display:block;">';
@@ -123,13 +141,13 @@
           '<div class="meta-card"><strong>Unit</strong>' + esc(report.unit && report.unit.name ? report.unit.name : record.unitLabel || '') + '</div>' +
           '<div class="meta-card"><strong>Month</strong>' + esc(monthLabel(report.month || record.monthKey || '')) + '</div>' +
           '<div class="meta-card"><strong>Acceptable Range</strong>' + esc(String(report.unit && report.unit.criticalMin) + '°C to ' + String(report.unit && report.unit.criticalMax) + '°C') + '</div>' +
-          '<div class="meta-card"><strong>Sampling Windows</strong>' + esc((report.windows && report.windows.am ? report.windows.am.label + ' ' + report.windows.am.start + '-' + report.windows.am.end : '') + ' · ' + (report.windows && report.windows.pm ? report.windows.pm.label + ' ' + report.windows.pm.start + '-' + report.windows.pm.end : '')) + '</div>' +
+          '<div class="meta-card"><strong>' + (isWarmerReport(report) ? 'Sampling Rule' : 'Sampling Windows') + '</strong>' + esc(samplingSummary(report)) + '</div>' +
         '</div>' +
         '<table>' +
           '<thead><tr><th style="width:70px">Date</th><th>' + esc(report.windows && report.windows.am ? report.windows.am.label : 'AM') + ' Reading</th><th>' + esc(report.windows && report.windows.pm ? report.windows.pm.label : 'PM') + ' Reading</th></tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
         '</table>' +
-        '<div class="notice">Selection rule: one stable random in-range reading is selected within each window. If no compliant reading exists in the window, the cell is left blank.</div>' +
+        '<div class="notice">' + esc(reportNotice(report)) + '</div>' +
         '<div class="signature-wrap"><div class="signature-grid">' +
           '<div class="sig-box">' +
             '<div class="sig-title">' + esc(finalization.roleLabel || 'Submitted By') + '</div>' +

@@ -168,7 +168,7 @@
 <main>
   <section class="controls">
     <h1 class="report-title">🧾 Monthly Equipment Temperature Log</h1>
-    <p class="report-sub">Per-unit ISO export driven by TempMon history. Each day shows one AM sample and one PM sample.</p>
+    <p class="report-sub" id="reportLead">Per-unit ISO export driven by TempMon history. Each day shows two compliant readings based on equipment type.</p>
   </section>
 
   <section class="filters">
@@ -227,6 +227,22 @@
       </div>`;
   }
 
+  function isWarmerReport(data) {
+    return String(data && data.unit && data.unit.type || '').toLowerCase() === 'warmer';
+  }
+
+  function samplingSummary(data) {
+    if (isWarmerReport(data)) return 'Whole day: first two in-range readings';
+    return `${data.windows.am.label} ${data.windows.am.start}-${data.windows.am.end} · ${data.windows.pm.label} ${data.windows.pm.start}-${data.windows.pm.end}`;
+  }
+
+  function reportNotice(data) {
+    if (isWarmerReport(data)) {
+      return 'Selection rule: because food warmers are turned on only when used, the first two in-range readings from the whole day are shown. If fewer than two compliant readings exist, remaining cells are left blank.';
+    }
+    return 'Selection rule: one stable random in-range reading is selected within each window. Opening uses 04:00-05:59 and closing uses 17:00-18:59. If no compliant reading exists in the window, the cell is left blank.';
+  }
+
   function updateUrl() {
     const unitId = document.getElementById('unitSelect').value || '';
     const month = document.getElementById('monthInput').value || '';
@@ -269,6 +285,10 @@
   }
 
   function renderReport(data) {
+    document.getElementById('reportLead').textContent = isWarmerReport(data)
+      ? 'Per-unit ISO export driven by TempMon history. For food warmers, each day shows the first and second in-range readings from the whole day.'
+      : 'Per-unit ISO export driven by TempMon history. Each day shows one opening reading and one closing reading.';
+
     const rows = data.days.map((day) => `
       <tr>
         <td class="day">${day.day}</td>
@@ -295,7 +315,7 @@
         <div class="meta-card"><strong>Unit</strong>${esc(data.unit.name)}</div>
         <div class="meta-card"><strong>Month</strong>${esc(monthLabel(data.month))}</div>
         <div class="meta-card"><strong>Acceptable Range</strong>${esc(`${data.unit.criticalMin}°C to ${data.unit.criticalMax}°C`)}</div>
-        <div class="meta-card"><strong>Sampling Windows</strong>${esc(`${data.windows.am.label} ${data.windows.am.start}-${data.windows.am.end} · ${data.windows.pm.label} ${data.windows.pm.start}-${data.windows.pm.end}`)}</div>
+        <div class="meta-card"><strong>${isWarmerReport(data) ? 'Sampling Rule' : 'Sampling Windows'}</strong>${esc(samplingSummary(data))}</div>
       </div>
       <table>
         <thead>
@@ -307,7 +327,7 @@
         </thead>
         <tbody>${rows}</tbody>
       </table>
-      <div class="notice">Selection rule: one stable random in-range reading is selected within each window. If no compliant reading exists in the window, the cell is left blank.</div>
+      <div class="notice">${esc(reportNotice(data))}</div>
       <div class="signoff">Verified by<div class="signoff-line"></div></div>`;
   }
 
