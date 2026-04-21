@@ -40,7 +40,6 @@ const {
     requireFoodSafetyFormsAssignedAccess
 } = require('./services/auth-middleware');
 const { logFoodSafetyDebug } = require('./services/foodsafety-debug-log');
-const { logTempMonRuntimeSoon } = require('./services/tempmon-runtime-log');
 const FoodSafetyChecklistMonth = require('./models/FoodSafetyChecklistMonth');
 const FoodSafetyFormAssignment = require('./models/FoodSafetyFormAssignment');
 const { getTemplateByCode, getUnit } = require('./config/foodSafetyChecklistTemplate');
@@ -313,12 +312,6 @@ const CORE_DB_NAME = getCoreDbName();
 mongoose.connect(CORE_MONGO_URI, { dbName: CORE_DB_NAME })
     .then(async () => {
         console.log(`✓ [Maintenance] MongoDB (Mongoose) connected (db: ${CORE_DB_NAME})`);
-        logTempMonRuntimeSoon({
-            level: 'info',
-            eventType: 'core_db_connected',
-            message: 'Core MongoDB connected',
-            details: { dbName: CORE_DB_NAME }
-        });
         await seedAdmin();
         await seedTempMonUnits();
     })
@@ -340,22 +333,10 @@ MongoClient.connect(TEMPLOG_MONGO_URI, templogClientOptions)
     .then(async client => {
         templogDb = client.db(TEMPLOG_DB_NAME);
         console.log(`✓ [TempLog] MongoDB connected (db: ${TEMPLOG_DB_NAME})`);
-        logTempMonRuntimeSoon({
-            level: 'info',
-            eventType: 'templog_db_connected',
-            message: 'TempLog MongoDB connected',
-            details: { dbName: TEMPLOG_DB_NAME }
-        });
         // Handle unexpected disconnection
         client.on('close', () => {
             console.warn('⚠️  [TempLog] MongoDB connection closed');
             templogDb = null;
-            logTempMonRuntimeSoon({
-                level: 'warn',
-                eventType: 'templog_db_disconnected',
-                message: 'TempLog MongoDB connection closed',
-                details: { dbName: TEMPLOG_DB_NAME }
-            });
         });
         await seedLoraLinks(templogDb);
     })
@@ -1076,44 +1057,17 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
     if (!loraDevice.tempmonUnitId) {
         // Sensor registered without a linked TempMon unit — readings stay in TempLog only.
         // Go to /tempmon/gateway.html and click ✏️ on the sensor to link it to a unit.
-        logTempMonRuntimeSoon({
-            level: 'warn',
-            eventType: 'tempmon_unlinked',
-            message: 'LoRa sensor has no linked TempMon unit',
-            gatewayId,
-            sensorId: sensorRow.sensorId,
-            details: { alias: loraDevice.alias || '', model: loraDevice.model || '' }
-        });
         return;
     }
-    let readingData = null;
     try {
         const unitId = loraDevice.tempmonUnitId;
         const unit = await TempMonUnit.findById(unitId);
         if (!unit) {
             console.warn(`[TempMon] Unit ${unitId} not found for sensor ${sensorRow.sensorId}. Re-link on gateway.html.`);
-            logTempMonRuntimeSoon({
-                level: 'error',
-                eventType: 'tempmon_unit_missing',
-                message: 'Linked TempMon unit was not found',
-                gatewayId,
-                sensorId: sensorRow.sensorId,
-                unitId,
-                details: { alias: loraDevice.alias || '' }
-            });
             return;
         }
         if (!unit.active) {
             console.warn(`[TempMon] Unit "${unit.name}" is inactive — skipping reading for ${sensorRow.sensorId}.`);
-            logTempMonRuntimeSoon({
-                level: 'warn',
-                eventType: 'tempmon_unit_inactive',
-                message: 'Linked TempMon unit is inactive; reading skipped',
-                gatewayId,
-                sensorId: sensorRow.sensorId,
-                unitId: String(unit._id),
-                details: { unitName: unit.name, temp: sensorRow.temp }
-            });
             return;
         }
 
@@ -1128,30 +1082,10 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
             });
             await tmDevice.save();
             console.log(`✓ [TempMon] Auto-created device for LoRa sensor ${sensorRow.sensorId} → unit "${unit.name}"`);
-            logTempMonRuntimeSoon({
-                level: 'info',
-                eventType: 'tempmon_device_created',
-                message: 'Auto-created TempMon device for LoRa sensor',
-                gatewayId,
-                sensorId: sensorRow.sensorId,
-                unitId: String(unit._id),
-                deviceId: String(tmDevice._id),
-                details: { unitName: unit.name, label: tmDevice.label }
-            });
         } else if (String(tmDevice.unit) !== String(unit._id)) {
             // Unit linkage changed — update
             tmDevice.unit = unit._id;
             await tmDevice.save();
-            logTempMonRuntimeSoon({
-                level: 'info',
-                eventType: 'tempmon_device_relinked',
-                message: 'TempMon device was relinked to mapped unit',
-                gatewayId,
-                sensorId: sensorRow.sensorId,
-                unitId: String(unit._id),
-                deviceId: String(tmDevice._id),
-                details: { unitName: unit.name }
-            });
         }
 
         // Update heartbeat
@@ -1160,7 +1094,7 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
 
         // Store reading
         const flagged = sensorRow.temp < unit.criticalMin || sensorRow.temp > unit.criticalMax;
-        readingData = {
+        const readingData = {
             device:     tmDevice._id,
             unit:       unit._id,
             value:      sensorRow.temp,
@@ -1178,31 +1112,11 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
         if (existingReading) {
             if (existingReading.value === sensorRow.temp) {
                 console.log(`[TempMon] Skipping duplicate reading: ${sensorRow.sensorId} @ ${readingData.recordedAt}`);
-                logTempMonRuntimeSoon({
-                    level: 'debug',
-                    eventType: 'tempmon_duplicate',
-                    message: 'Duplicate TempMon reading skipped',
-                    gatewayId,
-                    sensorId: sensorRow.sensorId,
-                    unitId: String(unit._id),
-                    deviceId: String(tmDevice._id),
-                    details: { unitName: unit.name, recordedAt: readingData.recordedAt, value: sensorRow.temp }
-                });
                 return;
             }
             // Same timestamp, different value — overwrite with latest
             await TempMonReading.updateOne({ _id: existingReading._id }, { $set: { value: sensorRow.temp, humidity: readingData.humidity, rssi: readingData.rssi, battery: readingData.battery, flagged, receivedAt: readingData.receivedAt } });
             console.log(`[TempMon] Updated reading: ${sensorRow.sensorId} @ ${readingData.recordedAt} → ${sensorRow.temp}°C`);
-            logTempMonRuntimeSoon({
-                level: 'info',
-                eventType: 'tempmon_updated',
-                message: 'TempMon reading updated for same timestamp',
-                gatewayId,
-                sensorId: sensorRow.sensorId,
-                unitId: String(unit._id),
-                deviceId: String(tmDevice._id),
-                details: { unitName: unit.name, recordedAt: readingData.recordedAt, oldValue: existingReading.value, value: sensorRow.temp, flagged }
-            });
             return;
         }
 
@@ -1211,25 +1125,6 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
         const rhStr  = sensorRow.humidity != null ? ` RH:${sensorRow.humidity}%` : '';
         const batStr = sensorRow.battery  != null ? ` Bat:${sensorRow.battery}V`  : '';
         console.log(`✓ [TempMon] Reading saved: ${sensorRow.sensorId} → "${unit.name}" ${sensorRow.temp}°C${rhStr}${batStr}${flagged ? ' ⚠️ FLAGGED' : ''}`);
-        logTempMonRuntimeSoon({
-            level: flagged ? 'warn' : 'info',
-            eventType: 'tempmon_saved',
-            message: 'TempMon reading saved',
-            gatewayId,
-            sensorId: sensorRow.sensorId,
-            unitId: String(unit._id),
-            deviceId: String(tmDevice._id),
-            details: {
-                unitName: unit.name,
-                unitType: unit.type,
-                value: sensorRow.temp,
-                humidity: sensorRow.humidity,
-                rssi: sensorRow.rssi,
-                battery: sensorRow.battery,
-                recordedAt: readingData.recordedAt,
-                flagged
-            }
-        });
 
         // Update warmer power state (on/off/fault detection) — no-op for non-warmer units
         await tmUpdateWarmerState(unit, tmDevice, sensorRow.temp, readingData.recordedAt);
@@ -1255,24 +1150,8 @@ async function forwardToTempMon(loraDevice, sensorRow, gatewayId) {
         if (e.code === 11000) {
             // Unique index violation — concurrent duplicate, safe to ignore
             console.log(`[TempMon] Duplicate reading race (ignored): ${sensorRow.sensorId} @ ${readingData?.recordedAt}`);
-            logTempMonRuntimeSoon({
-                level: 'debug',
-                eventType: 'tempmon_duplicate',
-                message: 'Duplicate TempMon reading race ignored',
-                gatewayId,
-                sensorId: sensorRow.sensorId,
-                details: { recordedAt: readingData && readingData.recordedAt, value: sensorRow.temp }
-            });
         } else {
             console.error(`[TempMon] forwardToTempMon error for ${sensorRow.sensorId}:`, e.message);
-            logTempMonRuntimeSoon({
-                level: 'error',
-                eventType: 'tempmon_error',
-                message: 'TempMon forwarding failed',
-                gatewayId,
-                sensorId: sensorRow.sensorId,
-                details: { error: e.message, stack: e.stack, value: sensorRow.temp, recordedAt: sensorRow.recordedAt }
-            });
         }
     }
 }
@@ -1877,27 +1756,12 @@ app.get('/templog/api/lora/discover', requireTemplogDb, async (req, res) => {
  */
 app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
     try {
-        if (!validateLoraIngestAuth(req)) {
-            logTempMonRuntimeSoon({
-                level: 'warn',
-                eventType: 'lora_http_auth_failed',
-                message: 'LoRa HTTP ingest rejected due to invalid token',
-                details: { ip: req.ip || req.socket?.remoteAddress || '' }
-            });
-            return res.status(401).json({ error: 'Invalid token' });
-        }
+        if (!validateLoraIngestAuth(req)) return res.status(401).json({ error: 'Invalid token' });
 
         const payload = req.body || {};
         const gatewayId = parseLoraGatewayId(payload);
         const sensorRows = extractLoraSensorRows(payload);
         const now = new Date();
-        logTempMonRuntimeSoon({
-            level: 'info',
-            eventType: 'lora_ingest_start',
-            message: 'LoRa HTTP payload received',
-            gatewayId,
-            details: { sensorRowCount: sensorRows.length, source: payload.source || '' }
-        });
 
         const { enabledMap, allMap } = await getLoraDeviceMaps(req.templogDb);
         const mappedReadings = [];
@@ -1913,44 +1777,18 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
                     reason: 'invalid_temp',
                     recordedAt: row.recordedAt
                 });
-                logTempMonRuntimeSoon({
-                    level: 'warn',
-                    eventType: 'lora_unmatched',
-                    message: 'LoRa HTTP sensor row had invalid temperature',
-                    gatewayId,
-                    sensorId: row.sensorId,
-                    details: { reason: 'invalid_temp', model: row.model || '', recordedAt: row.recordedAt }
-                });
                 continue;
             }
             if (!mapped) {
-                const reason = allMap.has(row.sensorId) ? 'disabled' : 'unregistered';
                 unmatched.push({
                     sensorId: row.sensorId,
                     temp: row.temp,
                     model: row.model || '',
-                    reason,
+                    reason: allMap.has(row.sensorId) ? 'disabled' : 'unregistered',
                     recordedAt: row.recordedAt
-                });
-                logTempMonRuntimeSoon({
-                    level: 'warn',
-                    eventType: 'lora_unmatched',
-                    message: 'LoRa HTTP sensor row was not mapped to an enabled registered device',
-                    gatewayId,
-                    sensorId: row.sensorId,
-                    details: { reason, model: row.model || '', temp: row.temp, recordedAt: row.recordedAt }
                 });
                 continue;
             }
-            logTempMonRuntimeSoon({
-                level: 'debug',
-                eventType: 'lora_mapped',
-                message: 'LoRa HTTP sensor row mapped to registered device',
-                gatewayId,
-                sensorId: row.sensorId,
-                unitId: mapped.tempmonUnitId || '',
-                details: { equipment: mapped.equipment, model: mapped.model || row.model || '', temp: row.temp, recordedAt: row.recordedAt }
-            });
             mappedReadings.push({
                 equipment: mapped.equipment,
                 temp: row.temp,
@@ -1996,13 +1834,6 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
             payload,
             receivedAt: now
         });
-        logTempMonRuntimeSoon({
-            level: unmatched.length ? 'warn' : 'info',
-            eventType: 'lora_ingest_complete',
-            message: 'LoRa HTTP payload processing complete',
-            gatewayId,
-            details: { sensorCount: sensorRows.length, mappedCount: mappedReadings.length, ingestedCount: ingested, unmatchedCount: unmatched.length, unmatched }
-        });
 
         res.json({
             ok: true,
@@ -2013,12 +1844,6 @@ app.post('/templog/api/lora/receive', requireTemplogDb, async (req, res) => {
         });
     } catch (e) {
         console.error(e);
-        logTempMonRuntimeSoon({
-            level: 'error',
-            eventType: 'lora_ingest_error',
-            message: 'LoRa HTTP ingest failed',
-            details: { error: e.message, stack: e.stack }
-        });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -2267,12 +2092,6 @@ const httpServer = app.listen(PORT, '0.0.0.0', () => {
     console.log(`   ⚙️  Admin Panel           → http://localhost:${PORT}/admin/`);
     console.log(`   💚 Health Check          → http://localhost:${PORT}/api/health`);
     console.log(`\n   Access from tablet: http://<your-ip>:${PORT}\n`);
-    logTempMonRuntimeSoon({
-        level: 'info',
-        eventType: 'server_start',
-        message: 'Masterapp server started',
-        details: { port: PORT, nodeEnv: process.env.NODE_ENV || '' }
-    });
 
     // One-time: resolve any stale range alerts (warning/critical) on warmer units —
     // warmers are now monitored by fault-state machine only.
@@ -2480,13 +2299,6 @@ function parseTcpTagRecord(buf, offset, isTag08B) {
 async function ingestTcpTagRecords(gatewayImei, tags, tagModel, gatewayRtc) {
     if (!templogDb) {
         console.warn('[TCP] DB not ready — discarding', tags.length, 'tag records');
-        logTempMonRuntimeSoon({
-            level: 'error',
-            eventType: 'lora_ingest_db_unavailable',
-            message: 'TempLog DB not ready; TCP tag records discarded',
-            gatewayId: gatewayImei,
-            details: { tagCount: tags.length, tagModel }
-        });
         return;
     }
     const now = new Date();
@@ -2510,18 +2322,6 @@ async function ingestTcpTagRecords(gatewayImei, tags, tagModel, gatewayRtc) {
     };
     const gatewayId = String(gatewayImei || '').trim();
     const sensorRows = extractLoraSensorRows(payload);
-    logTempMonRuntimeSoon({
-        level: 'info',
-        eventType: 'lora_ingest_start',
-        message: 'LoRa TCP sensor frame received',
-        gatewayId,
-        details: {
-            tagModel,
-            tagCount: tags.length,
-            sensorRowCount: sensorRows.length,
-            gatewayRtc: gatewayRtc instanceof Date && !isNaN(gatewayRtc) ? gatewayRtc : null
-        }
-    });
     const { enabledMap, allMap } = await getLoraDeviceMaps(templogDb);
     const mappedReadings = [];
     const unmatched = [];
@@ -2529,41 +2329,15 @@ async function ingestTcpTagRecords(gatewayImei, tags, tagModel, gatewayRtc) {
         const mapped = enabledMap.get(row.sensorId);
         if (!Number.isFinite(row.temp)) {
             unmatched.push({ sensorId: row.sensorId, reason: 'invalid_temp' });
-            logTempMonRuntimeSoon({
-                level: 'warn',
-                eventType: 'lora_unmatched',
-                message: 'LoRa sensor row had invalid temperature',
-                gatewayId,
-                sensorId: row.sensorId,
-                details: { reason: 'invalid_temp', model: row.model || '', temp: row.temp, recordedAt: row.recordedAt }
-            });
             continue;
         }
         if (!mapped) {
-            const reason = allMap.has(row.sensorId) ? 'disabled' : 'unregistered';
             unmatched.push({
                 sensorId: row.sensorId, temp: row.temp, model: row.model || '',
-                reason
-            });
-            logTempMonRuntimeSoon({
-                level: 'warn',
-                eventType: 'lora_unmatched',
-                message: 'LoRa sensor row was not mapped to an enabled registered device',
-                gatewayId,
-                sensorId: row.sensorId,
-                details: { reason, model: row.model || '', temp: row.temp, recordedAt: row.recordedAt }
+                reason: allMap.has(row.sensorId) ? 'disabled' : 'unregistered'
             });
             continue;
         }
-        logTempMonRuntimeSoon({
-            level: 'debug',
-            eventType: 'lora_mapped',
-            message: 'LoRa sensor row mapped to registered device',
-            gatewayId,
-            sensorId: row.sensorId,
-            unitId: mapped.tempmonUnitId || '',
-            details: { equipment: mapped.equipment, model: mapped.model || row.model || '', temp: row.temp, recordedAt: row.recordedAt }
-        });
         mappedReadings.push({
             equipment: mapped.equipment, temp: row.temp,
             source: 'lora-tcp-gateway', gatewayId, sensorId: row.sensorId,
@@ -2582,28 +2356,12 @@ async function ingestTcpTagRecords(gatewayImei, tags, tagModel, gatewayRtc) {
             const cleanReadings = mappedReadings.map(({ _loraDevice, ...rest }) => rest);
             const result = await ingestEquipmentReadings({ templogDb }, cleanReadings);
             ingested = result.count;
-        } catch (e) {
-            console.error('[TCP] ingest error:', e.message);
-            logTempMonRuntimeSoon({
-                level: 'error',
-                eventType: 'lora_ingest_error',
-                message: 'LoRa TCP mapped readings failed to ingest',
-                gatewayId,
-                details: { error: e.message, stack: e.stack, mappedCount: mappedReadings.length }
-            });
-        }
+        } catch (e) { console.error('[TCP] ingest error:', e.message); }
     }
     await templogDb.collection(COLLECTIONS.templog.LORA_GATEWAY_EVENTS).insertOne({
         gatewayId, sensorCount: sensorRows.length, ingestedCount: ingested,
         unmatchedCount: unmatched.length, unmatched, payload,
         receivedAt: now, proto: 'tcp'
-    });
-    logTempMonRuntimeSoon({
-        level: unmatched.length ? 'warn' : 'info',
-        eventType: 'lora_ingest_complete',
-        message: 'LoRa TCP sensor frame processing complete',
-        gatewayId,
-        details: { sensorCount: sensorRows.length, mappedCount: mappedReadings.length, ingestedCount: ingested, unmatchedCount: unmatched.length, unmatched }
     });
     console.log(`[TCP] gw=${gatewayId} sensors=${sensorRows.length} ingested=${ingested} unmatched=${unmatched.length}`);
 }
@@ -2631,13 +2389,6 @@ async function processTcpBuffer(socket, state) {
 
         // Verify CRLF terminator
         if (buf[i + totalLen - 2] !== 0x0D || buf[i + totalLen - 1] !== 0x0A) {
-            logTempMonRuntimeSoon({
-                level: 'warn',
-                eventType: 'tcp_frame_parse_error',
-                message: 'TCP frame had invalid CRLF terminator',
-                gatewayId: state.imei || '',
-                details: { remote: state.remote || '', payloadLen, bufferedBytes: buf.length }
-            });
             i++; continue;
         }
 
@@ -2645,13 +2396,6 @@ async function processTcpBuffer(socket, state) {
 
         // Payload must begin with $$ (24 24)
         if (payload.length < 26 || payload[0] !== 0x24 || payload[1] !== 0x24) {
-            logTempMonRuntimeSoon({
-                level: 'warn',
-                eventType: 'tcp_frame_parse_error',
-                message: 'TCP frame payload was too short or missing header',
-                gatewayId: state.imei || '',
-                details: { remote: state.remote || '', payloadLen: payload.length }
-            });
             i += totalLen; continue;
         }
 
@@ -2701,13 +2445,6 @@ async function processTcpBuffer(socket, state) {
             // ── Frame with sensor tag records ──────────────────────────────
             // Tag section: TagType(1) + NumRecords(1) + RecordLen(1) + Records(tagDataLen bytes)
             if (payload.length < tagBase + 2 + 3) {
-                logTempMonRuntimeSoon({
-                    level: 'warn',
-                    eventType: 'tcp_frame_parse_error',
-                    message: 'TCP sensor frame had incomplete tag header',
-                    gatewayId: state.imei || '',
-                    details: { remote: state.remote || '', payloadLen, tagDataLen }
-                });
                 i += totalLen; continue; // incomplete tag header
             }
             const tagType = payload[tagBase + 2]; // 01=TAG07/08/09, 04=TAG08B
@@ -2717,13 +2454,6 @@ async function processTcpBuffer(socket, state) {
             const isTag08B = (tagType === 0x04);
 
             console.log(`[TCP] sensor frame IMEI=${state.imei||'?'} tagType=0x${tagType.toString(16)} numRec=${numRec} recLen=${recLen}`);
-            logTempMonRuntimeSoon({
-                level: 'info',
-                eventType: 'tcp_frame',
-                message: 'TCP sensor frame parsed',
-                gatewayId: state.imei || '',
-                details: { remote: state.remote || '', fw: fwStr, tagType: `0x${tagType.toString(16).padStart(2, '0')}`, numRec, recLen, gwRtc: gatewayRtc }
-            });
 
             const tags = [];
             if (payload.length >= recsOff + numRec * recLen) {
@@ -2737,13 +2467,6 @@ async function processTcpBuffer(socket, state) {
             } else {
                 // Not enough bytes — log raw for diagnosis
                 console.log(`[TCP] tag raw: ${payload.slice(recsOff).toString('hex').toUpperCase().match(/.{1,2}/g).join(' ')}`);
-                logTempMonRuntimeSoon({
-                    level: 'warn',
-                    eventType: 'tcp_frame_parse_error',
-                    message: 'TCP sensor frame did not contain enough bytes for declared records',
-                    gatewayId: state.imei || '',
-                    details: { remote: state.remote || '', numRec, recLen, availableBytes: payload.length - recsOff }
-                });
             }
 
             // Diagnostic log — raw hex frame + parsed fields
@@ -2769,13 +2492,6 @@ async function processTcpBuffer(socket, state) {
         } else {
             // ── Heartbeat / status frame (no sensor data) ──────────────────
             console.log(`[TCP] heartbeat IMEI=${state.imei||'?'} FW=${fwStr} bat=${batV}V ext=${extV}V`);
-            logTempMonRuntimeSoon({
-                level: 'info',
-                eventType: 'tcp_heartbeat',
-                message: 'TCP gateway heartbeat received',
-                gatewayId: state.imei || socket.remoteAddress,
-                details: { remote: state.remote || '', fw: fwStr, gwRtc: gatewayRtc, batteryVoltage: batV, externalVoltage: extV }
-            });
             logTcpFrame({
                 ts:     new Date().toISOString(),
                 type:   'heartbeat',
@@ -2822,12 +2538,6 @@ const loraTcpServer = net.createServer((socket) => {
         idleTimeoutMs: LORA_TCP_IDLE_TIMEOUT_MS,
         keepAliveDelayMs: LORA_TCP_KEEPALIVE_DELAY_MS
     });
-    logTempMonRuntimeSoon({
-        level: 'info',
-        eventType: 'tcp_connect',
-        message: 'LoRa TCP gateway connected',
-        details: { remote, idleTimeoutMs: LORA_TCP_IDLE_TIMEOUT_MS, keepAliveDelayMs: LORA_TCP_KEEPALIVE_DELAY_MS }
-    });
 
     // Send RTC sync immediately on connect (UTC time, required by protocol)
     const nowUtc = new Date();
@@ -2850,46 +2560,21 @@ const loraTcpServer = net.createServer((socket) => {
             imei: state.imei || '',
             idleMs
         });
-        logTempMonRuntimeSoon({
-            level: 'warn',
-            eventType: 'tcp_timeout',
-            message: 'LoRa TCP gateway socket idle timeout',
-            gatewayId: state.imei || '',
-            details: { remote, idleMs }
-        });
         socket.destroy();
     });
 
     socket.on('end',   () => console.log(`[TCP] gateway disconnected: ${remote}`));
-    socket.on('error', (err) => {
-        console.warn(`[TCP] socket error (${remote}): ${err.message}`);
-        logTempMonRuntimeSoon({
-            level: 'error',
-            eventType: 'tcp_error',
-            message: 'LoRa TCP socket error',
-            gatewayId: state.imei || '',
-            details: { remote, error: err.message }
-        });
-    });
+    socket.on('error', (err) => console.warn(`[TCP] socket error (${remote}): ${err.message}`));
     socket.on('close', (hadError) => {
         activeLoraTcpSockets.delete(socket);
-        const connectedForMs = Date.now() - connectedAt;
-        const idleMs = Date.now() - (state.lastDataAt || connectedAt);
         logTcpFrame({
             ts: new Date().toISOString(),
             type: 'disconnect',
             remote,
             imei: state.imei || '',
             hadError: Boolean(hadError),
-            connectedForMs,
-            idleMs
-        });
-        logTempMonRuntimeSoon({
-            level: hadError ? 'warn' : 'info',
-            eventType: 'tcp_disconnect',
-            message: 'LoRa TCP gateway disconnected',
-            gatewayId: state.imei || '',
-            details: { remote, hadError: Boolean(hadError), connectedForMs, idleMs }
+            connectedForMs: Date.now() - connectedAt,
+            idleMs: Date.now() - (state.lastDataAt || connectedAt)
         });
     });
 });
@@ -2899,12 +2584,6 @@ loraTcpServer.on('error', (err) => console.error('[TCP] server error:', err.mess
 loraTcpServer.listen(LORA_TCP_PORT, '0.0.0.0', () => {
     console.log(`📡 LoRa TCP server listening on port ${LORA_TCP_PORT}`);
     console.log(`   TZConfig → Data Transfer Protocol: TCP/IP, Port: ${LORA_TCP_PORT}`);
-    logTempMonRuntimeSoon({
-        level: 'info',
-        eventType: 'tcp_server_listening',
-        message: 'LoRa TCP server listening',
-        details: { port: LORA_TCP_PORT, host: '0.0.0.0' }
-    });
 });
 
 function closeServer(server, label) {

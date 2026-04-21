@@ -16,12 +16,10 @@ const TempMonAlert            = require('../models/TempMonAlert');
 const TempMonCorrectiveAction = require('../models/TempMonCorrectiveAction');
 const TempMonCalibration      = require('../models/TempMonCalibration');
 const TempMonConfig           = require('../models/TempMonConfig');
-const TempMonRuntimeLog       = require('../models/TempMonRuntimeLog');
 const FoodSafetyChecklistMonth = require('../models/FoodSafetyChecklistMonth');
 
 const { requireAuth, requireAdmin, requirePermission } = require('../services/auth-middleware');
 const { memUpload, uploadBufferToCloudinary } = require('../services/cloudinary-upload');
-const { logTempMonRuntimeSoon } = require('../services/tempmon-runtime-log');
 const {
   TEMPMON_FOODSAFETY_TEMPLATE_CODE,
   TEMPMON_FOODSAFETY_FORM_TYPE,
@@ -52,13 +50,6 @@ function requireGatewayKey(req, res, next) {
   const key = process.env.GATEWAY_API_KEY;
   if (!key) return next(); // key not configured — allow (dev mode)
   if (req.headers['x-gateway-key'] === key) return next();
-  logTempMonRuntimeSoon({
-    level: 'warn',
-    eventType: 'gateway_ingest_auth_failed',
-    message: 'TempMon gateway ingest rejected due to invalid gateway key',
-    gatewayId: req.body && req.body.gatewayId ? String(req.body.gatewayId) : '',
-    details: { ip: req.ip || req.socket?.remoteAddress || '' }
-  });
   return res.status(401).json({ error: 'Invalid or missing gateway API key' });
 }
 
@@ -150,29 +141,6 @@ router.delete('/units/:id', requireAuth, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/tempmon/runtime-logs?limit=&level=&eventType=&gatewayId=&sensorId=&sinceMinutes=
-router.get('/runtime-logs', requireAuth, requirePermission('tempmon'), async (req, res) => {
-  try {
-    const limit = Math.max(1, Math.min(500, Number(req.query.limit) || 100));
-    const sinceMinutes = Math.max(1, Math.min(60 * 24 * 30, Number(req.query.sinceMinutes) || (24 * 60)));
-    const query = {
-      createdAt: { $gte: new Date(Date.now() - sinceMinutes * 60 * 1000) }
-    };
-    if (req.query.level) query.level = String(req.query.level).trim();
-    if (req.query.eventType) query.eventType = String(req.query.eventType).trim();
-    if (req.query.gatewayId) query.gatewayId = String(req.query.gatewayId).trim();
-    if (req.query.sensorId) query.sensorId = String(req.query.sensorId).trim();
-
-    const logs = await TempMonRuntimeLog.find(query)
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .lean();
-    res.json(logs);
-  } catch (err) {
-    res.status(500).json({ error: err.message || 'Could not load TempMon runtime logs' });
   }
 });
 
@@ -405,22 +373,8 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
   try {
     const { gatewayId = '', readings: rawReadings } = req.body;
     if (!Array.isArray(rawReadings) || rawReadings.length === 0) {
-      logTempMonRuntimeSoon({
-        level: 'warn',
-        eventType: 'gateway_ingest_invalid',
-        message: 'TempMon gateway ingest payload was missing readings array',
-        gatewayId,
-        details: { bodyKeys: Object.keys(req.body || {}) }
-      });
       return res.status(400).json({ error: 'readings array is required and must not be empty' });
     }
-    logTempMonRuntimeSoon({
-      level: 'info',
-      eventType: 'gateway_ingest_start',
-      message: 'TempMon direct gateway ingest received',
-      gatewayId,
-      details: { readingCount: rawReadings.length }
-    });
 
     const results = { saved: 0, skipped: 0, alerts: 0 };
     const requestedDeviceIds = Array.from(new Set(
@@ -438,14 +392,6 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
       const normalizedDeviceId = String(deviceId || '').trim();
       if (typeof value !== 'number' || !normalizedDeviceId) {
         console.warn(`⚠ [TempMon] Ingest skip — missing deviceId or non-numeric value:`, JSON.stringify(raw));
-        logTempMonRuntimeSoon({
-          level: 'warn',
-          eventType: 'gateway_ingest_skipped',
-          message: 'TempMon direct ingest skipped malformed reading',
-          gatewayId,
-          sensorId: normalizedDeviceId,
-          details: { reason: 'missing_device_or_non_numeric_value', raw }
-        });
         results.skipped++; continue;
       }
 
@@ -456,28 +402,10 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
         } else {
           console.warn(`⚠ [TempMon] Ingest skip — device "${normalizedDeviceId}" is NOT REGISTERED in the database`);
         }
-        logTempMonRuntimeSoon({
-          level: 'warn',
-          eventType: 'gateway_ingest_skipped',
-          message: 'TempMon direct ingest skipped unknown or inactive device',
-          gatewayId,
-          sensorId: normalizedDeviceId,
-          deviceId: device ? String(device._id) : '',
-          details: { reason: device ? 'inactive_device' : 'unregistered_device', value, recordedAt }
-        });
         results.skipped++; continue;
       }
       if (!device.unit) {
         console.warn(`⚠ [TempMon] Ingest skip — device "${normalizedDeviceId}" has NO UNIT assigned`);
-        logTempMonRuntimeSoon({
-          level: 'warn',
-          eventType: 'gateway_ingest_skipped',
-          message: 'TempMon direct ingest skipped device with no unit',
-          gatewayId,
-          sensorId: normalizedDeviceId,
-          deviceId: String(device._id),
-          details: { reason: 'missing_unit', value, recordedAt }
-        });
         results.skipped++; continue;
       }
 
@@ -500,29 +428,9 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
         });
         readingId = reading._id;
         results.saved++;
-        logTempMonRuntimeSoon({
-          level: flagged ? 'warn' : 'info',
-          eventType: 'gateway_ingest_saved',
-          message: 'TempMon direct gateway reading saved',
-          gatewayId,
-          sensorId: normalizedDeviceId,
-          unitId: String(unit._id),
-          deviceId: String(device._id),
-          details: { unitName: unit.name, unitType: unit.type, value, recordedAt: ts, flagged }
-        });
       } catch (err) {
         if (err && err.code === 11000) {
           results.skipped++;
-          logTempMonRuntimeSoon({
-            level: 'debug',
-            eventType: 'gateway_ingest_duplicate',
-            message: 'TempMon direct gateway duplicate reading skipped',
-            gatewayId,
-            sensorId: normalizedDeviceId,
-            unitId: String(unit._id),
-            deviceId: String(device._id),
-            details: { value, recordedAt: ts }
-          });
           continue;
         }
         throw err;
@@ -550,22 +458,9 @@ router.post('/ingest', requireGatewayKey, async (req, res) => {
       }
     }
 
-    logTempMonRuntimeSoon({
-      level: results.skipped ? 'warn' : 'info',
-      eventType: 'gateway_ingest_complete',
-      message: 'TempMon direct gateway ingest complete',
-      gatewayId,
-      details: results
-    });
     res.json({ ok: true, ...results });
   } catch (err) {
     console.error('✗ [TempMon] Ingest error:', err.message);
-    logTempMonRuntimeSoon({
-      level: 'error',
-      eventType: 'gateway_ingest_error',
-      message: 'TempMon direct gateway ingest failed',
-      details: { error: err.message, stack: err.stack }
-    });
     res.status(500).json({ error: err.message });
   }
 });

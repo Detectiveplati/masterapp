@@ -56,7 +56,6 @@ const COLLECTIONS = {
     TEMP_MON_CORRECTIVE_ACTIONS: "core_tempmon_corrective_actions",
     TEMP_MON_DEVICES: "core_tempmon_devices",
     TEMP_MON_READINGS: "core_tempmon_readings",
-    TEMP_MON_RUNTIME_LOGS: "core_tempmon_runtime_logs",
     TEMP_MON_UNITS: "core_tempmon_units",
     USERS: "core_users"
   },
@@ -221,11 +220,6 @@ const COLLECTION_MIGRATION_PLAN = [
     owner: "core",
     targetCollection: COLLECTIONS.core.TEMP_MON_READINGS,
     sources: [{ dbName: "central_kitchen_maintenance", collectionName: "tempmonreadings" }]
-  },
-  {
-    owner: "core",
-    targetCollection: COLLECTIONS.core.TEMP_MON_RUNTIME_LOGS,
-    sources: []
   },
   {
     owner: "core",
