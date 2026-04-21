@@ -12,6 +12,10 @@
  */
 
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+const nodeCrypto = require('crypto');
+if (!globalThis.crypto && nodeCrypto.webcrypto) {
+    globalThis.crypto = nodeCrypto.webcrypto;
+}
 const express = require('express');
 const mongoose = require('mongoose');
 const { MongoClient, ServerApiVersion } = require('mongodb');
