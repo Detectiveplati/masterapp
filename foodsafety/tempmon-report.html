@@ -35,6 +35,7 @@
     .sample-time { font-size: 10px; color: var(--muted); }
     .sample-val { font-size: 12px; font-weight: 700; color: var(--good); }
     .sample-empty { color: #b0b7c0; font-style: italic; }
+    .sample-not-use { color: #6b7280; font-weight: 700; min-height: 34px; display: flex; align-items: center; justify-content: center; }
     .sample-good { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 34px; }
     .notice { margin-top: 10px; font-size: 11px; color: var(--muted); }
     .signature-wrap { margin-top: 12mm; border: 1px solid var(--line); }
@@ -73,6 +74,7 @@
 
     function sampleCell(sample) {
       if (!sample) return '<div class="sample-empty">—</div>';
+      if (sample.status === 'not_in_use') return '<div class="sample-not-use">Not-In-Use</div>';
       return '<div class="sample-good">' +
         '<div class="sample-val">' + esc(Number(sample.value).toFixed(1)) + '°C</div>' +
         '<div class="sample-time">' + esc(sample.timeLabel || '') + (sample.deviceLabel ? ' · ' + esc(sample.deviceLabel) : '') + '</div>' +
@@ -129,7 +131,7 @@
           '<thead><tr><th style="width:70px">Date</th><th>' + esc(report.windows && report.windows.am ? report.windows.am.label : 'AM') + ' Reading</th><th>' + esc(report.windows && report.windows.pm ? report.windows.pm.label : 'PM') + ' Reading</th></tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
         '</table>' +
-        '<div class="notice">Selection rule: one stable random in-range reading is selected within each window. If no compliant reading exists in the window, the cell is left blank.</div>' +
+        '<div class="notice">' + esc(report.selectionRule || 'Selection rule: one stable random in-range reading is selected within each window. If no compliant reading exists in the window, the cell is left blank.') + '</div>' +
         '<div class="signature-wrap"><div class="signature-grid">' +
           '<div class="sig-box">' +
             '<div class="sig-title">' + esc(finalization.roleLabel || 'Submitted By') + '</div>' +

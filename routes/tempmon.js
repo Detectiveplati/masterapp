@@ -1103,6 +1103,14 @@ function toSample(reading, unit, timeZone) {
   };
 }
 
+function notInUseSample(reason = 'No in-range warmer reading found for this day') {
+  return {
+    status: 'not_in_use',
+    label: 'Not-In-Use',
+    reason
+  };
+}
+
 function formatTzDateTime(date, timeZone) {
   return new Intl.DateTimeFormat('en-SG', {
     timeZone,
@@ -1132,6 +1140,24 @@ function selectWindowSample(readings, unit, timeZone, seedKey) {
   if (!inRangeReadings.length) return null;
   const idx = stableHash(seedKey) % inRangeReadings.length;
   return toSample(inRangeReadings[idx], unit, timeZone);
+}
+
+function selectWarmerOperationalSamples(readings, unit, timeZone) {
+  const inRangeReadings = Array.isArray(readings)
+    ? readings.filter((reading) => isReadingInRange(reading, unit))
+    : [];
+  if (!inRangeReadings.length) {
+    return {
+      am: notInUseSample(),
+      pm: notInUseSample()
+    };
+  }
+  return {
+    am: toSample(inRangeReadings[0], unit, timeZone),
+    pm: inRangeReadings[1]
+      ? toSample(inRangeReadings[1], unit, timeZone)
+      : notInUseSample('Only one in-range warmer reading found for this day')
+  };
 }
 
 function makeActor(req) {
@@ -1193,11 +1219,13 @@ async function buildMonthlyUnitReportData(unitId, monthKey, options = {}) {
     .lean();
 
   const dayMap = new Map();
+  const isFoodWarmerReport = String(unit.type || '').toLowerCase() === 'warmer';
   readings.forEach((reading) => {
     const parts = getTzParts(new Date(reading.recordedAt), timeZone);
     const monthLabel = `${parts.year}-${String(parts.month).padStart(2, '0')}`;
     if (monthLabel !== monthKey) return;
-    const bucket = dayMap.get(parts.dateKey) || { am: [], pm: [] };
+    const bucket = dayMap.get(parts.dateKey) || { am: [], pm: [], all: [] };
+    bucket.all.push(reading);
     if (parts.hour >= WINDOW_DEFS.am.startHour && parts.hour <= WINDOW_DEFS.am.endHour) bucket.am.push(reading);
     if (parts.hour >= WINDOW_DEFS.pm.startHour && parts.hour <= WINDOW_DEFS.pm.endHour) bucket.pm.push(reading);
     dayMap.set(parts.dateKey, bucket);
@@ -1206,12 +1234,19 @@ async function buildMonthlyUnitReportData(unitId, monthKey, options = {}) {
   const days = [];
   for (let day = 1; day <= totalDays; day++) {
     const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const bucket = dayMap.get(dateKey) || { am: [], pm: [] };
+    const bucket = dayMap.get(dateKey) || { am: [], pm: [], all: [] };
+    const warmerSamples = isFoodWarmerReport
+      ? selectWarmerOperationalSamples(bucket.all, unit, timeZone)
+      : null;
     days.push({
       day,
       dateKey,
-      am: selectWindowSample(bucket.am, unit, timeZone, `${unit._id}|${monthKey}|${dateKey}|am`),
-      pm: selectWindowSample(bucket.pm, unit, timeZone, `${unit._id}|${monthKey}|${dateKey}|pm`)
+      am: isFoodWarmerReport
+        ? warmerSamples.am
+        : selectWindowSample(bucket.am, unit, timeZone, `${unit._id}|${monthKey}|${dateKey}|am`),
+      pm: isFoodWarmerReport
+        ? warmerSamples.pm
+        : selectWindowSample(bucket.pm, unit, timeZone, `${unit._id}|${monthKey}|${dateKey}|pm`)
     });
   }
 
@@ -1229,10 +1264,18 @@ async function buildMonthlyUnitReportData(unitId, monthKey, options = {}) {
       criticalMin: unit.criticalMin,
       criticalMax: unit.criticalMax
     },
-    windows: {
-      am: { label: WINDOW_DEFS.am.label, start: '04:00', end: '05:59' },
-      pm: { label: WINDOW_DEFS.pm.label, start: '17:00', end: '18:59' }
-    },
+    windows: isFoodWarmerReport
+      ? {
+          am: { label: WINDOW_DEFS.am.label, start: 'First in-range', end: 'Daily' },
+          pm: { label: WINDOW_DEFS.pm.label, start: 'Second in-range', end: 'Daily' }
+        }
+      : {
+          am: { label: WINDOW_DEFS.am.label, start: '04:00', end: '05:59' },
+          pm: { label: WINDOW_DEFS.pm.label, start: '17:00', end: '18:59' }
+        },
+    selectionRule: isFoodWarmerReport
+      ? 'Food warmer rule: first two in-range operational readings for each day are used. If an in-range warmer reading is unavailable, the report marks Not-In-Use.'
+      : 'Selection rule: one stable random in-range reading is selected within each window. If no compliant reading exists in the window, the cell is left blank.',
     days
   };
 }

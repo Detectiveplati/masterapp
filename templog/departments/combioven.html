@@ -175,10 +175,12 @@
     <div class="active-header">
       <h2>现煮的食品 Active / Running Cooks</h2>
       <div class="bulk-actions">
+        <button id="active-toggle-btn" class="bulk-btn active-toggle-btn" onclick="toggleActiveCooksPanel()" aria-expanded="true">收起 Collapse</button>
         <button class="bulk-btn start-all-btn" onclick="startAllCooks()">🔥 开始全部 Start All</button>
         <button class="bulk-btn end-all-btn" onclick="endAllCooks()">⏹️ 停止全部 End All</button>
       </div>
     </div>
+    <div id="active-summary" class="active-summary" aria-live="polite"></div>
     <p class="card-instructions">👆 点击卡片开始 / 停止烹饪 &nbsp;·&nbsp; Tap a card to start or end cooking</p>
     <div class="active-grid" id="active-grid"></div>
   </div>
@@ -979,4 +981,3 @@
   </script>
 </body>
 </html>
-

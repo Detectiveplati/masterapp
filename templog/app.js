@@ -5,6 +5,10 @@ let cooks = [];
 let globalTimerId = null;
 let currentStaff = null;  // 'Alice', 'Bob', 'Charlie' or null
 let wakeLock = null;
+let activePanelCollapsed = false;
+let activePanelCollapseTouched = false;
+
+const ACTIVE_PANEL_COLLAPSE_THRESHOLD = 8;
 
 // BT thermometer target: which cook card receives the next reading
 window.btTargetCookId = null;
@@ -88,6 +92,9 @@ document.addEventListener('visibilitychange', async () => {
 requestWakeLock();
 
 const activeGrid = document.getElementById('active-grid');
+const activeCooksPanel = document.getElementById('active-cooks');
+const activeSummary = document.getElementById('active-summary');
+const activeToggleBtn = document.getElementById('active-toggle-btn');
 const statusEl = document.getElementById('status');
 const recentBody = document.getElementById('recent-body');
 
@@ -137,6 +144,16 @@ function addNewCook(food) {
     return;
   }
 
+  const pendingSameFood = cooks.find(c => c.food === food && !c.startTime && !c.endTime);
+  if (pendingSameFood) {
+    pendingSameFood.batchQty = Math.max(1, Number(pendingSameFood.batchQty) || 1) + 1;
+    pendingSameFood.trays = String(pendingSameFood.batchQty);
+    renderActiveCooks();
+    showToast(`✓ 已加入同一批 Added to same pending batch: ${food}`);
+    statusEl.textContent = `已加入同一批 Added to same pending batch (${pendingSameFood.batchQty}) — ${food}`;
+    return;
+  }
+
   const id = Date.now();
   cooks.push({
     id,
@@ -145,7 +162,10 @@ function addNewCook(food) {
     endTime: null,
     duration: null,
     temp: '',
-    trays: '',    units: 'Full GN',    timerRunning: false
+    trays: '',
+    units: 'Full GN',
+    timerRunning: false,
+    batchQty: 1
   });
   renderActiveCooks();
   showToast(`✓ 已添加 Added: ${food}`);
@@ -175,7 +195,7 @@ function renderActiveCooks() {
       ${cook.endTime ? `<button class="corner-btn corner-resume corner-tl" onclick="resumeCook(${cook.id})" title="Resume">&#9654;</button>` : ''}
       ${(notStarted || cook.endTime) ? `<button class="corner-btn corner-cancel corner-tr" onclick="confirmCancelCook(${cook.id})" title="Cancel">&#10005;</button>` : ''}
       <div class="card-tap-zone card-tap-active">
-        <h3>${formatFoodName(cook.food)}</h3>
+        <h3>${formatFoodName(cook.food)}${Number(cook.batchQty) > 1 ? `<span class="batch-count">×${cook.batchQty}</span>` : ''}</h3>
         <div class="timer-display ${cook.endTime ? 'finished' : ''}" id="timer-${cook.id}">
           ${cook.startTime ? formatElapsed(cook) : '未开始 Not started'}
         </div>
@@ -184,10 +204,10 @@ function renderActiveCooks() {
         </div>
         ${notStarted
           ? '<div class="end-tap-hint" style="color:#27ae60;">🟢 点击开始烹饪 Tap to start cooking</div>'
-          : inProgress
-            ? '<div class="end-tap-hint">🔴 点击停止烹饪 Tap to end cooking</div>'
+            : inProgress
+              ? '<div class="end-tap-hint">🔴 点击停止烹饪 Tap to end cooking</div>'
             : isTarget
-            ? '<div class="bt-target-indicator">targeted · press probe</div>'
+            ? '<div class="bt-target-indicator" aria-label="测温目标 / Temp target">TARGETED</div>'
             : tappable
               ? cook.tempLocked
                 ? '<div class="bt-target-hint">🔄 重新点击以重新锁定 Re-tap to re-lock</div>'
@@ -247,7 +267,56 @@ function renderActiveCooks() {
 
     activeGrid.appendChild(card);
   });
+  updateActivePanelChrome();
   saveCooksToStorage();
+}
+
+function toggleActiveCooksPanel() {
+  activePanelCollapseTouched = true;
+  activePanelCollapsed = !activePanelCollapsed;
+  updateActivePanelChrome();
+}
+window.toggleActiveCooksPanel = toggleActiveCooksPanel;
+
+function updateActivePanelChrome() {
+  if (!activeCooksPanel || !activeSummary || !activeToggleBtn) return;
+
+  const hasCards = cooks.length > 0;
+  if (!hasCards) {
+    activePanelCollapseTouched = false;
+    activePanelCollapsed = false;
+  }
+  if (!activePanelCollapseTouched) {
+    activePanelCollapsed = cooks.length > ACTIVE_PANEL_COLLAPSE_THRESHOLD;
+  }
+
+  activeCooksPanel.classList.toggle('active-collapsed', hasCards && activePanelCollapsed);
+  activeToggleBtn.style.display = hasCards ? '' : 'none';
+  activeToggleBtn.textContent = activePanelCollapsed ? '展开 Timers' : '收起 Collapse';
+  activeToggleBtn.setAttribute('aria-expanded', String(!activePanelCollapsed));
+
+  const runningCount = cooks.filter(c => c.startTime && !c.endTime).length;
+  const doneCount = cooks.filter(c => c.endTime).length;
+  const pendingCount = cooks.filter(c => !c.startTime && !c.endTime).length;
+  const preview = cooks.slice(0, 4).map(cook => {
+    const stateClass = cook.startTime && !cook.endTime ? 'running' : cook.endTime ? 'done' : 'pending';
+    const stateText = cook.startTime ? formatElapsed(cook) : '未开始 Not started';
+    const qty = Number(cook.batchQty) > 1 ? ` x${cook.batchQty}` : '';
+    return `<span class="active-summary-pill ${stateClass}">${shortFoodName(cook.food)}${qty} · ${stateText}</span>`;
+  }).join('');
+  const extra = cooks.length > 4 ? `<span class="active-summary-pill">+${cooks.length - 4} more</span>` : '';
+  activeSummary.innerHTML = hasCards
+    ? `<span class="active-summary-pill">${cooks.length} cards · ${runningCount} running · ${doneCount} ended · ${pendingCount} pending</span>${preview}${extra}`
+    : '';
+}
+
+function shortFoodName(food) {
+  return String(food || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .slice(0, 4)
+    .join(' ');
 }
 
 function formatElapsed(cook) {
@@ -546,6 +615,7 @@ function startGlobalTimer() {
         if (el) el.textContent = formatElapsed(cook);
       }
     });
+    updateActivePanelChrome();
     if (!anyRunning) {
       clearInterval(globalTimerId);
       globalTimerId = null;
@@ -617,8 +687,8 @@ async function exportFullCSV() {
 // so that autoSelectFirstStaff() cannot overwrite a restored cooks array.
 loadStaffFromStorage();   // must run before loadCooks so cards render with correct staff
 loadCooksFromStorage();
+updateActivePanelChrome();
 
 window.addEventListener('load', () => {
   loadRecent();
 });
-

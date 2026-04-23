@@ -128,6 +128,8 @@ h1 {
 .bulk-actions {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .bulk-btn {
@@ -155,6 +157,52 @@ h1 {
   background: linear-gradient(135deg, #e74c3c, #c0392b);
   color: white;
 }
+
+.active-toggle-btn {
+  background: #fff;
+  color: #444;
+  border-color: rgba(0,0,0,0.14);
+}
+
+.active-summary {
+  display: none;
+  gap: 6px;
+  align-items: center;
+  overflow-x: auto;
+  padding: 5px 2px 2px;
+  scrollbar-width: none;
+}
+
+.active-summary::-webkit-scrollbar { display: none; }
+
+.active-summary-pill {
+  flex: 0 0 auto;
+  max-width: 190px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #444;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.active-summary-pill.running { color: #d35400; border-color: rgba(211,84,0,0.3); }
+.active-summary-pill.done { color: #27ae60; border-color: rgba(39,174,96,0.3); }
+.active-summary-pill.pending { color: #1565c0; border-color: rgba(21,101,192,0.25); }
+
+#active-cooks.active-collapsed {
+  margin-bottom: 14px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+}
+
+#active-cooks.active-collapsed .active-summary { display: flex; }
+#active-cooks.active-collapsed .active-grid,
+#active-cooks.active-collapsed .card-instructions { display: none; }
 
 .active-grid {
   display: grid;
@@ -186,6 +234,23 @@ h1 {
   text-align: center;
   padding-left: 28px;   /* clear resume button (top-left) */
   padding-right: 28px;  /* clear cancel button (top-right) */
+}
+
+.batch-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 5px;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #fff4e8;
+  color: var(--accent-2);
+  border: 1px solid rgba(211,84,0,0.28);
+  font-size: 0.72rem;
+  font-weight: 900;
+  vertical-align: middle;
 }
 .food-cn {
   display: block;
@@ -507,13 +572,13 @@ button {
 }
 /* Targeted card — bright full border + pulsing glow so it's obvious across the room */
 .cook-card.bt-targeted {
-  border: 3px solid #1565c0 !important;
-  box-shadow: 0 0 0 4px rgba(21,101,192,0.45), 0 0 18px rgba(21,101,192,0.35);
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 4px 12px var(--shadow);
   animation: targeted-pulse 1.4s ease-in-out infinite;
 }
 @keyframes targeted-pulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(21,101,192,0.45), 0 0 18px rgba(21,101,192,0.3); }
-  50%       { box-shadow: 0 0 0 7px rgba(21,101,192,0.2), 0 0 28px rgba(21,101,192,0.5); }
+  0%, 100% { box-shadow: 0 4px 12px var(--shadow), inset 0 0 0 2px rgba(21,101,192,0.24); }
+  50%       { box-shadow: 0 4px 18px rgba(21,101,192,0.24), inset 0 0 0 2px rgba(21,101,192,0.42); }
 }
 
 /* Tappable top zone on finished cards */
@@ -586,22 +651,39 @@ button {
   pointer-events: none;
 }
 
-/* "Targeted" indicator — compact badge overlaid, no layout impact */
+/* Target marker: placed in the open band below the timer, no layout impact */
 .bt-target-indicator {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  font-size: 0.55rem;
-  font-weight: 600;
-  color: #90c4f8;
-  text-align: center;
-  background: rgba(21, 101, 192, 0.12);
-  border-radius: 0 0 6px 6px;
-  padding: 2px 4px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  top: 78px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 24px);
+  height: 18px;
+  padding: 2px 8px;
+  color: #fff;
+  background: #1565c0;
+  border: 1px solid rgba(255,255,255,0.95);
+  border-radius: 999px;
   pointer-events: none;
+  box-shadow: 0 2px 8px rgba(21,101,192,0.28);
+  box-sizing: border-box;
+  z-index: 1;
+  font-size: 0.54rem;
+  font-weight: 900;
+  line-height: 12px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: target-pill-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes target-pill-pulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(21,101,192,0.24); }
+  50% { box-shadow: 0 3px 12px rgba(21,101,192,0.48); }
 }
 
 #menu h2 {
@@ -751,6 +833,9 @@ button {
 @media (max-width: 640px) {
   body { padding: 8px; }
   .active-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .active-header { align-items: flex-start; }
+  .bulk-actions { gap: 6px; }
+  .bulk-btn { padding: 7px 10px; font-size: 0.78rem; }
   .food-card { width: 140px; }
   .food-card img { height: 110px; }
   #staff-selector strong { display: block; margin: 0 0 6px; }
