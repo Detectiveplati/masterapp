@@ -301,13 +301,77 @@ function renderCategoryOptions() {
     .join('');
 }
 
+function normalizeSearchText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, ' ')
+    .trim();
+}
+
+function getSearchableItemText(item) {
+  return normalizeSearchText([
+    item.nameEnglish,
+    item.nameChinese,
+    item.name,
+    item.description,
+    item.sku,
+    item.barcode
+  ].join(' '));
+}
+
+function getEditDistanceWithinLimit(a, b, limit) {
+  if (!a || !b) return Math.max(a.length, b.length);
+  if (Math.abs(a.length - b.length) > limit) return limit + 1;
+
+  const prev = new Array(b.length + 1);
+  const curr = new Array(b.length + 1);
+
+  for (let j = 0; j <= b.length; j += 1) prev[j] = j;
+
+  for (let i = 1; i <= a.length; i += 1) {
+    curr[0] = i;
+    let rowMin = curr[0];
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(
+        prev[j] + 1,
+        curr[j - 1] + 1,
+        prev[j - 1] + cost
+      );
+      rowMin = Math.min(rowMin, curr[j]);
+    }
+    if (rowMin > limit) return limit + 1;
+    for (let j = 0; j <= b.length; j += 1) prev[j] = curr[j];
+  }
+
+  return prev[b.length];
+}
+
+function matchesItemSearch(item, query) {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return true;
+
+  const searchableText = getSearchableItemText(item);
+  if (!searchableText) return false;
+  if (searchableText.includes(normalizedQuery)) return true;
+
+  const compactQuery = normalizedQuery.replace(/\s+/g, '');
+  const tokens = searchableText.split(/\s+/).filter(Boolean);
+
+  return tokens.some((token) => {
+    if (token.includes(compactQuery) || compactQuery.includes(token)) return true;
+    if (token.startsWith(compactQuery) || compactQuery.startsWith(token)) return true;
+    if (compactQuery.length < 4 || token.length < 4) return false;
+    return getEditDistanceWithinLimit(token, compactQuery, 1) <= 1;
+  });
+}
+
 function renderItems() {
-  const q = searchInputEl.value.trim().toLowerCase();
+  const q = searchInputEl.value.trim();
   const category = categoryFilterEl.value.trim();
   const visibleItems = state.items.filter((item) => {
     if (category && item.category !== category) return false;
-    if (!q) return true;
-    return [item.name, item.description, item.sku, item.barcode].join(' ').toLowerCase().includes(q);
+    return matchesItemSearch(item, q);
   });
 
   clearSearchButtonEl.classList.toggle('hidden', !q);

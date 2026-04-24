@@ -82,10 +82,11 @@ body[data-module="label-print"] {
   color: #111827;
   line-height: 1;
 }
-.command-search { min-width: 0; }
-.search-box { display: flex; gap: 8px; align-items: center; }
+.command-search { min-width: 0; width: 100%; }
+.search-box { display: flex; gap: 8px; align-items: center; width: 100%; }
 .search-box input {
   flex: 1 1 auto;
+  min-width: 0;
   min-height: 46px;
   border-radius: 14px;
   border: 2px solid rgba(217, 119, 6, 0.22);
@@ -101,7 +102,7 @@ body[data-module="label-print"] {
   border-color: #d97706;
   box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.14);
 }
-.search-clear-button { white-space: nowrap; }
+.search-clear-button { white-space: nowrap; flex: 0 0 auto; }
 .command-controls {
   display: flex;
   gap: 8px;
@@ -824,6 +825,8 @@ body[data-module="label-template-setup"] {
 @media (max-width: 1100px) {
   .command-bar { grid-template-columns: 1fr; gap: 8px; }
   .command-brand { flex-direction: row; align-items: center; gap: 8px; }
+  .command-search { width: 100%; }
+  .search-box { width: 100%; }
   .command-controls { flex-wrap: wrap; }
   .status-grid, .printer-status-grid { grid-template-columns: 1fr; }
   .modal-grid { grid-template-columns: 1fr; }
