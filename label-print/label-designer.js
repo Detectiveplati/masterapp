@@ -43,8 +43,15 @@ const loadDefaultBtn     = document.getElementById('load-default-btn');
 const btDot              = document.getElementById('bt-dot');
 const btLabel            = document.getElementById('bt-label');
 const toastEl            = document.getElementById('toast');
-const templateKeyDisplay = document.getElementById('template-key-display');
-const templateKeyCopy    = document.getElementById('template-key-copy');
+const templateKeyDisplay  = document.getElementById('template-key-display');
+const templateKeyCopy     = document.getElementById('template-key-copy');
+const newTemplateBtn      = document.getElementById('new-template-btn');
+const newTemplateModal    = document.getElementById('new-template-modal');
+const ntName              = document.getElementById('nt-name');
+const ntKey               = document.getElementById('nt-key');
+const ntError             = document.getElementById('nt-error');
+const ntCancel            = document.getElementById('nt-cancel');
+const ntSave              = document.getElementById('nt-save');
 // Props
 const noSelMsg           = document.getElementById('no-selection-msg');
 const commonProps        = document.getElementById('common-props');
@@ -103,17 +110,83 @@ templateKeyCopy.addEventListener('click', () => {
   });
 });
 
+// ── New Template Modal ────────────────────────────────────────────────────────
+function slugify(str) {
+  return str.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+newTemplateBtn.addEventListener('click', () => {
+  ntName.value = '';
+  ntKey.value = '';
+  ntError.textContent = '';
+  newTemplateModal.classList.remove('hidden');
+  ntName.focus();
+});
+
+ntName.addEventListener('input', () => {
+  if (!ntKey.dataset.manuallyEdited) {
+    ntKey.value = slugify(ntName.value);
+  }
+});
+
+ntKey.addEventListener('input', () => {
+  ntKey.dataset.manuallyEdited = ntKey.value ? '1' : '';
+});
+
+ntCancel.addEventListener('click', () => {
+  newTemplateModal.classList.add('hidden');
+});
+
+newTemplateModal.addEventListener('click', (e) => {
+  if (e.target === newTemplateModal) newTemplateModal.classList.add('hidden');
+});
+
+ntSave.addEventListener('click', async () => {
+  const name = ntName.value.trim();
+  const key  = slugify(ntKey.value);
+  if (!key) { ntError.textContent = 'Template key is required.'; return; }
+  ntError.textContent = '';
+  ntSave.disabled = true;
+  ntSave.textContent = 'Creating…';
+  try {
+    const created = await apiFetch('/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name || key, key }),
+    });
+    state.templates.push(created);
+    const opt = document.createElement('option');
+    opt.value = created._id;
+    opt.textContent = created.name || created.key;
+    templateSelectEl.appendChild(opt);
+    templateSelectEl.value = created._id;
+    state.selectedTemplateId = created._id;
+    loadTemplateDesign(created);
+    updateTemplateKeyBadge(created);
+    newTemplateModal.classList.add('hidden');
+    toast('Template "' + (created.name || created.key) + '" created.');
+  } catch (err) {
+    ntError.textContent = err.message || 'Failed to create template.';
+  } finally {
+    ntSave.disabled = false;
+    ntSave.textContent = 'Create Template';
+  }
+});
+
 async function loadData() {
   try {
     const templates = await apiFetch('/templates');
     state.templates = templates;
-    templateSelectEl.innerHTML = templates.map((t) =>
-      `<option value="${t._id}">${t.name || t.key}</option>`
-    ).join('');
     if (templates.length) {
+      templateSelectEl.innerHTML = templates.map((t) =>
+        `<option value="${t._id}">${t.name || t.key}</option>`
+      ).join('');
       state.selectedTemplateId = templates[0]._id;
       loadTemplateDesign(templates[0]);
       updateTemplateKeyBadge(templates[0]);
+    } else {
+      templateSelectEl.innerHTML = '<option value="">— No templates — click + New</option>';
+      updateTemplateKeyBadge(null);
     }
   } catch (err) {
     toast('Could not load templates: ' + err.message);

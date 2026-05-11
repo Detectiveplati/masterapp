@@ -58,6 +58,19 @@
     .template-key-copy { font-size: 0.75rem; cursor: pointer; opacity: 0.6; user-select: none; }
     .template-key-copy:hover { opacity: 1; }
 
+    /* ── New Template Modal ──────────────────────────────────── */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .modal-backdrop.hidden { display: none !important; }
+    .modal-box { background: var(--surface); border-radius: 12px; padding: 24px; width: 360px; max-width: 95vw; box-shadow: 0 8px 40px rgba(0,0,0,0.22); display: flex; flex-direction: column; gap: 16px; }
+    .modal-title { font-size: 1rem; font-weight: 700; }
+    .modal-field { display: flex; flex-direction: column; gap: 5px; }
+    .modal-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+    .modal-input { font: inherit; font-size: 0.9rem; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); width: 100%; }
+    .modal-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .modal-hint { font-size: 0.72rem; color: var(--text-muted); }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-error { font-size: 0.78rem; color: #dc2626; min-height: 1em; }
+
     /* ── Main layout ─────────────────────────────────────────── */
     .designer-body { display: flex; flex: 1; overflow: hidden; }
 
@@ -130,8 +143,9 @@
   <div class="topbar-sep"></div>
   <div class="topbar-template-wrap">
     <select id="template-select" class="template-select">
-      <option value="">Loading templates…</option>
+      <option value="">— No templates —</option>
     </select>
+    <button id="new-template-btn" class="btn btn-primary" title="Create a new template">+ New</button>
     <button id="clear-btn" class="btn" title="Clear canvas">Clear</button>
   </div>
   <div class="topbar-sep"></div>
@@ -273,6 +287,27 @@
 </div>
 
 <div id="toast"></div>
+
+<!-- New Template Modal -->
+<div id="new-template-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div class="modal-title">New Template</div>
+    <div class="modal-field">
+      <label class="modal-label" for="nt-name">Template Name</label>
+      <input id="nt-name" class="modal-input" type="text" placeholder="e.g. Sauce Kitchen" autocomplete="off">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label" for="nt-key">Template Key <span style="color:#dc2626">*</span></label>
+      <input id="nt-key" class="modal-input" type="text" placeholder="e.g. sauce-kitchen" autocomplete="off" spellcheck="false">
+      <span class="modal-hint">Lowercase letters, numbers, hyphens only. This is the value you put in the CSV <strong>templateKey</strong> column.</span>
+    </div>
+    <div class="modal-error" id="nt-error"></div>
+    <div class="modal-actions">
+      <button id="nt-cancel" class="btn">Cancel</button>
+      <button id="nt-save" class="btn btn-primary">Create Template</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js" crossorigin="anonymous"></script>
 <script src="label-designer.js"></script>
