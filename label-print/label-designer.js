@@ -112,9 +112,15 @@ templateSelectEl.addEventListener('change', () => {
 function loadTemplateDesign(template) {
   const fc = state.canvas;
   if (template.designLayout && template.designLayout.objects) {
-    fc.loadFromJSON(template.designLayout, () => {
-      fc.renderAll();
-    });
+    // Restore halal logo src before loading (stripped at save time to avoid 413)
+    const json = JSON.parse(JSON.stringify(template.designLayout));
+    const logoSrc = localStorage.getItem(HALAL_LOGO_STORAGE_KEY) || '/label-print/halal-logo.png';
+    for (const obj of json.objects || []) {
+      if (obj.type === 'image' && obj.fieldBinding === 'halalLogo' && !obj.src) {
+        obj.src = logoSrc;
+      }
+    }
+    fc.loadFromJSON(json, () => { fc.renderAll(); });
   } else {
     fc.clear();
     fc.backgroundColor = 'white';
@@ -340,12 +346,18 @@ function applyPositionFromPanel() {
 async function saveLayout() {
   if (!state.selectedTemplateId) { toast('Select a template first.'); return; }
   const designLayout = state.canvas.toJSON(['fieldBinding']);
+  // Strip embedded base64 image data — images are restored from localStorage/static
+  // at load time, so there's no need to store the full data URL in MongoDB.
+  for (const obj of designLayout.objects || []) {
+    if (obj.type === 'image' && typeof obj.src === 'string' && obj.src.startsWith('data:')) {
+      delete obj.src;
+    }
+  }
   try {
     await apiFetch(`/templates/${state.selectedTemplateId}/layout`, {
       method: 'PUT',
       body: JSON.stringify({ designLayout }),
     });
-    // Update local state
     const t = state.templates.find((x) => x._id === state.selectedTemplateId);
     if (t) t.designLayout = designLayout;
     toast('Layout saved.');

@@ -2064,6 +2064,67 @@ async function renderLabelToRasterLines(item, template, globalSettings = {}) {
   return lines;
 }
 
+// Render a designed template (Fabric.js JSON) for a specific item, substituting
+// dynamic field values, then convert to raster lines ready for buildRasterJob.
+async function renderDesignedTemplate(designLayout, item, globalSettings) {
+  const PRINT_W = 696, PRINT_H = 271;
+  const fmtDate = (d) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  const today = new Date();
+  const shelfLife = item.shelfLifeDays ?? 3;
+  const fieldValues = {
+    entity:         item.businessEntity || globalSettings.businessEntity || '',
+    address:        item.address        || globalSettings.address        || '',
+    halalCert:      item.halalCertNumber || globalSettings.halalCertNumber || 'C1086',
+    nameChinese:    item.nameChinese    || '',
+    nameEnglish:    item.nameEnglish    || item.name || '',
+    dateProduction: fmtDate(today),
+    dateExpiry:     fmtDate(new Date(today.getTime() + shelfLife * 86400000)),
+    departmentName: item.departmentName || '',
+    shelfLifeDays:  `+${shelfLife}Days`,
+  };
+
+  // Deep-clone the JSON and substitute field values + restore logo src
+  const json = JSON.parse(JSON.stringify(designLayout));
+  const logoSrc = globalSettings.halalLogoDataUrl || '/label-print/halal-logo.png';
+  for (const obj of json.objects || []) {
+    if (obj.fieldBinding && fieldValues[obj.fieldBinding] !== undefined) {
+      if (obj.type === 'i-text' || obj.type === 'text') {
+        obj.text = String(fieldValues[obj.fieldBinding]);
+      }
+    }
+    if (obj.type === 'image' && obj.fieldBinding === 'halalLogo' && !obj.src) {
+      obj.src = logoSrc;
+    }
+  }
+
+  // Render via a temporary Fabric.js StaticCanvas (non-interactive, no DOM attachment needed)
+  const printEl = document.createElement('canvas');
+  printEl.width = PRINT_W;
+  printEl.height = PRINT_H;
+
+  const lines = await new Promise((resolve) => {
+    const fc = new fabric.StaticCanvas(printEl, { backgroundColor: 'white' });
+    fc.loadFromJSON(json, () => {
+      fc.renderAll();
+      const ctx = printEl.getContext('2d');
+      const imageData = ctx.getImageData(0, 0, PRINT_W, PRINT_H);
+      fc.dispose();
+      const rlines = [];
+      for (let row = 0; row < PRINT_H; row++) {
+        const lb = new Uint8Array(90);
+        for (let col = 0; col < PRINT_W; col++) {
+          const i = (row * PRINT_W + col) * 4;
+          const bright = imageData.data[i] * 0.299 + imageData.data[i+1] * 0.587 + imageData.data[i+2] * 0.114;
+          if (bright < 128) { const rpos = 707 - col; lb[rpos >> 3] |= (0x80 >> (rpos & 7)); }
+        }
+        rlines.push(lb);
+      }
+      resolve(rlines);
+    });
+  });
+  return lines;
+}
+
 function buildRasterJob(rasterLines, { cutMode, mediaWidthMm = 62, labelLengthMm = 29 }) {
   const chunks = [];
 
@@ -2161,7 +2222,11 @@ async function sendTemplateToBluetooth(payload) {
     halalCertNumber: activePrinter.halalCertNumber || '',
     halalLogoDataUrl: localStorage.getItem(HALAL_LOGO_STORAGE_KEY) || ''
   };
-  const rasterLines = await renderLabelToRasterLines(item, template, globalSettings);
+  // Use the designed template layout if one has been saved in the designer.
+  // Fall back to the hardcoded layout when no design exists.
+  const rasterLines = (template && template.designLayout && template.designLayout.objects && template.designLayout.objects.length)
+    ? await renderDesignedTemplate(template.designLayout, item, globalSettings)
+    : await renderLabelToRasterLines(item, template, globalSettings);
   // Hard-fixed for DK-11209: always send 62mm width / 29mm length regardless of template record.
   // Template drift (e.g. heightMm=62) would tell the printer to expect a 62mm die, which doesn't exist,
   // so the firmware rejects with "wrong label type".

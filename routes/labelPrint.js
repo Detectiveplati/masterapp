@@ -209,7 +209,7 @@ router.put('/templates/:id', express.json(), async (req, res) => {
   }
 });
 
-router.put('/templates/:id/layout', express.json(), async (req, res) => {
+router.put('/templates/:id/layout', express.json({ limit: '5mb' }), async (req, res) => {
   try {
     const template = await LabelPrintTemplate.findById(req.params.id);
     if (!template) return res.status(404).json({ error: 'Template not found' });
