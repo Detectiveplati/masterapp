@@ -209,6 +209,18 @@ router.put('/templates/:id', express.json(), async (req, res) => {
   }
 });
 
+router.put('/templates/:id/layout', express.json(), async (req, res) => {
+  try {
+    const template = await LabelPrintTemplate.findById(req.params.id);
+    if (!template) return res.status(404).json({ error: 'Template not found' });
+    template.designLayout = req.body.designLayout !== undefined ? req.body.designLayout : template.designLayout;
+    await template.save();
+    res.json({ ok: true, _id: template._id, key: template.key });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 router.get('/items', async (req, res) => {
   try {
     await ensureDefaults();

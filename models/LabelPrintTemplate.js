@@ -30,7 +30,8 @@ const LabelPrintTemplateSchema = new mongoose.Schema({
   departmentSignature: { type: String, default: '', trim: true },
   departmentSignaturePlacement: { type: String, default: '', trim: true },
   departmentSignatureEmbeddedInTemplate: { type: Boolean, default: false },
-  active: { type: Boolean, default: true }
+  active: { type: Boolean, default: true },
+  designLayout: { type: mongoose.Schema.Types.Mixed, default: null }
 }, { timestamps: true });
 
 module.exports = mongoose.model('LabelPrintTemplate', LabelPrintTemplateSchema, COLLECTIONS.core.LABEL_PRINT_TEMPLATES);

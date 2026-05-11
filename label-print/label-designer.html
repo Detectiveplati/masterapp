@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Label Designer · Label Print</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --border: rgba(0,0,0,0.1);
+      --accent: #d97706;
+      --accent-dark: #b45309;
+      --text: #111;
+      --text-muted: #666;
+      --panel-w: 220px;
+      --topbar-h: 52px;
+    }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+
+    /* ── Top bar ──────────────────────────────────────────────── */
+    .topbar {
+      height: var(--topbar-h); flex-shrink: 0;
+      display: flex; align-items: center; gap: 10px; padding: 0 14px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    .topbar-back { text-decoration: none; color: var(--text-muted); font-size: 0.85rem; font-weight: 600; padding: 6px 10px; border-radius: 6px; transition: background 0.1s; }
+    .topbar-back:hover { background: var(--bg); }
+    .topbar-sep { width: 1px; height: 24px; background: var(--border); }
+    .topbar-title { font-weight: 700; font-size: 0.95rem; }
+    .topbar-template-wrap { display: flex; align-items: center; gap: 6px; flex: 1; }
+    select.template-select { font: inherit; font-size: 0.85rem; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); max-width: 260px; }
+    .btn { font: inherit; font-size: 0.82rem; font-weight: 600; padding: 7px 14px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; white-space: nowrap; transition: background 0.12s, opacity 0.1s; }
+    .btn:hover { background: var(--bg); }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent-dark); }
+    .btn-primary:hover { background: var(--accent-dark); }
+    .btn-danger { background: #dc2626; color: #fff; border-color: #b91c1c; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; margin-right: 4px; flex-shrink: 0; }
+    .status-dot.connected { background: #16a34a; }
+    #connect-status { font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+
+    /* ── Main layout ─────────────────────────────────────────── */
+    .designer-body { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Left toolbox ────────────────────────────────────────── */
+    .toolbox {
+      width: var(--panel-w); flex-shrink: 0;
+      background: var(--surface); border-right: 1px solid var(--border);
+      overflow-y: auto; padding: 12px 10px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .tool-section-title { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-muted); padding: 4px 4px 6px; }
+    .tool-btn {
+      width: 100%; text-align: left; font: inherit; font-size: 0.82rem; font-weight: 500;
+      padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--bg); cursor: pointer; transition: background 0.1s;
+    }
+    .tool-btn:hover { background: #ece9e2; }
+    .tool-btn.field-btn { padding-left: 22px; font-size: 0.79rem; }
+    .tool-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+    /* ── Canvas area ─────────────────────────────────────────── */
+    .canvas-area {
+      flex: 1; overflow: auto;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      padding: 28px 20px; gap: 10px;
+      background: #d1d5db;
+    }
+    .canvas-frame {
+      background: white;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+      border: 2px dashed #e2e2e2;
+      display: inline-block;
+      line-height: 0;
+    }
+    .canvas-info { font-size: 0.72rem; color: #6b7280; font-weight: 500; }
+    #designer-canvas { display: block; }
+
+    /* ── Right props panel ───────────────────────────────────── */
+    .props-panel {
+      width: 240px; flex-shrink: 0;
+      background: var(--surface); border-left: 1px solid var(--border);
+      overflow-y: auto; padding: 12px 12px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .props-title { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-muted); }
+    .prop-group { display: flex; flex-direction: column; gap: 6px; }
+    .prop-row { display: flex; flex-direction: column; gap: 3px; }
+    .prop-row-h { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .prop-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
+    .prop-input { font: inherit; font-size: 0.82rem; padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; width: 100%; background: var(--bg); }
+    .prop-input-sm { width: 70px; }
+    .prop-input:disabled { opacity: 0.5; cursor: not-allowed; }
+    select.prop-input { background: var(--bg); }
+    .prop-checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; }
+    .no-selection-msg { color: var(--text-muted); font-size: 0.82rem; line-height: 1.5; padding: 8px 0; }
+    .hidden { display: none !important; }
+
+    /* ── Toast ───────────────────────────────────────────────── */
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #111; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 0.85rem; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 9999; }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <a class="topbar-back" href="/label-print/">← Back</a>
+  <div class="topbar-sep"></div>
+  <span class="topbar-title">Label Designer</span>
+  <div class="topbar-sep"></div>
+  <div class="topbar-template-wrap">
+    <select id="template-select" class="template-select">
+      <option value="">Loading templates…</option>
+    </select>
+    <button id="clear-btn" class="btn" title="Clear canvas">Clear</button>
+  </div>
+  <div id="connect-status"><span class="status-dot" id="bt-dot"></span><span id="bt-label">Not connected</span></div>
+  <button id="connect-btn" class="btn">Connect Printer</button>
+  <button id="print-btn" class="btn" disabled>Print Test</button>
+  <button id="save-btn" class="btn btn-primary">Save Layout</button>
+</div>
+
+<!-- Body -->
+<div class="designer-body">
+
+  <!-- Left: toolbox -->
+  <div class="toolbox">
+    <div class="tool-section-title">Static Elements</div>
+    <button class="tool-btn" id="add-text-btn">+ Text</button>
+    <button class="tool-btn" id="add-line-btn">+ Horizontal Line</button>
+    <button class="tool-btn" id="add-logo-btn">+ Halal Logo</button>
+
+    <div class="tool-divider"></div>
+    <div class="tool-section-title">Dynamic Fields</div>
+    <button class="tool-btn field-btn" data-field="entity">Company Name</button>
+    <button class="tool-btn field-btn" data-field="address">Address</button>
+    <button class="tool-btn field-btn" data-field="nameChinese">Chinese Name</button>
+    <button class="tool-btn field-btn" data-field="nameEnglish">English Name</button>
+    <button class="tool-btn field-btn" data-field="dateProduction">Production Date</button>
+    <button class="tool-btn field-btn" data-field="dateExpiry">Expiry Date</button>
+    <button class="tool-btn field-btn" data-field="departmentName">Department</button>
+    <button class="tool-btn field-btn" data-field="shelfLifeDays">Shelf Life Days</button>
+    <button class="tool-btn field-btn" data-field="halalCert">Halal Cert No.</button>
+
+    <div class="tool-divider"></div>
+    <button class="tool-btn btn-danger" id="delete-btn" style="background:#fee2e2;color:#dc2626;border-color:#fca5a5;">Delete Selected</button>
+    <button class="tool-btn" id="load-default-btn" style="font-size:0.75rem;opacity:0.7;">Load Default Layout</button>
+  </div>
+
+  <!-- Center: canvas -->
+  <div class="canvas-area">
+    <div class="canvas-frame">
+      <canvas id="designer-canvas"></canvas>
+    </div>
+    <div class="canvas-info">DK-11209 · 62 mm × 29 mm · 696 × 271 px · 300 DPI · displayed at 2×</div>
+  </div>
+
+  <!-- Right: properties -->
+  <div class="props-panel">
+    <div class="props-title">Properties</div>
+
+    <div id="no-selection-msg" class="no-selection-msg">Click an element to edit its properties.</div>
+
+    <!-- Common position/size -->
+    <div id="common-props" class="prop-group hidden">
+      <div class="prop-row">
+        <span class="prop-label">Position</span>
+        <div class="prop-row-h">
+          <span class="prop-label" style="width:14px">X</span>
+          <input id="prop-x" type="number" class="prop-input" step="1">
+          <span class="prop-label" style="width:14px">Y</span>
+          <input id="prop-y" type="number" class="prop-input" step="1">
+        </div>
+      </div>
+      <div class="prop-row" id="size-row">
+        <span class="prop-label">Size</span>
+        <div class="prop-row-h">
+          <span class="prop-label" style="width:14px">W</span>
+          <input id="prop-w" type="number" class="prop-input" step="1">
+          <span class="prop-label" style="width:14px">H</span>
+          <input id="prop-h" type="number" class="prop-input" step="1">
+        </div>
+      </div>
+    </div>
+
+    <!-- Text-specific props -->
+    <div id="text-props" class="prop-group hidden">
+      <div class="prop-row">
+        <span class="prop-label">Field Binding</span>
+        <select id="prop-field" class="prop-input">
+          <option value="">(static text)</option>
+          <option value="entity">Company Name</option>
+          <option value="address">Address</option>
+          <option value="nameChinese">Chinese Name</option>
+          <option value="nameEnglish">English Name</option>
+          <option value="dateProduction">Production Date</option>
+          <option value="dateExpiry">Expiry Date</option>
+          <option value="departmentName">Department</option>
+          <option value="shelfLifeDays">Shelf Life Days</option>
+          <option value="halalCert">Halal Cert No.</option>
+        </select>
+      </div>
+      <div class="prop-row">
+        <span class="prop-label">Text Content</span>
+        <input id="prop-text" type="text" class="prop-input" placeholder="Text…">
+      </div>
+      <div class="prop-row-h">
+        <div class="prop-row" style="flex:1">
+          <span class="prop-label">Font Size</span>
+          <input id="prop-fontsize" type="number" class="prop-input" min="6" max="200" step="1">
+        </div>
+        <div class="prop-row" style="flex:1">
+          <span class="prop-label">Align</span>
+          <select id="prop-align" class="prop-input">
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+      </div>
+      <div class="prop-row-h" style="gap:16px">
+        <label class="prop-checkbox-row"><input id="prop-bold" type="checkbox"> Bold</label>
+        <label class="prop-checkbox-row"><input id="prop-italic" type="checkbox"> Italic</label>
+      </div>
+      <div class="prop-row">
+        <span class="prop-label">Max Width (0 = full label)</span>
+        <input id="prop-maxw" type="number" class="prop-input" min="0" max="696" step="1" placeholder="0">
+      </div>
+    </div>
+
+    <!-- Line-specific props -->
+    <div id="line-props" class="prop-group hidden">
+      <div class="prop-row">
+        <span class="prop-label">Stroke Width</span>
+        <input id="prop-stroke" type="number" class="prop-input" min="1" max="10" step="1">
+      </div>
+    </div>
+
+    <!-- Image-specific props -->
+    <div id="image-props" class="prop-group hidden">
+      <div class="prop-row">
+        <span class="prop-label">Source</span>
+        <input id="prop-src" type="text" class="prop-input" disabled placeholder="halal-logo">
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js" crossorigin="anonymous"></script>
+<script src="label-designer.js"></script>
+</body>
+</html>
