@@ -294,6 +294,12 @@ router.post('/assets/halal-logo', express.json({ limit: '5mb' }), async (req, re
       await LabelPrintPrinter.findByIdAndUpdate(req.body.printerId, {
         $set: { halalLogoDataUrl: dataUrl }
       }, { runValidators: true });
+    } else {
+      await LabelPrintPrinter.findOneAndUpdate(
+        { active: true },
+        { $set: { halalLogoDataUrl: dataUrl } },
+        { sort: { updatedAt: -1 }, runValidators: true }
+      );
     }
     res.json({ ok: true, url: '/api/label-print/assets/halal-logo', contentType, bytes: buffer.length });
   } catch (err) {

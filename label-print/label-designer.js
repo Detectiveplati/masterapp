@@ -799,6 +799,7 @@ async function printTest() {
 async function renderDesignToRasterLines() {
   // Build substituted JSON from the current canvas
   const rawJson = state.canvas.toJSON(['fieldBinding']);
+  restoreLogoSources(rawJson);
   const itemData = sampleItemData();
   const substituted = substituteFields(rawJson, itemData);
 
@@ -816,6 +817,15 @@ async function renderDesignToRasterLines() {
       resolve(imageDataToRasterLines(imageData));
     });
   });
+}
+
+function restoreLogoSources(fabricJson) {
+  const logoSrc = localStorage.getItem(HALAL_LOGO_STORAGE_KEY) || HALAL_LOGO_ASSET_URL;
+  for (const obj of fabricJson.objects || []) {
+    if (obj.type === 'image' && obj.fieldBinding === 'halalLogo' && !obj.src) {
+      obj.src = logoSrc;
+    }
+  }
 }
 
 // Return sample item data used when printing a test label from the designer
