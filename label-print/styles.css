@@ -96,6 +96,9 @@ body[data-module="label-print"] {
   padding: 0 14px;
   background: #fffdf8;
   width: 100%;
+  direction: ltr;
+  unicode-bidi: plaintext;
+  text-align: left;
 }
 .search-box input:focus {
   outline: none;

@@ -14,6 +14,9 @@ const LabelPrintItemSchema = new mongoose.Schema({
   departmentName: { type: String, default: '', trim: true },
   defaultQuantity: { type: Number, default: 1, min: 1, max: 999 },
   defaultCutMode: { type: String, enum: ['auto-cut', 'no-cut'], default: 'auto-cut' },
+  businessEntity: { type: String, default: '', trim: true },
+  address: { type: String, default: '', trim: true },
+  shelfLifeDays: { type: Number, default: 3, min: 0 },
   defaultFieldValues: { type: mongoose.Schema.Types.Mixed, default: {} },
   allowedOptions: {
     allowCutOverride: { type: Boolean, default: true }

@@ -1036,6 +1036,7 @@ function updatePrinterStatus() {
 
 function buildPrintPayload(_item, template, quantity, cutMode, printer) {
   return {
+    item: _item,
     printerId: printer._id,
     templateKey: template.key,
     printerTemplateNumber: template.printerTemplateNumber,
@@ -1677,12 +1678,168 @@ async function attemptAutoReconnect() {
   return 'failed';
 }
 
+async function renderLabelToRasterLines(item, template) {
+  const PRINT_WIDTH_PX = 696; // 62mm @ 300dpi
+  const heightPx = Math.round((template.heightMm || 62) / 25.4 * 300);
+  const canvas = new OffscreenCanvas(PRINT_WIDTH_PX, heightPx);
+  const ctx = canvas.getContext('2d');
+
+  // White background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, PRINT_WIDTH_PX, heightPx);
+
+  ctx.fillStyle = '#000000';
+  ctx.textBaseline = 'top';
+
+  const PAD = 8;
+  const usableWidth = PRINT_WIDTH_PX - PAD * 2;
+  let y = 4;
+
+  // Row 1: Business entity
+  const entityText = item.businessEntity || '';
+  if (entityText) {
+    ctx.font = `bold 28px 'Noto Sans SC', 'Arial Unicode MS', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(entityText, PRINT_WIDTH_PX / 2, y);
+    y += 32;
+  }
+
+  // Row 2: Address
+  const addressText = item.address || '';
+  if (addressText) {
+    ctx.font = `16px 'Noto Sans SC', 'Arial Unicode MS', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(addressText, PRINT_WIDTH_PX / 2, y);
+    y += 20;
+  }
+
+  // Divider
+  if (entityText || addressText) {
+    ctx.fillRect(PAD, y + 2, usableWidth, 1);
+    y += 6;
+  }
+
+  // Row 4: Department name
+  const deptText = item.departmentName || template.departmentName || '';
+  if (deptText) {
+    ctx.font = `18px 'Noto Sans SC', 'Arial Unicode MS', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(deptText, PRINT_WIDTH_PX / 2, y);
+    y += 22;
+  }
+
+  // Row 5: English product name (shrink-to-fit)
+  const nameEn = item.nameEnglish || item.name || '';
+  if (nameEn) {
+    let fontSize = 52;
+    ctx.font = `bold ${fontSize}px 'Noto Sans SC', 'Arial Unicode MS', sans-serif`;
+    while (ctx.measureText(nameEn).width > usableWidth && fontSize > 14) {
+      fontSize -= 2;
+      ctx.font = `bold ${fontSize}px 'Noto Sans SC', 'Arial Unicode MS', sans-serif`;
+    }
+    ctx.textAlign = 'center';
+    ctx.fillText(nameEn, PRINT_WIDTH_PX / 2, y);
+    y += fontSize + 6;
+  }
+
+  // Row 6: Chinese product name
+  const nameZh = item.nameChinese || '';
+  if (nameZh) {
+    ctx.font = `32px 'Noto Sans SC', 'Arial Unicode MS', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(nameZh, PRINT_WIDTH_PX / 2, y);
+    y += 38;
+  }
+
+  // Row 7 & 8: Dates
+  const today = new Date();
+  const shelfLifeDays = item.shelfLifeDays != null ? item.shelfLifeDays : 3;
+  const expiryDate = new Date(today.getTime() + shelfLifeDays * 86400000);
+  const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  ctx.font = `18px 'Noto Sans SC', 'Arial Unicode MS', sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.fillText(`开始日期: ${fmtDate(today)}`, PAD, y);
+  y += 22;
+  ctx.fillText(`过期日期: ${fmtDate(expiryDate)}`, PAD, y);
+
+  // Convert to monochrome raster lines
+  const imageData = ctx.getImageData(0, 0, PRINT_WIDTH_PX, heightPx);
+  const lines = [];
+  for (let row = 0; row < heightPx; row++) {
+    const lineBytes = new Uint8Array(87); // 696 / 8
+    for (let col = 0; col < PRINT_WIDTH_PX; col++) {
+      const i = (row * PRINT_WIDTH_PX + col) * 4;
+      const bright = imageData.data[i] * 0.299 + imageData.data[i + 1] * 0.587 + imageData.data[i + 2] * 0.114;
+      if (bright < 128) lineBytes[Math.floor(col / 8)] |= (0x80 >> (col % 8));
+    }
+    lines.push(lineBytes);
+  }
+  return lines;
+}
+
+function buildRasterJob(rasterLines, { cutMode }) {
+  const chunks = [];
+
+  // 1. Invalidate (200 × 0x00)
+  chunks.push(new Uint8Array(200));
+
+  // 2. Initialize
+  chunks.push(Uint8Array.from([0x1B, 0x40]));
+
+  // 3. Switch to raster mode
+  chunks.push(Uint8Array.from([0x1B, 0x69, 0x61, 0x01]));
+
+  // 4. Print info (media=62mm, line count as little-endian uint16)
+  const lineCount = rasterLines.length;
+  const lines_lo = lineCount & 0xFF;
+  const lines_hi = (lineCount >> 8) & 0xFF;
+  chunks.push(Uint8Array.from([0x1B, 0x69, 0x7A, 0x8A, 0x0A, 0x3E, 0x00, lines_lo, lines_hi, 0x00, 0x00, 0x00, 0x01]));
+
+  // 5. Cut mode
+  chunks.push(Uint8Array.from([0x1B, 0x69, 0x4D, cutMode === 'no-cut' ? 0x00 : 0x40]));
+
+  // 6. Expanded mode
+  chunks.push(Uint8Array.from([0x1B, 0x69, 0x4B, 0x08]));
+
+  // 7. Margin (feed amount = 0)
+  chunks.push(Uint8Array.from([0x1B, 0x69, 0x64, 0x00, 0x00]));
+
+  // 8. Raster lines: [0x47, 0x00, 0x57, ...87 bytes...]
+  for (const lineBytes of rasterLines) {
+    const lineCmd = new Uint8Array(90); // 3 header + 87 data
+    lineCmd[0] = 0x47;
+    lineCmd[1] = 0x00;
+    lineCmd[2] = 0x57;
+    lineCmd.set(lineBytes, 3);
+    chunks.push(lineCmd);
+  }
+
+  // 9. Print + feed
+  chunks.push(Uint8Array.from([0x1A]));
+
+  return concatUint8Arrays(chunks);
+}
+
 async function sendTemplateToBluetooth(payload) {
   const port = await verifyConnectionBeforePrint();
-  const bytes = buildPtouchTemplateJob(payload);
+  const template = findTemplate(payload.templateKey) || state.templates[0] || { heightMm: 62 };
+  const item = payload.item || {
+    name: 'Test Print',
+    nameEnglish: 'Test Print',
+    nameChinese: '测试打印',
+    businessEntity: '',
+    address: '',
+    departmentName: template.departmentName || '',
+    shelfLifeDays: 1
+  };
+  const rasterLines = await renderLabelToRasterLines(item, template);
+  const bytes = buildRasterJob(rasterLines, { cutMode: payload.cutMode || 'auto-cut' });
   const writer = port.writable.getWriter();
   try {
-    await writer.write(bytes);
+    for (let i = 0; i < (payload.copies || 1); i++) {
+      if (i > 0) await new Promise(r => setTimeout(r, 100));
+      await writer.write(bytes);
+    }
   } finally {
     writer.releaseLock();
   }
