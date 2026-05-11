@@ -38,6 +38,8 @@ const templateSelectEl   = document.getElementById('template-select');
 const saveBtn            = document.getElementById('save-btn');
 const clearBtn           = document.getElementById('clear-btn');
 const deleteBtn          = document.getElementById('delete-btn');
+const deleteTopBtn       = document.getElementById('delete-top-btn');
+const duplicateObjectBtn = document.getElementById('duplicate-object-btn');
 const connectBtn         = document.getElementById('connect-btn');
 const printBtn           = document.getElementById('print-btn');
 const loadDefaultBtn     = document.getElementById('load-default-btn');
@@ -47,6 +49,8 @@ const toastEl            = document.getElementById('toast');
 const templateKeyDisplay  = document.getElementById('template-key-display');
 const templateKeyCopy     = document.getElementById('template-key-copy');
 const newTemplateBtn      = document.getElementById('new-template-btn');
+const duplicateTemplateBtn = document.getElementById('duplicate-template-btn');
+const renameTemplateBtn    = document.getElementById('rename-template-btn');
 const newTemplateModal    = document.getElementById('new-template-modal');
 const ntName              = document.getElementById('nt-name');
 const ntKey               = document.getElementById('nt-key');
@@ -102,6 +106,41 @@ function updateTemplateKeyBadge(template) {
   templateKeyDisplay.textContent = (template && template.key) ? template.key : '—';
 }
 
+function selectedTemplate() {
+  return state.templates.find((x) => x._id === state.selectedTemplateId) || null;
+}
+
+function renderTemplateOptions(selectedId = state.selectedTemplateId) {
+  if (!state.templates.length) {
+    templateSelectEl.innerHTML = '<option value="">— No templates — click + New</option>';
+    updateTemplateKeyBadge(null);
+    return;
+  }
+  templateSelectEl.innerHTML = state.templates.map((t) =>
+    `<option value="${escapeHtml(t._id)}">${escapeHtml(t.nameEnglish || t.name || t.key)}</option>`
+  ).join('');
+  templateSelectEl.value = selectedId || state.templates[0]._id;
+}
+
+function nextTemplateNumber() {
+  const used = new Set(state.templates.map((template) => Number(template.printerTemplateNumber)).filter(Number.isFinite));
+  for (let number = 1; number <= 255; number++) {
+    if (!used.has(number)) return number;
+  }
+  return 255;
+}
+
+function uniqueTemplateKey(baseKey) {
+  const used = new Set(state.templates.map((template) => String(template.key || '').toLowerCase()));
+  const base = slugify(baseKey || 'template') || 'template';
+  if (!used.has(base)) return base;
+  for (let index = 2; index < 1000; index++) {
+    const candidate = `${base}-${index}`;
+    if (!used.has(candidate)) return candidate;
+  }
+  return `${base}-${Date.now()}`;
+}
+
 templateKeyCopy.addEventListener('click', () => {
   const t = state.templates.find((x) => x._id === state.selectedTemplateId);
   const key = (t && t.key) ? t.key : '';
@@ -116,9 +155,19 @@ function slugify(str) {
   return str.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 newTemplateBtn.addEventListener('click', () => {
   ntName.value = '';
   ntKey.value = '';
+  ntKey.dataset.manuallyEdited = '';
   ntError.textContent = '';
   newTemplateModal.classList.remove('hidden');
   ntName.focus();
@@ -153,15 +202,11 @@ ntSave.addEventListener('click', async () => {
     const created = await apiFetch('/templates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name || key, key }),
+      body: JSON.stringify({ name: name || key, nameEnglish: name || key, key, printerTemplateNumber: nextTemplateNumber() }),
     });
     state.templates.push(created);
-    const opt = document.createElement('option');
-    opt.value = created._id;
-    opt.textContent = created.name || created.key;
-    templateSelectEl.appendChild(opt);
-    templateSelectEl.value = created._id;
     state.selectedTemplateId = created._id;
+    renderTemplateOptions(created._id);
     loadTemplateDesign(created);
     updateTemplateKeyBadge(created);
     newTemplateModal.classList.add('hidden');
@@ -174,19 +219,119 @@ ntSave.addEventListener('click', async () => {
   }
 });
 
+async function duplicateSelectedTemplate() {
+  const source = selectedTemplate();
+  if (!source) { toast('Select a template first.'); return; }
+  const baseName = source.nameEnglish || source.name || source.key || 'Template';
+  const name = prompt('Duplicate template as:', `${baseName} Copy`);
+  if (name === null) return;
+  const cleanName = String(name || '').trim() || `${baseName} Copy`;
+  const key = uniqueTemplateKey(`${source.key || slugify(baseName)}-copy`);
+  duplicateTemplateBtn.disabled = true;
+  duplicateTemplateBtn.textContent = 'Duplicating…';
+  try {
+    const created = await apiFetch('/templates', {
+      method: 'POST',
+      body: JSON.stringify({
+        key,
+        name: cleanName,
+        nameEnglish: cleanName,
+        nameChinese: source.nameChinese || '',
+        description: source.description || '',
+        printerTemplateNumber: nextTemplateNumber(),
+        mediaWidthMm: source.mediaWidthMm || 62,
+        printWidthMm: source.printWidthMm || 58,
+        heightMm: source.heightMm || 29,
+        active: source.active !== false,
+        preview: source.preview || {},
+        departmentCode: source.departmentCode || '',
+        departmentName: source.departmentName || '',
+        departmentSignature: source.departmentSignature || '',
+        departmentSignaturePlacement: source.departmentSignaturePlacement || '',
+        departmentSignatureEmbeddedInTemplate: Boolean(source.departmentSignatureEmbeddedInTemplate),
+        supportedOptions: source.supportedOptions || {},
+        fieldSchema: Array.isArray(source.fieldSchema) ? source.fieldSchema : []
+      })
+    });
+    if (source.designLayout) {
+      const withLayout = await apiFetch(`/templates/${created._id}/layout`, {
+        method: 'PUT',
+        body: JSON.stringify({ designLayout: source.designLayout })
+      });
+      Object.assign(created, withLayout);
+    }
+    state.templates.push(created);
+    state.selectedTemplateId = created._id;
+    renderTemplateOptions(created._id);
+    loadTemplateDesign(created);
+    updateTemplateKeyBadge(created);
+    toast(`Template duplicated: ${cleanName}`);
+  } catch (err) {
+    toast('Duplicate failed: ' + (err.message || String(err)));
+  } finally {
+    duplicateTemplateBtn.disabled = false;
+    duplicateTemplateBtn.textContent = 'Duplicate';
+  }
+}
+
+async function renameSelectedTemplate() {
+  const template = selectedTemplate();
+  if (!template) { toast('Select a template first.'); return; }
+  const currentName = template.nameEnglish || template.name || template.key || '';
+  const name = prompt('Rename template:', currentName);
+  if (name === null) return;
+  const cleanName = String(name || '').trim();
+  if (!cleanName) { toast('Template name is required.'); return; }
+  renameTemplateBtn.disabled = true;
+  renameTemplateBtn.textContent = 'Renaming…';
+  try {
+    const updated = await apiFetch(`/templates/${template._id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        key: template.key,
+        name: cleanName,
+        nameEnglish: cleanName,
+        nameChinese: template.nameChinese || '',
+        description: template.description || '',
+        printerTemplateNumber: template.printerTemplateNumber,
+        mediaWidthMm: template.mediaWidthMm || 62,
+        printWidthMm: template.printWidthMm || 58,
+        heightMm: template.heightMm || 29,
+        active: template.active !== false,
+        preview: template.preview || {},
+        departmentCode: template.departmentCode || '',
+        departmentName: template.departmentName || '',
+        departmentSignature: template.departmentSignature || '',
+        departmentSignaturePlacement: template.departmentSignaturePlacement || '',
+        departmentSignatureEmbeddedInTemplate: Boolean(template.departmentSignatureEmbeddedInTemplate),
+        supportedOptions: template.supportedOptions || {},
+        fieldSchema: Array.isArray(template.fieldSchema) ? template.fieldSchema : []
+      })
+    });
+    const index = state.templates.findIndex((entry) => entry._id === updated._id);
+    if (index >= 0) state.templates[index] = { ...state.templates[index], ...updated };
+    renderTemplateOptions(updated._id);
+    updateTemplateKeyBadge(updated);
+    toast(`Template renamed: ${cleanName}`);
+  } catch (err) {
+    toast('Rename failed: ' + (err.message || String(err)));
+  } finally {
+    renameTemplateBtn.disabled = false;
+    renameTemplateBtn.textContent = 'Rename';
+  }
+}
+
 async function loadData() {
   try {
     const templates = await apiFetch('/templates');
     state.templates = templates;
     if (templates.length) {
-      templateSelectEl.innerHTML = templates.map((t) =>
-        `<option value="${t._id}">${t.name || t.key}</option>`
-      ).join('');
       state.selectedTemplateId = templates[0]._id;
+      renderTemplateOptions(state.selectedTemplateId);
       loadTemplateDesign(templates[0]);
       updateTemplateKeyBadge(templates[0]);
     } else {
-      templateSelectEl.innerHTML = '<option value="">— No templates — click + New</option>';
+      renderTemplateOptions('');
       updateTemplateKeyBadge(null);
     }
   } catch (err) {
@@ -288,12 +433,17 @@ function bindUI() {
   document.querySelectorAll('[data-field]').forEach((btn) => {
     btn.addEventListener('click', () => addFieldElement(btn.dataset.field));
   });
+  duplicateObjectBtn.addEventListener('click', duplicateSelectedObject);
   deleteBtn.addEventListener('click', deleteSelected);
+  deleteTopBtn.addEventListener('click', deleteSelected);
+  duplicateTemplateBtn.addEventListener('click', duplicateSelectedTemplate);
+  renameTemplateBtn.addEventListener('click', renameSelectedTemplate);
   clearBtn.addEventListener('click', () => { if (confirm('Clear canvas?')) { state.canvas.clear(); state.canvas.backgroundColor = 'white'; state.canvas.renderAll(); } });
   saveBtn.addEventListener('click', saveLayout);
   connectBtn.addEventListener('click', toggleConnect);
   printBtn.addEventListener('click', printTest);
   loadDefaultBtn.addEventListener('click', loadDefaultLayout);
+  document.addEventListener('keydown', handleDesignerKeyboard);
 
   // Props panel → update object
   propX.addEventListener('change', applyPositionFromPanel);
@@ -340,6 +490,23 @@ function bindUI() {
   });
 }
 
+function handleDesignerKeyboard(event) {
+  if (isTypingTarget(event.target)) return;
+  if (event.key === 'Delete' || event.key === 'Backspace') {
+    event.preventDefault();
+    deleteSelected();
+    return;
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+    event.preventDefault();
+    duplicateSelectedObject();
+  }
+}
+
+function isTypingTarget(target) {
+  return Boolean(target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]'));
+}
+
 function getActiveText() {
   const obj = state.canvas.getActiveObject();
   return (obj && (obj.type === 'i-text' || obj.type === 'text')) ? obj : null;
@@ -355,6 +522,24 @@ function deleteSelected() {
     state.canvas.remove(obj);
   }
   state.canvas.renderAll();
+  populatePropsPanel(null);
+}
+
+function duplicateSelectedObject() {
+  const obj = state.canvas.getActiveObject();
+  if (!obj) return;
+  obj.clone((clone) => {
+    clone.set({
+      left: Math.min(LABEL_W - 1, (Number(obj.left) || 0) + 12),
+      top: Math.min(LABEL_H - 1, (Number(obj.top) || 0) + 12)
+    });
+    clone.fieldBinding = obj.fieldBinding || '';
+    constrainObjectToLabel(clone);
+    state.canvas.add(clone);
+    state.canvas.setActiveObject(clone);
+    state.canvas.renderAll();
+    populatePropsPanel(clone);
+  }, ['fieldBinding']);
 }
 
 // ── Properties panel ──────────────────────────────────────────────────────────
