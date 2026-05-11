@@ -80,6 +80,20 @@ const exportCsvButtonEl = document.getElementById('export-csv-button');
 const exportPdfButtonEl = document.getElementById('export-pdf-button');
 const importCsvButtonEl = document.getElementById('import-csv-button');
 const importCsvInputEl = document.getElementById('import-csv-input');
+// Global label settings (printer modal)
+const settingsEntityInputEl = document.getElementById('settings-entity-input');
+const settingsAddressInputEl = document.getElementById('settings-address-input');
+const settingsHalalCertInputEl = document.getElementById('settings-halal-cert-input');
+const settingsHalalLogoInputEl = document.getElementById('settings-halal-logo-input');
+const settingsHalalLogoStatusEl = document.getElementById('settings-halal-logo-status');
+// Per-item quick edit (options modal)
+const itemEditNameEnglishEl = document.getElementById('item-edit-name-english');
+const itemEditNameChineseEl = document.getElementById('item-edit-name-chinese');
+const itemEditDepartmentEl = document.getElementById('item-edit-department');
+const itemEditShelfLifeEl = document.getElementById('item-edit-shelf-life');
+const itemSaveButtonEl = document.getElementById('item-save-button');
+
+const HALAL_LOGO_STORAGE_KEY = 'label-print-halal-logo-data-url';
 
 const state = {
   items: [],
@@ -131,6 +145,8 @@ uploadDiagnosticsButtonEl.addEventListener('click', uploadDiagnosticsSnapshot);
 openSiteSettingsButtonEl.addEventListener('click', openSiteSettings);
 forgetPortsButtonEl.addEventListener('click', forgetAuthorizedPorts);
 clearRuntimeLogButtonEl.addEventListener('click', clearRuntimeLog);
+settingsHalalLogoInputEl.addEventListener('change', handleHalalLogoUpload);
+itemSaveButtonEl.addEventListener('click', saveItemQuickEdit);
 exportCsvButtonEl.addEventListener('click', exportItemsCsv);
 exportPdfButtonEl.addEventListener('click', exportItemsPrintView);
 importCsvButtonEl.addEventListener('click', () => importCsvInputEl.click());
@@ -579,12 +595,17 @@ function bindCardEvents() {
 function openOptionsModal(item) {
   state.activeItem = item;
   modalTitleEl.textContent = item.name;
-  modalDescriptionEl.textContent = 'This tablet sends the stored printer template directly over Bluetooth. You can also remap or correct the saved template here before printing. / 此平板通过蓝牙直接发送已存储的打印机模板，您也可以在打印前直接在这里重新映射或修正模板。';
+  modalDescriptionEl.textContent = 'Edit item fields or adjust template/cut options before printing. / 可在打印前编辑项目字段或调整模板和切刀选项。';
   modalQuantityEl.value = getItemQuantity(item._id);
   modalCutModeEl.value = item.defaultCutMode || getDefaultCutMode();
   populateModalTemplateOptions(item.templateKey);
   syncModalTemplateEditor();
   syncPreviewQuantity();
+  // Populate quick-edit fields
+  itemEditNameEnglishEl.value = item.nameEnglish || item.name || '';
+  itemEditNameChineseEl.value = item.nameChinese || '';
+  itemEditDepartmentEl.value = item.departmentName || '';
+  itemEditShelfLifeEl.value = String(item.shelfLifeDays != null ? item.shelfLifeDays : 3);
   modalEl.classList.remove('hidden');
   modalEl.setAttribute('aria-hidden', 'false');
 }
@@ -1094,6 +1115,13 @@ function syncPrinterInputs() {
   const printer = selectedPrinter();
   printerBaudInputEl.value = String(normalizeSerialBaudRate(printer && printer.serialBaudRate, printer));
   printerDefaultCutEl.value = getDefaultCutMode();
+  settingsEntityInputEl.value = (printer && printer.businessEntity) || '';
+  settingsAddressInputEl.value = (printer && printer.address) || '';
+  settingsHalalCertInputEl.value = (printer && printer.halalCertNumber) || '';
+  const hasLogo = Boolean(localStorage.getItem(HALAL_LOGO_STORAGE_KEY));
+  settingsHalalLogoStatusEl.textContent = hasLogo
+    ? 'Logo saved / 已保存标志'
+    : 'No logo uploaded / 未上传标志';
 }
 
 async function loadPrintersOnly() {
@@ -1144,7 +1172,10 @@ async function persistSelectedPrinterSettings() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       serialBaudRate: getSerialBaudRate(),
-      bridgeAvailable: state.serial.connected
+      bridgeAvailable: state.serial.connected,
+      businessEntity: settingsEntityInputEl.value.trim(),
+      address: settingsAddressInputEl.value.trim(),
+      halalCertNumber: settingsHalalCertInputEl.value.trim()
     })
   });
 
@@ -1852,7 +1883,7 @@ async function attemptAutoReconnect() {
   return 'failed';
 }
 
-async function renderLabelToRasterLines(item, template) {
+async function renderLabelToRasterLines(item, template, globalSettings = {}) {
   const PRINT_WIDTH_PX = 696; // printable width for 62mm media (720 total - 12 left - 12 right)
   // Hard-fixed for DK-11209 (62mm × 29mm die-cut): 271 printable dots in the feed direction per brother_ql spec.
   // Do NOT derive from template.heightMm — template drift (e.g. heightMm=62) generates 732 lines and the firmware rejects.
@@ -1867,18 +1898,20 @@ async function renderLabelToRasterLines(item, template) {
   ctx.fillStyle = '#000000';
   ctx.textBaseline = 'top';
 
-  const halalCert = item.halalCertNumber || '';
-  const entityText = item.businessEntity || '';
-  const addressText = item.address || '';
-  const deptText = item.departmentName || template.departmentName || '';
+  // Item-level values override global settings (global = printer record + stored logo)
+  const halalCert = item.halalCertNumber || globalSettings.halalCertNumber || '';
+  const entityText = item.businessEntity || globalSettings.businessEntity || '';
+  const addressText = item.address || globalSettings.address || '';
+  const deptText = item.departmentName || globalSettings.departmentName || template.departmentName || '';
 
   // ── HEADER ──────────────────────────────────────────────────────────────────
-  // Try to load the actual Halal Singapore logo from a static file.
-  // Save the official logo PNG to label-print/halal-logo.png to enable it.
+  // Load Halal logo: prefer the stored data URL (uploaded via UI), then try the static file.
   let halalBitmap = null;
   if (halalCert) {
+    const dataUrl = globalSettings.halalLogoDataUrl || '';
     try {
-      const resp = await fetch('/label-print/halal-logo.png');
+      const source = dataUrl || '/label-print/halal-logo.png';
+      const resp = await fetch(source);
       if (resp.ok) halalBitmap = await createImageBitmap(await resp.blob());
     } catch (_) {}
   }
@@ -2109,7 +2142,14 @@ async function sendTemplateToBluetooth(payload) {
       throw new Error(`Printer reports ${formatPrinterStatusSummary(status)} loaded, expected 62mm × 29mm die-cut (DK-11209). Check that the correct roll is fitted and the cover is closed.`);
     }
   }
-  const rasterLines = await renderLabelToRasterLines(item, template);
+  const activePrinter = selectedPrinter() || {};
+  const globalSettings = {
+    businessEntity: activePrinter.businessEntity || '',
+    address: activePrinter.address || '',
+    halalCertNumber: activePrinter.halalCertNumber || '',
+    halalLogoDataUrl: localStorage.getItem(HALAL_LOGO_STORAGE_KEY) || ''
+  };
+  const rasterLines = await renderLabelToRasterLines(item, template, globalSettings);
   // Hard-fixed for DK-11209: always send 62mm width / 29mm length regardless of template record.
   // Template drift (e.g. heightMm=62) would tell the printer to expect a 62mm die, which doesn't exist,
   // so the firmware rejects with "wrong label type".
@@ -2385,13 +2425,63 @@ function formatTemplateNumber(value) {
   return String(Math.max(1, Math.min(255, Math.round(parsed)))).padStart(3, '0');
 }
 
-// ── EXPORT / IMPORT ──────────────────────────────────────────────────────────
+// ── HALAL LOGO UPLOAD ─────────────────────────────────────────────────────────
 
-const ITEM_CSV_HEADERS = [
-  'name', 'nameEnglish', 'nameChinese', 'category',
-  'businessEntity', 'address', 'halalCertNumber', 'shelfLifeDays',
-  'departmentName', 'sku', 'barcode', 'templateKey', 'defaultQuantity', 'defaultCutMode'
-];
+async function handleHalalLogoUpload() {
+  const file = settingsHalalLogoInputEl.files[0];
+  if (!file) return;
+  settingsHalalLogoInputEl.value = '';
+  const reader = new FileReader();
+  reader.onload = () => {
+    localStorage.setItem(HALAL_LOGO_STORAGE_KEY, reader.result);
+    settingsHalalLogoStatusEl.textContent = `Logo saved (${file.name}) / 标志已保存`;
+    showToast('Halal logo saved. / 清真标志已保存。');
+  };
+  reader.onerror = () => showToast('Could not read logo file. / 无法读取标志文件。');
+  reader.readAsDataURL(file);
+}
+
+// ── ITEM QUICK EDIT ───────────────────────────────────────────────────────────
+
+async function saveItemQuickEdit() {
+  if (!state.activeItem) return;
+  const shelfLife = Number(itemEditShelfLifeEl.value);
+  if (!Number.isFinite(shelfLife) || shelfLife < 0) {
+    showToast('Shelf life must be 0 or more days. / 保质期必须为 0 天或以上。');
+    itemEditShelfLifeEl.focus();
+    return;
+  }
+  itemSaveButtonEl.disabled = true;
+  itemSaveButtonEl.textContent = 'Saving… / 保存中…';
+  try {
+    const updated = await fetchJson(`${API_BASE}/items/${encodeURIComponent(state.activeItem._id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nameEnglish: itemEditNameEnglishEl.value.trim(),
+        nameChinese: itemEditNameChineseEl.value.trim(),
+        departmentName: itemEditDepartmentEl.value.trim(),
+        shelfLifeDays: shelfLife
+      })
+    });
+    replaceItem(updated);
+    state.activeItem = findItem(updated._id) || updated;
+    modalTitleEl.textContent = updated.nameEnglish || updated.name || state.activeItem.name;
+    renderItems();
+    showToast('Item saved. / 项目已保存。');
+  } catch (err) {
+    showToast(err.message || 'Could not save item. / 无法保存项目。');
+  } finally {
+    itemSaveButtonEl.disabled = false;
+    itemSaveButtonEl.textContent = 'Save Item / 保存项目';
+  }
+}
+
+// ── EXPORT / IMPORT ──────────────────────────────────────────────────────────
+// CSV only contains the 4 per-item fields that change between items.
+// Global settings (entity, address, halal cert) are configured once in Setup.
+
+const ITEM_CSV_HEADERS = ['nameEnglish', 'nameChinese', 'departmentName', 'shelfLifeDays'];
 
 function csvEscape(value) {
   const s = String(value ?? '');
@@ -2510,31 +2600,32 @@ async function importItemsCsv(file) {
   const dataRows = lines.slice(1).map((l) => {
     const vals = parseCsvRow(l);
     const obj = {};
-    headers.forEach((h, idx) => { if (h) obj[h] = (vals[idx] || '').trim(); });
+    headers.forEach((h, idx) => { if (h) obj[h.trim()] = (vals[idx] || '').trim(); });
     return obj;
-  }).filter((r) => r.name);
+  // Support both old full-format CSVs (has 'name') and new 4-column format (has 'nameEnglish')
+  }).filter((r) => r.name || r.nameEnglish);
 
   if (!dataRows.length) { showToast('No valid rows found in file. / 文件中没有有效行。'); return; }
 
+  // Use the first template in state as the default templateKey for imported items
+  const defaultTemplateKey = (state.templates[0] && state.templates[0].key) || '';
+  const activePrinter = selectedPrinter() || {};
+
   let created = 0, failed = 0;
   for (const row of dataRows) {
+    const englishName = (row.nameEnglish || row.name || '').trim();
     try {
       await fetchJson(`${API_BASE}/items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: row.name,
-          nameEnglish: row.nameEnglish || '',
+          name: englishName,
+          nameEnglish: englishName,
           nameChinese: row.nameChinese || '',
           category: row.category || 'Uncategorized',
-          businessEntity: row.businessEntity || '',
-          address: row.address || '',
-          halalCertNumber: row.halalCertNumber || '',
           shelfLifeDays: Number(row.shelfLifeDays) >= 0 ? Number(row.shelfLifeDays) : 3,
           departmentName: row.departmentName || '',
-          sku: row.sku || '',
-          barcode: row.barcode || '',
-          templateKey: row.templateKey || '',
+          templateKey: row.templateKey || defaultTemplateKey,
           defaultQuantity: Math.max(1, Number(row.defaultQuantity) || 1),
           defaultCutMode: row.defaultCutMode === 'no-cut' ? 'no-cut' : 'auto-cut'
         })
@@ -2542,7 +2633,7 @@ async function importItemsCsv(file) {
       created++;
     } catch (err) {
       failed++;
-      appendRuntimeLog('importItemsCsv() row failed', { name: row.name, error: err && err.message });
+      appendRuntimeLog('importItemsCsv() row failed', { name: englishName, error: err && err.message });
     }
   }
 

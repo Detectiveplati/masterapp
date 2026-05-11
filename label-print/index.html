@@ -119,6 +119,30 @@
           </div>
         </div>
       </div>
+      <div class="item-edit-section">
+        <div class="settings-section-head">Edit Item / 编辑项目</div>
+        <div class="modal-grid">
+          <label class="field">
+            <span>English Name / 英文名</span>
+            <input id="item-edit-name-english" type="text" placeholder="AMBIENT BELACAN" autocomplete="off">
+          </label>
+          <label class="field">
+            <span>Chinese Name / 中文名</span>
+            <input id="item-edit-name-chinese" type="text" placeholder="室温 马拉煎 (圆)" autocomplete="off">
+          </label>
+          <label class="field">
+            <span>Department / 部门</span>
+            <input id="item-edit-department" type="text" placeholder="Sauce Department / 酱料部" autocomplete="off">
+          </label>
+          <label class="field">
+            <span>Shelf Life (Days) / 保质期（天）</span>
+            <input id="item-edit-shelf-life" type="number" min="0" max="3650" step="1" inputmode="numeric" placeholder="3">
+          </label>
+        </div>
+        <div class="modal-actions item-edit-actions">
+          <button id="item-save-button" class="btn-secondary" type="button">Save Item / 保存项目</button>
+        </div>
+      </div>
       <div class="modal-actions">
         <button id="modal-save-template-button" class="btn-secondary" type="button">Save Template / 保存模板</button>
         <button id="modal-print-button" class="btn-primary" type="button">Print Now / 立即打印</button>
@@ -179,6 +203,26 @@
                 <option value="no-cut">Cut after all items (recommended) / 全部项目打印后切刀（推荐）</option>
                 <option value="auto-cut">Cut after each item / 每个项目打印后切刀</option>
               </select>
+            </label>
+          </div>
+          <div class="settings-section-head">Label Settings / 标签全局设置</div>
+          <div class="modal-grid">
+            <label class="field printer-modal-full-field">
+              <span>Business Entity / 单位名称</span>
+              <input id="settings-entity-input" type="text" placeholder="Chilli Api Catering Pte Ltd" autocomplete="organization">
+            </label>
+            <label class="field printer-modal-full-field">
+              <span>Address / 地址</span>
+              <input id="settings-address-input" type="text" placeholder="3015 Bedok North Street 5 #05-27, Shimei East Kitchen Singapore 486350">
+            </label>
+            <label class="field">
+              <span>Halal Cert No. / 清真证书编号</span>
+              <input id="settings-halal-cert-input" type="text" placeholder="C1086">
+            </label>
+            <label class="field">
+              <span>Halal Logo / 清真标志</span>
+              <input id="settings-halal-logo-input" type="file" accept="image/png,image/jpeg,image/gif">
+              <small id="settings-halal-logo-status">No logo uploaded / 未上传标志</small>
             </label>
           </div>
           <div class="printer-widget-actions">

@@ -267,7 +267,7 @@ router.put('/printers/:id', express.json(), async (req, res) => {
     await ensureDefaults();
     const body = req.body || {};
     const update = {};
-    ['name', 'model', 'status', 'androidClientId', 'bridgeAvailable'].forEach((key) => {
+    ['name', 'model', 'status', 'androidClientId', 'bridgeAvailable', 'businessEntity', 'address', 'halalCertNumber'].forEach((key) => {
       if (body[key] !== undefined) update[key] = body[key];
     });
     if (body.serialBaudRate !== undefined) update.serialBaudRate = Number(body.serialBaudRate) || 115200;
