@@ -1,6 +1,8 @@
 'use strict';
 
 const express = require('express');
+const fs = require('fs').promises;
+const path = require('path');
 const router = express.Router();
 
 const LabelPrintItem = require('../models/LabelPrintItem');
@@ -11,6 +13,13 @@ const LabelPrintJob = require('../models/LabelPrintJob');
 const { requireAuth, requirePermission } = require('../services/auth-middleware');
 
 router.use(requireAuth, requirePermission('labelprint'));
+
+const LABEL_PRINT_ASSETS_DIR = path.join(__dirname, '..', 'label-print', 'assets');
+const HALAL_LOGO_FILES = [
+  { fileName: 'halal-logo.png', contentType: 'image/png' },
+  { fileName: 'halal-logo.jpg', contentType: 'image/jpeg' },
+  { fileName: 'halal-logo.gif', contentType: 'image/gif' }
+];
 
 let defaultsPromise = null;
 
@@ -128,6 +137,17 @@ function normalizeTemplateInput(input = {}, existingTemplate = null) {
   };
 }
 
+async function findHalalLogoAsset() {
+  for (const asset of HALAL_LOGO_FILES) {
+    const filePath = path.join(LABEL_PRINT_ASSETS_DIR, asset.fileName);
+    try {
+      await fs.access(filePath);
+      return { ...asset, filePath };
+    } catch (_) {}
+  }
+  return null;
+}
+
 router.get('/templates', async (_req, res) => {
   try {
     await ensureDefaults();
@@ -223,6 +243,43 @@ router.put('/templates/:id/layout', express.json({ limit: '5mb' }), async (req, 
       nameEnglish: template.nameEnglish || template.name || '',
       nameChinese: template.nameChinese || ''
     });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.get('/assets/halal-logo', async (_req, res) => {
+  try {
+    const asset = await findHalalLogoAsset();
+    if (!asset) return res.status(404).json({ error: 'Halal logo has not been uploaded.' });
+    res.type(asset.contentType);
+    res.sendFile(asset.filePath);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/assets/halal-logo', express.json({ limit: '5mb' }), async (req, res) => {
+  try {
+    const dataUrl = String(req.body && req.body.dataUrl || '');
+    const match = dataUrl.match(/^data:(image\/(?:png|jpe?g|gif));base64,([A-Za-z0-9+/=]+)$/);
+    if (!match) return res.status(400).json({ error: 'Upload a PNG, JPEG, or GIF logo.' });
+
+    const contentType = match[1] === 'image/jpg' ? 'image/jpeg' : match[1];
+    const extension = contentType === 'image/png' ? 'png' : contentType === 'image/gif' ? 'gif' : 'jpg';
+    const buffer = Buffer.from(match[2], 'base64');
+    if (!buffer.length || buffer.length > 4 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Logo file is empty or larger than 4 MB.' });
+    }
+
+    await fs.mkdir(LABEL_PRINT_ASSETS_DIR, { recursive: true });
+    await Promise.all(HALAL_LOGO_FILES.map((asset) => (
+      fs.unlink(path.join(LABEL_PRINT_ASSETS_DIR, asset.fileName)).catch(() => {})
+    )));
+
+    const fileName = `halal-logo.${extension}`;
+    await fs.writeFile(path.join(LABEL_PRINT_ASSETS_DIR, fileName), buffer);
+    res.json({ ok: true, url: '/api/label-print/assets/halal-logo', contentType, bytes: buffer.length });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

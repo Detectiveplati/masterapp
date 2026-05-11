@@ -4,6 +4,7 @@ const LABEL_H = 271;
 const ZOOM = 2;
 const API_BASE = `${window.location.origin}/api/label-print`;
 const HALAL_LOGO_STORAGE_KEY = 'label-print-halal-logo-data-url';
+const HALAL_LOGO_ASSET_URL = `${API_BASE}/assets/halal-logo`;
 const BLUETOOTH_RFCOMM_SERVICE_ID = '00001101-0000-1000-8000-00805f9b34fb';
 const DEFAULT_BAUD = 115200;
 const PRINT_FONT = "'Noto Sans SC', 'Arial Unicode MS', sans-serif";
@@ -203,7 +204,7 @@ function loadTemplateDesign(template) {
   if (template.designLayout && template.designLayout.objects) {
     // Restore halal logo src before loading (stripped at save time to avoid 413)
     const json = JSON.parse(JSON.stringify(template.designLayout));
-    const logoSrc = localStorage.getItem(HALAL_LOGO_STORAGE_KEY) || '/label-print/halal-logo.png';
+    const logoSrc = localStorage.getItem(HALAL_LOGO_STORAGE_KEY) || HALAL_LOGO_ASSET_URL;
     for (const obj of json.objects || []) {
       if (obj.type === 'image' && obj.fieldBinding === 'halalLogo' && !obj.src) {
         obj.src = logoSrc;
@@ -267,7 +268,7 @@ function addLineElement() {
 
 async function addLogoElement() {
   const dataUrl = localStorage.getItem(HALAL_LOGO_STORAGE_KEY) || '';
-  const src = dataUrl || '/label-print/halal-logo.png';
+  const src = dataUrl || HALAL_LOGO_ASSET_URL;
   fabric.Image.fromURL(src, (img) => {
     if (!img || !img.width) { toast('Logo not found. Upload it in Setup first.'); return; }
     img.set({ left: 0, top: 2, originX: 'left', originY: 'top' });

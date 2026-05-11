@@ -95,6 +95,7 @@ const itemEditShelfLifeEl = document.getElementById('item-edit-shelf-life');
 const itemSaveButtonEl = document.getElementById('item-save-button');
 
 const HALAL_LOGO_STORAGE_KEY = 'label-print-halal-logo-data-url';
+const HALAL_LOGO_ASSET_URL = `${API_BASE}/assets/halal-logo`;
 
 const state = {
   items: [],
@@ -1918,7 +1919,7 @@ async function renderLabelToRasterLines(item, template, globalSettings = {}) {
   if (halalCert) {
     const dataUrl = globalSettings.halalLogoDataUrl || '';
     try {
-      const source = dataUrl || '/label-print/halal-logo.png';
+      const source = dataUrl || HALAL_LOGO_ASSET_URL;
       const resp = await fetch(source);
       if (resp.ok) halalBitmap = await createImageBitmap(await resp.blob());
     } catch (_) {}
@@ -1934,7 +1935,7 @@ async function renderLabelToRasterLines(item, template, globalSettings = {}) {
     ctx.drawImage(halalBitmap, 0, y, drawW, LOGO_H);
     halalBitmap.close();
   } else if (halalCert) {
-    // Fallback circle badge — replace by saving halal-logo.png to label-print/halal-logo.png on server
+    // Fallback circle badge if no uploaded logo is available.
     const cx = 30, cy = y + 30, r = 27;
     ctx.save();
     ctx.lineWidth = 2;
@@ -2184,7 +2185,7 @@ function drawDesignLine(ctx, obj) {
 }
 
 async function drawDesignImage(ctx, obj, globalSettings) {
-  const src = obj.src || (obj.fieldBinding === 'halalLogo' ? globalSettings.halalLogoDataUrl || '/label-print/halal-logo.png' : '');
+  const src = obj.src || (obj.fieldBinding === 'halalLogo' ? globalSettings.halalLogoDataUrl || HALAL_LOGO_ASSET_URL : '');
   if (!src) return;
   let bitmap = null;
   try {
@@ -2607,10 +2608,20 @@ async function handleHalalLogoUpload() {
   if (!file) return;
   settingsHalalLogoInputEl.value = '';
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     localStorage.setItem(HALAL_LOGO_STORAGE_KEY, reader.result);
-    settingsHalalLogoStatusEl.textContent = `Logo saved (${file.name}) / 标志已保存`;
-    showToast('Halal logo saved. / 清真标志已保存。');
+    try {
+      await fetchJson(`${API_BASE}/assets/halal-logo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataUrl: reader.result })
+      });
+      settingsHalalLogoStatusEl.textContent = `Logo saved (${file.name}) / 标志已保存`;
+      showToast('Halal logo saved for printing. / 清真标志已保存用于打印。');
+    } catch (error) {
+      settingsHalalLogoStatusEl.textContent = 'Logo saved on this browser only / 标志仅保存在此浏览器';
+      showToast(error.message || 'Logo saved locally, but server upload failed. / 标志已本地保存，但服务器上传失败。');
+    }
   };
   reader.onerror = () => showToast('Could not read logo file. / 无法读取标志文件。');
   reader.readAsDataURL(file);
