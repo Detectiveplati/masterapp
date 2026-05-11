@@ -43,6 +43,8 @@ const loadDefaultBtn     = document.getElementById('load-default-btn');
 const btDot              = document.getElementById('bt-dot');
 const btLabel            = document.getElementById('bt-label');
 const toastEl            = document.getElementById('toast');
+const templateKeyDisplay = document.getElementById('template-key-display');
+const templateKeyCopy    = document.getElementById('template-key-copy');
 // Props
 const noSelMsg           = document.getElementById('no-selection-msg');
 const commonProps        = document.getElementById('common-props');
@@ -88,6 +90,19 @@ function initFabric() {
 }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
+function updateTemplateKeyBadge(template) {
+  templateKeyDisplay.textContent = (template && template.key) ? template.key : '—';
+}
+
+templateKeyCopy.addEventListener('click', () => {
+  const t = state.templates.find((x) => x._id === state.selectedTemplateId);
+  const key = (t && t.key) ? t.key : '';
+  if (!key) return;
+  navigator.clipboard.writeText(key).then(() => toast('Copied: ' + key)).catch(() => {
+    prompt('Copy this templateKey value:', key);
+  });
+});
+
 async function loadData() {
   try {
     const templates = await apiFetch('/templates');
@@ -98,6 +113,7 @@ async function loadData() {
     if (templates.length) {
       state.selectedTemplateId = templates[0]._id;
       loadTemplateDesign(templates[0]);
+      updateTemplateKeyBadge(templates[0]);
     }
   } catch (err) {
     toast('Could not load templates: ' + err.message);
@@ -106,7 +122,7 @@ async function loadData() {
 
 templateSelectEl.addEventListener('change', () => {
   const t = state.templates.find((x) => x._id === templateSelectEl.value);
-  if (t) { state.selectedTemplateId = t._id; loadTemplateDesign(t); }
+  if (t) { state.selectedTemplateId = t._id; loadTemplateDesign(t); updateTemplateKeyBadge(t); }
 });
 
 function loadTemplateDesign(template) {

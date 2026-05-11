@@ -2555,10 +2555,10 @@ async function saveItemQuickEdit() {
 }
 
 // ── EXPORT / IMPORT ──────────────────────────────────────────────────────────
-// CSV only contains the 4 per-item fields that change between items.
+// CSV columns: templateKey links the item to a template (see Label Designer for the key).
 // Global settings (entity, address, halal cert) are configured once in Setup.
 
-const ITEM_CSV_HEADERS = ['nameEnglish', 'nameChinese', 'departmentName', 'shelfLifeDays'];
+const ITEM_CSV_HEADERS = ['templateKey', 'nameEnglish', 'nameChinese', 'departmentName', 'shelfLifeDays', 'category'];
 
 function csvEscape(value) {
   const s = String(value ?? '');
@@ -2571,7 +2571,15 @@ function exportItemsCsv() {
   if (!state.items.length) { showToast('No items to export. / 没有可导出的项目。'); return; }
   const rows = [ITEM_CSV_HEADERS.join(',')];
   for (const item of state.items) {
-    rows.push(ITEM_CSV_HEADERS.map((h) => csvEscape(item[h])).join(','));
+    const rowData = {
+      templateKey:    item.templateKey    || '',
+      nameEnglish:    item.nameEnglish    || '',
+      nameChinese:    item.nameChinese    || '',
+      departmentName: item.departmentName || '',
+      shelfLifeDays:  item.shelfLifeDays  ?? '',
+      category:       item.category       || '',
+    };
+    rows.push(ITEM_CSV_HEADERS.map((h) => csvEscape(rowData[h])).join(','));
   }
   const csv = '﻿' + rows.join('\r\n'); // UTF-8 BOM so Excel opens Chinese correctly
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

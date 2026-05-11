@@ -44,6 +44,20 @@
     .status-dot.connected { background: #16a34a; }
     #connect-status { font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
 
+    /* ── Template key badge ──────────────────────────────────────── */
+    .template-key-wrap { display: flex; flex-direction: column; gap: 1px; }
+    .template-key-label { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); line-height: 1; }
+    .template-key-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #fef3c7; border: 1.5px solid #f59e0b;
+      border-radius: 5px; padding: 3px 9px;
+      font-size: 0.83rem; font-weight: 700; font-family: 'Courier New', monospace;
+      color: #92400e; white-space: nowrap; max-width: 220px;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .template-key-copy { font-size: 0.75rem; cursor: pointer; opacity: 0.6; user-select: none; }
+    .template-key-copy:hover { opacity: 1; }
+
     /* ── Main layout ─────────────────────────────────────────── */
     .designer-body { display: flex; flex: 1; overflow: hidden; }
 
@@ -119,6 +133,11 @@
       <option value="">Loading templates…</option>
     </select>
     <button id="clear-btn" class="btn" title="Clear canvas">Clear</button>
+  </div>
+  <div class="topbar-sep"></div>
+  <div class="template-key-wrap" title="Use this value in the CSV templateKey column">
+    <span class="template-key-label">CSV templateKey →</span>
+    <span class="template-key-badge"><span id="template-key-display">—</span><span class="template-key-copy" id="template-key-copy" title="Copy to clipboard">⧉</span></span>
   </div>
   <div id="connect-status"><span class="status-dot" id="bt-dot"></span><span id="bt-label">Not connected</span></div>
   <button id="connect-btn" class="btn">Connect Printer</button>
