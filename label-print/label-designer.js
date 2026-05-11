@@ -364,6 +364,7 @@ function onSelectionChange() {
 
 function onObjectModified() {
   const obj = state.canvas.getActiveObject();
+  constrainObjectToLabel(obj);
   populatePropsPanel(obj);
 }
 
@@ -428,12 +429,72 @@ function applyPositionFromPanel() {
   const obj = state.canvas.getActiveObject();
   if (!obj) return;
   obj.set({ left: Number(propX.value), top: Number(propY.value) });
+  constrainObjectToLabel(obj);
   state.canvas.renderAll();
+  populatePropsPanel(obj);
+}
+
+function constrainObjectToLabel(obj) {
+  if (!obj || obj.type === 'activeSelection') return;
+  const bounds = getObjectBounds(obj);
+  if (!bounds) return;
+  let nextLeft = Number(obj.left) || 0;
+  let nextTop = Number(obj.top) || 0;
+  if (bounds.left < 0) nextLeft += -bounds.left;
+  if (bounds.top < 0) nextTop += -bounds.top;
+  if (bounds.right > LABEL_W) nextLeft -= bounds.right - LABEL_W;
+  if (bounds.bottom > LABEL_H) nextTop -= bounds.bottom - LABEL_H;
+  obj.set({
+    left: Math.max(0, Math.round(nextLeft)),
+    top: Math.max(0, Math.round(nextTop))
+  });
+  obj.setCoords();
+}
+
+function getObjectBounds(obj) {
+  if (!obj) return null;
+  if (obj.type === 'line') {
+    const left = Number(obj.left) || 0;
+    const top = Number(obj.top) || 0;
+    const scaleX = Number(obj.scaleX) || 1;
+    const scaleY = Number(obj.scaleY) || 1;
+    const stroke = Math.max(1, Number(obj.strokeWidth) || 1) / 2;
+    const x1 = left + (Number(obj.x1) || 0) * scaleX;
+    const x2 = left + (Number(obj.x2) || 0) * scaleX;
+    const y1 = top + (Number(obj.y1) || 0) * scaleY;
+    const y2 = top + (Number(obj.y2) || 0) * scaleY;
+    return {
+      left: Math.min(x1, x2) - stroke,
+      top: Math.min(y1, y2) - stroke,
+      right: Math.max(x1, x2) + stroke,
+      bottom: Math.max(y1, y2) + stroke
+    };
+  }
+  const left = Number(obj.left) || 0;
+  const top = Number(obj.top) || 0;
+  const width = obj.getScaledWidth ? obj.getScaledWidth() : (Number(obj.width) || 0) * (Number(obj.scaleX) || 1);
+  const height = obj.getScaledHeight ? obj.getScaledHeight() : (Number(obj.height) || 0) * (Number(obj.scaleY) || 1);
+  return { left, top, right: left + width, bottom: top + height };
+}
+
+function getOutOfBoundsObjects() {
+  return state.canvas.getObjects().filter((obj) => {
+    const bounds = getObjectBounds(obj);
+    return bounds && (bounds.left < 0 || bounds.top < 0 || bounds.right > LABEL_W || bounds.bottom > LABEL_H);
+  });
+}
+
+function validateObjectsWithinLabel(actionLabel) {
+  const outOfBounds = getOutOfBoundsObjects();
+  if (!outOfBounds.length) return true;
+  toast(`${outOfBounds.length} object(s) outside 62 x 29 mm label. Move them inside before ${actionLabel}.`);
+  return false;
 }
 
 // ── Save / Load ───────────────────────────────────────────────────────────────
 async function saveLayout() {
   if (!state.selectedTemplateId) { toast('Select a template first.'); return; }
+  if (!validateObjectsWithinLabel('saving')) return;
   const designLayout = state.canvas.toJSON(['fieldBinding']);
   // Strip embedded base64 image data — images are restored from localStorage/static
   // at load time, so there's no need to store the full data URL in MongoDB.
@@ -526,6 +587,7 @@ function setConnectStatus(connected) {
 // ── Print test ────────────────────────────────────────────────────────────────
 async function printTest() {
   if (!state.serial.connected || !state.serial.port) { toast('Connect printer first.'); return; }
+  if (!validateObjectsWithinLabel('printing')) return;
   printBtn.disabled = true;
   try {
     // Preflight status check
