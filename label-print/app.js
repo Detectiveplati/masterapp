@@ -1916,18 +1916,17 @@ async function renderLabelToRasterLines(item, template, globalSettings = {}) {
     } catch (_) {}
   }
 
-  // Logo column: 63px wide when logo is present. Logo drawn square/proportional at 62px tall.
+  // Logo column: 65px wide when logo present. Logo drawn proportionally at LOGO_H tall.
   const LOGO_H = 62;
   const LOGO_COL_W = halalCert ? 65 : 0;
   let y = 2;
 
   if (halalBitmap) {
-    // Draw logo proportionally, fitting into LOGO_H
     const drawW = Math.round(LOGO_H * (halalBitmap.width / halalBitmap.height));
     ctx.drawImage(halalBitmap, 0, y, drawW, LOGO_H);
     halalBitmap.close();
   } else if (halalCert) {
-    // Fallback circle badge (replace with real logo via Setup → Upload)
+    // Fallback circle badge — replace by saving halal-logo.png to label-print/halal-logo.png on server
     const cx = 30, cy = y + 30, r = 27;
     ctx.save();
     ctx.lineWidth = 2;
@@ -1951,12 +1950,12 @@ async function renderLabelToRasterLines(item, template, globalSettings = {}) {
   const textCx = textX + textW / 2;
 
   // Company name — large bold, centred in the text column
+  ctx.textBaseline = 'top';
   if (entityText) {
     let fs = 28;
     ctx.font = `bold ${fs}px ${FONT}`;
     while (ctx.measureText(entityText).width > textW && fs > 10) { fs--; ctx.font = `bold ${fs}px ${FONT}`; }
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
     ctx.fillText(entityText, textCx, y);
     y += fs + 2;
   }
@@ -1967,51 +1966,53 @@ async function renderLabelToRasterLines(item, template, globalSettings = {}) {
     ctx.font = `${fs}px ${FONT}`;
     while (ctx.measureText(addressText).width > textW && fs > 7) { fs--; ctx.font = `${fs}px ${FONT}`; }
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
     ctx.fillText(addressText, textCx, y);
     y += fs + 2;
   }
 
-  // Ensure y clears the logo column before drawing the divider
-  y = Math.max(y, LOGO_H + 4);
+  // Ensure y clears the logo column before the divider
+  if (halalCert) y = Math.max(y, LOGO_H + 4);
 
   // Divider (full width)
   ctx.fillRect(PAD, y + 1, PRINT_WIDTH_PX - PAD * 2, 1);
   y += 7;
 
-  // ── ENGLISH PRODUCT NAME ─────────────────────────────────────────────────────
+  // ── PRODUCT NAME ─────────────────────────────────────────────────────────────
+  // When Chinese name is set it's the dominant element; English moves to the bottom row.
+  // When only English name is set, show it prominently here.
   const nameEn = item.nameEnglish || item.name || '';
-  if (nameEn) {
-    let fs = 22;
-    ctx.font = `bold ${fs}px ${FONT}`;
-    while (ctx.measureText(nameEn).width > PRINT_WIDTH_PX - PAD * 2 && fs > 10) { fs--; ctx.font = `bold ${fs}px ${FONT}`; }
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(nameEn, PRINT_WIDTH_PX / 2, y);
-    y += fs + 3;
-  }
-
-  // ── CHINESE PRODUCT NAME ─────────────────────────────────────────────────────
-  // Dominant element — as large as possible while fitting the printable width.
   const nameZh = item.nameChinese || '';
+
   if (nameZh) {
-    let fs = 64;
+    // Chinese name fills the body; start at 38px and auto-shrink if too long
+    let fs = 38;
     ctx.font = `bold ${fs}px ${FONT}`;
     while (ctx.measureText(nameZh).width > PRINT_WIDTH_PX - PAD * 2 && fs > 20) { fs -= 2; ctx.font = `bold ${fs}px ${FONT}`; }
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText(nameZh, PRINT_WIDTH_PX / 2, y);
     y += fs + 4;
+  } else if (nameEn) {
+    // English-only fallback — show it large in the body
+    let fs = 28;
+    ctx.font = `bold ${fs}px ${FONT}`;
+    while (ctx.measureText(nameEn).width > PRINT_WIDTH_PX - PAD * 2 && fs > 10) { fs--; ctx.font = `bold ${fs}px ${FONT}`; }
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(nameEn, PRINT_WIDTH_PX / 2, y);
+    y += fs + 4;
   }
 
   // ── DATE ROWS ───────────────────────────────────────────────────────────────
-  // Left: bilingual label (normal weight).  Right: date value (bold, large), DD/MM/YYYY.
+  // Left: bilingual label.  Right: bold date value (DD/MM/YYYY), 5× label text size.
   const today = new Date();
   const shelfLifeDays = item.shelfLifeDays != null ? item.shelfLifeDays : 3;
   const expiryDate = new Date(today.getTime() + shelfLifeDays * 86400000);
   const fmtDate = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 
-  const DATE_VAL_FS = 36;
   const DATE_LBL_FS = 13;
+  const DATE_VAL_FS = 65; // 5× DATE_LBL_FS — dominant date display
   const ROW_H = DATE_VAL_FS + 4;
 
   for (const [label, date] of [
@@ -2030,14 +2031,15 @@ async function renderLabelToRasterLines(item, template, globalSettings = {}) {
 
   // ── BOTTOM ROW ───────────────────────────────────────────────────────────────
   const bottomY = heightPx - 15;
-  ctx.font = `12px ${FONT}`;
+  ctx.font = `11px ${FONT}`;
   ctx.textBaseline = 'top';
+  // Left: English name (when Chinese is shown) or shelf life days
   ctx.textAlign = 'left';
-  ctx.fillText(`+${shelfLifeDays}Days`, PAD, bottomY);
-  if (deptText) {
-    ctx.textAlign = 'right';
-    ctx.fillText(deptText, PRINT_WIDTH_PX - PAD, bottomY);
-  }
+  ctx.fillText(nameZh && nameEn ? nameEn : `+${shelfLifeDays}Days`, PAD, bottomY);
+  // Right: dept name and/or shelf life days
+  ctx.textAlign = 'right';
+  const rightBottom = [nameZh && nameEn ? `+${shelfLifeDays}d` : '', deptText].filter(Boolean).join('  ');
+  if (rightBottom) ctx.fillText(rightBottom, PRINT_WIDTH_PX - PAD, bottomY);
 
   // ── RASTER CONVERSION ───────────────────────────────────────────────────────
   // QL printer expects data right-to-left: pixel col=0 maps to reversed position 707 in 720-dot space.
