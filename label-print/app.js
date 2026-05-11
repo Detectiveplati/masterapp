@@ -1126,6 +1126,8 @@ function syncPrinterInputs() {
   const hasLogo = Boolean(localStorage.getItem(HALAL_LOGO_STORAGE_KEY));
   settingsHalalLogoStatusEl.textContent = hasLogo
     ? 'Logo saved / 已保存标志'
+    : printer && printer.halalLogoDataUrl
+      ? 'Logo saved on server / 标志已保存在服务器'
     : 'No logo uploaded / 未上传标志';
 }
 
@@ -2323,7 +2325,7 @@ async function sendTemplateToBluetooth(payload) {
     businessEntity: activePrinter.businessEntity || '',
     address: activePrinter.address || '',
     halalCertNumber: activePrinter.halalCertNumber || '',
-    halalLogoDataUrl: localStorage.getItem(HALAL_LOGO_STORAGE_KEY) || ''
+    halalLogoDataUrl: activePrinter.halalLogoDataUrl || localStorage.getItem(HALAL_LOGO_STORAGE_KEY) || ''
   };
   const rasterLines = await renderLabelToRasterLines(item, template, globalSettings);
   // Hard-fixed for DK-11209: always send 62mm width / 29mm length regardless of template record.
@@ -2614,8 +2616,12 @@ async function handleHalalLogoUpload() {
       await fetchJson(`${API_BASE}/assets/halal-logo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dataUrl: reader.result })
+        body: JSON.stringify({ dataUrl: reader.result, printerId: state.selectedPrinterId || undefined })
       });
+      const printer = selectedPrinter();
+      if (printer) {
+        printer.halalLogoDataUrl = reader.result;
+      }
       settingsHalalLogoStatusEl.textContent = `Logo saved (${file.name}) / 标志已保存`;
       showToast('Halal logo saved for printing. / 清真标志已保存用于打印。');
     } catch (error) {

@@ -251,9 +251,20 @@ router.put('/templates/:id/layout', express.json({ limit: '5mb' }), async (req, 
 router.get('/assets/halal-logo', async (_req, res) => {
   try {
     const asset = await findHalalLogoAsset();
-    if (!asset) return res.status(404).json({ error: 'Halal logo has not been uploaded.' });
-    res.type(asset.contentType);
-    res.sendFile(asset.filePath);
+    if (asset) {
+      res.type(asset.contentType);
+      return res.sendFile(asset.filePath);
+    }
+
+    const printer = await LabelPrintPrinter.findOne({
+      active: true,
+      halalLogoDataUrl: { $type: 'string', $ne: '' }
+    }).sort({ updatedAt: -1 }).lean();
+    const dataUrl = String(printer && printer.halalLogoDataUrl || '');
+    const match = dataUrl.match(/^data:(image\/(?:png|jpe?g|gif));base64,([A-Za-z0-9+/=]+)$/);
+    if (!match) return res.status(404).json({ error: 'Halal logo has not been uploaded.' });
+    res.type(match[1] === 'image/jpg' ? 'image/jpeg' : match[1]);
+    return res.send(Buffer.from(match[2], 'base64'));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -279,6 +290,11 @@ router.post('/assets/halal-logo', express.json({ limit: '5mb' }), async (req, re
 
     const fileName = `halal-logo.${extension}`;
     await fs.writeFile(path.join(LABEL_PRINT_ASSETS_DIR, fileName), buffer);
+    if (req.body.printerId) {
+      await LabelPrintPrinter.findByIdAndUpdate(req.body.printerId, {
+        $set: { halalLogoDataUrl: dataUrl }
+      }, { runValidators: true });
+    }
     res.json({ ok: true, url: '/api/label-print/assets/halal-logo', contentType, bytes: buffer.length });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -343,7 +359,7 @@ router.put('/printers/:id', express.json(), async (req, res) => {
     await ensureDefaults();
     const body = req.body || {};
     const update = {};
-    ['name', 'model', 'status', 'androidClientId', 'bridgeAvailable', 'businessEntity', 'address', 'halalCertNumber'].forEach((key) => {
+    ['name', 'model', 'status', 'androidClientId', 'bridgeAvailable', 'businessEntity', 'address', 'halalCertNumber', 'halalLogoDataUrl'].forEach((key) => {
       if (body[key] !== undefined) update[key] = body[key];
     });
     if (body.serialBaudRate !== undefined) update.serialBaudRate = Number(body.serialBaudRate) || 115200;

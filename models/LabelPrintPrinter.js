@@ -9,6 +9,7 @@ const LabelPrintPrinterSchema = new mongoose.Schema({
   businessEntity: { type: String, default: '', trim: true },
   address: { type: String, default: '', trim: true },
   halalCertNumber: { type: String, default: 'C1086', trim: true },
+  halalLogoDataUrl: { type: String, default: '' },
   status: { type: String, enum: ['unavailable', 'ready', 'printing', 'error'], default: 'unavailable' },
   bridgeAvailable: { type: Boolean, default: false },
   active: { type: Boolean, default: true },
