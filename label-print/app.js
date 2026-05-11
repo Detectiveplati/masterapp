@@ -1777,7 +1777,7 @@ async function renderLabelToRasterLines(item, template) {
   return lines;
 }
 
-function buildRasterJob(rasterLines, { cutMode }) {
+function buildRasterJob(rasterLines, { cutMode, mediaWidthMm = 62, labelLengthMm = 29 }) {
   const chunks = [];
 
   // 1. Invalidate (200 × 0x00)
@@ -1793,7 +1793,11 @@ function buildRasterJob(rasterLines, { cutMode }) {
   const lineCount = rasterLines.length;
   const lines_lo = lineCount & 0xFF;
   const lines_hi = (lineCount >> 8) & 0xFF;
-  chunks.push(Uint8Array.from([0x1B, 0x69, 0x7A, 0x8A, 0x0A, 0x3E, 0x00, lines_lo, lines_hi, 0x00, 0x00, 0x00, 0x01]));
+  // 0x8E flags: PI_RECOVER | PI_LENGTH | PI_WIDTH | PI_KIND
+  // 0x0B = die-cut label; 0x0A = continuous roll
+  const mediaType = labelLengthMm > 0 ? 0x0B : 0x0A;
+  const piFlags = labelLengthMm > 0 ? 0x8E : 0x8A;
+  chunks.push(Uint8Array.from([0x1B, 0x69, 0x7A, piFlags, mediaType, mediaWidthMm & 0xFF, labelLengthMm & 0xFF, lines_lo, lines_hi, 0x00, 0x00, 0x00, 0x01]));
 
   // 5. Cut mode
   chunks.push(Uint8Array.from([0x1B, 0x69, 0x4D, cutMode === 'no-cut' ? 0x00 : 0x40]));
@@ -1822,7 +1826,7 @@ function buildRasterJob(rasterLines, { cutMode }) {
 
 async function sendTemplateToBluetooth(payload) {
   const port = await verifyConnectionBeforePrint();
-  const template = findTemplate(payload.templateKey) || state.templates[0] || { heightMm: 62 };
+  const template = findTemplate(payload.templateKey) || state.templates[0] || { heightMm: 29, mediaWidthMm: 62 };
   const item = payload.item || {
     name: 'Test Print',
     nameEnglish: 'Test Print',
@@ -1833,7 +1837,7 @@ async function sendTemplateToBluetooth(payload) {
     shelfLifeDays: 1
   };
   const rasterLines = await renderLabelToRasterLines(item, template);
-  const bytes = buildRasterJob(rasterLines, { cutMode: payload.cutMode || 'auto-cut' });
+  const bytes = buildRasterJob(rasterLines, { cutMode: payload.cutMode || 'auto-cut', mediaWidthMm: template.mediaWidthMm || 62, labelLengthMm: template.heightMm || 29 });
   const writer = port.writable.getWriter();
   try {
     for (let i = 0; i < (payload.copies || 1); i++) {

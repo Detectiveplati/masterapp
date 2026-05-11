@@ -85,7 +85,7 @@ function normalizeTemplateInput(input = {}, existingTemplate = null) {
   const fallbackChinese = String(existingTemplate && existingTemplate.nameChinese || '').trim();
   const fallbackDescription = String(existingTemplate && existingTemplate.description || '').trim();
   const fallbackNumber = Number(existingTemplate && existingTemplate.printerTemplateNumber) || 1;
-  const fallbackHeight = Number(existingTemplate && existingTemplate.heightMm) || 62;
+  const fallbackHeight = Number(existingTemplate && existingTemplate.heightMm) || 29;
 
   const nameEnglish = String(input.nameEnglish !== undefined ? input.nameEnglish : fallbackEnglish || fallbackName).trim();
   const nameChinese = String(input.nameChinese !== undefined ? input.nameChinese : fallbackChinese).trim();
