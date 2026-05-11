@@ -1846,88 +1846,134 @@ async function renderLabelToRasterLines(item, template) {
   const heightPx = 271;
   const canvas = new OffscreenCanvas(PRINT_WIDTH_PX, heightPx);
   const ctx = canvas.getContext('2d');
+  const FONT = "'Noto Sans SC', 'Arial Unicode MS', sans-serif";
+  const PAD = 6;
 
-  // White background
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, PRINT_WIDTH_PX, heightPx);
-
   ctx.fillStyle = '#000000';
   ctx.textBaseline = 'top';
 
-  const PAD = 8;
-  const usableWidth = PRINT_WIDTH_PX - PAD * 2;
-  let y = 4;
-
-  // Row 1: Business entity
+  // ── HEADER ──────────────────────────────────────────────────────────────────
+  // Left column: Halal badge (circle + cert number). Right column: company + address.
+  const halalCert = item.halalCertNumber || '';
   const entityText = item.businessEntity || '';
-  if (entityText) {
-    ctx.font = `bold 28px 'Noto Sans SC', 'Arial Unicode MS', sans-serif`;
+  const addressText = item.address || '';
+
+  let logoBottomY = 0;
+  const LOGO_COL_W = halalCert ? 64 : 0;
+
+  if (halalCert) {
+    const cx = 31, cy = 30, r = 25;
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.textAlign = 'center';
-    ctx.fillText(entityText, PRINT_WIDTH_PX / 2, y);
-    y += 32;
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold 9px ${FONT}`;
+    ctx.fillText('HALAL', cx, cy - 6);
+    ctx.font = `7px ${FONT}`;
+    ctx.fillText('SINGAPORE', cx, cy + 5);
+    ctx.textBaseline = 'top';
+    ctx.font = `bold 11px ${FONT}`;
+    ctx.fillText(halalCert, cx, cy + r + 4);
+    logoBottomY = cy + r + 18;
+    ctx.restore();
   }
 
-  // Row 2: Address
-  const addressText = item.address || '';
-  if (addressText) {
-    ctx.font = `16px 'Noto Sans SC', 'Arial Unicode MS', sans-serif`;
+  let y = 3;
+  const textX = LOGO_COL_W + PAD;
+  const textW = PRINT_WIDTH_PX - textX - PAD;
+  const textCx = textX + textW / 2;
+
+  if (entityText) {
+    let fs = 22;
+    ctx.font = `bold ${fs}px ${FONT}`;
+    while (ctx.measureText(entityText).width > textW && fs > 10) { fs--; ctx.font = `bold ${fs}px ${FONT}`; }
     ctx.textAlign = 'center';
-    ctx.fillText(addressText, PRINT_WIDTH_PX / 2, y);
-    y += 20;
+    ctx.fillText(entityText, textCx, y);
+    y += fs + 3;
   }
+
+  if (addressText) {
+    let fs = 11;
+    ctx.font = `${fs}px ${FONT}`;
+    while (ctx.measureText(addressText).width > textW && fs > 7) { fs--; ctx.font = `${fs}px ${FONT}`; }
+    ctx.textAlign = 'center';
+    ctx.fillText(addressText, textCx, y);
+    y += fs + 3;
+  }
+
+  y = Math.max(y, logoBottomY);
 
   // Divider
-  if (entityText || addressText) {
-    ctx.fillRect(PAD, y + 2, usableWidth, 1);
-    y += 6;
-  }
+  ctx.fillRect(PAD, y + 2, PRINT_WIDTH_PX - PAD * 2, 1);
+  y += 9;
 
-  // Row 4: Department name
-  const deptText = item.departmentName || template.departmentName || '';
-  if (deptText) {
-    ctx.font = `18px 'Noto Sans SC', 'Arial Unicode MS', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText(deptText, PRINT_WIDTH_PX / 2, y);
-    y += 22;
-  }
-
-  // Row 5: English product name (shrink-to-fit)
+  // ── ENGLISH PRODUCT NAME ────────────────────────────────────────────────────
   const nameEn = item.nameEnglish || item.name || '';
   if (nameEn) {
-    let fontSize = 52;
-    ctx.font = `bold ${fontSize}px 'Noto Sans SC', 'Arial Unicode MS', sans-serif`;
-    while (ctx.measureText(nameEn).width > usableWidth && fontSize > 14) {
-      fontSize -= 2;
-      ctx.font = `bold ${fontSize}px 'Noto Sans SC', 'Arial Unicode MS', sans-serif`;
-    }
+    let fs = 22;
+    ctx.font = `bold ${fs}px ${FONT}`;
+    while (ctx.measureText(nameEn).width > PRINT_WIDTH_PX - PAD * 2 && fs > 10) { fs -= 2; ctx.font = `bold ${fs}px ${FONT}`; }
     ctx.textAlign = 'center';
     ctx.fillText(nameEn, PRINT_WIDTH_PX / 2, y);
-    y += fontSize + 6;
+    y += fs + 4;
   }
 
-  // Row 6: Chinese product name
+  // ── CHINESE PRODUCT NAME (large — dominant element) ─────────────────────────
   const nameZh = item.nameChinese || '';
   if (nameZh) {
-    ctx.font = `32px 'Noto Sans SC', 'Arial Unicode MS', sans-serif`;
+    let fs = 50;
+    ctx.font = `bold ${fs}px ${FONT}`;
+    while (ctx.measureText(nameZh).width > PRINT_WIDTH_PX - PAD * 2 && fs > 20) { fs -= 2; ctx.font = `bold ${fs}px ${FONT}`; }
     ctx.textAlign = 'center';
     ctx.fillText(nameZh, PRINT_WIDTH_PX / 2, y);
-    y += 38;
+    y += fs + 5;
   }
 
-  // Row 7 & 8: Dates
+  // ── DATE ROWS ───────────────────────────────────────────────────────────────
+  // Left: bilingual label (small). Right: date value (large bold). DD/MM/YYYY format.
   const today = new Date();
   const shelfLifeDays = item.shelfLifeDays != null ? item.shelfLifeDays : 3;
   const expiryDate = new Date(today.getTime() + shelfLifeDays * 86400000);
-  const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  ctx.font = `18px 'Noto Sans SC', 'Arial Unicode MS', sans-serif`;
-  ctx.textAlign = 'left';
-  ctx.fillText(`开始日期: ${fmtDate(today)}`, PAD, y);
-  y += 22;
-  ctx.fillText(`过期日期: ${fmtDate(expiryDate)}`, PAD, y);
+  const fmtDate = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 
-  // Convert to monochrome raster lines (90 bytes = 720 dots per line for 62mm QL media)
-  // QL printer expects data right-to-left: pixel col=0 maps to reversed position 707 in 720-dot space
-  // (12-dot left margin means print-head position = 12+col; reversed = 719-(12+col) = 707-col)
+  const DATE_VAL_FS = 34;
+  const DATE_LBL_FS = 13;
+  const ROW_H = DATE_VAL_FS + 5;
+
+  for (const [label, date] of [
+    ['Production Date  开始日期:', fmtDate(today)],
+    ['Used by Date  过期日期:', fmtDate(expiryDate)]
+  ]) {
+    ctx.textBaseline = 'top';
+    ctx.font = `${DATE_LBL_FS}px ${FONT}`;
+    ctx.textAlign = 'left';
+    ctx.fillText(label, PAD, y + Math.round((ROW_H - DATE_LBL_FS) / 2));
+    ctx.font = `bold ${DATE_VAL_FS}px ${FONT}`;
+    ctx.textAlign = 'right';
+    ctx.fillText(date, PRINT_WIDTH_PX - PAD, y);
+    y += ROW_H + 2;
+  }
+
+  // ── BOTTOM ROW: shelf life indicator + department ───────────────────────────
+  const deptText = item.departmentName || template.departmentName || '';
+  const bottomY = heightPx - 18;
+  ctx.font = `12px ${FONT}`;
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+  ctx.fillText(`+${shelfLifeDays}Days`, PAD, bottomY);
+  if (deptText) {
+    ctx.textAlign = 'right';
+    ctx.fillText(deptText, PRINT_WIDTH_PX - PAD, bottomY);
+  }
+
+  // ── RASTER CONVERSION ───────────────────────────────────────────────────────
+  // QL printer expects data right-to-left: pixel col=0 maps to reversed position 707 in 720-dot space.
+  // (12-dot left margin: print-head position = 12+col; reversed = 719-(12+col) = 707-col)
   const imageData = ctx.getImageData(0, 0, PRINT_WIDTH_PX, heightPx);
   const lines = [];
   for (let row = 0; row < heightPx; row++) {
@@ -1936,7 +1982,7 @@ async function renderLabelToRasterLines(item, template) {
       const i = (row * PRINT_WIDTH_PX + col) * 4;
       const bright = imageData.data[i] * 0.299 + imageData.data[i + 1] * 0.587 + imageData.data[i + 2] * 0.114;
       if (bright < 128) {
-        const rpos = 707 - col; // reversed position in 720-dot stream
+        const rpos = 707 - col;
         lineBytes[rpos >> 3] |= (0x80 >> (rpos & 7));
       }
     }

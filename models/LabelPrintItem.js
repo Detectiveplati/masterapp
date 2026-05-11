@@ -16,6 +16,7 @@ const LabelPrintItemSchema = new mongoose.Schema({
   defaultCutMode: { type: String, enum: ['auto-cut', 'no-cut'], default: 'auto-cut' },
   businessEntity: { type: String, default: '', trim: true },
   address: { type: String, default: '', trim: true },
+  halalCertNumber: { type: String, default: '', trim: true },
   shelfLifeDays: { type: Number, default: 3, min: 0 },
   defaultFieldValues: { type: mongoose.Schema.Types.Mixed, default: {} },
   allowedOptions: {
