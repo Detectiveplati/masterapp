@@ -76,6 +76,10 @@ const diagPrinterStatusEl = document.getElementById('diag-printer-status');
 const diagPrinterStatusMetaEl = document.getElementById('diag-printer-status-meta');
 const diagBrowserNameEl = document.getElementById('diag-browser-name');
 const diagBrowserMetaEl = document.getElementById('diag-browser-meta');
+const exportCsvButtonEl = document.getElementById('export-csv-button');
+const exportPdfButtonEl = document.getElementById('export-pdf-button');
+const importCsvButtonEl = document.getElementById('import-csv-button');
+const importCsvInputEl = document.getElementById('import-csv-input');
 
 const state = {
   items: [],
@@ -127,6 +131,15 @@ uploadDiagnosticsButtonEl.addEventListener('click', uploadDiagnosticsSnapshot);
 openSiteSettingsButtonEl.addEventListener('click', openSiteSettings);
 forgetPortsButtonEl.addEventListener('click', forgetAuthorizedPorts);
 clearRuntimeLogButtonEl.addEventListener('click', clearRuntimeLog);
+exportCsvButtonEl.addEventListener('click', exportItemsCsv);
+exportPdfButtonEl.addEventListener('click', exportItemsPrintView);
+importCsvButtonEl.addEventListener('click', () => importCsvInputEl.click());
+importCsvInputEl.addEventListener('change', async () => {
+  const file = importCsvInputEl.files[0];
+  if (!file) return;
+  importCsvInputEl.value = '';
+  await importItemsCsv(file);
+});
 reconnectBannerButtonEl.addEventListener('click', async () => {
   appendRuntimeLog('Reconnect banner button clicked', runtimeStateSnapshot());
   reconnectBannerButtonEl.disabled = true;
@@ -1854,47 +1867,62 @@ async function renderLabelToRasterLines(item, template) {
   ctx.fillStyle = '#000000';
   ctx.textBaseline = 'top';
 
-  // ── HEADER ──────────────────────────────────────────────────────────────────
-  // Left column: Halal badge (circle + cert number). Right column: company + address.
   const halalCert = item.halalCertNumber || '';
   const entityText = item.businessEntity || '';
   const addressText = item.address || '';
+  const deptText = item.departmentName || template.departmentName || '';
 
-  let logoBottomY = 0;
-  const LOGO_COL_W = halalCert ? 64 : 0;
-
+  // ── HEADER ──────────────────────────────────────────────────────────────────
+  // Try to load the actual Halal Singapore logo from a static file.
+  // Save the official logo PNG to label-print/halal-logo.png to enable it.
+  let halalBitmap = null;
   if (halalCert) {
-    const cx = 31, cy = 30, r = 25;
+    try {
+      const resp = await fetch('/label-print/halal-logo.png');
+      if (resp.ok) halalBitmap = await createImageBitmap(await resp.blob());
+    } catch (_) {}
+  }
+
+  const LOGO_H = 58;
+  const LOGO_COL_W = halalCert ? 62 : 0;
+  let y = 3;
+
+  if (halalBitmap) {
+    const drawW = Math.round(LOGO_H * (halalBitmap.width / halalBitmap.height));
+    ctx.drawImage(halalBitmap, 0, y, drawW, LOGO_H);
+    halalBitmap.close();
+  } else if (halalCert) {
+    // Fallback: simple circular text badge
+    const cx = 29, cy = y + 27, r = 24;
     ctx.save();
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.stroke();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = `bold 9px ${FONT}`;
-    ctx.fillText('HALAL', cx, cy - 6);
+    ctx.fillText('HALAL', cx, cy - 5);
     ctx.font = `7px ${FONT}`;
     ctx.fillText('SINGAPORE', cx, cy + 5);
     ctx.textBaseline = 'top';
-    ctx.font = `bold 11px ${FONT}`;
-    ctx.fillText(halalCert, cx, cy + r + 4);
-    logoBottomY = cy + r + 18;
+    ctx.font = `bold 10px ${FONT}`;
+    ctx.fillText(halalCert, cx, cy + r + 3);
     ctx.restore();
   }
 
-  let y = 3;
   const textX = LOGO_COL_W + PAD;
   const textW = PRINT_WIDTH_PX - textX - PAD;
   const textCx = textX + textW / 2;
 
   if (entityText) {
-    let fs = 22;
+    let fs = 20;
     ctx.font = `bold ${fs}px ${FONT}`;
-    while (ctx.measureText(entityText).width > textW && fs > 10) { fs--; ctx.font = `bold ${fs}px ${FONT}`; }
+    while (ctx.measureText(entityText).width > textW && fs > 9) { fs--; ctx.font = `bold ${fs}px ${FONT}`; }
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
     ctx.fillText(entityText, textCx, y);
-    y += fs + 3;
+    y += fs + 2;
   }
 
   if (addressText) {
@@ -1903,30 +1931,31 @@ async function renderLabelToRasterLines(item, template) {
     while (ctx.measureText(addressText).width > textW && fs > 7) { fs--; ctx.font = `${fs}px ${FONT}`; }
     ctx.textAlign = 'center';
     ctx.fillText(addressText, textCx, y);
-    y += fs + 3;
+    y += fs + 2;
   }
 
-  y = Math.max(y, logoBottomY);
+  y = Math.max(y, halalCert ? LOGO_H + 5 : y);
 
   // Divider
-  ctx.fillRect(PAD, y + 2, PRINT_WIDTH_PX - PAD * 2, 1);
-  y += 9;
+  ctx.fillRect(PAD, y + 1, PRINT_WIDTH_PX - PAD * 2, 1);
+  y += 7;
 
   // ── ENGLISH PRODUCT NAME ────────────────────────────────────────────────────
   const nameEn = item.nameEnglish || item.name || '';
   if (nameEn) {
-    let fs = 22;
+    let fs = 20;
     ctx.font = `bold ${fs}px ${FONT}`;
-    while (ctx.measureText(nameEn).width > PRINT_WIDTH_PX - PAD * 2 && fs > 10) { fs -= 2; ctx.font = `bold ${fs}px ${FONT}`; }
+    while (ctx.measureText(nameEn).width > PRINT_WIDTH_PX - PAD * 2 && fs > 9) { fs--; ctx.font = `bold ${fs}px ${FONT}`; }
     ctx.textAlign = 'center';
     ctx.fillText(nameEn, PRINT_WIDTH_PX / 2, y);
     y += fs + 4;
   }
 
-  // ── CHINESE PRODUCT NAME (large — dominant element) ─────────────────────────
+  // ── CHINESE PRODUCT NAME ─────────────────────────────────────────────────────
+  // Dominant element — uses whatever space remains after header and before dates.
   const nameZh = item.nameChinese || '';
   if (nameZh) {
-    let fs = 50;
+    let fs = 54;
     ctx.font = `bold ${fs}px ${FONT}`;
     while (ctx.measureText(nameZh).width > PRINT_WIDTH_PX - PAD * 2 && fs > 20) { fs -= 2; ctx.font = `bold ${fs}px ${FONT}`; }
     ctx.textAlign = 'center';
@@ -1935,15 +1964,15 @@ async function renderLabelToRasterLines(item, template) {
   }
 
   // ── DATE ROWS ───────────────────────────────────────────────────────────────
-  // Left: bilingual label (small). Right: date value (large bold). DD/MM/YYYY format.
+  // Left: small bilingual label.  Right: bold date in DD/MM/YYYY, large.
   const today = new Date();
   const shelfLifeDays = item.shelfLifeDays != null ? item.shelfLifeDays : 3;
   const expiryDate = new Date(today.getTime() + shelfLifeDays * 86400000);
   const fmtDate = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 
-  const DATE_VAL_FS = 34;
-  const DATE_LBL_FS = 13;
-  const ROW_H = DATE_VAL_FS + 5;
+  const DATE_VAL_FS = 32;
+  const DATE_LBL_FS = 12;
+  const ROW_H = DATE_VAL_FS + 4;
 
   for (const [label, date] of [
     ['Production Date  开始日期:', fmtDate(today)],
@@ -1959,10 +1988,9 @@ async function renderLabelToRasterLines(item, template) {
     y += ROW_H + 2;
   }
 
-  // ── BOTTOM ROW: shelf life indicator + department ───────────────────────────
-  const deptText = item.departmentName || template.departmentName || '';
-  const bottomY = heightPx - 18;
-  ctx.font = `12px ${FONT}`;
+  // ── BOTTOM ROW ───────────────────────────────────────────────────────────────
+  const bottomY = heightPx - 16;
+  ctx.font = `11px ${FONT}`;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
   ctx.fillText(`+${shelfLifeDays}Days`, PAD, bottomY);
@@ -2355,4 +2383,169 @@ function formatTemplateNumber(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) return '001';
   return String(Math.max(1, Math.min(255, Math.round(parsed)))).padStart(3, '0');
+}
+
+// ── EXPORT / IMPORT ──────────────────────────────────────────────────────────
+
+const ITEM_CSV_HEADERS = [
+  'name', 'nameEnglish', 'nameChinese', 'category',
+  'businessEntity', 'address', 'halalCertNumber', 'shelfLifeDays',
+  'departmentName', 'sku', 'barcode', 'templateKey', 'defaultQuantity', 'defaultCutMode'
+];
+
+function csvEscape(value) {
+  const s = String(value ?? '');
+  return (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r'))
+    ? '"' + s.replace(/"/g, '""') + '"'
+    : s;
+}
+
+function exportItemsCsv() {
+  if (!state.items.length) { showToast('No items to export. / 没有可导出的项目。'); return; }
+  const rows = [ITEM_CSV_HEADERS.join(',')];
+  for (const item of state.items) {
+    rows.push(ITEM_CSV_HEADERS.map((h) => csvEscape(item[h])).join(','));
+  }
+  const csv = '﻿' + rows.join('\r\n'); // UTF-8 BOM so Excel opens Chinese correctly
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `label-items-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`Exported ${state.items.length} items. / 已导出 ${state.items.length} 个项目。`);
+}
+
+function exportItemsPrintView() {
+  if (!state.items.length) { showToast('No items to export. / 没有可导出的项目。'); return; }
+  const esc = (v) => String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const date = new Date().toLocaleDateString();
+  const rows = state.items.map((item) => `
+    <tr>
+      <td>${esc(item.name)}</td>
+      <td>${esc(item.nameEnglish || '')}</td>
+      <td>${esc(item.nameChinese || '')}</td>
+      <td>${esc(item.category || '')}</td>
+      <td>${esc(item.businessEntity || '')}</td>
+      <td>${item.shelfLifeDays ?? ''}d</td>
+      <td>${esc(item.departmentName || '')}</td>
+      <td>${esc(item.halalCertNumber || '')}</td>
+      <td>${esc(item.templateKey || '')}</td>
+    </tr>`).join('');
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Label Print Items ${date}</title>
+<style>
+  body{font-family:Arial,sans-serif;font-size:11px;margin:20px}
+  h1{font-size:14px;margin-bottom:8px}
+  table{border-collapse:collapse;width:100%}
+  th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}
+  th{background:#f0f0f0;font-weight:bold}
+  tr:nth-child(even){background:#f9f9f9}
+  @media print{body{margin:8px}}
+</style></head>
+<body>
+<h1>Label Print Items — ${esc(date)} (${state.items.length} items / 个项目)</h1>
+<table>
+<thead><tr>
+  <th>Name / 名称</th><th>English / 英文</th><th>Chinese / 中文</th>
+  <th>Category / 类别</th><th>Entity / 单位</th>
+  <th>Shelf / 保质</th><th>Dept / 部门</th>
+  <th>Halal Cert</th><th>Template</th>
+</tr></thead>
+<tbody>${rows}</tbody>
+</table>
+</body></html>`;
+  const win = window.open('', '_blank', 'noopener');
+  if (!win) { showToast('Pop-up blocked. Allow pop-ups for this site. / 弹窗被阻止，请允许此站点的弹窗。'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.addEventListener('load', () => win.print());
+}
+
+function parseCsvRow(line) {
+  const fields = [];
+  let i = 0;
+  while (i <= line.length) {
+    if (line[i] === '"') {
+      i++;
+      let field = '';
+      while (i < line.length) {
+        if (line[i] === '"' && line[i + 1] === '"') { field += '"'; i += 2; }
+        else if (line[i] === '"') { i++; break; }
+        else { field += line[i++]; }
+      }
+      fields.push(field);
+      if (line[i] === ',') i++;
+    } else {
+      const end = line.indexOf(',', i);
+      if (end === -1) { fields.push(line.slice(i)); break; }
+      fields.push(line.slice(i, end));
+      i = end + 1;
+    }
+  }
+  return fields;
+}
+
+async function importItemsCsv(file) {
+  showToast('Importing… / 导入中…', { sticky: true });
+  let text;
+  try {
+    text = await file.text();
+  } catch (e) {
+    showToast('Could not read file. / 无法读取文件。');
+    return;
+  }
+
+  // Strip BOM if present
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) { showToast('File is empty or has no data rows. / 文件为空或没有数据行。'); return; }
+
+  const headers = parseCsvRow(lines[0]).map((h) => h.trim());
+  const dataRows = lines.slice(1).map((l) => {
+    const vals = parseCsvRow(l);
+    const obj = {};
+    headers.forEach((h, idx) => { if (h) obj[h] = (vals[idx] || '').trim(); });
+    return obj;
+  }).filter((r) => r.name);
+
+  if (!dataRows.length) { showToast('No valid rows found in file. / 文件中没有有效行。'); return; }
+
+  let created = 0, failed = 0;
+  for (const row of dataRows) {
+    try {
+      await fetchJson(`${API_BASE}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: row.name,
+          nameEnglish: row.nameEnglish || '',
+          nameChinese: row.nameChinese || '',
+          category: row.category || 'Uncategorized',
+          businessEntity: row.businessEntity || '',
+          address: row.address || '',
+          halalCertNumber: row.halalCertNumber || '',
+          shelfLifeDays: Number(row.shelfLifeDays) >= 0 ? Number(row.shelfLifeDays) : 3,
+          departmentName: row.departmentName || '',
+          sku: row.sku || '',
+          barcode: row.barcode || '',
+          templateKey: row.templateKey || '',
+          defaultQuantity: Math.max(1, Number(row.defaultQuantity) || 1),
+          defaultCutMode: row.defaultCutMode === 'no-cut' ? 'no-cut' : 'auto-cut'
+        })
+      });
+      created++;
+    } catch (err) {
+      failed++;
+      appendRuntimeLog('importItemsCsv() row failed', { name: row.name, error: err && err.message });
+    }
+  }
+
+  showToast(`Import done: ${created} added, ${failed} failed. / 导入完成：${created} 条新增，${failed} 条失败。`);
+  await loadAll();
 }
