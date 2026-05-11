@@ -5,7 +5,7 @@ const LabelPrintPrinterSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   model: { type: String, default: 'QL-820NWB', trim: true },
   androidClientId: { type: String, default: '', trim: true },
-  serialBaudRate: { type: Number, default: 9600, min: 1, max: 921600 },
+  serialBaudRate: { type: Number, default: 115200, min: 1, max: 921600 },
   status: { type: String, enum: ['unavailable', 'ready', 'printing', 'error'], default: 'unavailable' },
   bridgeAvailable: { type: Boolean, default: false },
   active: { type: Boolean, default: true },

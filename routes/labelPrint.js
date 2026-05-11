@@ -23,7 +23,7 @@ async function ensureDefaults() {
       await LabelPrintPrinter.create({
         name: 'Brother QL-820NWB',
         model: 'QL-820NWB',
-        serialBaudRate: 9600,
+        serialBaudRate: 115200,
         status: 'unavailable',
         bridgeAvailable: false,
         objectNameMap: {
@@ -270,7 +270,7 @@ router.put('/printers/:id', express.json(), async (req, res) => {
     ['name', 'model', 'status', 'androidClientId', 'bridgeAvailable'].forEach((key) => {
       if (body[key] !== undefined) update[key] = body[key];
     });
-    if (body.serialBaudRate !== undefined) update.serialBaudRate = Number(body.serialBaudRate) || 9600;
+    if (body.serialBaudRate !== undefined) update.serialBaudRate = Number(body.serialBaudRate) || 115200;
     if (body.objectNameMap && typeof body.objectNameMap === 'object') update.objectNameMap = body.objectNameMap;
     const printer = await LabelPrintPrinter.findByIdAndUpdate(req.params.id, { $set: update }, { new: true, runValidators: true });
     if (!printer) return res.status(404).json({ error: 'Printer not found' });

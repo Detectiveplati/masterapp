@@ -1,6 +1,9 @@
 const API_BASE = `${window.location.origin}/api/label-print`;
 const BLUETOOTH_RFCOMM_SERVICE_ID = '00001101-0000-1000-8000-00805f9b34fb';
 const DIAGNOSTIC_SESSION_KEY = 'label-print-diagnostic-session-id';
+const DEFAULT_SERIAL_BAUD_RATE = 115200;
+const LEGACY_SERIAL_BAUD_RATE = 9600;
+const BROTHER_STATUS_RESPONSE_LENGTH = 32;
 
 const searchInputEl = document.getElementById('search-input');
 const clearSearchButtonEl = document.getElementById('clear-search-button');
@@ -69,6 +72,8 @@ const diagLastErrorEl = document.getElementById('diag-last-error');
 const diagLastErrorMetaEl = document.getElementById('diag-last-error-meta');
 const diagPairingResultEl = document.getElementById('diag-pairing-result');
 const diagPairingResultMetaEl = document.getElementById('diag-pairing-result-meta');
+const diagPrinterStatusEl = document.getElementById('diag-printer-status');
+const diagPrinterStatusMetaEl = document.getElementById('diag-printer-status-meta');
 const diagBrowserNameEl = document.getElementById('diag-browser-name');
 const diagBrowserMetaEl = document.getElementById('diag-browser-meta');
 
@@ -92,7 +97,9 @@ const state = {
     lastErrorAt: null,
     lastPairingResult: '',
     lastPairingMeta: '',
-    lastPairingAt: null
+    lastPairingAt: null,
+    lastStatus: null,
+    lastStatusAt: null
   }
 };
 
@@ -1005,6 +1012,9 @@ async function refreshBridgeStatus() {
   });
 
   if (state.serial.connected && state.serial.port) {
+    await requestPrinterStatus(state.serial.port).catch((error) => {
+      appendRuntimeLog('refreshBridgeStatus() status request failed', { error: error && (error.message || error.name || String(error)) });
+    });
     bridgeStatusEl.textContent = 'Bluetooth ready / 蓝牙已就绪';
     bridgeMetaEl.textContent = `${formatSerialLabel(state.serial.info)} · ${getSerialBaudRate()} baud / 波特率 ${getSerialBaudRate()}`;
     updateDiagnostics();
@@ -1069,7 +1079,7 @@ async function savePrinterSettings() {
 
 function syncPrinterInputs() {
   const printer = selectedPrinter();
-  printerBaudInputEl.value = String((printer && printer.serialBaudRate) || 9600);
+  printerBaudInputEl.value = String(normalizeSerialBaudRate(printer && printer.serialBaudRate, printer));
   printerDefaultCutEl.value = getDefaultCutMode();
 }
 
@@ -1090,9 +1100,20 @@ function getDefaultCutMode() {
 }
 
 function getSerialBaudRate() {
-  const parsed = Number(printerBaudInputEl.value);
-  if (!Number.isFinite(parsed)) return 9600;
-  return Math.max(1, Math.min(921600, Math.round(parsed)));
+  return normalizeSerialBaudRate(printerBaudInputEl.value, selectedPrinter());
+}
+
+function normalizeSerialBaudRate(value, printer = null) {
+  const parsed = Number(value);
+  const recommended = printer && printer.model === 'QL-820NWB'
+    ? DEFAULT_SERIAL_BAUD_RATE
+    : LEGACY_SERIAL_BAUD_RATE;
+  if (!Number.isFinite(parsed)) return recommended;
+  const bounded = Math.max(1, Math.min(921600, Math.round(parsed)));
+  if (printer && printer.model === 'QL-820NWB' && bounded === LEGACY_SERIAL_BAUD_RATE) {
+    return DEFAULT_SERIAL_BAUD_RATE;
+  }
+  return bounded;
 }
 
 function selectedPrinter() {
@@ -1188,7 +1209,8 @@ function runtimeStateSnapshot() {
     pendingPrintItem: state.pendingPrint && state.pendingPrint.item ? state.pendingPrint.item.name : null,
     authorizedPortCount: state.authorizedPorts.length,
     currentPortInfo: safePortInfo(state.serial.port),
-    lastError: state.serial.lastError || null
+    lastError: state.serial.lastError || null,
+    lastStatus: state.serial.lastStatus || null
   };
 }
 
@@ -1217,6 +1239,8 @@ function buildDiagnosticsPayload(options = {}) {
       lastPairingResult: state.serial.lastPairingResult || null,
       lastPairingMeta: state.serial.lastPairingMeta || null,
       lastError: state.serial.lastError || null,
+      lastStatus: state.serial.lastStatus || null,
+      lastStatusAt: state.serial.lastStatusAt || null,
       authorizedPorts: state.authorizedPorts.map((entry) => ({
         label: entry.label,
         meta: entry.meta,
@@ -1227,7 +1251,8 @@ function buildDiagnosticsPayload(options = {}) {
         id: printer._id,
         name: printer.name,
         model: printer.model,
-        serialBaudRate: Number(printer.serialBaudRate) || 9600
+        serialBaudRate: normalizeSerialBaudRate(printer.serialBaudRate, printer),
+        savedSerialBaudRate: Number(printer.serialBaudRate) || null
       } : null
     },
     device: {
@@ -1313,6 +1338,142 @@ function safeStringify(value) {
   } catch (_) {
     return String(value);
   }
+}
+
+function concatChunks(chunks) {
+  const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  chunks.forEach((chunk) => {
+    merged.set(chunk, offset);
+    offset += chunk.length;
+  });
+  return merged;
+}
+
+function parseBrotherStatusResponse(bytes) {
+  if (!bytes || bytes.length < BROTHER_STATUS_RESPONSE_LENGTH) return null;
+  if (bytes[0] !== 0x80 || bytes[1] !== 0x20 || bytes[2] !== 0x42) return null;
+
+  const errorInfo1 = bytes[8];
+  const errorInfo2 = bytes[9];
+  const errors = [];
+  if (errorInfo1 & (1 << 0)) errors.push('No media when printing');
+  if (errorInfo1 & (1 << 1)) errors.push('End of media');
+  if (errorInfo1 & (1 << 2)) errors.push('Tape cutter jam');
+  if (errorInfo1 & (1 << 5)) errors.push('Printer turned off');
+  if (errorInfo2 & (1 << 0)) errors.push('Replace media error');
+  if (errorInfo2 & (1 << 2)) errors.push('Transmission / Communication error');
+  if (errorInfo2 & (1 << 4)) errors.push('Cover opened while printing');
+  if (errorInfo2 & (1 << 6)) errors.push('Media cannot be fed');
+  if (errorInfo2 & (1 << 7)) errors.push('System error');
+
+  const mediaTypeMap = {
+    0x00: 'No media',
+    0x0A: 'Continuous length tape',
+    0x0B: 'Die-cut labels'
+  };
+  const statusTypeMap = {
+    0x00: 'Reply to status request',
+    0x01: 'Printing completed',
+    0x02: 'Error occurred',
+    0x05: 'Notification',
+    0x06: 'Phase change'
+  };
+  const phaseTypeMap = {
+    0x00: 'Waiting to receive',
+    0x01: 'Printing state'
+  };
+
+  return {
+    mediaWidth: bytes[10],
+    mediaTypeCode: bytes[11],
+    mediaType: mediaTypeMap[bytes[11]] || `Unknown (${bytes[11]})`,
+    mediaLength: bytes[17],
+    statusType: statusTypeMap[bytes[18]] || `Unknown (${bytes[18]})`,
+    phaseType: phaseTypeMap[bytes[19]] || `Unknown (${bytes[19]})`,
+    errors,
+    rawHex: Array.from(bytes).map((byte) => byte.toString(16).padStart(2, '0')).join(' ')
+  };
+}
+
+function formatPrinterStatusSummary(status) {
+  if (!status) return 'Unknown / 未知';
+  return `${status.mediaWidth}mm · ${status.mediaLength || 0}mm · ${status.mediaType}`;
+}
+
+function formatPrinterStatusMeta(status) {
+  if (!status) return 'No printer status captured yet / 尚未捕获打印机状态';
+  const parts = [status.statusType, status.phaseType];
+  if (status.errors && status.errors.length) parts.push(`errors: ${status.errors.join(', ')}`);
+  return parts.join(' · ');
+}
+
+function updateLastPrinterStatus(status) {
+  state.serial.lastStatus = status;
+  state.serial.lastStatusAt = new Date().toLocaleString();
+}
+
+async function readBrotherStatusResponse(port, timeoutMs = 1500) {
+  if (!port || !port.readable) return null;
+  const reader = port.readable.getReader();
+  const chunks = [];
+  let timedOut = false;
+  try {
+    while (true) {
+      let timeoutId;
+      try {
+        const result = await Promise.race([
+          reader.read(),
+          new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('Status read timeout')), timeoutMs);
+          })
+        ]);
+        clearTimeout(timeoutId);
+        if (result.done) break;
+        if (result.value && result.value.length) {
+          chunks.push(result.value);
+          const merged = concatChunks(chunks);
+          for (let index = 0; index <= merged.length - BROTHER_STATUS_RESPONSE_LENGTH; index += 1) {
+            if (merged[index] === 0x80 && merged[index + 1] === 0x20 && merged[index + 2] === 0x42) {
+              return merged.slice(index, index + BROTHER_STATUS_RESPONSE_LENGTH);
+            }
+          }
+        }
+      } catch (error) {
+        timedOut = /timeout/i.test(String(error && error.message || error));
+        if (!timedOut) throw error;
+        break;
+      }
+    }
+  } finally {
+    if (timedOut) {
+      try { await reader.cancel(); } catch (_) {}
+    }
+    try { reader.releaseLock(); } catch (_) {}
+  }
+  return null;
+}
+
+async function requestPrinterStatus(port) {
+  const target = port || state.serial.port;
+  if (!target || !target.writable || !target.readable) return null;
+
+  let writer;
+  try {
+    writer = target.writable.getWriter();
+    await writer.write(Uint8Array.from([0x1B, 0x69, 0x53]));
+  } finally {
+    try { if (writer) writer.releaseLock(); } catch (_) {}
+  }
+
+  const response = await readBrotherStatusResponse(target);
+  const parsed = parseBrotherStatusResponse(response);
+  if (parsed) {
+    updateLastPrinterStatus(parsed);
+    appendRuntimeLog('Printer status received', parsed);
+  }
+  return parsed;
 }
 
 async function fetchJson(url, options = {}) {
@@ -1786,8 +1947,8 @@ async function renderLabelToRasterLines(item, template) {
 function buildRasterJob(rasterLines, { cutMode, mediaWidthMm = 62, labelLengthMm = 29 }) {
   const chunks = [];
 
-  // 1. Invalidate (200 × 0x00)
-  chunks.push(new Uint8Array(200));
+  // 1. Invalidate (QL-820NWB expects 400 × 0x00)
+  chunks.push(new Uint8Array(400));
 
   // 2. Initialize
   chunks.push(Uint8Array.from([0x1B, 0x40]));
@@ -1851,6 +2012,13 @@ async function sendTemplateToBluetooth(payload) {
     departmentName: template.departmentName || '',
     shelfLifeDays: 1
   };
+  const status = await requestPrinterStatus(port).catch((error) => {
+    appendRuntimeLog('sendTemplateToBluetooth() preflight status failed', { error: error && (error.message || error.name || String(error)) });
+    return null;
+  });
+  if (status && (status.mediaTypeCode !== 0x0B || status.mediaWidth !== 62 || status.mediaLength !== 29)) {
+    throw new Error(`Printer reports ${formatPrinterStatusSummary(status)} loaded, expected 62mm x 29mm die-cut.`);
+  }
   const rasterLines = await renderLabelToRasterLines(item, template);
   const bytes = buildRasterJob(rasterLines, { cutMode: payload.cutMode || 'auto-cut', mediaWidthMm: template.mediaWidthMm || 62, labelLengthMm: template.heightMm || 29 });
   const writer = port.writable.getWriter();
@@ -2021,6 +2189,13 @@ function updateDiagnostics() {
   diagPairingResultMetaEl.textContent = state.serial.lastPairingMeta
     ? `${state.serial.lastPairingAt || ''} ${state.serial.lastPairingMeta}`.trim()
     : 'No pairing attempt recorded yet / 尚未记录配对尝试';
+
+  diagPrinterStatusEl.textContent = state.serial.lastStatus
+    ? formatPrinterStatusSummary(state.serial.lastStatus)
+    : 'Unknown / 未知';
+  diagPrinterStatusMetaEl.textContent = state.serial.lastStatus
+    ? `${state.serial.lastStatusAt || ''} ${formatPrinterStatusMeta(state.serial.lastStatus)}`.trim()
+    : 'No printer status captured yet / 尚未捕获打印机状态';
 
   const browserInfo = getBrowserDiagnostics();
   diagBrowserNameEl.textContent = browserInfo.title;
