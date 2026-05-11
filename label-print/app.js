@@ -218,6 +218,7 @@ modalPrintButtonEl.addEventListener('click', () => {
   runPrint(state.activeItem, {
     quantity,
     cutMode: modalCutModeEl.value,
+    templateKey: modalTemplateEl.value,
     source: 'options'
   }).finally(closeOptionsModal);
 });
@@ -783,14 +784,15 @@ async function runPrint(item, options = {}) {
     selectedPrinterId: state.selectedPrinterId
   });
   const printer = selectedPrinter();
-  const template = findTemplate(item.templateKey);
+  const requestedTemplateKey = options.templateKey || item.templateKey;
+  const template = findTemplate(requestedTemplateKey);
   if (!printer) {
     appendRuntimeLog('runPrint() blocked: no printer selected', runtimeStateSnapshot());
     showToast('Select a printer before printing. / 打印前请先选择打印机。');
     return;
   }
   if (!template) {
-    appendRuntimeLog('runPrint() blocked: no template', { itemName: item.name, templateKey: item.templateKey });
+    appendRuntimeLog('runPrint() blocked: no template', { itemName: item.name, templateKey: requestedTemplateKey });
     showToast(`Template not found for ${item.name}. / 未找到 ${item.name} 的模板。`);
     return;
   }
@@ -1886,6 +1888,10 @@ async function attemptAutoReconnect() {
 }
 
 async function renderLabelToRasterLines(item, template, globalSettings = {}) {
+  if (template && template.designLayout && Array.isArray(template.designLayout.objects)) {
+    return renderDesignLayoutToRasterLines(item, template, globalSettings);
+  }
+
   const PRINT_WIDTH_PX = 696; // printable width for 62mm media (720 total - 12 left - 12 right)
   // Hard-fixed for DK-11209 (62mm × 29mm die-cut): 271 printable dots in the feed direction per brother_ql spec.
   // Do NOT derive from template.heightMm — template drift (e.g. heightMm=62) generates 732 lines and the firmware rejects.
@@ -2055,6 +2061,161 @@ async function renderLabelToRasterLines(item, template, globalSettings = {}) {
     const lineBytes = new Uint8Array(90); // 720 dots / 8 = 90 bytes
     for (let col = 0; col < PRINT_WIDTH_PX; col++) {
       const i = (row * PRINT_WIDTH_PX + col) * 4;
+      const bright = imageData.data[i] * 0.299 + imageData.data[i + 1] * 0.587 + imageData.data[i + 2] * 0.114;
+      if (bright < 128) {
+        const rpos = 707 - col;
+        lineBytes[rpos >> 3] |= (0x80 >> (rpos & 7));
+      }
+    }
+    lines.push(lineBytes);
+  }
+  return lines;
+}
+
+async function renderDesignLayoutToRasterLines(item, template, globalSettings = {}) {
+  const PRINT_WIDTH_PX = 696;
+  const PRINT_HEIGHT_PX = 271;
+  const canvas = new OffscreenCanvas(PRINT_WIDTH_PX, PRINT_HEIGHT_PX);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, PRINT_WIDTH_PX, PRINT_HEIGHT_PX);
+
+  const layout = substituteDesignFields(template.designLayout, buildLabelFieldData(item, template, globalSettings));
+  for (const obj of layout.objects || []) {
+    await drawDesignObject(ctx, obj, globalSettings);
+  }
+
+  return imageDataToRasterLines(ctx.getImageData(0, 0, PRINT_WIDTH_PX, PRINT_HEIGHT_PX), PRINT_WIDTH_PX, PRINT_HEIGHT_PX);
+}
+
+function buildLabelFieldData(item, template, globalSettings) {
+  const today = new Date();
+  const shelfLifeDays = Number(item && item.shelfLifeDays) >= 0 ? Number(item.shelfLifeDays) : 3;
+  const expiryDate = new Date(today.getTime() + shelfLifeDays * 86400000);
+  const fmtDate = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  return {
+    entity: item.businessEntity || globalSettings.businessEntity || '',
+    address: item.address || globalSettings.address || '',
+    nameChinese: item.nameChinese || '',
+    nameEnglish: item.nameEnglish || item.name || '',
+    dateProduction: fmtDate(today),
+    dateExpiry: fmtDate(expiryDate),
+    departmentName: item.departmentName || globalSettings.departmentName || template.departmentName || '',
+    shelfLifeDays: `+${shelfLifeDays} Days`,
+    halalCert: item.halalCertNumber || globalSettings.halalCertNumber || 'C1086'
+  };
+}
+
+function substituteDesignFields(fabricJson, fieldData) {
+  const json = JSON.parse(JSON.stringify(fabricJson || { objects: [] }));
+  for (const obj of json.objects || []) {
+    if (obj.fieldBinding && fieldData[obj.fieldBinding] !== undefined && isTextDesignObject(obj)) {
+      obj.text = String(fieldData[obj.fieldBinding]);
+    }
+  }
+  return json;
+}
+
+async function drawDesignObject(ctx, obj, globalSettings) {
+  if (!obj || obj.visible === false) return;
+  if (isTextDesignObject(obj)) {
+    drawDesignText(ctx, obj);
+    return;
+  }
+  if (obj.type === 'line') {
+    drawDesignLine(ctx, obj);
+    return;
+  }
+  if (obj.type === 'image') {
+    await drawDesignImage(ctx, obj, globalSettings);
+  }
+}
+
+function isTextDesignObject(obj) {
+  return obj && ['text', 'i-text', 'textbox'].includes(obj.type);
+}
+
+function drawDesignText(ctx, obj) {
+  const left = Number(obj.left) || 0;
+  const top = Number(obj.top) || 0;
+  const width = Math.max(1, Number(obj.width) || 0) * (Number(obj.scaleX) || 1);
+  const fontSize = Math.max(1, (Number(obj.fontSize) || 16) * (Number(obj.scaleY) || 1));
+  const fontFamily = obj.fontFamily || "'Noto Sans SC', 'Arial Unicode MS', sans-serif";
+  const fontWeight = obj.fontWeight || 'normal';
+  const fontStyle = obj.fontStyle || 'normal';
+  const text = String(obj.text || '');
+  const angle = Number(obj.angle) || 0;
+
+  ctx.save();
+  ctx.translate(left, top);
+  if (angle) ctx.rotate(angle * Math.PI / 180);
+  ctx.fillStyle = obj.fill || '#000000';
+  ctx.textBaseline = 'top';
+  ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+  ctx.textAlign = obj.textAlign === 'center' ? 'center' : obj.textAlign === 'right' ? 'right' : 'left';
+  const x = ctx.textAlign === 'center' ? width / 2 : ctx.textAlign === 'right' ? width : 0;
+  const lineHeight = Number(obj.lineHeight) > 0 ? fontSize * Number(obj.lineHeight) : fontSize * 1.16;
+  text.split(/\r?\n/).forEach((line, index) => {
+    ctx.fillText(line, x, index * lineHeight, width || undefined);
+  });
+  ctx.restore();
+}
+
+function drawDesignLine(ctx, obj) {
+  const scaleX = Number(obj.scaleX) || 1;
+  const scaleY = Number(obj.scaleY) || 1;
+  const left = Number(obj.left) || 0;
+  const top = Number(obj.top) || 0;
+  const x1 = Number(obj.x1) || 0;
+  const y1 = Number(obj.y1) || 0;
+  const x2 = Number(obj.x2) || 0;
+  const y2 = Number(obj.y2) || 0;
+  const angle = Number(obj.angle) || 0;
+  ctx.save();
+  ctx.translate(left, top);
+  if (angle) ctx.rotate(angle * Math.PI / 180);
+  ctx.strokeStyle = obj.stroke || '#000000';
+  ctx.lineWidth = Math.max(1, Number(obj.strokeWidth) || 1);
+  ctx.beginPath();
+  ctx.moveTo(x1 * scaleX, y1 * scaleY);
+  ctx.lineTo(x2 * scaleX, y2 * scaleY);
+  ctx.stroke();
+  ctx.restore();
+}
+
+async function drawDesignImage(ctx, obj, globalSettings) {
+  const src = obj.src || (obj.fieldBinding === 'halalLogo' ? globalSettings.halalLogoDataUrl || '/label-print/halal-logo.png' : '');
+  if (!src) return;
+  let bitmap = null;
+  try {
+    const resp = await fetch(src);
+    if (!resp.ok) return;
+    bitmap = await createImageBitmap(await resp.blob());
+    const scaleX = Number(obj.scaleX) || 1;
+    const scaleY = Number(obj.scaleY) || 1;
+    const width = Math.max(1, Number(obj.width || bitmap.width) * scaleX);
+    const height = Math.max(1, Number(obj.height || bitmap.height) * scaleY);
+    const left = Number(obj.left) || 0;
+    const top = Number(obj.top) || 0;
+    const angle = Number(obj.angle) || 0;
+    ctx.save();
+    ctx.translate(left, top);
+    if (angle) ctx.rotate(angle * Math.PI / 180);
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    ctx.restore();
+  } catch (_) {
+    // Missing optional images should not block printing text labels.
+  } finally {
+    if (bitmap) bitmap.close();
+  }
+}
+
+function imageDataToRasterLines(imageData, width, height) {
+  const lines = [];
+  for (let row = 0; row < height; row++) {
+    const lineBytes = new Uint8Array(90);
+    for (let col = 0; col < width; col++) {
+      const i = (row * width + col) * 4;
       const bright = imageData.data[i] * 0.299 + imageData.data[i + 1] * 0.587 + imageData.data[i + 2] * 0.114;
       if (bright < 128) {
         const rpos = 707 - col;
@@ -2492,10 +2653,10 @@ async function saveItemQuickEdit() {
 }
 
 // ── EXPORT / IMPORT ──────────────────────────────────────────────────────────
-// CSV only contains the 4 per-item fields that change between items.
-// Global settings (entity, address, halal cert) are configured once in Setup.
+// CSV only contains per-item fields. Global settings (entity, address, halal cert)
+// are configured once in Setup.
 
-const ITEM_CSV_HEADERS = ['nameEnglish', 'nameChinese', 'departmentName', 'shelfLifeDays'];
+const ITEM_CSV_HEADERS = ['templateKey', 'nameEnglish', 'nameChinese', 'departmentName', 'shelfLifeDays', 'category'];
 
 function csvEscape(value) {
   const s = String(value ?? '');
