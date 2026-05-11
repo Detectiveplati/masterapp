@@ -43,6 +43,8 @@ const duplicateObjectBtn = document.getElementById('duplicate-object-btn');
 const connectBtn         = document.getElementById('connect-btn');
 const printBtn           = document.getElementById('print-btn');
 const loadDefaultBtn     = document.getElementById('load-default-btn');
+const uploadLogoBtn      = document.getElementById('upload-logo-btn');
+const uploadLogoInput    = document.getElementById('upload-logo-input');
 const btDot              = document.getElementById('bt-dot');
 const btLabel            = document.getElementById('bt-label');
 const toastEl            = document.getElementById('toast');
@@ -414,6 +416,10 @@ function addLineElement() {
 async function addLogoElement() {
   const dataUrl = localStorage.getItem(HALAL_LOGO_STORAGE_KEY) || '';
   const src = dataUrl || HALAL_LOGO_ASSET_URL;
+  return addLogoElementFromSource(src);
+}
+
+async function addLogoElementFromSource(src) {
   fabric.Image.fromURL(src, (img) => {
     if (!img || !img.width) { toast('Logo not found. Upload it in Setup first.'); return; }
     img.set({ left: 0, top: 2, originX: 'left', originY: 'top' });
@@ -425,11 +431,44 @@ async function addLogoElement() {
   }, { crossOrigin: 'anonymous' });
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Could not read logo file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadLogoFromDesigner(file) {
+  if (!file) return;
+  uploadLogoBtn.disabled = true;
+  uploadLogoBtn.textContent = 'Uploading…';
+  try {
+    const dataUrl = await readFileAsDataUrl(file);
+    localStorage.setItem(HALAL_LOGO_STORAGE_KEY, dataUrl);
+    await apiFetch('/assets/halal-logo', {
+      method: 'POST',
+      body: JSON.stringify({ dataUrl })
+    });
+    await addLogoElementFromSource(dataUrl);
+    toast('Halal logo uploaded and added. Click Save Layout to keep it on this template.');
+  } catch (err) {
+    toast('Logo upload failed: ' + (err.message || String(err)));
+  } finally {
+    uploadLogoInput.value = '';
+    uploadLogoBtn.disabled = false;
+    uploadLogoBtn.textContent = 'Upload + Add Halal Logo';
+  }
+}
+
 // ── UI bindings ───────────────────────────────────────────────────────────────
 function bindUI() {
   document.getElementById('add-text-btn').addEventListener('click', () => addTextElement('Text'));
   document.getElementById('add-line-btn').addEventListener('click', addLineElement);
   document.getElementById('add-logo-btn').addEventListener('click', addLogoElement);
+  uploadLogoBtn.addEventListener('click', () => uploadLogoInput.click());
+  uploadLogoInput.addEventListener('change', () => uploadLogoFromDesigner(uploadLogoInput.files && uploadLogoInput.files[0]));
   document.querySelectorAll('[data-field]').forEach((btn) => {
     btn.addEventListener('click', () => addFieldElement(btn.dataset.field));
   });
