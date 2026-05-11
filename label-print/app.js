@@ -2667,7 +2667,17 @@ async function saveItemQuickEdit() {
 // CSV only contains per-item fields. Global settings (entity, address, halal cert)
 // are configured once in Setup.
 
-const ITEM_CSV_HEADERS = ['templateKey', 'nameEnglish', 'nameChinese', 'departmentName', 'shelfLifeDays', 'category'];
+const ITEM_CSV_HEADERS = [
+  'id',
+  'templateKey',
+  'templateName',
+  'printerTemplateNumber',
+  'nameEnglish',
+  'nameChinese',
+  'departmentName',
+  'shelfLifeDays',
+  'category'
+];
 
 function csvEscape(value) {
   const s = String(value ?? '');
@@ -2680,7 +2690,7 @@ function exportItemsCsv() {
   if (!state.items.length) { showToast('No items to export. / 没有可导出的项目。'); return; }
   const rows = [ITEM_CSV_HEADERS.join(',')];
   for (const item of state.items) {
-    rows.push(ITEM_CSV_HEADERS.map((h) => csvEscape(item[h])).join(','));
+    rows.push(ITEM_CSV_HEADERS.map((h) => csvEscape(csvValueForItem(item, h))).join(','));
   }
   const csv = '﻿' + rows.join('\r\n'); // UTF-8 BOM so Excel opens Chinese correctly
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -2697,7 +2707,10 @@ function exportItemsCsv() {
 
 function exportEmptyCsv() {
   const exampleRow = {
+    id:             '',
     templateKey:    'sauce-kitchen',
+    templateName:   'Sauce Kitchen Template',
+    printerTemplateNumber: '',
     nameEnglish:    'Chilli Prawn Fried Rice',
     nameChinese:    '参巴虾米炒饭',
     departmentName: 'HOT KITCHEN',
@@ -2719,6 +2732,37 @@ function exportEmptyCsv() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   showToast('CSV template downloaded. Fill in rows and import. / 已下载空白模板。');
+}
+
+function csvValueForItem(item, header) {
+  const template = findTemplate(item.templateKey);
+  if (header === 'id') return item._id || item.id || '';
+  if (header === 'templateName') return template ? (template.nameEnglish || template.name || template.key || '') : '';
+  if (header === 'printerTemplateNumber') return template ? template.printerTemplateNumber || '' : '';
+  return item[header] ?? '';
+}
+
+function resolveTemplateKeyFromCsvRow(row, defaultTemplateKey) {
+  const directKey = String(row.templateKey || '').trim();
+  if (directKey) return directKey;
+
+  const templateNumber = Number(row.printerTemplateNumber);
+  if (Number.isFinite(templateNumber) && templateNumber > 0) {
+    const byNumber = state.templates.find((template) => Number(template.printerTemplateNumber) === Math.round(templateNumber));
+    if (byNumber) return byNumber.key;
+  }
+
+  const templateName = String(row.templateName || '').trim().toLowerCase();
+  if (templateName) {
+    const byName = state.templates.find((template) => (
+      String(template.nameEnglish || template.name || '').trim().toLowerCase() === templateName
+      || String(template.nameChinese || '').trim().toLowerCase() === templateName
+      || String(template.key || '').trim().toLowerCase() === templateName
+    ));
+    if (byName) return byName.key;
+  }
+
+  return defaultTemplateKey;
 }
 
 function exportItemsPrintView() {
@@ -2819,36 +2863,40 @@ async function importItemsCsv(file) {
 
   if (!dataRows.length) { showToast('No valid rows found in file. / 文件中没有有效行。'); return; }
 
-  // Use the first template in state as the default templateKey for imported items
+  // Use the first template in state as the default templateKey for imported items.
+  // Rows exported from this page include id, so editing templateKey and importing
+  // updates existing items instead of creating duplicates.
   const defaultTemplateKey = (state.templates[0] && state.templates[0].key) || '';
-  const activePrinter = selectedPrinter() || {};
 
-  let created = 0, failed = 0;
+  let created = 0, updated = 0, failed = 0;
   for (const row of dataRows) {
     const englishName = (row.nameEnglish || row.name || '').trim();
+    const itemId = String(row.id || row._id || '').trim();
+    const payload = {
+      name: englishName,
+      nameEnglish: englishName,
+      nameChinese: row.nameChinese || '',
+      category: row.category || 'Uncategorized',
+      shelfLifeDays: Number(row.shelfLifeDays) >= 0 ? Number(row.shelfLifeDays) : 3,
+      departmentName: row.departmentName || '',
+      templateKey: resolveTemplateKeyFromCsvRow(row, defaultTemplateKey),
+      defaultQuantity: Math.max(1, Number(row.defaultQuantity) || 1),
+      defaultCutMode: row.defaultCutMode === 'no-cut' ? 'no-cut' : 'auto-cut'
+    };
     try {
-      await fetchJson(`${API_BASE}/items`, {
-        method: 'POST',
+      await fetchJson(itemId ? `${API_BASE}/items/${encodeURIComponent(itemId)}` : `${API_BASE}/items`, {
+        method: itemId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: englishName,
-          nameEnglish: englishName,
-          nameChinese: row.nameChinese || '',
-          category: row.category || 'Uncategorized',
-          shelfLifeDays: Number(row.shelfLifeDays) >= 0 ? Number(row.shelfLifeDays) : 3,
-          departmentName: row.departmentName || '',
-          templateKey: row.templateKey || defaultTemplateKey,
-          defaultQuantity: Math.max(1, Number(row.defaultQuantity) || 1),
-          defaultCutMode: row.defaultCutMode === 'no-cut' ? 'no-cut' : 'auto-cut'
-        })
+        body: JSON.stringify(payload)
       });
-      created++;
+      if (itemId) updated++;
+      else created++;
     } catch (err) {
       failed++;
       appendRuntimeLog('importItemsCsv() row failed', { name: englishName, error: err && err.message });
     }
   }
 
-  showToast(`Import done: ${created} added, ${failed} failed. / 导入完成：${created} 条新增，${failed} 条失败。`);
+  showToast(`Import done: ${created} added, ${updated} updated, ${failed} failed. / 导入完成：${created} 条新增，${updated} 条更新，${failed} 条失败。`);
   await loadAll();
 }
