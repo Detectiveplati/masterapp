@@ -270,7 +270,7 @@ router.get('/assets/halal-logo', async (_req, res) => {
   }
 });
 
-router.post('/assets/halal-logo', express.json({ limit: '5mb' }), async (req, res) => {
+router.post('/assets/halal-logo', express.json({ limit: '10mb' }), async (req, res) => {
   try {
     const dataUrl = String(req.body && req.body.dataUrl || '');
     const match = dataUrl.match(/^data:(image\/(?:png|jpe?g|gif));base64,([A-Za-z0-9+/=]+)$/);

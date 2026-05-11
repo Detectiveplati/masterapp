@@ -440,12 +440,35 @@ function readFileAsDataUrl(file) {
   });
 }
 
+async function normalizeLogoDataUrl(file) {
+  const sourceDataUrl = await readFileAsDataUrl(file);
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Could not decode logo image.'));
+    img.src = sourceDataUrl;
+  });
+
+  const maxSide = 420;
+  const scale = Math.min(1, maxSide / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
+  const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+  const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(image, 0, 0, width, height);
+  return canvas.toDataURL('image/png');
+}
+
 async function uploadLogoFromDesigner(file) {
   if (!file) return;
   uploadLogoBtn.disabled = true;
   uploadLogoBtn.textContent = 'Uploading…';
   try {
-    const dataUrl = await readFileAsDataUrl(file);
+    const dataUrl = await normalizeLogoDataUrl(file);
     localStorage.setItem(HALAL_LOGO_STORAGE_KEY, dataUrl);
     await apiFetch('/assets/halal-logo', {
       method: 'POST',

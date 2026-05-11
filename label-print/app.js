@@ -2605,32 +2605,60 @@ function formatTemplateNumber(value) {
 
 // ── HALAL LOGO UPLOAD ─────────────────────────────────────────────────────────
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Could not read logo file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function normalizeLogoDataUrl(file) {
+  const sourceDataUrl = await readFileAsDataUrl(file);
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Could not decode logo image.'));
+    img.src = sourceDataUrl;
+  });
+
+  const maxSide = 420;
+  const scale = Math.min(1, maxSide / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
+  const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+  const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(image, 0, 0, width, height);
+  return canvas.toDataURL('image/png');
+}
+
 async function handleHalalLogoUpload() {
   const file = settingsHalalLogoInputEl.files[0];
   if (!file) return;
   settingsHalalLogoInputEl.value = '';
-  const reader = new FileReader();
-  reader.onload = async () => {
-    localStorage.setItem(HALAL_LOGO_STORAGE_KEY, reader.result);
-    try {
-      await fetchJson(`${API_BASE}/assets/halal-logo`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dataUrl: reader.result, printerId: state.selectedPrinterId || undefined })
-      });
-      const printer = selectedPrinter();
-      if (printer) {
-        printer.halalLogoDataUrl = reader.result;
-      }
-      settingsHalalLogoStatusEl.textContent = `Logo saved (${file.name}) / 标志已保存`;
-      showToast('Halal logo saved for printing. / 清真标志已保存用于打印。');
-    } catch (error) {
-      settingsHalalLogoStatusEl.textContent = 'Logo saved on this browser only / 标志仅保存在此浏览器';
-      showToast(error.message || 'Logo saved locally, but server upload failed. / 标志已本地保存，但服务器上传失败。');
+  try {
+    const dataUrl = await normalizeLogoDataUrl(file);
+    localStorage.setItem(HALAL_LOGO_STORAGE_KEY, dataUrl);
+    await fetchJson(`${API_BASE}/assets/halal-logo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dataUrl, printerId: state.selectedPrinterId || undefined })
+    });
+    const printer = selectedPrinter();
+    if (printer) {
+      printer.halalLogoDataUrl = dataUrl;
     }
-  };
-  reader.onerror = () => showToast('Could not read logo file. / 无法读取标志文件。');
-  reader.readAsDataURL(file);
+    settingsHalalLogoStatusEl.textContent = `Logo saved (${file.name}) / 标志已保存`;
+    showToast('Halal logo saved for printing. / 清真标志已保存用于打印。');
+  } catch (error) {
+    settingsHalalLogoStatusEl.textContent = 'Logo upload failed / 标志上传失败';
+    showToast(error.message || 'Could not upload logo. / 无法上传标志。');
+  }
 }
 
 // ── ITEM QUICK EDIT ───────────────────────────────────────────────────────────
