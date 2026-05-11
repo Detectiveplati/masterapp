@@ -1841,8 +1841,9 @@ async function attemptAutoReconnect() {
 
 async function renderLabelToRasterLines(item, template) {
   const PRINT_WIDTH_PX = 696; // printable width for 62mm media (720 total - 12 left - 12 right)
-  // Printable height for 62x29mm die-cut is 271 dots per brother_ql spec, not 29/25.4*300=342
-  const heightPx = template.heightMm === 29 ? 271 : Math.round((template.heightMm || 29) / 25.4 * 300);
+  // Hard-fixed for DK-11209 (62mm × 29mm die-cut): 271 printable dots in the feed direction per brother_ql spec.
+  // Do NOT derive from template.heightMm — template drift (e.g. heightMm=62) generates 732 lines and the firmware rejects.
+  const heightPx = 271;
   const canvas = new OffscreenCanvas(PRINT_WIDTH_PX, heightPx);
   const ctx = canvas.getContext('2d');
 
@@ -1947,16 +1948,16 @@ async function renderLabelToRasterLines(item, template) {
 function buildRasterJob(rasterLines, { cutMode, mediaWidthMm = 62, labelLengthMm = 29 }) {
   const chunks = [];
 
-  // 1. Switch to raster mode before clearing the command buffer.
-  chunks.push(Uint8Array.from([0x1B, 0x69, 0x61, 0x01]));
-
-  // 2. Invalidate (QL-820NWB expects 400 × 0x00)
+  // 1. Invalidate — must come first, before any mode switch.
+  //    Clears any partially-received command regardless of current printer state.
+  //    Sending ESC i a 01 first (old order) put the printer in raster mode, making
+  //    the 400 null bytes be interpreted as raster data instead of an invalidate.
   chunks.push(new Uint8Array(400));
 
-  // 3. Initialize
+  // 2. Initialize
   chunks.push(Uint8Array.from([0x1B, 0x40]));
 
-  // 4. Initialize resets the mode, so switch to raster mode again.
+  // 3. Switch to raster mode
   chunks.push(Uint8Array.from([0x1B, 0x69, 0x61, 0x01]));
 
   // 5. Print info
@@ -2020,11 +2021,25 @@ async function sendTemplateToBluetooth(payload) {
     appendRuntimeLog('sendTemplateToBluetooth() preflight status failed', { error: error && (error.message || error.name || String(error)) });
     return null;
   });
-  if (status && (status.mediaTypeCode !== 0x0B || status.mediaWidth !== 62 || status.mediaLength !== 29)) {
-    throw new Error(`Printer reports ${formatPrinterStatusSummary(status)} loaded, expected 62mm x 29mm die-cut.`);
+  if (status) {
+    appendRuntimeLog('sendTemplateToBluetooth() preflight status', {
+      mediaWidth: status.mediaWidth,
+      mediaLength: status.mediaLength,
+      mediaType: status.mediaType,
+      mediaTypeCode: status.mediaTypeCode,
+      rawHex: status.rawHex
+    });
+    // Only gate on media type and width — some firmware reports mediaLength=0 for die-cut
+    // labels even when the correct roll is loaded, which would cause a false rejection.
+    if (status.mediaTypeCode !== 0x0B || status.mediaWidth !== 62) {
+      throw new Error(`Printer reports ${formatPrinterStatusSummary(status)} loaded, expected 62mm × 29mm die-cut (DK-11209). Check that the correct roll is fitted and the cover is closed.`);
+    }
   }
   const rasterLines = await renderLabelToRasterLines(item, template);
-  const bytes = buildRasterJob(rasterLines, { cutMode: payload.cutMode || 'auto-cut', mediaWidthMm: template.mediaWidthMm || 62, labelLengthMm: template.heightMm || 29 });
+  // Hard-fixed for DK-11209: always send 62mm width / 29mm length regardless of template record.
+  // Template drift (e.g. heightMm=62) would tell the printer to expect a 62mm die, which doesn't exist,
+  // so the firmware rejects with "wrong label type".
+  const bytes = buildRasterJob(rasterLines, { cutMode: payload.cutMode || 'auto-cut', mediaWidthMm: 62, labelLengthMm: 29 });
   const writer = port.writable.getWriter();
   try {
     for (let i = 0; i < (payload.copies || 1); i++) {
