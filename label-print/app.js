@@ -1947,43 +1947,47 @@ async function renderLabelToRasterLines(item, template) {
 function buildRasterJob(rasterLines, { cutMode, mediaWidthMm = 62, labelLengthMm = 29 }) {
   const chunks = [];
 
-  // 1. Invalidate (QL-820NWB expects 400 × 0x00)
-  chunks.push(new Uint8Array(400));
-
-  // 2. Initialize
-  chunks.push(Uint8Array.from([0x1B, 0x40]));
-
-  // 3. Switch to raster mode
+  // 1. Switch to raster mode before clearing the command buffer.
   chunks.push(Uint8Array.from([0x1B, 0x69, 0x61, 0x01]));
 
-  // 4. Print info (media=62mm, line count as little-endian uint16)
+  // 2. Invalidate (QL-820NWB expects 400 × 0x00)
+  chunks.push(new Uint8Array(400));
+
+  // 3. Initialize
+  chunks.push(Uint8Array.from([0x1B, 0x40]));
+
+  // 4. Initialize resets the mode, so switch to raster mode again.
+  chunks.push(Uint8Array.from([0x1B, 0x69, 0x61, 0x01]));
+
+  // 5. Print info
   const lineCount = rasterLines.length;
   const lines_lo = lineCount & 0xFF;
   const lines_hi = (lineCount >> 8) & 0xFF;
-  // 0x8E flags: PI_RECOVER | PI_LENGTH | PI_WIDTH | PI_KIND
+  // 0xCE flags: PI_QUALITY | PI_RECOVER | PI_LENGTH | PI_WIDTH | PI_KIND
+  // brother_ql enables high-quality printing by setting PI_QUALITY as well.
   // 0x0B = die-cut label; 0x0A = continuous roll
   const mediaType = labelLengthMm > 0 ? 0x0B : 0x0A;
-  const piFlags = labelLengthMm > 0 ? 0x8E : 0x8A;
+  const piFlags = labelLengthMm > 0 ? 0xCE : 0xCA;
   // print info: last two bytes are starting_page=0x00 (first/only page) + 0x00 padding
   const lines_hi2 = (lineCount >> 16) & 0xFF;
   const lines_hi3 = (lineCount >> 24) & 0xFF;
   chunks.push(Uint8Array.from([0x1B, 0x69, 0x7A, piFlags, mediaType, mediaWidthMm & 0xFF, labelLengthMm & 0xFF, lines_lo, lines_hi, lines_hi2, lines_hi3, 0x00, 0x00]));
 
-  // 5. Auto-cut mode
+  // 6. Auto-cut mode
   chunks.push(Uint8Array.from([0x1B, 0x69, 0x4D, cutMode === 'no-cut' ? 0x00 : 0x40]));
 
-  // 6. Cut every 1 label (auto-cut only)
+  // 7. Cut every 1 label (auto-cut only)
   if (cutMode !== 'no-cut') {
     chunks.push(Uint8Array.from([0x1B, 0x69, 0x41, 0x01]));
   }
 
-  // 7. Expanded mode (bit 3 = cut_at_end)
+  // 8. Expanded mode (bit 3 = cut_at_end)
   chunks.push(Uint8Array.from([0x1B, 0x69, 0x4B, cutMode === 'no-cut' ? 0x00 : 0x08]));
 
-  // 8. Margin (feed_margin = 0 for 62x29mm die-cut)
+  // 9. Margin (feed_margin = 0 for 62x29mm die-cut)
   chunks.push(Uint8Array.from([0x1B, 0x69, 0x64, 0x00, 0x00]));
 
-  // 9. Raster lines: QL format [0x67, 0x00, 0x5A, ...90 bytes...]
+  // 10. Raster lines: QL format [0x67, 0x00, 0x5A, ...90 bytes...]
   // (0x47 is P-touch format; 0x67 is QL format; 0x5A = 90 bytes per line)
   for (const lineBytes of rasterLines) {
     const lineCmd = new Uint8Array(93); // 3 header + 90 data
@@ -1994,7 +1998,7 @@ function buildRasterJob(rasterLines, { cutMode, mediaWidthMm = 62, labelLengthMm
     chunks.push(lineCmd);
   }
 
-  // 9. Print + feed
+  // 11. Print + feed
   chunks.push(Uint8Array.from([0x1A]));
 
   return concatUint8Arrays(chunks);
