@@ -1899,7 +1899,7 @@ async function renderLabelToRasterLines(item, template, globalSettings = {}) {
   ctx.textBaseline = 'top';
 
   // Item-level values override global settings (global = printer record + stored logo)
-  const halalCert = item.halalCertNumber || globalSettings.halalCertNumber || '';
+  const halalCert = item.halalCertNumber || globalSettings.halalCertNumber || 'C1086';
   const entityText = item.businessEntity || globalSettings.businessEntity || '';
   const addressText = item.address || globalSettings.address || '';
   const deptText = item.departmentName || globalSettings.departmentName || template.departmentName || '';
