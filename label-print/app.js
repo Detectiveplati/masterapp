@@ -76,7 +76,8 @@ const diagPrinterStatusEl = document.getElementById('diag-printer-status');
 const diagPrinterStatusMetaEl = document.getElementById('diag-printer-status-meta');
 const diagBrowserNameEl = document.getElementById('diag-browser-name');
 const diagBrowserMetaEl = document.getElementById('diag-browser-meta');
-const exportCsvButtonEl = document.getElementById('export-csv-button');
+const exportCsvButtonEl         = document.getElementById('export-csv-button');
+const exportCsvTemplateButtonEl = document.getElementById('export-csv-template-button');
 const exportPdfButtonEl = document.getElementById('export-pdf-button');
 const importCsvButtonEl = document.getElementById('import-csv-button');
 const importCsvInputEl = document.getElementById('import-csv-input');
@@ -148,6 +149,7 @@ clearRuntimeLogButtonEl.addEventListener('click', clearRuntimeLog);
 settingsHalalLogoInputEl.addEventListener('change', handleHalalLogoUpload);
 itemSaveButtonEl.addEventListener('click', saveItemQuickEdit);
 exportCsvButtonEl.addEventListener('click', exportItemsCsv);
+exportCsvTemplateButtonEl.addEventListener('click', exportEmptyCsv);
 exportPdfButtonEl.addEventListener('click', exportItemsPrintView);
 importCsvButtonEl.addEventListener('click', () => importCsvInputEl.click());
 importCsvInputEl.addEventListener('change', async () => {
@@ -2064,67 +2066,6 @@ async function renderLabelToRasterLines(item, template, globalSettings = {}) {
   return lines;
 }
 
-// Render a designed template (Fabric.js JSON) for a specific item, substituting
-// dynamic field values, then convert to raster lines ready for buildRasterJob.
-async function renderDesignedTemplate(designLayout, item, globalSettings) {
-  const PRINT_W = 696, PRINT_H = 271;
-  const fmtDate = (d) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-  const today = new Date();
-  const shelfLife = item.shelfLifeDays ?? 3;
-  const fieldValues = {
-    entity:         item.businessEntity || globalSettings.businessEntity || '',
-    address:        item.address        || globalSettings.address        || '',
-    halalCert:      item.halalCertNumber || globalSettings.halalCertNumber || 'C1086',
-    nameChinese:    item.nameChinese    || '',
-    nameEnglish:    item.nameEnglish    || item.name || '',
-    dateProduction: fmtDate(today),
-    dateExpiry:     fmtDate(new Date(today.getTime() + shelfLife * 86400000)),
-    departmentName: item.departmentName || '',
-    shelfLifeDays:  `+${shelfLife}Days`,
-  };
-
-  // Deep-clone the JSON and substitute field values + restore logo src
-  const json = JSON.parse(JSON.stringify(designLayout));
-  const logoSrc = globalSettings.halalLogoDataUrl || '/label-print/halal-logo.png';
-  for (const obj of json.objects || []) {
-    if (obj.fieldBinding && fieldValues[obj.fieldBinding] !== undefined) {
-      if (obj.type === 'i-text' || obj.type === 'text') {
-        obj.text = String(fieldValues[obj.fieldBinding]);
-      }
-    }
-    if (obj.type === 'image' && obj.fieldBinding === 'halalLogo' && !obj.src) {
-      obj.src = logoSrc;
-    }
-  }
-
-  // Render via a temporary Fabric.js StaticCanvas (non-interactive, no DOM attachment needed)
-  const printEl = document.createElement('canvas');
-  printEl.width = PRINT_W;
-  printEl.height = PRINT_H;
-
-  const lines = await new Promise((resolve) => {
-    const fc = new fabric.StaticCanvas(printEl, { backgroundColor: 'white' });
-    fc.loadFromJSON(json, () => {
-      fc.renderAll();
-      const ctx = printEl.getContext('2d');
-      const imageData = ctx.getImageData(0, 0, PRINT_W, PRINT_H);
-      fc.dispose();
-      const rlines = [];
-      for (let row = 0; row < PRINT_H; row++) {
-        const lb = new Uint8Array(90);
-        for (let col = 0; col < PRINT_W; col++) {
-          const i = (row * PRINT_W + col) * 4;
-          const bright = imageData.data[i] * 0.299 + imageData.data[i+1] * 0.587 + imageData.data[i+2] * 0.114;
-          if (bright < 128) { const rpos = 707 - col; lb[rpos >> 3] |= (0x80 >> (rpos & 7)); }
-        }
-        rlines.push(lb);
-      }
-      resolve(rlines);
-    });
-  });
-  return lines;
-}
-
 function buildRasterJob(rasterLines, { cutMode, mediaWidthMm = 62, labelLengthMm = 29 }) {
   const chunks = [];
 
@@ -2222,11 +2163,7 @@ async function sendTemplateToBluetooth(payload) {
     halalCertNumber: activePrinter.halalCertNumber || '',
     halalLogoDataUrl: localStorage.getItem(HALAL_LOGO_STORAGE_KEY) || ''
   };
-  // Use the designed template layout if one has been saved in the designer.
-  // Fall back to the hardcoded layout when no design exists.
-  const rasterLines = (template && template.designLayout && template.designLayout.objects && template.designLayout.objects.length)
-    ? await renderDesignedTemplate(template.designLayout, item, globalSettings)
-    : await renderLabelToRasterLines(item, template, globalSettings);
+  const rasterLines = await renderLabelToRasterLines(item, template, globalSettings);
   // Hard-fixed for DK-11209: always send 62mm width / 29mm length regardless of template record.
   // Template drift (e.g. heightMm=62) would tell the printer to expect a 62mm die, which doesn't exist,
   // so the firmware rejects with "wrong label type".
@@ -2555,10 +2492,10 @@ async function saveItemQuickEdit() {
 }
 
 // ── EXPORT / IMPORT ──────────────────────────────────────────────────────────
-// CSV columns: templateKey links the item to a template (see Label Designer for the key).
+// CSV only contains the 4 per-item fields that change between items.
 // Global settings (entity, address, halal cert) are configured once in Setup.
 
-const ITEM_CSV_HEADERS = ['templateKey', 'nameEnglish', 'nameChinese', 'departmentName', 'shelfLifeDays', 'category'];
+const ITEM_CSV_HEADERS = ['nameEnglish', 'nameChinese', 'departmentName', 'shelfLifeDays'];
 
 function csvEscape(value) {
   const s = String(value ?? '');
@@ -2571,15 +2508,7 @@ function exportItemsCsv() {
   if (!state.items.length) { showToast('No items to export. / 没有可导出的项目。'); return; }
   const rows = [ITEM_CSV_HEADERS.join(',')];
   for (const item of state.items) {
-    const rowData = {
-      templateKey:    item.templateKey    || '',
-      nameEnglish:    item.nameEnglish    || '',
-      nameChinese:    item.nameChinese    || '',
-      departmentName: item.departmentName || '',
-      shelfLifeDays:  item.shelfLifeDays  ?? '',
-      category:       item.category       || '',
-    };
-    rows.push(ITEM_CSV_HEADERS.map((h) => csvEscape(rowData[h])).join(','));
+    rows.push(ITEM_CSV_HEADERS.map((h) => csvEscape(item[h])).join(','));
   }
   const csv = '﻿' + rows.join('\r\n'); // UTF-8 BOM so Excel opens Chinese correctly
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -2592,6 +2521,32 @@ function exportItemsCsv() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   showToast(`Exported ${state.items.length} items. / 已导出 ${state.items.length} 个项目。`);
+}
+
+function exportEmptyCsv() {
+  const exampleRow = {
+    templateKey:    'sauce-kitchen',
+    nameEnglish:    'Chilli Prawn Fried Rice',
+    nameChinese:    '参巴虾米炒饭',
+    departmentName: 'HOT KITCHEN',
+    shelfLifeDays:  '3',
+    category:       'Ambient',
+  };
+  const rows = [
+    ITEM_CSV_HEADERS.join(','),
+    ITEM_CSV_HEADERS.map((h) => csvEscape(exampleRow[h])).join(','),
+  ];
+  const csv = '﻿' + rows.join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'label-items-template.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('CSV template downloaded. Fill in rows and import. / 已下载空白模板。');
 }
 
 function exportItemsPrintView() {
