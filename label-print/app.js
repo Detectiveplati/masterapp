@@ -1979,14 +1979,11 @@ async function renderLabelToRasterLines(item, template, globalSettings = {}) {
   y += 7;
 
   // ── PRODUCT NAME ─────────────────────────────────────────────────────────────
-  // When Chinese name is set it's the dominant element; English moves to the bottom row.
-  // When only English name is set, show it prominently here.
   const nameEn = item.nameEnglish || item.name || '';
   const nameZh = item.nameChinese || '';
 
   if (nameZh) {
-    // Chinese name fills the body; start at 38px and auto-shrink if too long
-    let fs = 38;
+    let fs = 60;
     ctx.font = `bold ${fs}px ${FONT}`;
     while (ctx.measureText(nameZh).width > PRINT_WIDTH_PX - PAD * 2 && fs > 20) { fs -= 2; ctx.font = `bold ${fs}px ${FONT}`; }
     ctx.textAlign = 'center';
@@ -1994,7 +1991,6 @@ async function renderLabelToRasterLines(item, template, globalSettings = {}) {
     ctx.fillText(nameZh, PRINT_WIDTH_PX / 2, y);
     y += fs + 4;
   } else if (nameEn) {
-    // English-only fallback — show it large in the body
     let fs = 28;
     ctx.font = `bold ${fs}px ${FONT}`;
     while (ctx.measureText(nameEn).width > PRINT_WIDTH_PX - PAD * 2 && fs > 10) { fs--; ctx.font = `bold ${fs}px ${FONT}`; }
@@ -2005,38 +2001,45 @@ async function renderLabelToRasterLines(item, template, globalSettings = {}) {
   }
 
   // ── DATE ROWS ───────────────────────────────────────────────────────────────
-  // Left: bilingual label.  Right: bold date value (DD/MM/YYYY), 5× label text size.
+  // Each date is two lines:
+  //   Line 1: English label (left) + bold date value (right)
+  //   Line 2: Chinese label (left only)
   const today = new Date();
   const shelfLifeDays = item.shelfLifeDays != null ? item.shelfLifeDays : 3;
   const expiryDate = new Date(today.getTime() + shelfLifeDays * 86400000);
   const fmtDate = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 
-  const DATE_LBL_FS = 13;
-  const DATE_VAL_FS = 65; // 5× DATE_LBL_FS — dominant date display
-  const ROW_H = DATE_VAL_FS + 4;
+  const DATE_LBL_FS = 17;
+  const DATE_VAL_FS = 36;
+  const DATE_ROW_H = DATE_VAL_FS + 4; // 40px — row that carries the date value
+  const ZH_LBL_H = DATE_LBL_FS + 2;  // 19px — row for Chinese label only
 
-  for (const [label, date] of [
-    ['Production Date  开始日期:', fmtDate(today)],
-    ['Used by Date  过期日期:', fmtDate(expiryDate)]
+  for (const [enLabel, zhLabel, date] of [
+    ['Production date：', '开始日期：', fmtDate(today)],
+    ['Used By date：', '过期日期：', fmtDate(expiryDate)]
   ]) {
     ctx.textBaseline = 'top';
+    // English label + date value on same line
     ctx.font = `${DATE_LBL_FS}px ${FONT}`;
     ctx.textAlign = 'left';
-    ctx.fillText(label, PAD, y + Math.round((ROW_H - DATE_LBL_FS) / 2));
+    ctx.fillText(enLabel, PAD, y + Math.round((DATE_ROW_H - DATE_LBL_FS) / 2));
     ctx.font = `bold ${DATE_VAL_FS}px ${FONT}`;
     ctx.textAlign = 'right';
     ctx.fillText(date, PRINT_WIDTH_PX - PAD, y);
-    y += ROW_H + 1;
+    y += DATE_ROW_H;
+    // Chinese label alone on next line
+    ctx.font = `${DATE_LBL_FS}px ${FONT}`;
+    ctx.textAlign = 'left';
+    ctx.fillText(zhLabel, PAD, y);
+    y += ZH_LBL_H;
   }
 
   // ── BOTTOM ROW ───────────────────────────────────────────────────────────────
   const bottomY = heightPx - 15;
   ctx.font = `11px ${FONT}`;
   ctx.textBaseline = 'top';
-  // Left: English name (when Chinese is shown) or shelf life days
   ctx.textAlign = 'left';
   ctx.fillText(nameZh && nameEn ? nameEn : `+${shelfLifeDays}Days`, PAD, bottomY);
-  // Right: dept name and/or shelf life days
   ctx.textAlign = 'right';
   const rightBottom = [nameZh && nameEn ? `+${shelfLifeDays}d` : '', deptText].filter(Boolean).join('  ');
   if (rightBottom) ctx.fillText(rightBottom, PRINT_WIDTH_PX - PAD, bottomY);
