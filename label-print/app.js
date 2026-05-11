@@ -1679,8 +1679,9 @@ async function attemptAutoReconnect() {
 }
 
 async function renderLabelToRasterLines(item, template) {
-  const PRINT_WIDTH_PX = 696; // 62mm @ 300dpi
-  const heightPx = Math.round((template.heightMm || 62) / 25.4 * 300);
+  const PRINT_WIDTH_PX = 696; // printable width for 62mm media (720 total - 12 left - 12 right)
+  // Printable height for 62x29mm die-cut is 271 dots per brother_ql spec, not 29/25.4*300=342
+  const heightPx = template.heightMm === 29 ? 271 : Math.round((template.heightMm || 29) / 25.4 * 300);
   const canvas = new OffscreenCanvas(PRINT_WIDTH_PX, heightPx);
   const ctx = canvas.getContext('2d');
 
@@ -1762,15 +1763,20 @@ async function renderLabelToRasterLines(item, template) {
   y += 22;
   ctx.fillText(`过期日期: ${fmtDate(expiryDate)}`, PAD, y);
 
-  // Convert to monochrome raster lines
+  // Convert to monochrome raster lines (90 bytes = 720 dots per line for 62mm QL media)
+  // QL printer expects data right-to-left: pixel col=0 maps to reversed position 707 in 720-dot space
+  // (12-dot left margin means print-head position = 12+col; reversed = 719-(12+col) = 707-col)
   const imageData = ctx.getImageData(0, 0, PRINT_WIDTH_PX, heightPx);
   const lines = [];
   for (let row = 0; row < heightPx; row++) {
-    const lineBytes = new Uint8Array(87); // 696 / 8
+    const lineBytes = new Uint8Array(90); // 720 dots / 8 = 90 bytes
     for (let col = 0; col < PRINT_WIDTH_PX; col++) {
       const i = (row * PRINT_WIDTH_PX + col) * 4;
       const bright = imageData.data[i] * 0.299 + imageData.data[i + 1] * 0.587 + imageData.data[i + 2] * 0.114;
-      if (bright < 128) lineBytes[Math.floor(col / 8)] |= (0x80 >> (col % 8));
+      if (bright < 128) {
+        const rpos = 707 - col; // reversed position in 720-dot stream
+        lineBytes[rpos >> 3] |= (0x80 >> (rpos & 7));
+      }
     }
     lines.push(lineBytes);
   }
@@ -1797,23 +1803,32 @@ function buildRasterJob(rasterLines, { cutMode, mediaWidthMm = 62, labelLengthMm
   // 0x0B = die-cut label; 0x0A = continuous roll
   const mediaType = labelLengthMm > 0 ? 0x0B : 0x0A;
   const piFlags = labelLengthMm > 0 ? 0x8E : 0x8A;
-  chunks.push(Uint8Array.from([0x1B, 0x69, 0x7A, piFlags, mediaType, mediaWidthMm & 0xFF, labelLengthMm & 0xFF, lines_lo, lines_hi, 0x00, 0x00, 0x00, 0x01]));
+  // print info: last two bytes are starting_page=0x00 (first/only page) + 0x00 padding
+  const lines_hi2 = (lineCount >> 16) & 0xFF;
+  const lines_hi3 = (lineCount >> 24) & 0xFF;
+  chunks.push(Uint8Array.from([0x1B, 0x69, 0x7A, piFlags, mediaType, mediaWidthMm & 0xFF, labelLengthMm & 0xFF, lines_lo, lines_hi, lines_hi2, lines_hi3, 0x00, 0x00]));
 
-  // 5. Cut mode
+  // 5. Auto-cut mode
   chunks.push(Uint8Array.from([0x1B, 0x69, 0x4D, cutMode === 'no-cut' ? 0x00 : 0x40]));
 
-  // 6. Expanded mode
-  chunks.push(Uint8Array.from([0x1B, 0x69, 0x4B, 0x08]));
+  // 6. Cut every 1 label (auto-cut only)
+  if (cutMode !== 'no-cut') {
+    chunks.push(Uint8Array.from([0x1B, 0x69, 0x41, 0x01]));
+  }
 
-  // 7. Margin (feed amount = 0)
+  // 7. Expanded mode (bit 3 = cut_at_end)
+  chunks.push(Uint8Array.from([0x1B, 0x69, 0x4B, cutMode === 'no-cut' ? 0x00 : 0x08]));
+
+  // 8. Margin (feed_margin = 0 for 62x29mm die-cut)
   chunks.push(Uint8Array.from([0x1B, 0x69, 0x64, 0x00, 0x00]));
 
-  // 8. Raster lines: [0x47, 0x00, 0x57, ...87 bytes...]
+  // 9. Raster lines: QL format [0x67, 0x00, 0x5A, ...90 bytes...]
+  // (0x47 is P-touch format; 0x67 is QL format; 0x5A = 90 bytes per line)
   for (const lineBytes of rasterLines) {
-    const lineCmd = new Uint8Array(90); // 3 header + 87 data
-    lineCmd[0] = 0x47;
+    const lineCmd = new Uint8Array(93); // 3 header + 90 data
+    lineCmd[0] = 0x67;
     lineCmd[1] = 0x00;
-    lineCmd[2] = 0x57;
+    lineCmd[2] = 0x5A; // 90 bytes
     lineCmd.set(lineBytes, 3);
     chunks.push(lineCmd);
   }
