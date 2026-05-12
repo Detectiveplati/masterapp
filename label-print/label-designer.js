@@ -20,6 +20,7 @@ const FIELD_DEFS = {
   dateProduction: { label: 'Production Date',    placeholder: '14/05/2026',                   fontSize: 36, bold: true,  align: 'right',  x: 6,   y: 140, w: 684 },
   dateExpiry:     { label: 'Expiry Date',        placeholder: '17/05/2026',                   fontSize: 36, bold: true,  align: 'right',  x: 6,   y: 195, w: 684 },
   departmentName: { label: 'Department',         placeholder: 'HOT KITCHEN',                  fontSize: 12, bold: false, align: 'right',  x: 6,   y: 255, w: 684 },
+  storageCondition: { label: 'Storage Condition', placeholder: 'Keep chilled',                fontSize: 12, bold: false, align: 'left',   x: 220, y: 255, w: 250 },
   shelfLifeDays:  { label: 'Shelf Life (Days)',  placeholder: '+3Days',                        fontSize: 12, bold: false, align: 'left',   x: 6,   y: 255, w: 200 },
   halalCert:      { label: 'Halal Cert No.',     placeholder: 'C1086',                        fontSize: 11, bold: false, align: 'center', x: 5,   y: 60,  w: 60  },
 };
@@ -132,8 +133,10 @@ function nextTemplateNumber() {
   return 255;
 }
 
-function uniqueTemplateKey(baseKey) {
-  const used = new Set(state.templates.map((template) => String(template.key || '').toLowerCase()));
+function uniqueTemplateKey(baseKey, ignoreTemplateId = '') {
+  const used = new Set(state.templates
+    .filter((template) => String(template._id || '') !== String(ignoreTemplateId || ''))
+    .map((template) => String(template.key || '').toLowerCase()));
   const base = slugify(baseKey || 'template') || 'template';
   if (!used.has(base)) return base;
   for (let index = 2; index < 1000; index++) {
@@ -228,7 +231,7 @@ async function duplicateSelectedTemplate() {
   const name = prompt('Duplicate template as:', `${baseName} Copy`);
   if (name === null) return;
   const cleanName = String(name || '').trim() || `${baseName} Copy`;
-  const key = uniqueTemplateKey(`${source.key || slugify(baseName)}-copy`);
+  const key = uniqueTemplateKey(slugify(cleanName) || `${source.key || slugify(baseName)}-copy`);
   duplicateTemplateBtn.disabled = true;
   duplicateTemplateBtn.textContent = 'Duplicating…';
   try {
@@ -284,13 +287,14 @@ async function renameSelectedTemplate() {
   if (name === null) return;
   const cleanName = String(name || '').trim();
   if (!cleanName) { toast('Template name is required.'); return; }
+  const nextKey = uniqueTemplateKey(slugify(cleanName), template._id);
   renameTemplateBtn.disabled = true;
   renameTemplateBtn.textContent = 'Renaming…';
   try {
     const updated = await apiFetch(`/templates/${template._id}`, {
       method: 'PUT',
       body: JSON.stringify({
-        key: template.key,
+        key: nextKey,
         name: cleanName,
         nameEnglish: cleanName,
         nameChinese: template.nameChinese || '',
@@ -314,7 +318,7 @@ async function renameSelectedTemplate() {
     if (index >= 0) state.templates[index] = { ...state.templates[index], ...updated };
     renderTemplateOptions(updated._id);
     updateTemplateKeyBadge(updated);
-    toast(`Template renamed: ${cleanName}`);
+    toast(`Template renamed: ${cleanName} (${updated.key})`);
   } catch (err) {
     toast('Rename failed: ' + (err.message || String(err)));
   } finally {
@@ -778,7 +782,7 @@ function loadDefaultLayout() {
   fc.add(divider);
 
   // Dynamic field elements in default positions
-  ['entity', 'address', 'nameChinese', 'dateProduction', 'dateExpiry', 'departmentName', 'shelfLifeDays'].forEach(addFieldElement);
+  ['entity', 'address', 'nameChinese', 'dateProduction', 'dateExpiry', 'departmentName', 'storageCondition', 'shelfLifeDays'].forEach(addFieldElement);
 
   // Production / expiry labels (static bilingual labels)
   const labelOpts = { fontSize: 17, bold: false, align: 'left' };
@@ -903,6 +907,7 @@ function sampleItemData() {
     dateProduction: fmt(today),
     dateExpiry:     fmt(expiry),
     departmentName: 'HOT KITCHEN',
+    storageCondition: 'Keep chilled',
     shelfLifeDays:  '+3 Days',
     halalCert:      'C1086',
   };

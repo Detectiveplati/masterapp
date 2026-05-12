@@ -91,6 +91,7 @@ const settingsHalalLogoStatusEl = document.getElementById('settings-halal-logo-s
 const itemEditNameEnglishEl = document.getElementById('item-edit-name-english');
 const itemEditNameChineseEl = document.getElementById('item-edit-name-chinese');
 const itemEditDepartmentEl = document.getElementById('item-edit-department');
+const itemEditStorageConditionEl = document.getElementById('item-edit-storage-condition');
 const itemEditShelfLifeEl = document.getElementById('item-edit-shelf-life');
 const itemSaveButtonEl = document.getElementById('item-save-button');
 
@@ -355,7 +356,8 @@ function getSearchableItemText(item) {
     item.name,
     item.description,
     item.sku,
-    item.barcode
+    item.barcode,
+    item.storageCondition
   ].join(' '));
 }
 
@@ -609,6 +611,7 @@ function openOptionsModal(item) {
   itemEditNameEnglishEl.value = item.nameEnglish || item.name || '';
   itemEditNameChineseEl.value = item.nameChinese || '';
   itemEditDepartmentEl.value = item.departmentName || '';
+  itemEditStorageConditionEl.value = item.storageCondition || '';
   itemEditShelfLifeEl.value = String(item.shelfLifeDays != null ? item.shelfLifeDays : 3);
   modalEl.classList.remove('hidden');
   modalEl.setAttribute('aria-hidden', 'false');
@@ -2104,6 +2107,7 @@ function buildLabelFieldData(item, template, globalSettings) {
     dateProduction: fmtDate(today),
     dateExpiry: fmtDate(expiryDate),
     departmentName: item.departmentName || globalSettings.departmentName || template.departmentName || '',
+    storageCondition: item.storageCondition || '',
     shelfLifeDays: `+${shelfLifeDays} Days`,
     halalCert: item.halalCertNumber || globalSettings.halalCertNumber || 'C1086'
   };
@@ -2681,6 +2685,7 @@ async function saveItemQuickEdit() {
         nameEnglish: itemEditNameEnglishEl.value.trim(),
         nameChinese: itemEditNameChineseEl.value.trim(),
         departmentName: itemEditDepartmentEl.value.trim(),
+        storageCondition: itemEditStorageConditionEl.value.trim(),
         shelfLifeDays: shelfLife
       })
     });
@@ -2709,6 +2714,7 @@ const ITEM_CSV_HEADERS = [
   'nameEnglish',
   'nameChinese',
   'departmentName',
+  'storageCondition',
   'shelfLifeDays',
   'category'
 ];
@@ -2748,6 +2754,7 @@ function exportEmptyCsv() {
     nameEnglish:    'Chilli Prawn Fried Rice',
     nameChinese:    '参巴虾米炒饭',
     departmentName: 'HOT KITCHEN',
+    storageCondition: 'Keep chilled',
     shelfLifeDays:  '3',
     category:       'Ambient',
   };
@@ -2810,6 +2817,7 @@ function exportItemsPrintView() {
       <td>${esc(item.nameChinese || '')}</td>
       <td>${esc(item.category || '')}</td>
       <td>${esc(item.businessEntity || '')}</td>
+      <td>${esc(item.storageCondition || '')}</td>
       <td>${item.shelfLifeDays ?? ''}d</td>
       <td>${esc(item.departmentName || '')}</td>
       <td>${esc(item.halalCertNumber || '')}</td>
@@ -2832,7 +2840,7 @@ function exportItemsPrintView() {
 <table>
 <thead><tr>
   <th>Name / 名称</th><th>English / 英文</th><th>Chinese / 中文</th>
-  <th>Category / 类别</th><th>Entity / 单位</th>
+  <th>Category / 类别</th><th>Entity / 单位</th><th>Storage / 储存</th>
   <th>Shelf / 保质</th><th>Dept / 部门</th>
   <th>Halal Cert</th><th>Template</th>
 </tr></thead>
@@ -2870,6 +2878,34 @@ function parseCsvRow(line) {
   return fields;
 }
 
+function normalizeCsvHeader(header) {
+  return String(header || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function normalizeCsvDataRow(row) {
+  const aliases = {
+    storagecondition: 'storageCondition',
+    storagetemperature: 'storageCondition',
+    templatekey: 'templateKey',
+    templatename: 'templateName',
+    printertemplatenumber: 'printerTemplateNumber',
+    nameenglish: 'nameEnglish',
+    englishname: 'nameEnglish',
+    namechinese: 'nameChinese',
+    chinesename: 'nameChinese',
+    departmentname: 'departmentName',
+    shelflifedays: 'shelfLifeDays'
+  };
+  const normalized = { ...row };
+  Object.entries(row).forEach(([key, value]) => {
+    const canonical = aliases[normalizeCsvHeader(key)];
+    if (canonical && normalized[canonical] === undefined) {
+      normalized[canonical] = value;
+    }
+  });
+  return normalized;
+}
+
 async function importItemsCsv(file) {
   showToast('Importing… / 导入中…', { sticky: true });
   let text;
@@ -2891,7 +2927,7 @@ async function importItemsCsv(file) {
     const vals = parseCsvRow(l);
     const obj = {};
     headers.forEach((h, idx) => { if (h) obj[h.trim()] = (vals[idx] || '').trim(); });
-    return obj;
+    return normalizeCsvDataRow(obj);
   // Support both old full-format CSVs (has 'name') and new 4-column format (has 'nameEnglish')
   }).filter((r) => r.name || r.nameEnglish);
 
@@ -2913,6 +2949,7 @@ async function importItemsCsv(file) {
       category: row.category || 'Uncategorized',
       shelfLifeDays: Number(row.shelfLifeDays) >= 0 ? Number(row.shelfLifeDays) : 3,
       departmentName: row.departmentName || '',
+      storageCondition: row.storageCondition || '',
       templateKey: resolveTemplateKeyFromCsvRow(row, defaultTemplateKey),
       defaultQuantity: Math.max(1, Number(row.defaultQuantity) || 1),
       defaultCutMode: row.defaultCutMode === 'no-cut' ? 'no-cut' : 'auto-cut'

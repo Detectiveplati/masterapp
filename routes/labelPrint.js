@@ -59,7 +59,7 @@ function buildQuery(req) {
   }
   if (req.query.q) {
     const rx = new RegExp(String(req.query.q).trim(), 'i');
-    query.$or = [{ name: rx }, { nameEnglish: rx }, { nameChinese: rx }, { description: rx }, { sku: rx }, { barcode: rx }];
+    query.$or = [{ name: rx }, { nameEnglish: rx }, { nameChinese: rx }, { description: rx }, { sku: rx }, { barcode: rx }, { storageCondition: rx }];
   }
   return query;
 }
@@ -221,8 +221,12 @@ router.put('/templates/:id', express.json(), async (req, res) => {
       return res.status(400).json({ error: 'Another template already uses this key or printer template number.' });
     }
 
+    const oldKey = String(existingTemplate.key || '');
     Object.assign(existingTemplate, payload);
     await existingTemplate.save();
+    if (payload.key && payload.key !== oldKey) {
+      await LabelPrintItem.updateMany({ templateKey: oldKey }, { $set: { templateKey: payload.key } });
+    }
     res.json(existingTemplate);
   } catch (err) {
     res.status(400).json({ error: err.message });

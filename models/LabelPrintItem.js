@@ -12,6 +12,7 @@ const LabelPrintItemSchema = new mongoose.Schema({
   barcode: { type: String, default: '', trim: true },
   departmentCode: { type: String, default: '', trim: true },
   departmentName: { type: String, default: '', trim: true },
+  storageCondition: { type: String, default: '', trim: true },
   defaultQuantity: { type: Number, default: 1, min: 1, max: 999 },
   defaultCutMode: { type: String, enum: ['auto-cut', 'no-cut'], default: 'auto-cut' },
   businessEntity: { type: String, default: '', trim: true },
