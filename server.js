@@ -50,6 +50,10 @@ const { getTemplateByCode, getUnit } = require('./config/foodSafetyChecklistTemp
 const {
     TEMPMON_FOODSAFETY_TEMPLATE_CODE
 } = require('./services/foodsafety-tempmon-report');
+const {
+    assignedLabelPrintDepartment,
+    labelPrintDepartmentUrl
+} = require('./services/label-print-departments');
 
 // Try to load puppeteer (optional - for PDF generation)
 let puppeteer = null;
@@ -124,6 +128,22 @@ function isFormsOnlyUser(user) {
         perms.maintenance ||
         perms.foodsafety ||
         perms.labelprint ||
+        perms.templog ||
+        perms.procurement ||
+        perms.pest ||
+        perms.tempmon ||
+        perms.iso
+    );
+}
+
+function isLabelPrintOnlyUser(user) {
+    if (!user || user.role === 'admin') return false;
+    const perms = user.permissions || {};
+    if (!perms.labelprint || !assignedLabelPrintDepartment(user)) return false;
+    return !(
+        perms.maintenance ||
+        perms.foodsafety ||
+        perms.foodsafetyforms ||
         perms.templog ||
         perms.procurement ||
         perms.pest ||
@@ -510,6 +530,9 @@ app.get('/', requirePageAccess(null), (req, res) => {
     if (isFormsOnlyUser(req.user)) {
         return res.redirect('/foodsafety-forms/forms');
     }
+    if (isLabelPrintOnlyUser(req.user)) {
+        return res.redirect(labelPrintDepartmentUrl(assignedLabelPrintDepartment(req.user)));
+    }
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
@@ -525,8 +548,33 @@ app.use('/templog', requirePageAccess('templog'), express.static(path.join(__dir
 app.get('/templog', requirePageAccess('templog'), (req, res) => res.sendFile(path.join(__dirname, 'templog', 'index.html')));
 
 // Label Printing — requires 'labelprint' permission
+function labelPrintPage(req, res) {
+    const assignedDepartment = assignedLabelPrintDepartment(req.user);
+    if (req.user && req.user.role !== 'admin' && assignedDepartment) {
+        const assignedUrl = labelPrintDepartmentUrl(assignedDepartment);
+        if (req.path === '/' || req.path === '' || req.originalUrl !== assignedUrl) {
+            return res.redirect(assignedUrl);
+        }
+    }
+    res.sendFile(path.join(__dirname, 'label-print', 'index.html'));
+}
+function labelPrintAdminPage(fileName) {
+    return function (req, res) {
+        if (req.user && req.user.role === 'admin') {
+            return res.sendFile(path.join(__dirname, 'label-print', fileName));
+        }
+        const department = assignedLabelPrintDepartment(req.user);
+        return res.redirect(department ? labelPrintDepartmentUrl(department) : '/?access=denied');
+    };
+}
+app.get('/label-print', requirePageAccess('labelprint'), labelPrintPage);
+app.get('/label-print/', requirePageAccess('labelprint'), labelPrintPage);
+app.get('/label-print/department/:departmentSlug', requirePageAccess('labelprint'), labelPrintPage);
+app.get('/label-print/department/:departmentSlug/', requirePageAccess('labelprint'), labelPrintPage);
+app.get('/label-print/template-setup.html', requirePageAccess('labelprint'), labelPrintAdminPage('template-setup.html'));
+app.get('/label-print/label-designer.html', requirePageAccess('labelprint'), labelPrintAdminPage('label-designer.html'));
+app.get('/label-print/bluetooth-probe.html', requirePageAccess('labelprint'), labelPrintAdminPage('bluetooth-probe.html'));
 app.use('/label-print', requirePageAccess('labelprint'), express.static(path.join(__dirname, 'label-print'), noCacheHtml));
-app.get('/label-print', requirePageAccess('labelprint'), (req, res) => res.sendFile(path.join(__dirname, 'label-print', 'index.html')));
 
 // Order Manager — isolated order extraction and kitchen execution module
 app.use('/order-manager', requirePageAccess('templog'), express.static(path.join(__dirname, 'order-manager'), noCacheHtml));

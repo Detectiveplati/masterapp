@@ -11,6 +11,12 @@ const LabelPrintTemplate = require('../models/LabelPrintTemplate');
 const LabelPrintPrinter = require('../models/LabelPrintPrinter');
 const LabelPrintJob = require('../models/LabelPrintJob');
 const { requireAuth, requirePermission } = require('../services/auth-middleware');
+const {
+  normalizeDepartmentName,
+  slugifyDepartmentName,
+  isLabelPrintAdmin,
+  assignedLabelPrintDepartment
+} = require('../services/label-print-departments');
 
 router.use(requireAuth, requirePermission('labelprint'));
 
@@ -49,11 +55,39 @@ async function ensureDefaults() {
   return defaultsPromise;
 }
 
-function buildQuery(req) {
+function requireLabelPrintAdmin(req, res, next) {
+  if (isLabelPrintAdmin(req.user)) return next();
+  return res.status(403).json({ error: 'Admin access required for label setup.' });
+}
+
+function departmentFromSlug(slug, departmentNames) {
+  const wantedSlug = String(slug || '').trim();
+  if (!wantedSlug) return '';
+  return departmentNames.find((name) => slugifyDepartmentName(name) === wantedSlug) || '';
+}
+
+async function listDepartments() {
+  const departments = await LabelPrintItem.distinct('departmentName', { active: true });
+  return departments.map(normalizeDepartmentName).filter(Boolean).sort((a, b) => a.localeCompare(b));
+}
+
+async function allowedDepartmentForRequest(req) {
+  if (!isLabelPrintAdmin(req.user)) return assignedLabelPrintDepartment(req.user);
+  const departments = await listDepartments();
+  return normalizeDepartmentName(req.query.departmentName || departmentFromSlug(req.query.departmentSlug, departments));
+}
+
+function addDepartmentFilter(query, departmentName) {
+  const normalized = normalizeDepartmentName(departmentName);
+  if (normalized) query.departmentName = normalized;
+}
+
+function buildQuery(req, departmentName = '') {
   const query = {};
   if (req.query.active !== 'false') {
     query.active = true;
   }
+  addDepartmentFilter(query, departmentName);
   if (req.query.category) {
     query.category = String(req.query.category).trim();
   }
@@ -183,7 +217,7 @@ router.get('/templates/:id', async (req, res) => {
   }
 });
 
-router.post('/templates', express.json(), async (req, res) => {
+router.post('/templates', requireLabelPrintAdmin, express.json(), async (req, res) => {
   try {
     await ensureDefaults();
     const payload = normalizeTemplateInput(req.body || {});
@@ -203,7 +237,7 @@ router.post('/templates', express.json(), async (req, res) => {
   }
 });
 
-router.put('/templates/:id', express.json(), async (req, res) => {
+router.put('/templates/:id', requireLabelPrintAdmin, express.json(), async (req, res) => {
   try {
     await ensureDefaults();
     const existingTemplate = await LabelPrintTemplate.findById(req.params.id);
@@ -233,7 +267,7 @@ router.put('/templates/:id', express.json(), async (req, res) => {
   }
 });
 
-router.put('/templates/:id/layout', express.json({ limit: '5mb' }), async (req, res) => {
+router.put('/templates/:id/layout', requireLabelPrintAdmin, express.json({ limit: '5mb' }), async (req, res) => {
   try {
     await ensureDefaults();
     const template = await LabelPrintTemplate.findById(req.params.id);
@@ -274,7 +308,7 @@ router.get('/assets/halal-logo', async (_req, res) => {
   }
 });
 
-router.post('/assets/halal-logo', express.json({ limit: '10mb' }), async (req, res) => {
+router.post('/assets/halal-logo', requireLabelPrintAdmin, express.json({ limit: '10mb' }), async (req, res) => {
   try {
     const dataUrl = String(req.body && req.body.dataUrl || '');
     const match = dataUrl.match(/^data:(image\/(?:png|jpe?g|gif));base64,([A-Za-z0-9+/=]+)$/);
@@ -311,10 +345,29 @@ router.post('/assets/halal-logo', express.json({ limit: '10mb' }), async (req, r
   }
 });
 
+router.get('/departments', async (req, res) => {
+  try {
+    await ensureDefaults();
+    const departments = await listDepartments();
+    const assignedDepartment = assignedLabelPrintDepartment(req.user);
+    const canManage = isLabelPrintAdmin(req.user);
+    res.json({
+      canManage,
+      assignedDepartment,
+      departments: canManage ? departments : departments.filter((name) => name === assignedDepartment),
+      selectedDepartment: canManage ? normalizeDepartmentName(req.query.departmentName || departmentFromSlug(req.query.departmentSlug, departments)) : assignedDepartment
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/items', async (req, res) => {
   try {
     await ensureDefaults();
-    const items = await LabelPrintItem.find(buildQuery(req)).sort({ category: 1, name: 1 }).lean();
+    const departmentName = await allowedDepartmentForRequest(req);
+    if (!isLabelPrintAdmin(req.user) && !departmentName) return res.json([]);
+    const items = await LabelPrintItem.find(buildQuery(req, departmentName)).sort({ category: 1, name: 1 }).lean();
     res.json(items.map(serializeItem));
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -326,13 +379,17 @@ router.get('/items/:id', async (req, res) => {
     await ensureDefaults();
     const item = await LabelPrintItem.findById(req.params.id).lean();
     if (!item) return res.status(404).json({ error: 'Item not found' });
+    const departmentName = await allowedDepartmentForRequest(req);
+    if (!isLabelPrintAdmin(req.user) && normalizeDepartmentName(item.departmentName) !== departmentName) {
+      return res.status(403).json({ error: 'No access to this label item.' });
+    }
     res.json(serializeItem(item));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/items', express.json(), async (req, res) => {
+router.post('/items', requireLabelPrintAdmin, express.json(), async (req, res) => {
   try {
     await ensureDefaults();
     const item = new LabelPrintItem(req.body || {});
@@ -343,7 +400,7 @@ router.post('/items', express.json(), async (req, res) => {
   }
 });
 
-router.put('/items/:id', express.json(), async (req, res) => {
+router.put('/items/:id', requireLabelPrintAdmin, express.json(), async (req, res) => {
   try {
     await ensureDefaults();
     const item = await LabelPrintItem.findByIdAndUpdate(req.params.id, { $set: req.body || {} }, { new: true, runValidators: true });
@@ -364,7 +421,7 @@ router.get('/printers', async (_req, res) => {
   }
 });
 
-router.put('/printers/:id', express.json(), async (req, res) => {
+router.put('/printers/:id', requireLabelPrintAdmin, express.json(), async (req, res) => {
   try {
     await ensureDefaults();
     const body = req.body || {};
@@ -388,6 +445,12 @@ router.post('/print-jobs', express.json(), async (req, res) => {
     const body = req.body || {};
     const clientHandled = Boolean(body.clientHandled);
     const item = body.itemId ? await LabelPrintItem.findById(body.itemId).lean() : null;
+    if (!isLabelPrintAdmin(req.user)) {
+      const departmentName = assignedLabelPrintDepartment(req.user);
+      if (!item || normalizeDepartmentName(item.departmentName) !== departmentName) {
+        return res.status(403).json({ error: 'No access to print this department label.' });
+      }
+    }
     const printer = body.printerId ? await LabelPrintPrinter.findById(body.printerId) : null;
     const template = body.templateKey
       ? await LabelPrintTemplate.findOne({ key: body.templateKey }).lean()
@@ -446,7 +509,7 @@ router.post('/print-jobs', express.json(), async (req, res) => {
   }
 });
 
-router.post('/diagnostic-logs', express.json({ limit: '64kb' }), async (req, res) => {
+router.post('/diagnostic-logs', requireLabelPrintAdmin, express.json({ limit: '64kb' }), async (req, res) => {
   try {
     await ensureDefaults();
     const body = req.body || {};
@@ -476,7 +539,7 @@ router.post('/diagnostic-logs', express.json({ limit: '64kb' }), async (req, res
   }
 });
 
-router.get('/diagnostic-logs', async (req, res) => {
+router.get('/diagnostic-logs', requireLabelPrintAdmin, async (req, res) => {
   try {
     await ensureDefaults();
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 30));
@@ -495,7 +558,7 @@ router.get('/diagnostic-logs', async (req, res) => {
   }
 });
 
-router.put('/print-jobs/:id', express.json(), async (req, res) => {
+router.put('/print-jobs/:id', requireLabelPrintAdmin, express.json(), async (req, res) => {
   try {
     const update = {};
     ['status', 'bridgeResult', 'error', 'payload', 'cutMode', 'quantity'].forEach((key) => {
@@ -514,7 +577,7 @@ router.put('/print-jobs/:id', express.json(), async (req, res) => {
   }
 });
 
-router.get('/print-jobs', async (req, res) => {
+router.get('/print-jobs', requireLabelPrintAdmin, async (req, res) => {
   try {
     await ensureDefaults();
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 30));

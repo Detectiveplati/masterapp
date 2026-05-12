@@ -25,7 +25,12 @@
       <div class="command-brand">
         <span class="command-eyebrow">厨房 Kitchen</span>
         <span class="command-title">Label Printer / 标签打印机</span>
+        <span id="department-context-label" class="department-context-label hidden"></span>
       </div>
+      <label id="department-switcher-field" class="department-switcher-field hidden">
+        <span>Department / 部门</span>
+        <select id="department-switcher"></select>
+      </label>
       <div class="command-search">
         <div class="search-box">
           <input id="search-input" type="text" placeholder="Search item name, SKU or barcode… / 搜索品名、SKU 或条码…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="search" enterkeyhint="search" dir="ltr">
@@ -33,7 +38,7 @@
         </div>
       </div>
       <div class="command-controls">
-        <button id="printer-setup-button" class="btn-secondary command-btn" type="button">
+        <button id="printer-setup-button" class="btn-secondary command-btn hidden" type="button">
           <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-.4-1 1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1-.4 1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 .4 1 1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.27.3.48.65.6 1a1.7 1.7 0 0 0 1 .4H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1 .4 1.7 1.7 0 0 0-.5.6z"/></svg></span>
           <span>Setup / 设置</span>
         </button>
@@ -49,7 +54,7 @@
       <div id="card-groups" class="card-groups"></div>
     </section>
 
-    <section class="runtime-log-panel">
+    <section class="runtime-log-panel hidden">
       <div class="runtime-log-head">
         <strong>Runtime Log / 运行日志</strong>
         <button id="clear-runtime-log-button" class="btn-ghost diagnostic-refresh-button" type="button">Clear Log / 清空日志</button>

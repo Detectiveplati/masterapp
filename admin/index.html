@@ -76,6 +76,7 @@
             <div class="fg"><label>Username</label><input type="text" id="newUsername" required placeholder="e.g. jsmith"></div>
             <div class="fg"><label>Display Name</label><input type="text" id="newDisplayName" required placeholder="e.g. John Smith"></div>
             <div class="fg"><label>Position</label><input type="text" id="newPosition" placeholder="e.g. Food Safety Officer"></div>
+            <div class="fg"><label>Label Department</label><select id="newLabelPrintDepartment"><option value="">No label department</option></select></div>
             <div class="fg"><label>Password</label><input type="password" id="newPassword" required placeholder="Min 6 chars"></div>
             <div class="fg">
               <label>Role</label>
@@ -96,12 +97,12 @@
         <table class="data-table" id="usersTable">
           <thead>
             <tr>
-              <th>Username</th><th>Display Name</th><th>Position</th><th>Role</th><th>Status</th>
+              <th>Username</th><th>Display Name</th><th>Position</th><th>Label Department</th><th>Role</th><th>Status</th>
               <th>Created</th><th>Actions</th>
             </tr>
           </thead>
           <tbody id="usersBody">
-            <tr><td colspan="7" style="color:var(--muted);text-align:center;padding:24px">Loading…</td></tr>
+            <tr><td colspan="8" style="color:var(--muted);text-align:center;padding:24px">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -170,6 +171,7 @@
       <input type="hidden" id="editUserId">
       <div class="fg"><label>Display Name</label><input type="text" id="editDisplayName"></div>
       <div class="fg"><label>Position</label><input type="text" id="editPosition"></div>
+      <div class="fg"><label>Label Department</label><select id="editLabelPrintDepartment"><option value="">No label department</option></select></div>
       <div class="fg">
         <label>Role</label>
         <select id="editRole">
@@ -197,6 +199,7 @@
     let allUsers = [];
     let allTemplates = [];
     let allAssignments = [];
+    let labelPrintDepartments = [];
 
     // ── Auth check ──────────────────────────────────────────
     async function checkAuth() {
@@ -244,7 +247,7 @@
     function renderUsersTable() {
       const tbody = document.getElementById('usersBody');
       if (!allUsers.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:24px">No users yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="color:var(--muted);text-align:center;padding:24px">No users yet.</td></tr>';
         return;
       }
       tbody.innerHTML = allUsers.map(u => `
@@ -252,6 +255,7 @@
           <td><code style="background:#f4f5f7;padding:2px 7px;border-radius:5px">${u.username}</code></td>
           <td>${u.displayName}</td>
           <td>${u.position || ''}</td>
+          <td>${u.labelPrintDepartmentName || '<span style="color:var(--muted)">—</span>'}</td>
           <td><span class="badge badge-${u.role}">${u.role}</span></td>
           <td><span class="badge ${u.active ? 'badge-user' : 'badge-inactive'}">${u.active ? 'Active' : 'Inactive'}</span></td>
           <td style="color:var(--muted);font-size:0.82rem">${new Date(u.createdAt).toLocaleDateString()}</td>
@@ -269,6 +273,7 @@
         username:    document.getElementById('newUsername').value.trim(),
         displayName: document.getElementById('newDisplayName').value.trim(),
         position:    document.getElementById('newPosition').value.trim(),
+        labelPrintDepartmentName: document.getElementById('newLabelPrintDepartment').value.trim(),
         password:    document.getElementById('newPassword').value,
         role:        document.getElementById('newRole').value
       };
@@ -293,6 +298,7 @@
       document.getElementById('editUserId').value      = id;
       document.getElementById('editDisplayName').value = u.displayName;
       document.getElementById('editPosition').value    = u.position || '';
+      renderLabelDepartmentSelect('editLabelPrintDepartment', u.labelPrintDepartmentName || '');
       document.getElementById('editRole').value        = u.role;
       document.getElementById('editActive').value      = String(u.active);
       document.getElementById('editPassword').value    = '';
@@ -307,6 +313,7 @@
       const body = {
         displayName: document.getElementById('editDisplayName').value.trim(),
         position:    document.getElementById('editPosition').value.trim(),
+        labelPrintDepartmentName: document.getElementById('editLabelPrintDepartment').value.trim(),
         role:        document.getElementById('editRole').value,
         active:      document.getElementById('editActive').value === 'true'
       };
@@ -339,6 +346,35 @@
       templateSelect.innerHTML = allTemplates.map(t => `<option value="${t.code}">${t.code} · ${t.title}</option>`).join('');
       syncAssignUnits();
       templateSelect.addEventListener('change', syncAssignUnits);
+    }
+
+    async function loadLabelPrintDepartments() {
+      const r = await fetch('/api/admin/label-print-departments');
+      if (!r.ok) throw new Error('Failed to load label print departments');
+      labelPrintDepartments = await r.json();
+      renderLabelDepartmentSelect('newLabelPrintDepartment', '');
+      renderLabelDepartmentSelect('editLabelPrintDepartment', '');
+    }
+
+    function renderLabelDepartmentSelect(id, selected) {
+      const select = document.getElementById(id);
+      const current = selected || select.value || '';
+      const options = ['<option value="">No label department</option>']
+        .concat(labelPrintDepartments.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`));
+      if (current && !labelPrintDepartments.includes(current)) {
+        options.splice(1, 0, `<option value="${escapeHtml(current)}">${escapeHtml(current)} (saved)</option>`);
+      }
+      select.innerHTML = options.join('');
+      select.value = current;
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
     function syncAssignUnits() {
@@ -453,6 +489,7 @@
     // ── Init ────────────────────────────────────────────────
     checkAuth().then(async () => {
       await loadUsers();
+      await loadLabelPrintDepartments();
       await loadTemplates();
       await loadAssignments();
     });

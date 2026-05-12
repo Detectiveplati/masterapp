@@ -8,6 +8,10 @@ const BROTHER_STATUS_RESPONSE_LENGTH = 32;
 const searchInputEl = document.getElementById('search-input');
 const clearSearchButtonEl = document.getElementById('clear-search-button');
 const searchSummaryEl = document.getElementById('search-summary');
+const commandBarEl = document.querySelector('.command-bar');
+const departmentContextLabelEl = document.getElementById('department-context-label');
+const departmentSwitcherFieldEl = document.getElementById('department-switcher-field');
+const departmentSwitcherEl = document.getElementById('department-switcher');
 const categoryFilterEl = document.getElementById('category-filter');
 const printerSelectEl = document.getElementById('printer-select');
 const printerBaudInputEl = document.getElementById('printer-baud-input');
@@ -108,6 +112,11 @@ const state = {
   activeItem: null,
   pendingPrint: null,
   runtimeLog: [],
+  user: window._authUser || null,
+  canManage: false,
+  assignedDepartment: '',
+  selectedDepartment: '',
+  departments: [],
   serial: {
     supported: Boolean(navigator.serial),
     port: null,
@@ -131,6 +140,13 @@ clearSearchButtonEl.addEventListener('click', () => {
   searchInputEl.focus();
 });
 categoryFilterEl.addEventListener('change', renderItems);
+departmentSwitcherEl.addEventListener('change', () => {
+  state.selectedDepartment = departmentSwitcherEl.value;
+  const slug = slugifyDepartmentName(state.selectedDepartment);
+  const nextPath = slug ? `/label-print/department/${encodeURIComponent(slug)}` : '/label-print/';
+  window.history.replaceState({}, '', nextPath);
+  loadAll();
+});
 printerSelectEl.addEventListener('change', () => {
   state.selectedPrinterId = printerSelectEl.value;
   updatePrinterStatus();
@@ -235,12 +251,57 @@ window.addEventListener('pageshow', updateDiagnostics);
 appendRuntimeLog('Module boot', runtimeStateSnapshot());
 loadAll();
 
+function normalizeDepartmentName(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ');
+}
+
+function slugifyDepartmentName(value) {
+  return normalizeDepartmentName(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function currentDepartmentSlug() {
+  const match = window.location.pathname.match(/\/label-print\/department\/([^/]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+function departmentQueryString() {
+  const params = new URLSearchParams();
+  if (state.canManage && state.selectedDepartment) {
+    params.set('departmentName', state.selectedDepartment);
+  } else {
+    const slug = currentDepartmentSlug();
+    if (slug) params.set('departmentSlug', slug);
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+async function loadCurrentUser() {
+  if (state.user) return state.user;
+  const response = await fetchJson('/api/auth/me');
+  state.user = response && response.user ? response.user : null;
+  return state.user;
+}
+
 async function loadAll() {
   appendRuntimeLog('loadAll() start', { origin: window.location.origin });
   setAction('Loading / 加载中', 'Refreshing label items, templates, and printer setup. / 正在刷新标签项目、模板和打印机设置。');
   try {
+    const user = await loadCurrentUser();
+    const departmentInfo = await fetchJson(`${API_BASE}/departments${departmentQueryString()}`);
+    state.canManage = Boolean((user && user.role === 'admin') || departmentInfo.canManage);
+    state.assignedDepartment = normalizeDepartmentName(departmentInfo.assignedDepartment || user && user.labelPrintDepartmentName || '');
+    state.departments = Array.isArray(departmentInfo.departments) ? departmentInfo.departments : [];
+    state.selectedDepartment = state.canManage
+      ? normalizeDepartmentName(departmentInfo.selectedDepartment || state.selectedDepartment || '')
+      : state.assignedDepartment;
+    applyDepartmentAccessUi();
+
     const [items, templates, printers] = await Promise.all([
-      fetchJson(`${API_BASE}/items`),
+      fetchJson(`${API_BASE}/items${departmentQueryString()}`),
       fetchJson(`${API_BASE}/templates`),
       fetchJson(`${API_BASE}/printers`)
     ]);
@@ -307,6 +368,28 @@ function initSerialEvents() {
     updatePrinterStatus();
     showReconnectBanner();
   });
+}
+
+function applyDepartmentAccessUi() {
+  const departmentLabel = state.selectedDepartment || state.assignedDepartment || 'All Departments';
+  departmentContextLabelEl.textContent = state.canManage
+    ? (state.selectedDepartment ? departmentLabel : 'All departments / 全部部门')
+    : `${departmentLabel} / 部门`;
+  departmentContextLabelEl.classList.remove('hidden');
+
+  printerSetupButtonEl.classList.toggle('hidden', !state.canManage);
+  document.querySelector('.runtime-log-panel')?.classList.toggle('hidden', !state.canManage);
+  commandBarEl.classList.toggle('has-department-switcher', state.canManage);
+  departmentSwitcherFieldEl.classList.toggle('hidden', !state.canManage);
+
+  if (state.canManage) {
+    const options = ['<option value="">All departments / 全部部门</option>']
+      .concat(state.departments.map((department) => `<option value="${escapeHtml(department)}">${escapeHtml(department)}</option>`));
+    departmentSwitcherEl.innerHTML = options.join('');
+    departmentSwitcherEl.value = state.selectedDepartment || '';
+  }
+
+  document.body.classList.toggle('label-print-staff-mode', !state.canManage);
 }
 
 function showReconnectBanner(message) {
@@ -503,9 +586,9 @@ function renderItemCard(item) {
   const quantity = getItemQuantity(item._id);
   return `
     <article class="item-card" data-cut-mode="${escapeHtml(cutMode)}" data-printable="${printable ? 'yes' : 'no'}">
-      <button class="option-icon-button" type="button" data-action="options" data-item-id="${escapeHtml(item._id)}" aria-label="Options for ${escapeHtml(englishName)} / ${escapeHtml(chineseName || englishName)}">
+      ${state.canManage ? `<button class="option-icon-button" type="button" data-action="options" data-item-id="${escapeHtml(item._id)}" aria-label="Options for ${escapeHtml(englishName)} / ${escapeHtml(chineseName || englishName)}">
         <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-.4-1 1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1-.4 1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 .4 1 1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.27.3.48.65.6 1a1.7 1.7 0 0 0 1 .4H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1 .4 1.7 1.7 0 0 0-.5.6z"/></svg></span>
-      </button>
+      </button>` : ''}
       <div class="item-body" data-item-id="${escapeHtml(item._id)}" title="${printable ? 'Quick print using saved defaults / 使用已保存默认值快速打印' : 'No template is mapped for this item / 此项目未映射模板'}">
         ${chineseName ? `<p class="item-chinese-name">${escapeHtml(chineseName)}</p>` : ''}
         <h3 class="item-english-name">${escapeHtml(englishName)}</h3>
@@ -599,6 +682,7 @@ function bindCardEvents() {
 }
 
 function openOptionsModal(item) {
+  if (!state.canManage) return;
   state.activeItem = item;
   modalTitleEl.textContent = item.name;
   modalDescriptionEl.textContent = 'Edit item fields or adjust template/cut options before printing. / 可在打印前编辑项目字段或调整模板和切刀选项。';

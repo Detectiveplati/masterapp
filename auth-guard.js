@@ -9,6 +9,7 @@
  *   /foodsafety/*   → requires 'foodsafety' permission
  *   /foodsafety-forms/* → requires 'foodsafetyforms' or 'foodsafety' permission
  *   /templog/*      → requires 'templog' permission
+ *   /label-print/*  → requires 'labelprint' permission
  *   /procurement/*  → requires 'procurement' permission
  *   /admin/*        → requires admin role
  */
@@ -23,6 +24,7 @@
   else if (path.indexOf('/foodsafety-forms') === 0) module = 'foodsafetyforms';
   else if (path.indexOf('/foodsafety')  === 0) module = 'foodsafety';
   else if (path.indexOf('/templog')     === 0) module = 'templog';
+  else if (path.indexOf('/label-print') === 0) module = 'labelprint';
   else if (path.indexOf('/order-manager') === 0) module = 'templog';
   else if (path.indexOf('/procurement') === 0) module = 'procurement';
   else if (path.indexOf('/pest')        === 0) module = 'pest';

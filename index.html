@@ -157,6 +157,18 @@
           'Welcome back, ' + (user.displayName || user.username) + '. Select a module below.';
 
         const isAdmin = user.role === 'admin';
+        function labelDepartmentUrl(name) {
+          var slug = String(name || '')
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+          return slug ? '/label-print/department/' + encodeURIComponent(slug) : '/label-print/';
+        }
+        var labelCard = document.querySelector('.hub-card.label-print');
+        if (!isAdmin && labelCard && user.labelPrintDepartmentName) {
+          labelCard.href = labelDepartmentUrl(user.labelPrintDepartmentName);
+        }
         document.querySelectorAll('.hub-card[data-perm]').forEach(function (card) {
           var perm = card.dataset.perm;
           if (perm === '__admin__') {

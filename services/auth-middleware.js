@@ -12,6 +12,7 @@ if (BYPASS_AUTH) {
 const BYPASS_USER = {
   id: 'bypass', username: 'bypass', displayName: 'Test Admin',
   position: 'Administrator',
+  labelPrintDepartmentName: '',
   role: 'admin',
   permissions: { maintenance: true, foodsafety: true, foodsafetyforms: true, labelprint: true, templog: true, procurement: true, pest: true, tempmon: true, iso: true }
 };
@@ -26,6 +27,7 @@ function signToken(user) {
       username:    user.username,
       displayName: user.displayName,
       position:    user.position,
+      labelPrintDepartmentName: user.labelPrintDepartmentName || '',
       role:        user.role,
       permissions: user.permissions
     },

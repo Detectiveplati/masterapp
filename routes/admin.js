@@ -1,6 +1,7 @@
 const express  = require('express');
 const router   = express.Router();
 const User     = require('../models/User');
+const LabelPrintItem = require('../models/LabelPrintItem');
 const FoodSafetyFormAssignment = require('../models/FoodSafetyFormAssignment');
 const { TEMPLATES, getUnit } = require('../config/foodSafetyChecklistTemplate');
 const { requireAuth, requireAdmin } = require('../services/auth-middleware');
@@ -21,13 +22,14 @@ router.get('/users', async (req, res) => {
 // POST /api/admin/users  — create user
 router.post('/users', async (req, res) => {
   try {
-    const { username, displayName, position, role, password, permissions } = req.body;
+    const { username, displayName, position, labelPrintDepartmentName, role, password, permissions } = req.body;
     if (!username || !displayName || !password)
       return res.status(400).json({ error: 'username, displayName and password are required' });
     const user = new User({
       username,
       displayName,
       position: position || '',
+      labelPrintDepartmentName: labelPrintDepartmentName || '',
       role:        role || 'user',
       passwordHash: password, // pre-save hook will hash it
       permissions: permissions || {}
@@ -45,10 +47,11 @@ router.post('/users', async (req, res) => {
 // PUT /api/admin/users/:id  — edit user (not password)
 router.put('/users/:id', async (req, res) => {
   try {
-    const { displayName, position, role, active, permissions } = req.body;
+    const { displayName, position, labelPrintDepartmentName, role, active, permissions } = req.body;
     const update = {};
     if (displayName  !== undefined) update.displayName  = displayName;
     if (position     !== undefined) update.position     = position;
+    if (labelPrintDepartmentName !== undefined) update.labelPrintDepartmentName = labelPrintDepartmentName;
     if (role         !== undefined) update.role         = role;
     if (active       !== undefined) update.active       = active;
     if (permissions  !== undefined) update.permissions  = permissions;
@@ -91,6 +94,15 @@ router.put('/permissions', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+router.get('/label-print-departments', async (_req, res) => {
+  try {
+    const departments = await LabelPrintItem.distinct('departmentName', { active: true });
+    res.json(departments.map((entry) => String(entry || '').trim()).filter(Boolean).sort((a, b) => a.localeCompare(b)));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

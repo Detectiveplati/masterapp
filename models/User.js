@@ -7,6 +7,7 @@ const UserSchema = new mongoose.Schema({
   passwordHash: { type: String, required: true },
   displayName:  { type: String, required: true },
   position:     { type: String, default: '', trim: true },
+  labelPrintDepartmentName: { type: String, default: '', trim: true },
   role:         { type: String, enum: ['admin', 'user'], default: 'user' },
   active:       { type: Boolean, default: true },
   permissions: {

@@ -7,6 +7,7 @@ const BYPASS_AUTH = process.env.BYPASS_AUTH === 'true';
 const BYPASS_USER = {
   id: 'bypass', username: 'bypass', displayName: 'Test Admin',
   position: 'Administrator',
+  labelPrintDepartmentName: '',
   role: 'admin',
   permissions: { maintenance: true, foodsafety: true, foodsafetyforms: true, labelprint: true, templog: true, procurement: true, pest: true, tempmon: true, iso: true }
 };
@@ -35,6 +36,7 @@ router.post('/login', async (req, res) => {
         username:    user.username,
         displayName: user.displayName,
         position:    user.position || '',
+        labelPrintDepartmentName: user.labelPrintDepartmentName || '',
         role:        user.role,
         permissions: user.permissions
       }
@@ -66,6 +68,7 @@ router.get('/me', (req, res, next) => {
         username:    dbUser.username,
         displayName: dbUser.displayName,
         position:    dbUser.position || '',
+        labelPrintDepartmentName: dbUser.labelPrintDepartmentName || '',
         role:        dbUser.role,
         permissions: dbUser.permissions
       }
