@@ -142,9 +142,6 @@ clearSearchButtonEl.addEventListener('click', () => {
 categoryFilterEl.addEventListener('change', renderItems);
 departmentSwitcherEl.addEventListener('change', () => {
   state.selectedDepartment = departmentSwitcherEl.value;
-  const slug = slugifyDepartmentName(state.selectedDepartment);
-  const nextPath = slug ? `/label-print/department/${encodeURIComponent(slug)}` : '/label-print/';
-  window.history.replaceState({}, '', nextPath);
   loadAll();
 });
 printerSelectEl.addEventListener('change', () => {
@@ -255,25 +252,10 @@ function normalizeDepartmentName(value) {
   return String(value || '').trim().replace(/\s+/g, ' ');
 }
 
-function slugifyDepartmentName(value) {
-  return normalizeDepartmentName(value)
-    .toLowerCase()
-    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-function currentDepartmentSlug() {
-  const match = window.location.pathname.match(/\/label-print\/department\/([^/]+)/);
-  return match ? decodeURIComponent(match[1]) : '';
-}
-
 function departmentQueryString() {
   const params = new URLSearchParams();
   if (state.canManage && state.selectedDepartment) {
     params.set('departmentName', state.selectedDepartment);
-  } else {
-    const slug = currentDepartmentSlug();
-    if (slug) params.set('departmentSlug', slug);
   }
   const qs = params.toString();
   return qs ? `?${qs}` : '';
@@ -2990,6 +2972,10 @@ function normalizeCsvDataRow(row) {
   return normalized;
 }
 
+function isMongoObjectId(value) {
+  return /^[a-f0-9]{24}$/i.test(String(value || '').trim());
+}
+
 async function importItemsCsv(file) {
   showToast('Importing… / 导入中…', { sticky: true });
   let text;
@@ -3025,7 +3011,8 @@ async function importItemsCsv(file) {
   let created = 0, updated = 0, failed = 0;
   for (const row of dataRows) {
     const englishName = (row.nameEnglish || row.name || '').trim();
-    const itemId = String(row.id || row._id || '').trim();
+    const rawItemId = String(row.id || row._id || '').trim();
+    const itemId = isMongoObjectId(rawItemId) ? rawItemId : '';
     const payload = {
       name: englishName,
       nameEnglish: englishName,

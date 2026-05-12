@@ -11,11 +11,6 @@ function slugifyDepartmentName(value) {
     .replace(/^-+|-+$/g, '');
 }
 
-function labelPrintDepartmentUrl(departmentName) {
-  const slug = slugifyDepartmentName(departmentName);
-  return slug ? `/label-print/department/${encodeURIComponent(slug)}` : '/label-print/';
-}
-
 function isLabelPrintAdmin(user) {
   return Boolean(user && user.role === 'admin');
 }
@@ -27,7 +22,6 @@ function assignedLabelPrintDepartment(user) {
 module.exports = {
   normalizeDepartmentName,
   slugifyDepartmentName,
-  labelPrintDepartmentUrl,
   isLabelPrintAdmin,
   assignedLabelPrintDepartment
 };

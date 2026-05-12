@@ -383,22 +383,6 @@
     }
 
     // Hide nav links that user doesn't have permission for
-    function labelDepartmentUrl(name) {
-      var slug = String(name || '')
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-      return slug ? '/label-print/department/' + encodeURIComponent(slug) : '/label-print/';
-    }
-    if (user.role !== 'admin' && user.labelPrintDepartmentName) {
-      var labelUrl = labelDepartmentUrl(user.labelPrintDepartmentName);
-      document.querySelectorAll('a[href="/label-print/"]').forEach(function (link) {
-        link.setAttribute('href', labelUrl);
-      });
-    }
-
-    // Hide nav links that user doesn't have permission for
     if (user.role !== 'admin') {
       var permLinks = document.querySelectorAll('#sidenav [data-perm]');
       permLinks.forEach(function (link) {

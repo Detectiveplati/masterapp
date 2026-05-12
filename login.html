@@ -120,17 +120,8 @@
       );
     }
 
-    function labelDepartmentUrl(name) {
-      var slug = String(name || '')
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-      return slug ? '/label-print/department/' + encodeURIComponent(slug) : '/label-print/';
-    }
-
     function defaultDestination(user) {
-      if (isLabelPrintOnlyUser(user)) return labelDepartmentUrl(user.labelPrintDepartmentName);
+      if (isLabelPrintOnlyUser(user)) return '/label-print/';
       return isFormsOnlyUser(user) ? '/foodsafety-forms/forms' : '/';
     }
 
