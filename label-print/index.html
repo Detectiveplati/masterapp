@@ -33,14 +33,6 @@
         </div>
       </div>
       <div class="command-controls">
-        <select id="category-filter" class="command-select"></select>
-        <a class="btn-ghost command-btn command-link-btn" href="./template-setup.html">Template Setup / 模板设置</a>
-        <a class="btn-ghost command-btn command-link-btn" href="./label-designer.html">Designer / 设计器</a>
-        <button id="export-csv-button" class="btn-ghost command-btn" type="button">Export CSV / 导出</button>
-        <button id="export-csv-template-button" class="btn-ghost command-btn" type="button">CSV Template / 空白模板</button>
-        <button id="export-pdf-button" class="btn-ghost command-btn" type="button">Export PDF / 打印导出</button>
-        <button id="import-csv-button" class="btn-ghost command-btn" type="button">Import CSV / 导入</button>
-        <input id="import-csv-input" type="file" accept=".csv" style="display:none" aria-hidden="true">
         <button id="printer-setup-button" class="btn-secondary command-btn" type="button">
           <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-.4-1 1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1-.4 1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 .4 1 1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.27.3.48.65.6 1a1.7 1.7 0 0 0 1 .4H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1 .4 1.7 1.7 0 0 0-.5.6z"/></svg></span>
           <span>Setup / 设置</span>
@@ -165,7 +157,7 @@
       <div class="modal-body">
         <div class="printer-widget">
           <div class="status-grid printer-status-grid">
-            <article class="status-card">
+            <article class="status-card printer-support-status">
               <span class="status-label">Browser / 浏览器</span>
               <strong id="bridge-status">Checking browser support… / 正在检查浏览器支持…</strong>
               <small id="bridge-meta">This tablet needs Chrome with Web Serial enabled. / 此平板需要启用 Web Serial 的 Chrome。</small>
@@ -180,24 +172,32 @@
               <strong id="template-status">0 loaded / 已加载 0 个</strong>
               <small>58 x 29 mm, 58 x 62 mm, 58 x 100 mm</small>
             </article>
-            <article class="status-card">
+            <article class="status-card printer-action-status">
               <span class="status-label">Last Action / 最近操作</span>
               <strong id="action-status">Idle / 空闲</strong>
               <small id="action-meta">Waiting for print input. / 等待打印操作。</small>
             </article>
           </div>
+          <div class="settings-section-head">Template & Item Tools / 模板与项目工具</div>
+          <div class="setup-tool-grid">
+            <a class="btn-ghost setup-tool-button" href="./template-setup.html">Template Setup / 模板设置</a>
+            <a class="btn-ghost setup-tool-button" href="./label-designer.html">Designer / 设计器</a>
+            <button id="export-csv-button" class="btn-ghost setup-tool-button" type="button">Export CSV / 导出</button>
+            <button id="export-csv-template-button" class="btn-ghost setup-tool-button" type="button">CSV Template / 空白模板</button>
+            <button id="export-pdf-button" class="btn-ghost setup-tool-button" type="button">Export PDF / 打印导出</button>
+            <button id="import-csv-button" class="btn-ghost setup-tool-button" type="button">Import CSV / 导入</button>
+            <input id="import-csv-input" type="file" accept=".csv" style="display:none" aria-hidden="true">
+          </div>
+          <div class="settings-section-head">Catalog View / 项目视图</div>
+          <label class="field printer-modal-full-field">
+            <span>Category filter / 分类筛选</span>
+            <select id="category-filter" class="command-select"></select>
+          </label>
+          <div class="settings-section-head">Printer / 打印机</div>
           <div class="modal-grid">
             <label class="field">
               <span>Printer / 打印机</span>
               <select id="printer-select"></select>
-            </label>
-            <label class="field">
-              <span>Serial baud rate / 串口波特率</span>
-              <input id="printer-baud-input" type="number" min="1" max="921600" step="1" value="9600">
-            </label>
-            <label class="field printer-modal-host-field">
-              <span>Bluetooth mode / 蓝牙模式</span>
-              <input type="text" value="Android Chrome Web Serial" readonly>
             </label>
             <label class="field">
               <span>Default cut mode / 默认切刀模式</span>
@@ -206,6 +206,7 @@
                 <option value="auto-cut">Cut after each item / 每个项目打印后切刀</option>
               </select>
             </label>
+            <input id="printer-baud-input" type="hidden" value="115200">
           </div>
           <div class="settings-section-head">Label Settings / 标签全局设置</div>
           <div class="modal-grid">
@@ -233,7 +234,8 @@
             <button id="connect-button" class="btn-secondary" type="button">Reconnect / 重新连接</button>
             <button id="test-print-button" class="btn-secondary" type="button">Test Print / 测试打印</button>
           </div>
-          <div class="diagnostic-panel">
+          <details class="diagnostic-panel setup-advanced-panel">
+            <summary>Advanced Diagnostics / 高级诊断</summary>
             <div class="diagnostic-head">
               <strong>Browser Diagnostics / 浏览器诊断</strong>
               <div class="diagnostic-actions">
@@ -292,7 +294,7 @@
                 <small id="diag-browser-meta">Runtime browser details unavailable / 运行浏览器信息不可用</small>
               </article>
             </div>
-          </div>
+          </details>
           <div class="printer-widget-results">
             <div id="discover-empty" class="empty-state">Pair a Brother printer from this tablet, then reconnect when you return to the page. / 请在此平板上配对 Brother 打印机，返回页面后再重新连接。</div>
             <div id="discover-list" class="jobs-list"></div>

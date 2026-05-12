@@ -52,7 +52,7 @@ body[data-module="label-print"] {
 /* ── Command bar ─────────────────────────────────────────────── */
 .command-bar {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: minmax(160px, auto) minmax(320px, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
@@ -83,7 +83,7 @@ body[data-module="label-print"] {
   line-height: 1;
 }
 .command-search { min-width: 0; width: 100%; }
-.search-box { display: flex; gap: 8px; align-items: center; width: 100%; }
+.search-box { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; width: 100%; }
 .search-box input {
   flex: 1 1 auto;
   min-width: 0;
@@ -219,8 +219,40 @@ body[data-module="label-print"] {
 .printer-widget { display: grid; gap: 12px; }
 .printer-status-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .printer-status-grid .status-card { padding: 10px 12px; }
+.printer-support-status,
+.printer-action-status {
+  display: none;
+}
+.settings-section-head {
+  color: #111827;
+  font-size: 0.95rem;
+  font-weight: 800;
+  margin-top: 2px;
+}
+.setup-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.setup-tool-button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+}
 .printer-widget-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .diagnostic-panel { display: grid; gap: 12px; padding: 14px; border-radius: 18px; background: #f8fafc; border: 1px solid rgba(18, 19, 22, 0.08); }
+.setup-advanced-panel summary {
+  cursor: pointer;
+  color: #475467;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+.setup-advanced-panel:not([open]) {
+  display: block;
+}
 .diagnostic-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
 .diagnostic-actions { display: flex; gap: 10px; align-items: center; }
 .diagnostic-link-button { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
@@ -831,6 +863,7 @@ body[data-module="label-template-setup"] {
   .command-search { width: 100%; }
   .search-box { width: 100%; }
   .command-controls { flex-wrap: wrap; }
+  .setup-tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .status-grid, .printer-status-grid { grid-template-columns: 1fr; }
   .modal-grid { grid-template-columns: 1fr; }
   .diagnostic-grid { grid-template-columns: 1fr; }
@@ -843,6 +876,7 @@ body[data-module="label-template-setup"] {
   .label-page { padding: 10px; gap: 10px; }
   .template-setup-page { padding: 10px; gap: 10px; }
   .command-bar { padding: 10px 12px; }
+  .setup-tool-grid { grid-template-columns: 1fr; }
   .template-setup-header, .template-setup-toolbar, .template-setup-list-shell { padding: 12px; }
   .template-setup-header, .template-setup-header-actions, .template-setup-item-actions { flex-direction: column; align-items: stretch; }
   .qty-row, .item-actions, .modal-head, .modal-actions, .printer-widget-actions { flex-direction: column; align-items: stretch; }
