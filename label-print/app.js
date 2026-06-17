@@ -1213,7 +1213,7 @@ async function loadPrintersOnly() {
 
 function getDefaultCutMode() {
   const saved = localStorage.getItem('label-print-default-cut');
-  return (saved === 'auto-cut' || saved === 'no-cut') ? saved : 'no-cut';
+  return (saved === 'auto-cut' || saved === 'no-cut') ? saved : 'auto-cut';
 }
 
 function getSerialBaudRate() {
@@ -2401,11 +2401,17 @@ async function sendTemplateToBluetooth(payload) {
   // Hard-fixed for DK-11209: always send 62mm width / 29mm length regardless of template record.
   // Template drift (e.g. heightMm=62) would tell the printer to expect a 62mm die, which doesn't exist,
   // so the firmware rejects with "wrong label type".
-  const bytes = buildRasterJob(rasterLines, { cutMode: payload.cutMode || 'auto-cut', mediaWidthMm: 62, labelLengthMm: 29 });
+  const copies = Math.max(1, Math.round(Number(payload.copies) || 1));
+  const cutMode = payload.cutMode === 'no-cut' ? 'no-cut' : 'auto-cut';
+  const finalBytes = buildRasterJob(rasterLines, { cutMode, mediaWidthMm: 62, labelLengthMm: 29 });
+  const intermediateBytes = (cutMode === 'auto-cut' && copies > 1)
+    ? buildRasterJob(rasterLines, { cutMode: 'no-cut', mediaWidthMm: 62, labelLengthMm: 29 })
+    : finalBytes;
   const writer = port.writable.getWriter();
   try {
-    for (let i = 0; i < (payload.copies || 1); i++) {
+    for (let i = 0; i < copies; i++) {
       if (i > 0) await new Promise(r => setTimeout(r, 100));
+      const bytes = i === copies - 1 ? finalBytes : intermediateBytes;
       await writer.write(bytes);
     }
   } finally {
