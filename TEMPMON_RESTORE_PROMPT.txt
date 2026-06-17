@@ -1,0 +1,480 @@
+TEMPMON MODULE RESTORE PROMPT
+Generated from the existing masterapp temperature monitoring module.
+
+IMPORTANT ABOUT API KEYS AND SECRETS
+Do not hardcode real API keys or secrets into source code, prompts, or documentation. Restore the module using the variable names below, then fill real values from Railway Variables, your local .env, MongoDB Atlas, Cloudinary, and VAPID key generation.
+
+Required/used environment variables:
+- PORT: Web server port. Railway normally provides this automatically.
+- JWT_SECRET: Required in production for auth cookies/JWT verification.
+- MASTERAPP_CORE_MONGODB_URI: Core MongoDB URI used by TempMon models.
+- MASTERAPP_CORE_DB_NAME: Core database name. Default is masterapp_core.
+- MASTERAPP_TEMPLOG_MONGODB_URI: TempLog MongoDB URI used by LoRa gateway event/device collections.
+- MASTERAPP_TEMPLOG_DB_NAME: TempLog database name. Default is masterapp_templog.
+- GATEWAY_API_KEY: Optional shared key for POST /api/tempmon/ingest. If set, clients must send header X-Gateway-Key.
+- LORA_HTTP_TOKEN: Optional shared token for POST /templog/api/lora/receive. If set, gateway/client must send header X-Lora-Token, query token, or body token.
+- LORA_TCP_PORT: TCP listener port for TZONE/RD07 gateway TCP frames. Default 4001.
+- LORA_TCP_PROXY_HOST: Optional public TCP proxy host override, used for Railway/browser display.
+- LORA_TCP_PROXY_PORT: Optional public TCP proxy port override, used for Railway/browser display.
+- RAILWAY_TCP_PROXY_DOMAIN: Railway-provided fallback TCP proxy host.
+- RAILWAY_TCP_PROXY_PORT: Railway-provided fallback TCP proxy port.
+- LORA_TCP_FILE_LOG_ENABLED: Optional true/false to enable extra TCP file logging.
+- VAPID_PUBLIC_KEY: Required for browser push subscriptions.
+- VAPID_PRIVATE_KEY: Required for server push notifications.
+- VAPID_EMAIL: Contact email used by web-push. Default fallback admin@example.com.
+- CLOUDINARY_CLOUD_NAME: Required only if calibration certificate/photo uploads must persist.
+- CLOUDINARY_API_KEY: Required only if Cloudinary upload is enabled.
+- CLOUDINARY_API_SECRET: Required only if Cloudinary upload is enabled.
+- TEMP_MON_REPORT_TZ: Optional report timezone override. Falls back to TZ or Asia/Singapore.
+- TZ: Optional process timezone fallback.
+
+Legacy/fallback env names still supported by databaseLayout.js:
+- MAINTENANCE_MONGODB_URI
+- MONGODB_URI
+- MONGODB_DB_NAME
+- TEMPLOG_MONGODB_URI
+- TEMPLOG_DB_NAME
+
+Build the module in a Node/Express/CommonJS app with MongoDB/Mongoose. Use Node >=18.
+
+Core dependencies:
+- express
+- mongoose
+- mongodb
+- cookie-parser
+- cors
+- dotenv
+- jsonwebtoken
+- multer
+- cloudinary
+- web-push
+- node-cron or setInterval for background checks
+- puppeteer optional for PDF exports
+- Chart.js on frontend pages for graphs
+
+MODULE PURPOSE
+Recreate an equipment temperature monitoring module named TempMon for a central kitchen master app. It monitors freezers, chillers, and warmers using LoRa/TZONE sensor tags, stores readings, raises HACCP alerts, tracks corrective actions and calibrations, supports browser push notifications, provides dashboards and reports, and integrates with the Food Safety monthly checklist/report system.
+
+URL AND PERMISSION MODEL
+- Static frontend lives at /tempmon and requires the user to have tempmon permission.
+- API router is mounted at /api/tempmon.
+- Auth is cookie/JWT based via existing requireAuth middleware.
+- Most TempMon routes require authenticated users.
+- Admin-only routes require requireAdmin.
+- The monthly confirmation endpoint requires requirePermission('tempmon').
+- Push notifications send to users/subscriptions with tempmon permission.
+- The LoRa device management UI uses /templog/api/lora/* but is presented inside the tempmon setup page and should require tempmon access.
+
+FRONTEND PAGES TO RECREATE
+- /tempmon/index.html: dashboard listing active units, status cards, latest readings, open alerts, links to setup, reports, alerts, gateway log.
+- /tempmon/unit.html?id=<unitId>: unit detail with readings chart, device list, alerts, export, monthly report/PDF link, test push.
+- /tempmon/setup.html: tabbed setup UI for units, devices, thresholds, push notification delays, calibrations, and LoRa Gateway registration/discovery/status.
+- /tempmon/alerts.html: alert queue, details, acknowledge, resolve, corrective action workflow.
+- /tempmon/report.html?unitId=<id>&month=YYYY-MM: monthly unit report, verification, PDF mode support.
+- /tempmon/gateway-log.html: raw gateway event log viewer with expand/collapse rows and unmatched sensor troubleshooting.
+- /tempmon/gateway.html: redirect to /tempmon/setup.html?tab=gateway.
+- /tempmon/dev-test.html and /tempmon/warmer-test.html: admin/dev testing helpers for simulated readings and warmer state transitions.
+- Include copied/reference gateway docs under /tempmon/docs if needed: gateway configuration manual, HTTP/TCP protocol references, TAG08B/TAG09 user guide extracted markdown.
+
+DATABASE LAYOUT
+Use two MongoDB databases:
+
+1. Core DB, Mongoose connection, default masterapp_core.
+Collections:
+- core_tempmon_units
+- core_tempmon_devices
+- core_tempmon_readings
+- core_tempmon_alerts
+- core_tempmon_corrective_actions
+- core_tempmon_calibrations
+- core_tempmon_configs
+- core_food_safety_checklist_months
+- core_push_subscriptions
+- core_users
+
+2. TempLog DB, native MongoDB driver, default masterapp_templog.
+Collections:
+- templog_lora_devices
+- templog_lora_gateway_events
+- templog_equipment_temp_readings
+- templog_equipment_temp_configs
+- templog_equipment_temp_alerts
+- templog_equipment_temp_states
+
+SCHEMAS
+
+TempMonUnit:
+- name string required trim
+- type enum freezer/chiller/warmer/ambient required
+- location string default ''
+- area string default ''
+- criticalMin number required
+- criticalMax number required
+- warningBuffer number default 2
+- targetTemp number
+- active boolean default true
+- inUse boolean default true
+- inUseComment string default ''
+- notes string default ''
+- alertThresholdMinutes number default 0
+- warmerStateConfig object:
+  - roomTempCeiling number default 35
+  - warmupStartTemp number default 40
+  - offConfirmMinutes number default 20
+  - faultMinutes number default 30
+  - optional slopeWindowReadings default 8
+  - optional riseMinPerMin default 0.10
+  - optional fallMinPerMin default 0.08
+- warmerState object:
+  - state enum off/warming_up/active/cooling/fault/unknown default unknown
+  - since date
+- timestamps true
+
+TempMonDevice:
+- unit ObjectId ref TempMonUnit required indexed
+- deviceId string required unique trim
+- label string default ''
+- firmware string default ''
+- batteryPct number default null
+- expectedIntervalMinutes number default 5
+- lastSeenAt date default null
+- lastCalibratedAt date default null
+- calibrationDue date default null
+- calibrationIntervalDays number default 180
+- active boolean default true
+- timestamps true
+
+TempMonReading:
+- device ObjectId ref TempMonDevice required
+- unit ObjectId ref TempMonUnit required, denormalized
+- value number required, Celsius
+- humidity number default null
+- rssi number default null
+- battery number default null
+- recordedAt date required, gateway/sensor timestamp
+- receivedAt date default Date.now
+- gatewayId string default ''
+- flagged boolean default false
+- indexes:
+  - { unit: 1, recordedAt: -1 }
+  - { device: 1, recordedAt: -1 }
+  - unique { device: 1, recordedAt: 1, value: 1 }
+- no timestamps; receivedAt is the receipt time
+
+TempMonAlert:
+- unit ObjectId ref TempMonUnit required indexed
+- device ObjectId ref TempMonDevice required
+- reading ObjectId ref TempMonReading default null
+- type enum critical_high/critical_low/warning_high/warning_low/device_offline/warmer_fault required
+- value number default null
+- status enum open/acknowledged/resolved default open indexed
+- acknowledgedBy string default ''
+- acknowledgedAt date default null
+- resolvedBy string default ''
+- resolvedAt date default null
+- resolveNote string default ''
+- correctiveAction ObjectId ref TempMonCorrectiveAction default null
+- notificationSent boolean default false
+- pushSentAt date default null
+- timestamps true
+- index { status: 1, unit: 1 }
+
+TempMonCorrectiveAction:
+- alert ObjectId ref TempMonAlert required unique
+- unit ObjectId ref TempMonUnit required indexed
+- actionTaken string required
+- takenBy string required
+- takenAt date default Date.now
+- rootCause string default ''
+- preventiveMeasure string default ''
+- productDisposalRequired boolean default false
+- productDisposalDetails string default ''
+- verifiedBy string default ''
+- verifiedAt date default null
+- outcome enum product_safe/product_discarded/equipment_repaired/other/'' default ''
+- timestamps true
+
+TempMonCalibration:
+- device ObjectId ref TempMonDevice required indexed
+- calibratedBy string required
+- calibratedAt date required
+- referenceTemp number default null
+- readingBefore number default null
+- readingAfter number default null
+- offsetApplied number default 0
+- certificate string default '', Cloudinary secure_url
+- certificateId string default '', Cloudinary public_id if available
+- nextDueDate date default null
+- notes string default ''
+- timestamps true
+
+TempMonConfig:
+- key string default global unique
+- pushDelayCriticalMinutes number default 60
+- pushDelayWarningMinutes number default 120
+- timestamps true
+
+API ROUTES UNDER /api/tempmon
+- GET /units: list active units with latestReading and openAlerts count.
+- GET /units/:id: unit detail with active devices.
+- POST /units: create unit.
+- PUT /units/:id: update name, type, location, area, criticalMin, criticalMax, warningBuffer, targetTemp, notes, active, inUse, inUseComment, alertThresholdMinutes.
+- DELETE /units/:id: soft delete by setting active=false.
+- POST /admin/apply-type-default-ranges: admin; requires body { confirmed: true }; applies type defaults and refreshes linked Food Safety TempMon records.
+- GET /devices: list devices populated with unit name/type.
+- POST /devices: register device, validates/migrates existing deviceId.
+- PUT /devices/:id: update unit/device fields; if unit changes, migrate existing readings, alerts, and corrective actions to the new unit and optionally deactivate orphan old unit.
+- DELETE /devices/:id: soft decommission by active=false.
+- POST /ingest: gateway ingest endpoint using optional X-Gateway-Key; body { gatewayId, readings:[{ deviceId, value, recordedAt, batteryPct }] }.
+- GET /devices/:id/diag: device diagnostic snapshot with registration, unit, recent readings, duplicate/drift/offline issues.
+- GET /readings/:unitId?from=&to=&limit=&includeSample=: readings for chart/table.
+- GET /readings/:unitId/export?from=&to=: CSV export with timestamp, device, value, humidity, RSSI, battery, flagged.
+- GET /alerts?status=&unitId=&from=&to=&limit=: list alerts populated with unit/device/reading/action.
+- GET /alerts/:id: alert detail.
+- PUT /alerts/:id/acknowledge: mark open alert acknowledged; store user name/email and timestamp.
+- PUT /alerts/:id/resolve: mark alert resolved; store user and resolveNote.
+- POST /corrective-actions: create HACCP corrective action for alert and link to alert.
+- GET /corrective-actions/:id: retrieve action.
+- PUT /corrective-actions/:id: update action fields.
+- GET /calibrations?deviceId=: list calibrations.
+- GET /calibrations/due: devices due within next 30 days.
+- POST /calibrations: multipart field certificate optional; upload certificate to Cloudinary folder tempmon/calibrations; update device lastCalibratedAt, calibrationDue.
+- GET /dashboard: aggregate counts: active units, open alerts, offline devices, calibrations due, units out of range.
+- GET /reports/daily?from=&to=&unitId=: aggregate daily min/max/avg/count by unit.
+- GET /reports/compliance?from=&to=: aggregate compliance by unit with out-of-range counts.
+- GET /reports/monthly-unit?unitId=&month=: produce monthly report data for one unit.
+- POST /reports/monthly-unit/confirm: verify monthly temperature form and write/update core_food_safety_checklist_months with templateCode CAC-SOP-02-F01-TEMPMON.
+- GET /config: singleton push config.
+- PUT /config: update pushDelayCriticalMinutes and pushDelayWarningMinutes.
+- POST /test-push: send test push notification to tempmon subscribers.
+- POST /debug/inject: admin only; simulate reading for a unit with body { unitId, temp, minsAgo, forceAlert }.
+- DELETE /alerts?from=&to=: admin purge alerts.
+- DELETE /readings/:unitId?from=&to=: admin purge readings for a unit/range.
+
+SERVER-LEVEL API ROUTES RELATED TO TEMPMON
+- app.use('/tempmon', requirePageAccess('tempmon'), static tempmon directory).
+- app.get('/api/tempmon/reports/monthly-unit.pdf'): render /tempmon/report.html with Puppeteer and return PDF; requires tempmon permission.
+- app.get('/api/foodsafety-checklists/month/report-tempmon.pdf'): render /foodsafety-forms/tempmon-report.html with Puppeteer and return archived/generated PDF; requires foodsafety permission.
+- app.post('/api/tempmon/admin/seed'): admin; runs seedTempMonUnits and seedLoraLinks.
+
+LORA/TZONE GATEWAY INTEGRATION UNDER /templog/api/lora
+This is essential. The gateway management is implemented in server.js using the TempLog DB and forwards mapped sensor readings into TempMon.
+
+Device registry routes:
+- GET /templog/api/lora/devices: list registered LoRa devices from templog_lora_devices.
+- POST /templog/api/lora/devices: register sensorId/model/equipment/alias/notes/enabled/tempmonUnitId; validate model TAG07/TAG08B/TAG08L/TAG09; if tempmonUnitId present, sync/create TempMonDevice.
+- PUT /templog/api/lora/devices/:sensorId: update mapping, enable/disable, model, alias, notes, tempmonUnitId; sync TempMonDevice active/unit.
+- DELETE /templog/api/lora/devices/:sensorId: delete mapping.
+
+Gateway troubleshooting routes:
+- GET /templog/api/lora/tcp-log?format=json|text&limit=N: in-memory TCP log.
+- GET /templog/api/lora/tcp-config: returns host/port for gateway UI using LORA_TCP_PROXY_* or Railway TCP vars, fallback LORA_TCP_PORT.
+- GET /templog/api/lora/events?limit=N: raw gateway receive records from templog_lora_gateway_events.
+- GET /templog/api/lora/status?scan=N: latest status for registered sensors by scanning recent gateway events.
+- GET /templog/api/lora/discover?scan=N&hours=N: sensors seen but not registered.
+- POST /templog/api/lora/receive: HTTP gateway receive endpoint. Validate optional LORA_HTTP_TOKEN. Extract tag rows from payload.data.tag07/tag08b/tag09/etc. Normalize sensor IDs. Insert raw event. Forward mapped/enabled readings into TempMon and also insert legacy equipment temp readings.
+
+LoRa parsing behavior:
+- Sensor IDs are normalized to uppercase and numeric IDs shorter than 8 digits are left-padded to 8 digits.
+- Supported model aliases normalize to TAG07, TAG08B, TAG08L, TAG09.
+- Accept payloads where data contains arrays named tag*.
+- Fallback to top-level arrays only if no data envelope exists.
+- Accept temperature from temp/temperature/Temperature/Temp/T.
+- Accept sensor id from id/sensorId/sensorID/sensor_id/SN/sn/tagId/deviceId/mac.
+- Accept humidity from humi/humidity/Humidity/H, RSSI from rssi/RSSI, battery from bat/battery/Battery/BAT/batt.
+- Parse recordedAt/time/timestamp/rtc/RTC, including compact YYMMDDHHmmss.
+- When forwarding HTTP gateway readings, use sensor RTC only if within +/-2 hours of server time; otherwise use server receipt time.
+- Store unmatched rows with reason invalid_temp, disabled, or unregistered.
+
+TCP GATEWAY LISTENER
+- Start a TCP server on LORA_TCP_PORT, default 4001.
+- Protocol: TZONE RD07 WiFi TCP frame format v2.0.
+- Parse frames starting with TZ bytes, length, payload, CRLF.
+- Decode TAG07/TAG09/TAG08/TAG08B records.
+- Forward decoded rows through same mapping and forwardToTempMon pipeline.
+- Maintain in-memory logs for /templog/api/lora/tcp-log.
+- Gateway setup instructions in UI should mention TZConfig.exe -> Data Transfer Protocol -> TCP/IP -> server IP/port.
+
+ALERTING BEHAVIOR
+- For chiller/freezer/ambient units, evaluate critical range only:
+  - value < criticalMin => critical_low
+  - value > criticalMax => critical_high
+  - in-range => auto-resolve open critical and legacy warning alerts for that unit
+- For warmers, do not create critical_high/low range alerts. Warmers use warmer state machine only.
+- Skip creating alerts when unit.inUse === false.
+- Prevent duplicate open/acknowledged alert for same unit+type.
+- Use unit.alertThresholdMinutes as sustained-excursion delay before creating critical alert in /api/tempmon/ingest path.
+- Use reading recordedAt timestamp for the delay, not server arrival time.
+- Store in-memory global._tempmonExcursionStart by key `${unitId}_${alertType}`.
+- Clear excursion timer when reading returns in range.
+- On server startup, re-seed excursion timers by scanning recent readings for active non-warmer units with alertThresholdMinutes > 0 and no open critical alert.
+- Device offline check runs every 5 minutes. If active device.lastSeenAt is older than 2 hours and unit is in use, create device_offline alert and send push. Resolve offline alert when a new reading arrives.
+- Pending push safety-net runs every 60 seconds for open/acknowledged critical alerts with pushSentAt null.
+- On startup, auto-resolve stale warning_high/warning_low alerts because warning alerts are legacy.
+
+WARMER STATE MACHINE
+Implement updateWarmerState(unit, device, value, readingTs):
+- No-op unless unit.type === 'warmer'.
+- Persist state under unit.warmerState.state and unit.warmerState.since.
+- Maintain in-memory global._warmerState[unitId] with rolling history.
+- Defaults:
+  - roomTempCeiling 35 C
+  - targetLow = unit.criticalMin
+  - offConfirmMinutes 20
+  - faultMinutes 30
+  - slopeWindowReadings 8
+  - riseMinPerMin 0.10 C/min
+  - fallMinPerMin 0.08 C/min
+- Compute smoothed slope from oldest to newest reading in rolling window.
+- Zones:
+  - Active zone: value >= targetLow => active.
+  - Room zone: value <= roomTempCeiling. If rising => warming_up. If state already off => off. Otherwise cooling until offConfirmMinutes elapsed, then off.
+  - Mid zone: roomTempCeiling < value < targetLow. If rising => warming_up unless already fault. If falling => cooling. If flat while warming_up or active for faultMinutes => fault. If flat from cooling/off/unknown => cooling.
+- On transition to fault and unit.inUse !== false, create warmer_fault alert and push.
+- On leaving fault, auto-resolve open warmer_fault alert with resolveNote.
+
+PUSH NOTIFICATIONS
+- Use web-push.
+- /api/push/vapid-public-key returns VAPID_PUBLIC_KEY.
+- /api/push/subscribe stores endpoint, keys.p256dh, keys.auth, userId, userAgent.
+- sendPushToPermission('tempmon', { title, message, url }) sends only to users/subscriptions with tempmon permission.
+- VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are required for real push delivery.
+- The TempMon test push endpoint sends to /tempmon/alerts.html.
+
+CLOUDINARY/CALIBRATION UPLOADS
+- Use multer memoryStorage, max file size 10 MB.
+- Upload only image/* files.
+- Upload asynchronously/with timeout to Cloudinary folder tempmon/calibrations.
+- Store returned secure_url in TempMonCalibration.certificate.
+- If Cloudinary env vars are missing, uploads should be skipped without crashing; calibration record can still be saved without certificate.
+
+FOOD SAFETY INTEGRATION
+- Template constants:
+  - TEMPMON_FOODSAFETY_TEMPLATE_CODE = CAC-SOP-02-F01-TEMPMON
+  - TEMPMON_FOODSAFETY_FORM_TYPE = external_report
+  - TEMPMON_FOODSAFETY_TITLE = Monthly Equipment Temperature Log
+  - TEMPMON_FOODSAFETY_CATEGORY = Temperature Monitoring
+- Entry URL: /tempmon/report.html?unitId=<unitId>&month=<YYYY-MM>
+- PDF URL: /api/foodsafety-checklists/month/report-tempmon.pdf?unit=<unitId>&month=<YYYY-MM>
+- Monthly confirmation writes source tempmon data into FoodSafetyChecklistMonth with templateVersion 01, unitLabel, entryUrl, pdfUrl, reportArchive metadata, verifiedBy/verifiedAt.
+- Food Safety PDF renderer uses /foodsafety-forms/tempmon-report.html?month=<month>&unit=<unit>&print=1.
+
+SEEDED EQUIPMENT AND SENSOR IDS
+Seed 31 units and paired TempMonDevice records. Sensor IDs should be normalized to 8 digits; the current server seed uses leading zeroes for the 924-series warmers.
+
+Default seed ranges in server auto-seed:
+- freezer: criticalMin -25, criticalMax -12, warningBuffer 2, targetTemp -18
+- chiller: criticalMin 1, criticalMax 8, warningBuffer 2, targetTemp 4
+- warmer: criticalMin 60, criticalMax 90, warningBuffer 5, targetTemp 68
+- alertThresholdMinutes: 30
+- expectedIntervalMinutes: 5
+
+Seed list:
+- 09240013, CK-B4-FW-01, warmer
+- 09240014, CK-B4-FW-02, warmer
+- 09240127, CK-B4-FW-03, warmer
+- 09240128, CK-B4-FW-04, warmer
+- 09240129, CK-B4-FW-05, warmer
+- 09240130, CK-B5-FW-06, warmer
+- 82242245, CK-WC-01 (Packing Room WC), chiller
+- 82242251, CK-WC-02 (Hot Kitchen Veg WC), chiller
+- 82242252, CK-WC-03 (Hot Kitchen Meat WC), chiller
+- 82242253, CK-WC-04 (Old Sauce Area Veg WC), chiller
+- 82242249, CK-WC-05 (Processed Veg WC), chiller
+- 82242250, CK-WC-06 (Veg Prep WC), chiller
+- 82242275, CK-WC-07 (06-24 Raw Fish WC), chiller
+- 82242261, CK-WC-08 (06-24 Raw Meat WC), chiller
+- 82242260, CK-WC-09 (05-26 Main Walk-In Chiller), chiller
+- 82242254, CK-WC-11 (05-27 Chiller), chiller
+- 82242256, CK-WC-12 (06-19 Bakery WC), chiller
+- 82242255, CK-SC-01 (Fruit Room SC), chiller
+- 82242248, CK-SC-02 (Salad Room SC), chiller
+- 82242247, CK-C3-SC-01, chiller
+- 82242258, CK-SC-05 (06-19 2-Door Right SC), chiller
+- 82242259, CK-SC-06 (4-Door Left SC), chiller
+- 82242246, CK-CC-01 (Dong Counter Chiller), chiller
+- 82242257, CK-CC-03 (Cold Room CC), chiller
+- 82242262, CK-SF-01 (Retention Sample SF), freezer
+- 82242264, CK-WF-01 (Braising RTC/RTE WF), freezer
+- 82242263, CK-WF-02 (06-24 WF), freezer
+- 82242268, CK-WF-03 (05-26 Walk-In Freezer), freezer
+- 82242267, CK-WF-04 (05-27 WF), freezer
+- 82242265, CK-WF-05 (06-19 Side WF), freezer
+- 82242266, CK-WF-06 (06-19 Big WF), freezer
+
+Also seed templog_lora_devices records:
+- sensorId = normalized sensor id
+- equipment = warmer/chiller/freezer or food-warmer depending on legacy mapping
+- tempmonUnitId = string form of created TempMonUnit _id
+- model = TAG08B by default unless user registers another model
+- alias = unit name
+- enabled = true
+- createdAt/updatedAt dates
+
+REPORTING DETAILS
+- Daily report: aggregate readings by unit and date with min, max, avg, count.
+- Compliance report: aggregate by unit and count total readings and out-of-range readings, looking up unit info.
+- Monthly unit report:
+  - month starts at YYYY-MM-01 local/report timezone and ends next month.
+  - include unit info, threshold ranges, devices, readings, open/resolved alerts, corrective actions, summary counts, min/max/avg, out-of-range count.
+  - front-end report page must support print=1 and expose a JS readiness flag for Puppeteer, such as window.__reportReady or equivalent.
+- CSV export from readings endpoint should include ISO timestamp and local formatting as useful for HACCP.
+
+AUTH AND USERS
+- User model includes permissions.tempmon boolean.
+- Admin role should bypass module permissions.
+- Login/home UI should show Temp Monitor card only if permissions.tempmon.
+- Default seeded admin in existing app has tempmon true, but production must change default credentials and set JWT_SECRET.
+
+RESTORE IMPLEMENTATION CHECKLIST
+1. Create models with exact schema fields and collection names above.
+2. Add /routes/tempmon.js and mount it at /api/tempmon from route aggregator.
+3. Serve static /tempmon frontend behind tempmon permission.
+4. Implement push router or reuse existing /api/push system with sendPushToPermission export.
+5. Implement Cloudinary memory upload helper for calibration certificate images.
+6. Implement Food Safety TempMon service constants and monthly report/PDF URLs.
+7. Implement server-level Puppeteer PDF routes for TempMon monthly and Food Safety TempMon PDF.
+8. Implement seedTempMonUnits and seedLoraLinks, plus admin /api/tempmon/admin/seed.
+9. Implement /templog/api/lora device registry, events/status/discover, HTTP receive, and TCP listener.
+10. Ensure LoRa HTTP/TCP forwarding calls forwardToTempMon so readings reach core_tempmon_readings and alerts.
+11. Implement offline/pending-push startup intervals with global guards to avoid duplicate intervals.
+12. Implement startup cleanup for legacy warning alerts and startup excursion timer seeding.
+13. Build frontend pages listed above using fetch credentials/cookies and /api/tempmon endpoints.
+14. Test with:
+   - npm install
+   - npm start
+   - login with a tempmon user
+   - POST /api/tempmon/admin/seed as admin
+   - POST /api/tempmon/debug/inject for chiller/freezer and warmer
+   - POST /templog/api/lora/receive with sample payload
+   - verify readings, alerts, push config, report, CSV export, PDF export.
+
+SAMPLE DIRECT INGEST PAYLOAD
+POST /api/tempmon/ingest
+Headers: Content-Type: application/json, X-Gateway-Key: <GATEWAY_API_KEY if configured>
+{
+  "gatewayId": "GW-01",
+  "readings": [
+    { "deviceId": "82242245", "value": 3.4, "recordedAt": "2026-06-04T08:00:00.000Z", "batteryPct": 92 }
+  ]
+}
+
+SAMPLE LORA HTTP PAYLOAD
+POST /templog/api/lora/receive
+Headers: Content-Type: application/json, X-Lora-Token: <LORA_HTTP_TOKEN if configured>
+{
+  "gatewayId": "GW-01",
+  "rtc": "260604080000",
+  "data": {
+    "tag08b": [
+      { "id": "82242245", "temp": 3.4, "humi": 71, "rssi": -65, "bat": 3.6, "rtc": "260604080000" }
+    ]
+  }
+}
+
+SECURITY REMINDERS FOR RESTORE
+- Never commit actual values for JWT_SECRET, VAPID_PRIVATE_KEY, CLOUDINARY_API_SECRET, MongoDB URI passwords, GATEWAY_API_KEY, or LORA_HTTP_TOKEN.
+- If real VAPID private keys or other secrets exist in old docs or git history, rotate them before production use.
+- In production, always set JWT_SECRET to a long random value.
+- Set GATEWAY_API_KEY or LORA_HTTP_TOKEN for any public ingest endpoint.
+- Keep calibration certificates in Cloudinary or equivalent persistent storage; Railway filesystem is ephemeral.
